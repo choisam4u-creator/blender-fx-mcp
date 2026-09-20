@@ -295,10 +295,82 @@ def mesh_health(bm):
                 volume_m3=round(vol, 4))
 
 
+def object_health(obj):
+    """오브젝트의 메시 상태를 본다. mesh_health 와 같은 값을 돌려준다."""
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    h = mesh_health(bm)
+    bm.free()
+    return h
+
+
+def nearly_closed(health):
+    """완전히 닫히진 않았지만 '거의' 닫힌 메시인지. 게임용 캐릭터처럼 면 1만 개에
+    구멍이 10개뿐인 경우가 많은데, 이런 것까지 '열린 메시'로 취급하면 씨앗을 물체 안에
+    못 놓아서 요청한 조각 수가 안 나온다."""
+    if health["closed"]:
+        return True
+    bad = health["open_edges"] + health["non_manifold_edges"]
+    return bad <= max(4, int(health["faces"] * 0.01))
+
+
+def drop_duplicate_faces(bm):
+    """같은 꼭짓점으로 이루어진 면이 두 장 겹쳐 있으면 한 장을 지운다.
+
+    게임용 모델은 가방·옷 같은 부품을 몸통에 겹쳐 붙여 파는 일이 흔하다. 그러면 모서리
+    하나에 면이 3장 이상 붙어(비다양체) 조각내기가 어긋난다. 겹친 장만 걷어낸다.
+    """
+    seen = {}
+    dup = []
+    for f in bm.faces:
+        key = frozenset(v.index for v in f.verts)
+        if key in seen:
+            dup.append(f)
+        else:
+            seen[key] = f
+    if dup:
+        bmesh.ops.delete(bm, geom=dup, context="FACES_ONLY")
+    return len(dup)
+
+
+def drop_nonmanifold_faces(bm, rounds=4):
+    """모서리 하나에 면이 3장 이상 붙어 있으면(비다양체) 여분을 걷어낸다.
+
+    가장 좁은 면부터 덜어내 2장만 남긴다. 이런 모서리가 남아 있으면 구멍 메우기가
+    테두리를 따라가지 못해 끝까지 닫히지 않는다(캐릭터 모델에서 10개가 남았다).
+    """
+    removed = 0
+    for _ in range(max(1, rounds)):
+        bad = [e for e in bm.edges if len(e.link_faces) > 2]
+        if not bad:
+            break
+        victims = set()
+        for e in bad:
+            faces = [f for f in e.link_faces if f.is_valid]
+            if len(faces) <= 2:
+                continue
+            faces.sort(key=lambda f: f.calc_area())
+            for f in faces[:len(faces) - 2]:
+                victims.add(f)
+        if not victims:
+            break
+        bmesh.ops.delete(bm, geom=list(victims), context="FACES_ONLY")
+        removed += len(victims)
+    return removed
+
+
 def repair_bm(bm, fill_holes=True):
-    """겹친 점 합치기 → 법선 정리 → 열린 테두리 메우기. 무엇을 고쳤는지 돌려준다."""
+    """겹친 점 합치기 → 찌그러진 면 정리 → 겹친 면 걷어내기 → 법선 정리 → 구멍 메우기."""
     before = mesh_health(bm)
     bmesh.ops.remove_doubles(bm, verts=bm.verts[:], dist=1e-5)
+    bm.verts.index_update()
+    try:
+        bmesh.ops.dissolve_degenerate(bm, dist=1e-6, edges=bm.edges[:])
+        bm.verts.index_update()
+    except Exception:
+        pass
+    dup_faces = drop_duplicate_faces(bm)
+    dup_faces += drop_nonmanifold_faces(bm)
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
     filled = 0
     if fill_holes:
@@ -309,10 +381,13 @@ def repair_bm(bm, fill_holes=True):
                 filled = len(r.get("faces", []))
             except Exception:
                 filled = 0
+            # holes_fill 이 못 막고 남긴 테두리는 고리를 직접 걸어 막는다. 게임 모델은
+            # 이 2차 시도로 마지막 구멍 몇 개가 닫힌다.
+            filled += cap_holes(bm, 0)
             bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
     after = mesh_health(bm)
     return dict(merged_verts=before["verts"] - after["verts"], filled_faces=filled,
-                before=before, after=after)
+                duplicate_faces=dup_faces, before=before, after=after)
 
 
 def solidify_object(obj, thickness):
@@ -527,9 +602,13 @@ def resolve_solid(obj, lo, hi):
     무료 에셋은 바퀴가 몸통에 박혀 있거나 내용물이 바닥에 딱 붙어 있는 경우가 흔하다.
     그대로 두면 셀 불리언이 아무것도 못 만들어 조각과 부피가 통째로 사라진다
     (실측: 통 0.69, 수레 0.93). 여기서 한 번 정리하면 1.00 이 된다.
-    되돌려주는 값은 (정리했는지, 정리 뒤 부피).
+    되돌려주는 값은 (정리했는지, 정리 뒤 부피, 정리 뒤 닫혀 있는지).
+    불리언 솔버는 결과를 닫힌 메시로 내놓기 때문에, 원본이 껍데기여도 여기서 닫히는 일이 많다.
     """
-    before, _ = mesh_volume(obj)
+    h_before = object_health(obj)
+    # 부피는 반올림하지 않은 값을 쓴다. mesh_health 는 소수점 4자리로 자르는데,
+    # 5cm 짜리 물건(0.000125㎥)은 그 자리에서 잘려 보존율이 1.25 로 뜬다.
+    before, closed = mesh_volume(obj)
     box_bm = covering_cube_bm(lo, hi)
     box = new_mesh_object("FX_ResolveBox", box_bm, obj.matrix_world.copy(), tag="cell")
     box_bm.free()
@@ -549,10 +628,19 @@ def resolve_solid(obj, lo, hi):
     if len(me.polygons) >= 4 and len(me.vertices) >= 4:
         b = bmesh.new()
         b.from_mesh(me)
+        h_after = mesh_health(b)
         v = abs(b.calc_volume(signed=False))
+        v_closed = h_after["closed"]
         b.free()
-        # 결과가 터무니없으면(절반 아래로 줄거나 부풀면) 원본을 그대로 쓴다
-        if before <= 1e-9 or 0.5 <= v / before <= 1.5:
+        # 결과가 터무니없거나(부피가 절반 아래/1.5배 위) 원본보다 더 망가졌으면 원본을 그대로 쓴다.
+        # 이미 비다양체인 메시에 이 연산을 걸면 모서리가 10개에서 8,390개로 늘어난 적이 있다.
+        sane = before <= 1e-9 or 0.5 <= v / before <= 1.5
+        not_worse = v_closed or h_after["non_manifold_edges"] <= h_before["non_manifold_edges"]
+        if sane:
+            # 메시를 바꾸지 않더라도 부피 기준은 솔버가 본 값을 쓴다.
+            # 겹친 덩어리를 두 번 세는 원본 값으로 나누면 보존율이 거짓으로 낮게 나온다.
+            volume = v
+        if sane and not_worse:
             old = obj.data
             obj.data = me
             bpy.data.meshes.remove(old)
@@ -560,11 +648,11 @@ def resolve_solid(obj, lo, hi):
                 obj.data.materials.pop()
             view_layer_update()
             ok = True
-            volume = v
+            closed = v_closed
             me = None
     if me is not None:
         bpy.data.meshes.remove(me)
-    return ok, volume
+    return ok, volume, closed
 
 
 def voronoi_cell_objects(lo, hi, seeds, matrix, interior_mat):
@@ -620,8 +708,12 @@ def voronoi_cell_objects(lo, hi, seeds, matrix, interior_mat):
     return objs
 
 
-def boolean_chunks(target, cell_objects, materials, coll, name_prefix):
-    """대상 메시와 셀 다면체의 교집합으로 조각을 만든다. 블렌더의 정확 불리언을 쓴다."""
+def boolean_chunks(target, cell_objects, materials, coll, name_prefix, use_self=False):
+    """대상 메시와 셀 다면체의 교집합으로 조각을 만든다. 블렌더의 정확 불리언을 쓴다.
+
+    use_self 는 부품끼리 서로 관통하는 메시(캐릭터의 몸통·머리·가방처럼)에 필요하다.
+    켜지 않으면 불리언이 빈 결과를 내서 조각이 통째로 사라진다(실측 0.405). 대신 느리다.
+    """
     src = target.copy()
     src.data = target.data.copy()
     src.name = f"FX_Src_{target.name}"
@@ -632,6 +724,7 @@ def boolean_chunks(target, cell_objects, materials, coll, name_prefix):
         src.data.materials.append(m)
     mod = src.modifiers.new("FX_Bool", "BOOLEAN")
     mod.operation = "INTERSECT"
+    mod.use_self = bool(use_self)
     try:
         mod.solver = "EXACT"
     except TypeError:

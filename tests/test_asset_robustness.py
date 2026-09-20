@@ -1,5 +1,7 @@
 # 무료 에셋에 흔한 결함(겹친 덩어리, 맞닿은 덩어리, 떨어진 덩어리)을 만들어 놓고
 # 부피를 잃지 않고 조각나는지 검증한다. 이 셋은 실제로 조각이 통째로 사라지던 경우다.
+import os
+
 import pytest
 
 from blender_fx_mcp.headless import find_blender, run_steps
@@ -90,3 +92,37 @@ def test_many_pieces_do_not_overlap():
     assert d["pieces"] == 200, d
     assert 0.98 <= d["volume_kept"] <= 1.02, d
     assert d["open_chunks"] == 0, d
+
+
+# 실제로 내려받은 게임 캐릭터(CC0). 이 컴퓨터에만 있어 없으면 건너뛴다.
+REAL_CHARACTER = "/Users/sam/Desktop/Gpt_Codex/bonewright/tests/assets/quaternius_adventurer.glb"
+
+
+@pytest.mark.skipif(not os.path.exists(REAL_CHARACTER), reason="실제 캐릭터 파일이 없어 건너뜀")
+def test_real_skinned_character():
+    """뼈대에 묶인 진짜 게임 캐릭터가 부피를 지키며 부서져야 한다.
+
+    이 파일에는 보이지 않는 껍데기 구가 섞여 있어, 그냥 합치면 캐릭터가 구가 된다.
+    부품끼리 서로 관통하기도 해서 자기교차 처리를 켜지 않으면 보존율이 0.405 로 떨어진다.
+    """
+    results = run_steps([
+        ("import_model", {"path": REAL_CHARACTER, "name": "Hero", "size": 2.0,
+                          "parts": ["Adventurer", "Backpack"]}),
+        ("inspect_mesh", {"target": "Hero"}),
+        ("destroy", {"target": "Hero", "pieces": 50, "frames": 8, "dust": "none"}),
+    ], blender=BLENDER)
+    for r in results:
+        assert r["ok"], r
+    imp, ins, d = results
+
+    # 껍데기 구를 빼고 사람 비율이 나와야 한다(가로보다 세로가 훨씬 길다)
+    assert imp["dropped_parts"] == ["Icosphere"], imp
+    assert imp["size_m"][2] > max(imp["size_m"][0], imp["size_m"][1]) * 2, imp
+    assert 0.05 < imp["volume_m3"] < 0.5, imp  # 2m 캐릭터는 0.1㎥ 언저리
+
+    # 팔다리가 벌어진 캐릭터는 볼록할 수 없다
+    assert ins["convex_ratio"] is not None and ins["convex_ratio"] < 0.8, ins
+
+    assert 0.97 <= d["volume_kept"] <= 1.03, d
+    assert d["pieces"] >= 42, d
+    assert any("껍데기" in n or "hollow shell" in n for n in d["notes"]), d

@@ -7,24 +7,19 @@ def main():
     bm, ratio, _ = bm_from_object(obj, int(p.get("decimate_to") or 0), repair=False)
     health = mesh_health(bm)
 
-    # 볼록한가? 볼록 껍질 부피와 비교하면 오목한 정도를 알 수 있다
-    convex_ratio = None
-    try:
-        hull = bm.copy()
-        r = bmesh.ops.convex_hull(hull, input=hull.verts[:])
-        # 껍질 안쪽에 남은 원래 geometry 를 지워야 부피가 맞는다
-        junk = list(r.get("geom_interior", [])) + list(r.get("geom_unused", []))
-        if junk:
-            bmesh.ops.delete(hull, geom=junk, context="VERTS")
-        bmesh.ops.recalc_face_normals(hull, faces=hull.faces[:])
-        hv = abs(hull.calc_volume(signed=False))
-        hull.free()
-        if hv > 1e-9:
-            convex_ratio = round(health["volume_m3"] / hv, 3)
-    except Exception:
-        pass
+    repaired = repair_bm(bm)  # 수리해 보고 얼마나 나아지는지 본다
 
-    repaired = repair_bm(bm.copy() if False else bm)  # 수리해 보고 얼마나 나아지는지 본다
+    # 볼록한가? 볼록 껍질 부피와 비교하면 오목한 정도를 알 수 있다.
+    # 닫히지 않은 메시는 부피 자체가 헛값이라 계산하지 않는다. 예전에는 이걸 안 걸러서
+    # 팔다리가 벌어진 캐릭터가 1.0(완전한 볼록 덩어리)으로 나왔다.
+    convex_ratio = None
+    if repaired["after"]["closed"]:
+        hull = convex_hull_from_points([v.co.copy() for v in bm.verts])
+        if hull is not None:
+            hv = abs(hull.calc_volume(signed=False))
+            hull.free()
+            if hv > 1e-9:
+                convex_ratio = round(repaired["after"]["volume_m3"] / hv, 3)
     bm.free()
 
     lo, hi = world_bbox(obj)
@@ -50,6 +45,7 @@ def main():
     return dict(target=obj.name, size_m=[round(s.x, 2), round(s.y, 2), round(s.z, 2)],
                 decimated_ratio=round(ratio, 3), convex_ratio=convex_ratio,
                 repair_preview=dict(merged_verts=repaired["merged_verts"], filled_faces=repaired["filled_faces"],
+                                    duplicate_faces=repaired.get("duplicate_faces", 0),
                                     closed_after=repaired["after"]["closed"], volume_after=repaired["after"]["volume_m3"]),
                 notes=notes, **health)
 

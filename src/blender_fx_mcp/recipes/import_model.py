@@ -1,5 +1,5 @@
 # 외부 모델(glb/gltf/fbx/obj/stl/usd/blend)을 가져와 하나의 메시로 합치고, 크기를 맞추고, 바닥에 세운다.
-# PARAMS: path, name, size(가장 긴 변 m, 0이면 원본), on_ground, center
+# PARAMS: path, name, size(가장 긴 변 m, 0이면 원본), on_ground, center, parts(남길 부품 이름 목록)
 
 
 def import_file(path):
@@ -43,6 +43,7 @@ def main():
     import_file(path)
     new = [o for o in bpy.data.objects if o not in before]
     meshes = [o for o in new if o.type == "MESH"]
+    new_names = [o.name for o in new]
     if not meshes:
         kinds = sorted({o.type for o in new})
         for o in new:
@@ -50,12 +51,46 @@ def main():
         raise FxError(L(f"가져온 파일에 메시가 없습니다. 들어 있던 것: {kinds or '없음'} ({os.path.getsize(path)} bytes)",
                         f"The imported file contains no mesh. It held: {kinds or 'nothing'} ({os.path.getsize(path)} bytes)"))
 
-    # 부모 변환을 세계 좌표로 굳힌 뒤 하나로 합친다
-    for o in meshes:
-        o.matrix_world = o.matrix_world.copy()
+    # 뼈대에 묶인(스킨) 메시는 모디파이어를 먼저 구워야 지금 자세 그대로 남는다.
+    # 그리고 부모를 뗀 "뒤에" 세계 위치를 되돌려 놔야 한다. 순서가 반대면 부모가 주던
+    # 위치·크기가 통째로 날아가 부품이 제자리를 벗어난다.
+    for o in list(meshes):
+        mw = o.matrix_world.copy()
+        if o.modifiers:
+            dg = bpy.context.evaluated_depsgraph_get()
+            baked = bpy.data.meshes.new_from_object(o.evaluated_get(dg))
+            old_me = o.data
+            o.data = baked
+            o.modifiers.clear()
+            if old_me.users == 0:
+                bpy.data.meshes.remove(old_me)
         o.parent = None
+        o.matrix_world = mw
     view_layer_update()
-    new_names = [o.name for o in new]
+
+    # 파일 안에 무엇이 들어 있었는지 남긴다. 눈에 안 보이는 껍데기 구 같은 게 섞여 있으면
+    # 그대로 합쳤을 때 진짜 모델을 통째로 삼킨다(실제로 캐릭터가 구가 된 적이 있다).
+    parts = []
+    for o in meshes:
+        d = o.dimensions
+        parts.append(dict(name=o.name, size_m=[round(d.x, 2), round(d.y, 2), round(d.z, 2)],
+                          vertices=len(o.data.vertices), faces=len(o.data.polygons)))
+
+    wanted = p.get("parts") or []
+    dropped = []
+    if wanted:
+        keys = [str(w).lower() for w in wanted]
+        keep = [o for o in meshes if any(k in o.name.lower() for k in keys)]
+        if not keep:
+            raise FxError(L(f"parts 에 맞는 부품이 없습니다. 파일 안 부품: {[q['name'] for q in parts]}",
+                            f"No part matched 'parts'. Parts in the file: {[q['name'] for q in parts]}"))
+        dropped = [o.name for o in meshes if o not in keep]
+        for o in meshes:
+            if o not in keep:
+                remove_object(o)
+        meshes = keep
+        view_layer_update()
+
     obj = meshes[0]
     if len(meshes) > 1:
         with bpy.context.temp_override(scene=sc, view_layer=bpy.context.view_layer, active_object=obj, object=obj,
@@ -121,10 +156,25 @@ def main():
     if len(obj.data.polygons) > 20000:
         notes.append(L(f"면이 {len(obj.data.polygons)}개로 많습니다. 조각낼 때 자동으로 줄입니다.",
                        f"{len(obj.data.polygons)} faces is a lot; it will be decimated when fracturing."))
+    if dropped:
+        notes.append(L(f"부품 {len(dropped)}개를 뺐습니다: {dropped}", f"Dropped {len(dropped)} parts: {dropped}"))
+    elif len(parts) > 1:
+        # 면이 아주 적은데 덩치는 제일 큰 부품은 보이지 않는 충돌용 껍데기일 때가 많다
+        biggest = max(parts, key=lambda q: max(q["size_m"]))
+        others = max((max(q["size_m"]) for q in parts if q is not biggest), default=0.0)
+        if biggest["faces"] <= 200 and others > 0 and max(biggest["size_m"]) > others * 1.5:
+            notes.append(L(
+                f"'{biggest['name']}' 는 면이 {biggest['faces']}개뿐인데 가장 큽니다. 보이지 않는 충돌용 껍데기일 수 있고, "
+                f"그대로 합치면 진짜 모델을 삼킵니다. parts 로 원하는 부품만 고르세요. 파일 안 부품: {[q['name'] for q in parts]}",
+                f"'{biggest['name']}' has only {biggest['faces']} faces yet is the largest. It may be an invisible "
+                f"collision proxy that swallows the real model. Pick parts explicitly. Parts: {[q['name'] for q in parts]}"))
+        else:
+            notes.append(L(f"부품 {len(parts)}개를 하나로 합쳤습니다: {[q['name'] for q in parts]}",
+                           f"Joined {len(parts)} parts into one: {[q['name'] for q in parts]}"))
     return dict(name=obj.name, size_m=[round(dims.x, 2), round(dims.y, 2), round(dims.z, 2)],
                 vertices=len(obj.data.vertices), faces=len(obj.data.polygons), joined=len(meshes),
                 merged_verts=merged, closed=health["closed"], volume_m3=health["volume_m3"],
-                notes=notes, source=path)
+                parts=parts, dropped_parts=dropped, notes=notes, source=path)
 
 
 run_guarded(main)

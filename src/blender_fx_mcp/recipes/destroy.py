@@ -203,7 +203,11 @@ def main():
         prep.data.materials.append(mm)
     # 겹치거나 맞닿은 덩어리를 먼저 하나의 solid 로 정리한다. 이걸 빼먹으면 셀 불리언이
     # 빈 결과를 내서 조각이 통째로 사라진다(무료 에셋에서 흔함).
-    resolved, source_volume = resolve_solid(prep, local_lo, local_hi)
+    resolved, source_volume, prep_closed = resolve_solid(prep, local_lo, local_hi)
+    prep_health = object_health(prep)
+    # 완전히 닫히지 않아도 구멍이 몇 개뿐이면 안쪽 판정을 쓴다. 안 쓰면 씨앗이 허공에 떨어져
+    # 요청한 조각 수가 안 나온다(캐릭터 모델에서 60개 요청에 50개).
+    use_inside = prep_closed or nearly_closed(prep_health)
 
     rng = random.Random(seed)
     # 표면에 딱 붙은 씨앗은 얇아서 버려지는 조각을 만든다. 크기에 비례해 살짝 안쪽만 쓴다.
@@ -213,13 +217,14 @@ def main():
     # 조각 하나의 예상 반지름. 씨앗끼리 이보다 가까우면 종잇장 같은 조각이 나온다.
     min_sep = (source_volume / max(pieces, 1)) ** (1.0 / 3.0) * 0.55 if source_volume > 1e-9 else 0.0
     seeds = voronoi_seeds(local_lo, local_hi, pieces, pattern, focus, mw_inv @ anchor, rng,
-                          inside=inside_tester(prep, margin=seed_margin) if health["closed"] else None,
+                          inside=inside_tester(prep, margin=seed_margin) if use_inside else None,
                           min_sep=min_sep)
     cell_objs = voronoi_cell_objects(local_lo, local_hi, seeds, target.matrix_world,
                                      all_mats[interior_index] if interior_index < len(all_mats) else all_mats[0])
     coll = get_collection("FX_Chunks")
     cells_built = len(cell_objs)
-    chunks = boolean_chunks(prep, cell_objs, all_mats, coll, f"{target.name}_chunk")
+    # 정리가 안 된 메시(부품끼리 관통)는 셀 불리언에서 자기교차 처리를 켜야 조각이 안 사라진다
+    chunks = boolean_chunks(prep, cell_objs, all_mats, coll, f"{target.name}_chunk", use_self=not resolved)
     for c in cell_objs:
         remove_object(c)
     remove_object(prep)
@@ -320,6 +325,14 @@ def main():
     if open_chunks:
         notes.append(L(f"조각 {open_chunks}개가 닫히지 않았습니다. 무게는 어림값입니다.",
                        f"{open_chunks} chunks are not closed; their mass is estimated."))
+    was_shell = not repair_info["before"]["closed"] if repair_info else not health["closed"]
+    if was_shell and total_mass > 0:
+        light = max(50, int(total_mass / 20 / max(source_volume, 1e-6)))
+        notes.append(L(
+            f"이 모델은 원래 속이 빈 껍데기입니다. 무게는 속이 꽉 찬 것으로 계산해 {round(total_mass)}kg 입니다. "
+            f"가볍게 하려면 density 를 낮추세요(예: density={light} 이면 약 {round(total_mass / 20)}kg).",
+            f"This model is a hollow shell. Mass assumes a solid body, giving {round(total_mass)}kg. "
+            f"Lower it with density (e.g. density={light} gives about {round(total_mass / 20)}kg)."))
     if ratio < 1.0:
         notes.append(L(f"면이 많아 {int(ratio * 100)}% 로 줄여서 조각냈습니다.",
                        f"The mesh was decimated to {int(ratio * 100)}% before fracturing."))

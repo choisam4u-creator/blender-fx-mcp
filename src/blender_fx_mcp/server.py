@@ -202,17 +202,19 @@ def make_demo_building(floors: int = 3, width: float = 4.0, depth: float = 4.0, 
     if res.get("overlapping"):
         text += t(f" 주의: {res['overlapping']} 이(가) 건물 자리에 겹쳐 있습니다.",
                   f" Note: {res['overlapping']} overlaps the building.")
-    return [text + _preview_note(rend)] + _images(rend["paths"])
+    return [text + _notes(res) + _preview_note(rend)] + _images(rend["paths"])
 
 
 @mcp.tool()
-def import_model(path: str, name: str = "", size: float = 0.0, on_ground: bool = True, center: bool = True):
+def import_model(path: str, name: str = "", size: float = 0.0, on_ground: bool = True, center: bool = True,
+                 parts: list[str] | None = None):
     """Import a 3D model (glb/gltf/fbx/obj/stl/usd/blend), join it into one mesh and stand it on the ground.
     외부 모델을 가져와 하나의 메시로 합치고 바닥에 세운다.
-    size: 가장 긴 변을 이 길이(m)로 맞춤(0이면 원본). 가져온 뒤 inspect_mesh 로 상태를 보고 destroy 한다."""
+    size: 가장 긴 변을 이 길이(m)로 맞춤(0이면 원본). 가져온 뒤 inspect_mesh 로 상태를 보고 destroy 한다.
+    parts: 파일 안 부품 중 남길 것의 이름(일부만 적어도 됨). 비우면 전부 합친다."""
     try:
         res = run_recipe("import_model", dict(path=path, name=name or None, size=size,
-                                              on_ground=on_ground, center=center), timeout=LONG)
+                                              on_ground=on_ground, center=center, parts=parts), timeout=LONG)
         rend, _ = _render(f"import_{res['name']}", frames=[1])
     except BlenderError as e:
         return _fail(e)
