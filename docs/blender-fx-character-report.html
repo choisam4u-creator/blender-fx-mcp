@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>1~3번 작업 완료</title>
+<style>
+:root{
+  --bg:#f7f7f5; --fg:#1c1c1a; --muted:#5f5f5a; --line:#e2e2dd;
+  --card:#ffffff; --accent:#c2410c; --accent-bg:#fff3ec;
+  --warn:#8a1c1c; --warn-bg:#fdecec; --ok:#1c6b3a; --ok-bg:#e9f6ee;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#161614; --fg:#ececea; --muted:#a3a39c; --line:#2e2e2a;
+    --card:#1f1f1c; --accent:#fb923c; --accent-bg:#2a1d14;
+    --warn:#f28b8b; --warn-bg:#2b1717; --ok:#7bd39a; --ok-bg:#142a1c;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#161614; --fg:#ececea; --muted:#a3a39c; --line:#2e2e2a;
+  --card:#1f1f1c; --accent:#fb923c; --accent-bg:#2a1d14;
+  --warn:#f28b8b; --warn-bg:#2b1717; --ok:#7bd39a; --ok-bg:#142a1c;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:-apple-system,"Apple SD Gothic Neo","Pretendard",system-ui,sans-serif;line-height:1.65;font-size:16px}
+main{max-width:880px;margin:0 auto;padding:32px 16px 64px}
+h1{font-size:1.65rem;margin:0 0 4px;line-height:1.3}
+h2{font-size:1.18rem;margin:38px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+p{margin:8px 0}
+.sub{color:var(--muted);font-size:.92rem;margin-bottom:24px}
+.box{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:16px 18px;margin:14px 0}
+.box.accent{background:var(--accent-bg);border-color:var(--accent)}
+.box.warn{background:var(--warn-bg);border-color:var(--warn)}
+.box.ok{background:var(--ok-bg);border-color:var(--ok)}
+.box strong.t{display:block;margin-bottom:6px}
+ul,ol{padding-left:22px;margin:6px 0}
+li{margin:5px 0}
+table{width:100%;border-collapse:collapse;margin:12px 0;font-size:.9rem}
+th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top}
+th{background:var(--card)}
+code{font-family:ui-monospace,Menlo,monospace;font-size:.87em;background:var(--card);border:1px solid var(--line);padding:1px 5px;border-radius:4px}
+pre{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px;overflow-x:auto;font-size:.84rem}
+.note{color:var(--muted);font-size:.88rem}
+a{color:var(--accent)}
+@media (max-width:600px){ table{font-size:.82rem} th,td{padding:6px 6px} }
+</style>
+</head>
+<body>
+<main>
+<h1>1~3번 작업 완료</h1>
+<p class="sub">2026-09-20 · v0.6.2 · 실제 CC0 게임 캐릭터로 검증</p>
+
+<div class="box accent">
+  <strong class="t">결론</strong>
+  <p>셋 다 고쳤습니다. 그런데 고치는 도중 <b>훨씬 큰 문제</b>가 나왔습니다. 진짜 게임 캐릭터를 넣으면 <b>캐릭터가 통째로 공으로 바뀌어</b> 나오고 있었습니다. 숫자만 보면 "부피 보존 1.00"이라 완벽해 보였습니다. <b>렌더해서 눈으로 보고서야</b> 알았습니다.</p>
+</div>
+
+<h2>1. 가장 중요한 발견 — 숫자는 거짓말을 했다</h2>
+<div class="box warn">
+  <p>캐릭터 파일에는 눈에 안 보이는 <b>껍데기 공</b>(면 80개짜리)이 같이 들어 있었습니다. 우리 도구는 파일 안 모든 메시를 말없이 하나로 합칩니다. 그래서 공이 캐릭터를 삼켰습니다.</p>
+  <ul>
+    <li>공은 완벽하게 닫힌 도형이라 <b>부피 보존 1.00, 조각 60/60, 경고 0건</b>으로 나왔습니다.</li>
+    <li>부피가 <b>3.66㎥</b>였습니다. 2m짜리 사람은 0.1㎥ 정도입니다. 36배나 큰데 아무도 눈치채지 못했습니다.</li>
+    <li>"볼록한 정도 1.0"도 사실 맞는 값이었습니다. 공이니까요.</li>
+  </ul>
+  <p>교훈은 분명합니다. <b>숫자 검증만으로는 부족합니다.</b> 앞으로 실제 그림을 같이 봐야 합니다.</p>
+</div>
+
+<h2>2. 고친 것</h2>
+<div class="box">
+  <ol>
+    <li><b>파일 안 부품을 보여 주고 고를 수 있게</b><br>
+    이제 <code>import_model</code> 이 부품 목록을 돌려줍니다. "면이 80개뿐인데 제일 크다"처럼 수상한 부품은 경고합니다. <code>parts=["Adventurer", "Backpack"]</code> 처럼 원하는 것만 고를 수 있습니다.</li>
+
+    <li><b>뼈대에 묶인 메시를 제대로 굽기</b><br>
+    뼈대(스킨)가 붙은 메시는 모디파이어를 먼저 구워야 지금 자세가 남습니다. 부모를 떼는 순서도 거꾸로였습니다. 예전 순서로는 부품 크기가 100배 어긋나 0.01m로 찌그러졌습니다.</li>
+
+    <li><b>깨진 메시 수리 강화</b><br>
+    겹친 면 걷어내기, 면이 3장 이상 붙은 모서리에서 여분 걷어내기, 구멍 메우기 2차 시도를 넣었습니다. 캐릭터가 <b>구멍 256개·비다양체 10개 → 완전히 닫힘</b>이 됐습니다.</li>
+
+    <li><b>정리 단계가 오히려 망칠 때 되돌리기</b><br>
+    겹친 덩어리를 하나로 합치는 단계가 이 캐릭터에서는 비다양체 모서리를 <b>10개에서 8,390개로</b> 늘렸습니다. 이제 결과가 더 나빠지면 버리고, 대신 조각낼 때 느리지만 정확한 계산으로 넘어갑니다.</li>
+
+    <li><b>볼록한 정도 계산 교정 (2번 항목)</b><br>
+    닫히지 않은 메시는 부피 자체가 헛값이라 계산하지 않습니다. 수리해서 닫은 뒤에 잽니다.</li>
+
+    <li><b>무게 안내 (3번 항목)</b><br>
+    속이 빈 껍데기를 통짜로 계산한다는 점과, 낮출 <code>density</code> 값을 같이 알려 줍니다.</li>
+
+    <li><b>작은 물건 반올림 버그</b><br>
+    5cm짜리 물건이 보존율 1.25로 뜨던 문제를 잡았습니다. 부피를 소수점 4자리에서 자르고 있었습니다.</li>
+  </ol>
+</div>
+
+<h2>3. 고치기 전과 후</h2>
+<table>
+  <tr><th>항목</th><th>고치기 전</th><th>고친 뒤</th></tr>
+  <tr><td>가져온 모양</td><td><b>공</b> (면 80개)</td><td><b>캐릭터</b> (면 10,198개)</td></tr>
+  <tr><td>부피</td><td>3.66㎥ (사람의 36배)</td><td>0.14㎥</td></tr>
+  <tr><td>크기</td><td>1.9 × 2.0 × 2.0m</td><td>0.66 × 0.79 × 2.0m</td></tr>
+  <tr><td>부피 보존</td><td>1.00 <span class="note">(공이라서)</span></td><td>1.00 <span class="note">(진짜 캐릭터)</span></td></tr>
+  <tr><td>조각 수</td><td>60/60 <span class="note">(공)</span></td><td>47/50</td></tr>
+  <tr><td>볼록한 정도</td><td>1.0 <span class="note">(완전한 공)</span></td><td>0.307</td></tr>
+  <tr><td>무게</td><td>8,781kg</td><td>297kg <span class="note">+ 낮추는 방법 안내</span></td></tr>
+</table>
+<p>진짜 캐릭터만 넣었을 때 처음에는 보존율이 <b>0.405</b>였습니다. 부품끼리 서로 관통해서입니다. 느리지만 정확한 계산으로 넘기니 <b>1.00</b>이 됐습니다. 50조각에 약 100초 걸립니다.</p>
+
+<h2>4. 기존 것들은 그대로</h2>
+<div class="box ok">
+  <p>결함 GLB 7종과 데모 건물 모두 조각 수와 부피 보존 1.00을 유지합니다. 자동 테스트는 36개에서 <b>37개</b>로 늘었고 전부 통과합니다. 새 테스트는 이 컴퓨터에 있는 실제 캐릭터를 씁니다(파일이 없으면 건너뜁니다).</p>
+  <p>깃허브 <code>main</code> 에 v0.6.2로 올렸습니다.</p>
+</div>
+
+<h2>5. 남은 것</h2>
+<div class="box warn">
+  <ul>
+    <li><b>조각 3~4개가 닫히지 않습니다.</b> 그 조각의 무게는 어림값입니다. 47개 중 3개 수준입니다.</li>
+    <li><b>부품끼리 관통하는 모델은 느립니다.</b> 50조각에 약 100초입니다.</li>
+    <li><b>먼지가 큰 구슬처럼 보입니다.</b> 빠른 미리보기 화질 탓도 있지만 크기 자체가 커 보입니다.</li>
+    <li><b>뼈대 애니메이션은 따라가지 않습니다.</b> 현재 자세로 굳혀서 부숩니다.</li>
+    <li><b>블렌더 앱을 통한 실제 경로는 아직 확인 못 했습니다.</b> 지금 앱이 꺼져 있습니다.</li>
+  </ul>
+</div>
+
+</main>
+</body>
+</html>
