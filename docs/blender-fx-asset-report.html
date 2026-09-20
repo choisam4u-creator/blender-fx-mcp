@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>무료 에셋 파괴 검증 보고</title>
+<style>
+:root{
+  --bg:#f7f7f5; --fg:#1c1c1a; --muted:#5f5f5a; --line:#e2e2dd;
+  --card:#ffffff; --accent:#c2410c; --accent-bg:#fff3ec;
+  --warn:#8a1c1c; --warn-bg:#fdecec; --ok:#1c6b3a; --ok-bg:#e9f6ee;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#161614; --fg:#ececea; --muted:#a3a39c; --line:#2e2e2a;
+    --card:#1f1f1c; --accent:#fb923c; --accent-bg:#2a1d14;
+    --warn:#f28b8b; --warn-bg:#2b1717; --ok:#7bd39a; --ok-bg:#142a1c;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#161614; --fg:#ececea; --muted:#a3a39c; --line:#2e2e2a;
+  --card:#1f1f1c; --accent:#fb923c; --accent-bg:#2a1d14;
+  --warn:#f28b8b; --warn-bg:#2b1717; --ok:#7bd39a; --ok-bg:#142a1c;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:-apple-system,"Apple SD Gothic Neo","Pretendard",system-ui,sans-serif;line-height:1.65;font-size:16px}
+main{max-width:880px;margin:0 auto;padding:32px 16px 64px}
+h1{font-size:1.65rem;margin:0 0 4px;line-height:1.3}
+h2{font-size:1.18rem;margin:38px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+p{margin:8px 0}
+.sub{color:var(--muted);font-size:.92rem;margin-bottom:24px}
+.box{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:16px 18px;margin:14px 0}
+.box.accent{background:var(--accent-bg);border-color:var(--accent)}
+.box.warn{background:var(--warn-bg);border-color:var(--warn)}
+.box.ok{background:var(--ok-bg);border-color:var(--ok)}
+.box strong.t{display:block;margin-bottom:6px}
+ul,ol{padding-left:22px;margin:6px 0}
+li{margin:5px 0}
+table{width:100%;border-collapse:collapse;margin:12px 0;font-size:.9rem}
+th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top}
+th{background:var(--card)}
+code{font-family:ui-monospace,Menlo,monospace;font-size:.87em;background:var(--card);border:1px solid var(--line);padding:1px 5px;border-radius:4px}
+pre{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px;overflow-x:auto;font-size:.84rem}
+.note{color:var(--muted);font-size:.88rem}
+a{color:var(--accent)}
+@media (max-width:600px){ table{font-size:.82rem} th,td{padding:6px 6px} }
+</style>
+</head>
+<body>
+<main>
+<h1>무료 에셋, 정말 제대로 부서지나</h1>
+<p class="sub">2026-09-20 · v0.6.1 · <a href="https://github.com/choisam4u-creator/blender-fx-mcp">github.com/choisam4u-creator/blender-fx-mcp</a></p>
+
+<div class="box accent">
+  <strong class="t">결론</strong>
+  <p>지금은 <b>됩니다.</b> 그런데 <b>물어보시기 전까지는 안 됐습니다.</b> 흔한 결함을 그대로 심은 시험용 GLB 7개로 재 봤더니 조각이 통째로 사라지고 있었습니다. 원인 네 가지를 찾아 고쳤고, 지금은 7개 모두 <b>요청한 40조각 그대로, 부피 보존 1.00, 깨진 조각 0개</b>입니다. 조각 500개까지 유지됩니다.</p>
+  <p class="note">다만 karchive 사이트의 <b>실제 파일은 한 개도 내려받지 않았습니다.</b> 파일 다운로드는 허락을 받아야 해서입니다. 아래 7번을 봐 주세요.</p>
+</div>
+
+<h2>1. 먼저, 처음엔 실패했습니다</h2>
+<div class="box warn">
+  <p>무료 에셋을 흉내 낸 모델 7개를 만들어 도구에 그대로 넣었더니 이렇게 나왔습니다. <b>부피 보존</b>은 조각 부피의 합을 원본 부피로 나눈 값이고, 1.00 이어야 물질이 사라지지도 불어나지도 않은 것입니다.</p>
+  <table>
+    <tr><th>시험 모델</th><th>처음</th><th>무엇이 잘못됐나</th></tr>
+    <tr><td>면 20,480개짜리 무거운 모델</td><td><b>15.24</b></td><td>부피가 15배로 부풀었다. 조각끼리 서로 겹쳤다.</td></tr>
+    <tr><td>벽 5cm 통 + 바닥에 붙은 내용물</td><td><b>0.69</b></td><td>물질의 31%가 사라졌다.</td></tr>
+    <tr><td>부품 6개가 서로 박힌 수레</td><td><b>0.93</b></td><td>바퀴와 손잡이 쪽 조각이 안 생겼다.</td></tr>
+    <tr><td>5cm 짜리 아주 작은 물건</td><td><b>오류</b></td><td>조각을 하나도 못 만들었다.</td></tr>
+  </table>
+  <p>화면으로 보면 그냥 "부서졌네" 싶지만, <b>무게가 틀리면 낙하와 튕김이 전부 틀립니다.</b> 그래서 부피를 숫자로 재는 것입니다.</p>
+</div>
+
+<h2>2. 원인 네 가지</h2>
+<div class="box">
+  <ol>
+    <li><b>GLB 는 꼭짓점을 쪼개 놓습니다.</b> 이 형식은 저장할 때 면마다 꼭짓점을 따로 복사합니다. 그대로 가져오면 모든 면이 서로 떨어져 있어 "닫히지 않은 자루"가 되고, 부피 계산과 조각내기가 동시에 망가집니다. → 가져올 때 겹친 꼭짓점을 다시 붙입니다. 또 수리를 먼저 하고 면 줄이기를 나중에 하도록 순서를 바꿨습니다(반대로 하면 수리할 대상이 이미 뭉개져 있습니다).</li>
+    <li><b>덩어리끼리 겹치거나 맞닿아 있습니다.</b> 무료 모델은 바퀴가 몸통에 박혀 있고, 내용물이 통 바닥에 딱 붙어 있습니다. 이런 모델에 조각 칼을 대면 불리언 계산이 <b>아무것도 못 만들고 빈 결과</b>를 냅니다. → 조각내기 <b>전에</b> 한 번, 겹친 덩어리들을 하나의 깨끗한 덩어리로 정리합니다. 이 한 단계로 0.69 → 1.00, 0.93 → 1.00 이 됐습니다.</li>
+    <li><b>씨앗 좌표를 두 번 변환하고 있었습니다.</b> 조각의 씨앗 점이 물체 안에 있는지 판정할 때 좌표를 한 번 더 변환해서, <b>물체가 원점에서 떨어져 있으면 거의 전부 "바깥"으로 판정</b>됐습니다. 40개를 요청해도 3~4개만 놓였습니다. 가져온 모델은 항상 바닥에 세우느라 위치가 0이 아니므로 전부 이 버그를 맞고 있었습니다.</li>
+    <li><b>셀 자르는 횟수에 상한이 있었습니다.</b> 조각이 많아지면 셀이 덜 잘려 서로 겹치고 부피가 1.17까지 부풀었습니다. 언제 멈춰도 되는지는 이미 정확히 계산하고 있었으므로, 상한을 없앴습니다. 쓸모없어진 <code>neighbors</code> 인자도 지웠습니다.</li>
+  </ol>
+</div>
+
+<h2>3. 고친 뒤 측정</h2>
+<table>
+  <tr><th>시험 모델</th><th>조각 수</th><th>부피 보존</th><th>깨진 조각</th></tr>
+  <tr><td>부품 6개가 서로 박힌 수레</td><td>40 / 40</td><td>1.00</td><td>0</td></tr>
+  <tr><td>뚜껑 없는 그릇 (껍데기뿐)</td><td>40 / 40</td><td>1.00</td><td>0</td></tr>
+  <tr><td>법선이 뒤집힌 모델</td><td>40 / 40</td><td>1.00</td><td>0</td></tr>
+  <tr><td>벽 5cm 통 + 바닥에 붙은 내용물</td><td>40 / 40</td><td>1.00</td><td>0</td></tr>
+  <tr><td>5cm 짜리 아주 작은 물건</td><td>40 / 40</td><td>1.00</td><td>0</td></tr>
+  <tr><td>면 20,480개짜리 무거운 모델</td><td>40 / 40</td><td>1.00</td><td>0</td></tr>
+  <tr><td>재질 3개가 섞인 모델</td><td>40 / 40</td><td>1.00</td><td>0</td></tr>
+</table>
+<p>조각 수를 올려도 유지됩니다.</p>
+<table>
+  <tr><th>모델</th><th>요청 조각</th><th>나온 조각</th><th>부피 보존</th><th>걸린 시간</th></tr>
+  <tr><td>벽 5cm 통</td><td>120</td><td>120</td><td>1.00</td><td>2초</td></tr>
+  <tr><td>벽 5cm 통</td><td>300</td><td>300</td><td>1.00</td><td>7초</td></tr>
+  <tr><td>벽 5cm 통</td><td>500</td><td>500</td><td>1.00</td><td>15초</td></tr>
+  <tr><td>면 20,480개 모델</td><td>300</td><td>300</td><td>1.00</td><td>12초</td></tr>
+</table>
+<p class="note">시간은 가져오기 + 조각내기 + 짧은 물리 굽기를 합친 값입니다.</p>
+
+<h2>4. 원래 있던 건물도 그대로</h2>
+<div class="box ok">
+  <p>고치면서 기존 기능이 망가지지 않았는지 확인했습니다. 데모 건물 80조각·200조각 모두 부피 보존 1.00, 깨진 조각 0개입니다. 자동 테스트는 <b>32개에서 36개로</b> 늘렸고 전부 통과합니다. 새로 넣은 4개는 이번에 발견한 결함(겹침·맞닿음·분리·조각 과다)을 그대로 재현해, 같은 버그가 되살아나면 즉시 걸립니다.</p>
+</div>
+
+<h2>5. 쓰는 법</h2>
+<p>블렌더를 몰라도 되게 만든 것이니, 말로 시키면 됩니다.</p>
+<pre>karchive에서 받은 barrel.glb 가져와서 3미터 크기로 세워줘
+어떤 상태인지 먼저 봐줘
+나무 재질로 오른쪽에서 세게 때려서 80조각으로 부숴줘
+먼지도 조금 날리고, 카메라는 낮게</pre>
+<p>도구는 순서대로 <code>import_model</code> → <code>inspect_mesh</code> → <code>destroy</code> → <code>camera</code> 가 불립니다. <code>inspect_mesh</code> 는 <b>부수기 전에 한 번 보는 습관</b>으로 추천합니다. 닫히지 않은 껍데기면 두께를 주라고 알려 줍니다.</p>
+
+<h2>6. 아직 안 되는 것</h2>
+<div class="box warn">
+  <ul>
+    <li><b>뼈대 애니메이션이 든 모델은 시험하지 않았습니다.</b> 캐릭터처럼 리깅된 것은 어떻게 나올지 모릅니다.</li>
+    <li><b>면 20,000개가 넘으면 자동으로 줄입니다.</b> 그래야 계산이 끝나지만, 아주 가는 장식은 이때 뭉개질 수 있습니다. <code>decimate_to=0</code> 으로 끌 수 있고 대신 느려집니다.</li>
+    <li><b>텍스처는 조각 단면에 안 붙습니다.</b> 겉면은 원래 재질을 쓰지만 새로 생긴 단면은 단색입니다.</li>
+    <li><b>조각 500개면 15초입니다.</b> 조각마다 계산을 한 번씩 하기 때문에 조각 수에 비례해 느려집니다.</li>
+    <li><b>한 파일에 여러 물건이 들어 있으면 하나로 합쳐서 부숩니다.</b> 따로 부수려면 지금은 파일을 나눠야 합니다.</li>
+  </ul>
+</div>
+
+<h2>7. 확인 못 한 것 — 실제 파일</h2>
+<div class="box">
+  <p>보내주신 사이트의 <b>진짜 GLB 는 한 개도 내려받지 않았습니다.</b> 파일 다운로드는 먼저 허락을 받게 되어 있어서입니다. 위 숫자는 전부 <b>제가 결함을 일부러 심어 만든 모델</b>로 잰 값입니다.</p>
+  <p>해도 된다고 말씀해 주시면, 그 사이트에서 몇 개(예: 3~5개, 각 수 MB)를 내려받아 똑같이 재서 표를 채우겠습니다. 파일 이름과 용량을 먼저 알려 드리고 진행합니다.</p>
+</div>
+
+<h2>8. 반영 위치</h2>
+<p>깃허브 <code>main</code> 에 올렸습니다. 커밋 <code>da4b5d9</code>, 버전 <b>0.6.1</b>. 깃허브에서 바로 설치해 실행되는 것까지 확인했습니다. 이미 등록해 두신 MCP 설정은 그대로 두면 다음 실행 때 새 버전을 받습니다.</p>
+
+</main>
+</body>
+</html>
