@@ -1,0 +1,24 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-07-09/server.json",
+  "name": "io.github.choisam4u-creator/blender-fx-mcp",
+  "description": "AI가 말로 시키면 블렌더에서 건물 파괴·폭발·물·불·파티클 FX를 만드는 MCP 서버",
+  "version": "0.6.0",
+  "repository": {
+    "url": "https://github.com/choisam4u-creator/blender-fx-mcp",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registry_type": "pypi",
+      "identifier": "blender-fx-mcp",
+      "version": "0.6.0",
+      "runtime_hint": "uvx",
+      "transport": { "type": "stdio" },
+      "environment_variables": [
+        { "name": "BLENDER_FX_PORT", "description": "블렌더 수신기 포트 (기본 9876)", "is_required": false },
+        { "name": "BLENDER_FX_LANG", "description": "메시지 언어 ko(기본) 또는 en", "is_required": false },
+        { "name": "BLENDER_FX_OUT", "description": "미리보기·영상 저장 폴더 (기본 ~/blender-fx-output)", "is_required": false }
+      ]
+    }
+  ]
+}

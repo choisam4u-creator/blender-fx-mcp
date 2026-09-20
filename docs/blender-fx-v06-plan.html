@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>v0.6 기획 — 아무 메시나 파괴, 물 자유 제어, 전 설정 개방</title>
+<style>
+:root{
+  --bg:#f7f7f5; --fg:#1c1c1a; --muted:#5f5f5a; --line:#e2e2dd;
+  --card:#ffffff; --accent:#c2410c; --accent-bg:#fff3ec;
+  --warn:#8a1c1c; --warn-bg:#fdecec; --ok:#1c6b3a; --ok-bg:#e9f6ee;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#161614; --fg:#ececea; --muted:#a3a39c; --line:#2e2e2a;
+    --card:#1f1f1c; --accent:#fb923c; --accent-bg:#2a1d14;
+    --warn:#f28b8b; --warn-bg:#2b1717; --ok:#7bd39a; --ok-bg:#142a1c;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#161614; --fg:#ececea; --muted:#a3a39c; --line:#2e2e2a;
+  --card:#1f1f1c; --accent:#fb923c; --accent-bg:#2a1d14;
+  --warn:#f28b8b; --warn-bg:#2b1717; --ok:#7bd39a; --ok-bg:#142a1c;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:-apple-system,"Apple SD Gothic Neo","Pretendard",system-ui,sans-serif;line-height:1.65;font-size:16px}
+main{max-width:880px;margin:0 auto;padding:32px 16px 64px}
+h1{font-size:1.65rem;margin:0 0 4px;line-height:1.3}
+h2{font-size:1.18rem;margin:38px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+h3{font-size:1rem;margin:20px 0 6px}
+p{margin:8px 0}
+.sub{color:var(--muted);font-size:.92rem;margin-bottom:24px}
+.box{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:16px 18px;margin:14px 0}
+.box.accent{background:var(--accent-bg);border-color:var(--accent)}
+.box.warn{background:var(--warn-bg);border-color:var(--warn)}
+.box.ok{background:var(--ok-bg);border-color:var(--ok)}
+.box strong.t{display:block;margin-bottom:6px}
+ul,ol{padding-left:22px;margin:6px 0}
+li{margin:5px 0}
+table{width:100%;border-collapse:collapse;margin:12px 0;font-size:.9rem}
+th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top}
+th{background:var(--card)}
+code{font-family:ui-monospace,Menlo,monospace;font-size:.87em;background:var(--card);border:1px solid var(--line);padding:1px 5px;border-radius:4px}
+pre{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px;overflow-x:auto;font-size:.84rem;line-height:1.5}
+.note{color:var(--muted);font-size:.88rem}
+.chat{border-left:3px solid var(--line);padding-left:12px;margin:8px 0}
+.chat b{color:var(--accent)}
+@media (max-width:600px){ table{font-size:.82rem} th,td{padding:6px 6px} }
+</style>
+</head>
+<body>
+<main>
+<h1>v0.6 기획 — 아무 메시나 부수고, 물을 마음대로</h1>
+<p class="sub">2026-09-20 · 요구 3가지 + 기존 약점 8가지를 어떻게 풀지, 무엇으로 확인할지</p>
+
+<div class="box accent">
+  <strong class="t">결론</strong>
+  <p>세 가지를 고칩니다. ① 조각내기를 <b>진짜 보로노이 방식</b>으로 바꾸고 메시를 먼저 수리합니다. ② 물을 "떨어지는 공"에서 <b>방향·속도·모양·점성을 정하는 물</b>로 바꿉니다. ③ 숨겨 둔 값(마찰, 중력, 계산 정밀도, 연기 농도 등)을 전부 인자로 꺼냅니다. 그다음 남은 약점 8개를 정리하고 깃허브(<code>choisam4u-creator</code>)에 올립니다.</p>
+</div>
+
+<h2>1. 먼저, 이 계획의 약점</h2>
+<div class="box warn">
+  <ol>
+    <li><b>보로노이는 느립니다.</b> 조각 하나마다 이웃 8개와 잘라야 해서, 지금 방식보다 계산이 5~10배 늘어납니다. 조각 200개에서 몇 초가 걸릴 수 있습니다. 완화책은 이웃 수 제한과 미리보기용 저조각 모드입니다.</li>
+    <li><b>망가진 메시는 완벽히 못 고칩니다.</b> 인터넷에서 받은 모델은 구멍이 뚫려 있거나 면이 뒤집혀 있습니다. 자동 수리(구멍 메움, 두께 주기)는 대부분을 살리지만 전부는 아닙니다. 그래서 <b>수리 결과를 숫자로 보고</b>해서 AI가 사용자에게 알리게 합니다.</li>
+    <li><b>물은 해상도가 전부입니다.</b> 방향·속도를 아무리 잘 줘도 해상도가 낮으면 뭉툭합니다. "바로바로"와 "예쁘게"는 상충합니다. 미리보기는 낮게, 최종은 높게 두 단계로 나눕니다.</li>
+    <li><b>설정을 다 열면 AI가 헷갈립니다.</b> 인자가 20개 넘는 도구는 AI가 엉뚱한 값을 넣습니다. 그래서 <b>프리셋 + 덮어쓰기</b> 구조로 갑니다. 기본은 이름 하나(<code>material="concrete"</code>), 세밀 조정은 별도 인자.</li>
+    <li><b>슬로모션을 전체에 걸면 길이가 바뀝니다.</b> 파티클까지 느리게 하려면 장면 전체 시간을 늘려야 하고, 그러면 렌더 프레임 수가 늘어납니다. 구간 슬로모션과는 다른 도구로 분리합니다.</li>
+    <li><b>검증이 어렵습니다.</b> "물리적으로 맞다"는 눈으로만 압니다. 숫자로 잡을 수 있는 것(무게 = 부피×밀도, 조각 부피 합 = 원본 부피, 물 부피 보존)만 테스트로 넣고 나머지는 실제 그림으로 확인합니다.</li>
+  </ol>
+</div>
+
+<h2>2. 요구 ① — 아무 스태틱 메시나, 물리에 맞게</h2>
+<h3>지금 무엇이 문제인가</h3>
+<table>
+  <tr><th style="width:30%">문제</th><th>왜 생기나</th></tr>
+  <tr><td>조각이 널빤지처럼 각짐</td><td>무작위 평면으로 통째로 자르기 때문. 실제 파괴는 점 주위로 갈라짐(보로노이)</td></tr>
+  <tr><td>구멍 뚫린 모델이 이상해짐</td><td>닫히지 않은 메시는 자른 단면을 못 메움. 부피도 0이라 무게가 틀림</td></tr>
+  <tr><td>오목한 물건이 통나무처럼 굴러감</td><td>충돌 모양이 항상 볼록 껍질(Convex Hull). 컵이 돌덩이가 됨</td></tr>
+  <tr><td>맞은 곳이나 안 맞은 곳이나 똑같이 부서짐</td><td>조각 씨앗이 고르게만 뿌려짐</td></tr>
+  <tr><td>부순 단면이 겉면과 같은 색</td><td>속 재질이 따로 없음</td></tr>
+</table>
+
+<h3>어떻게 고치나</h3>
+<div class="box ok">
+  <ol>
+    <li><b>메시 먼저 진단·수리</b> (<code>prepare</code>): 겹친 점 합치기 → 법선 정리 → 열린 테두리 메우기 → 그래도 열려 있으면 <code>shell_thickness</code> 만큼 두께 주기(Solidify). 결과를 <code>closed</code>, <code>volume_m3</code>, <code>repaired</code> 로 보고.</li>
+    <li><b>보로노이 조각내기</b>: 씨앗 점 N개를 뿌리고, 각 씨앗마다 가까운 이웃 k개와의 중간 평면으로 잘라 낸다. 이게 진짜 보로노이 셀이라 돌·콘크리트처럼 다각형으로 갈라진다.</li>
+    <li><b>씨앗 분포 선택</b> (<code>pattern</code>): <code>uniform</code> 고르게 / <code>impact</code> 맞은 곳 촘촘 / <code>radial</code> 중심에서 방사 / <code>slabs</code> 층층이. <code>focus</code> 로 집중도 조절.</li>
+    <li><b>충돌 모양 선택</b> (<code>collision</code>): <code>convex</code> 빠름 / <code>mesh</code> 오목한 모양 그대로 / <code>auto</code> 조각 모양을 보고 고름.</li>
+    <li><b>무게는 실제 부피에서</b>: 조각의 닫힌 부피 × 재질 밀도. 부피가 0이면 상자 부피의 절반으로 추정하고 그 사실을 보고.</li>
+    <li><b>속 재질</b> (<code>interior_color</code>): 자른 단면에만 다른 재질을 입힌다. 겉은 매끈, 속은 거칠게.</li>
+    <li><b>부피 보존 검사</b>: 조각 부피 합이 원본의 90~110% 안인지 확인해 결과에 넣는다. 이게 "물리에 맞게"의 숫자 근거.</li>
+  </ol>
+</div>
+<p class="note">새 도구: <code>inspect_mesh</code>(모델 건강 진단). <code>destroy</code> 에 추가되는 인자: <code>pattern</code>, <code>focus</code>, <code>collision</code>, <code>interior</code>, <code>shell_thickness</code>, <code>repair</code>, <code>density</code>, <code>friction</code>, <code>bounce</code>, <code>margin</code>.</p>
+
+<h2>3. 요구 ② — 물을 마음대로</h2>
+<h3>지금은 "공이 떨어진다" 하나뿐</h3>
+<p>방향도, 모양도, 점성도, 계속 흐르는 것도 안 됩니다. 새 <code>water</code> 도구로 바꿉니다.</p>
+<table>
+  <tr><th style="width:22%">인자</th><th>무엇을 정하나</th></tr>
+  <tr><td><code>mode</code></td><td><b>drop</b> 덩어리가 떨어짐 / <b>stream</b> 호스처럼 계속 뿜음 / <b>pool</b> 바닥에 물이 차 있음 / <b>object</b> 내가 만든 메시 모양 그대로가 물이 됨</td></tr>
+  <tr><td><code>shape</code></td><td>sphere(공) / box(상자) / column(기둥) — 물 덩어리 모양</td></tr>
+  <tr><td><code>direction_deg</code>, <code>pitch_deg</code>, <code>speed</code></td><td>어느 쪽으로 몇 도로 초속 몇 m 로 나갈지. 옆으로 쏘기, 위로 뿜기, 비스듬히 다 됨</td></tr>
+  <tr><td><code>liquid</code></td><td>water / oil / honey / lava / mercury — 점성·표면장력 프리셋</td></tr>
+  <tr><td><code>viscosity</code>, <code>surface_tension</code></td><td>프리셋을 덮어쓰는 숫자</td></tr>
+  <tr><td><code>gravity_scale</code></td><td>0 이면 무중력에서 떠다니는 물방울</td></tr>
+  <tr><td><code>obstacles</code></td><td>물이 부딪힐 물건 목록. 비우면 보이는 메시 전부</td></tr>
+  <tr><td><code>spray</code></td><td>물보라·거품 알갱이 켜기</td></tr>
+  <tr><td><code>domain_size</code>, <code>resolution</code></td><td>물이 살 수 있는 공간과 정밀도</td></tr>
+  <tr><td><code>smoothing</code>, <code>particle_radius</code></td><td>표면을 얼마나 매끈하게 만들지</td></tr>
+</table>
+<div class="box">
+  <div class="chat"><b>사용자:</b> 건물 왼쪽에서 물을 옆으로 세게 쏴 줘, 꿀처럼 걸쭉하게.</div>
+  <div class="chat"><b>AI:</b> <code>water(mode="stream", at=[-8,0,4], direction_deg=90, pitch_deg=-10, speed=6, liquid="honey")</code></div>
+  <div class="chat"><b>사용자:</b> 더 묽게, 물보라도.</div>
+  <div class="chat"><b>AI:</b> <code>water(..., liquid="water", spray=True)</code></div>
+</div>
+<p class="note"><code>splash</code> 는 <code>water(mode="drop")</code> 로 가는 얇은 껍데기로 남겨 기존 사용법을 깨지 않습니다.</p>
+
+<h2>4. 요구 ③ — 설정을 전부 열기</h2>
+<div class="box">
+  <p><b>구조:</b> 프리셋 이름 하나로 시작하고, 필요한 값만 덮어쓴다. 안 준 값은 프리셋 그대로.</p>
+  <table>
+    <tr><th style="width:26%">새 도구/인자</th><th>여는 것</th></tr>
+    <tr><td><code>set_physics</code></td><td>중력 세기·방향, 물리 하위 단계(substeps), 해석 반복(solver iterations), 전체 속도, fps. 리지드바디 정확도를 직접 조절</td></tr>
+    <tr><td><code>destroy</code> 확장</td><td>density(밀도), friction(마찰), bounce(튐), margin(충돌 여유), collision, pattern, focus, interior</td></tr>
+    <tr><td><code>explode</code>/<code>fire</code>/<code>smoke</code> 확장</td><td>density(연기 농도), dissolve(사라지는 속도), vorticity(소용돌이), buoyancy(뜨는 힘), noise(디테일), adaptive(도메인 자동 확장)</td></tr>
+    <tr><td><code>particles</code> 확장</td><td>size, size_random, gravity, drag, speed, lifetime, brownian(흔들림)</td></tr>
+    <tr><td><code>set_render</code> (신규)</td><td>샘플 수, 모션블러 켜기·세기, 해상도, 노출, 뷰 변환(필름 룩)</td></tr>
+  </table>
+</div>
+
+<h2>5. 기존 약점 8개 — 해결 방법</h2>
+<table>
+  <tr><th style="width:26%">약점</th><th style="width:38%">해결</th><th>남는 한계</th></tr>
+  <tr><td>조각이 각짐</td><td>보로노이 조각내기</td><td>계산 시간 증가</td></tr>
+  <tr><td>접착(glue)이 느림</td><td><code>glue_neighbors</code>, <code>glue_max</code> 로 제약 수 직접 조절 + 결과에 소요 시간 보고</td><td>본질적으로 제약이 많으면 느림</td></tr>
+  <tr><td>되돌리기가 1단계</td><td>스냅샷 여러 개 + 되돌리기 직전 상태를 <code>before_restore</code> 로 자동 저장 → 되돌리기도 되돌릴 수 있음</td><td>여전히 파일 단위</td></tr>
+  <tr><td>하늘이 빠른 미리보기에 안 보임</td><td>하늘이 켜져 있으면 미리보기 품질을 자동으로 올리고 그 사실을 알림</td><td>그만큼 느려짐</td></tr>
+  <tr><td>HDRI 다운로드 불가</td><td>그대로 둠. 파일이 없으면 무엇을 받아 어디에 두라고 안내</td><td>인터넷 연동 없음</td></tr>
+  <tr><td>도구 설명이 한국어뿐</td><td>모든 도구 설명 첫 줄에 영어 한 문장 추가</td><td>본문은 한국어</td></tr>
+  <tr><td>창문이 판때기</td><td>벽을 실제로 파내고(움푹) 유리를 안쪽에 넣음</td><td>실내는 없음</td></tr>
+  <tr><td>슬로모션이 파티클에 안 걸림</td><td><code>set_timing(global_slow=)</code> 로 장면 전체 시간을 늘림. 파티클 포함 전부 느려짐</td><td>전체 길이가 늘어남</td></tr>
+  <tr><td>연기·물을 내보낼 수 없음</td><td>Alembic(.abc) 내보내기 추가. 물 표면과 조각 움직임이 같이 나감</td><td>연기(볼륨)는 여전히 안 됨</td></tr>
+</table>
+
+<h2>6. 작업 순서와 완료 기준</h2>
+<ol>
+  <li><b>메시 수리 + 보로노이</b> — 완료 기준: 구멍 뚫린 메시를 넣어도 조각 부피 합이 원본의 90~110%, 실제 그림에서 다각형 조각</li>
+  <li><b>물 도구</b> — 완료 기준: 옆으로 쏜 물이 실제로 옆으로 날아간 픽셀, 꿀과 물의 결과가 다름</li>
+  <li><b>설정 개방</b> (<code>set_physics</code>, <code>set_render</code>, 각 도구 인자) — 완료 기준: 중력 0에서 조각이 안 떨어짐</li>
+  <li><b>약점 8개</b> — 완료 기준: 각각 테스트 또는 실제 그림</li>
+  <li><b>문서·버전 0.6.0 → 깃허브 공개</b> (<code>choisam4u-creator/blender-fx-mcp</code>)</li>
+</ol>
+<p class="note">검증은 지금처럼 <code>uv run pytest -q</code>(블렌더를 창 없이 띄워 실제로 계산)와 실제 렌더 그림으로 합니다. 마지막에 블렌더 창을 띄운 소켓 경로로 한 번 더 확인합니다.</p>
+</main>
+</body>
+</html>

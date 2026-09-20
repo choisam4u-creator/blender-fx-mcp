@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>블렌더 FX 오픈소스 기획</title>
+<style>
+:root{
+  --bg:#f7f7f5; --fg:#1c1c1a; --muted:#5f5f5a; --line:#e2e2dd;
+  --card:#ffffff; --accent:#c2410c; --accent-bg:#fff3ec;
+  --warn:#8a1c1c; --warn-bg:#fdecec; --ok:#1c6b3a; --ok-bg:#e9f6ee;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#161614; --fg:#ececea; --muted:#a3a39c; --line:#2e2e2a;
+    --card:#1f1f1c; --accent:#fb923c; --accent-bg:#2a1d14;
+    --warn:#f28b8b; --warn-bg:#2b1717; --ok:#7bd39a; --ok-bg:#142a1c;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#161614; --fg:#ececea; --muted:#a3a39c; --line:#2e2e2a;
+  --card:#1f1f1c; --accent:#fb923c; --accent-bg:#2a1d14;
+  --warn:#f28b8b; --warn-bg:#2b1717; --ok:#7bd39a; --ok-bg:#142a1c;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:-apple-system,"Apple SD Gothic Neo","Pretendard",system-ui,sans-serif;line-height:1.65;font-size:16px}
+main{max-width:820px;margin:0 auto;padding:32px 16px 64px}
+h1{font-size:1.7rem;margin:0 0 4px;line-height:1.3}
+h2{font-size:1.2rem;margin:40px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+h3{font-size:1rem;margin:20px 0 6px}
+p{margin:8px 0}
+.sub{color:var(--muted);font-size:.92rem;margin-bottom:24px}
+.box{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:16px 18px;margin:14px 0}
+.box.accent{background:var(--accent-bg);border-color:var(--accent)}
+.box.warn{background:var(--warn-bg);border-color:var(--warn)}
+.box.ok{background:var(--ok-bg);border-color:var(--ok)}
+.box strong.t{display:block;margin-bottom:6px}
+ul,ol{padding-left:22px;margin:6px 0}
+li{margin:5px 0}
+table{width:100%;border-collapse:collapse;margin:12px 0;font-size:.94rem}
+th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+th{background:var(--card)}
+.tag{display:inline-block;font-size:.78rem;padding:1px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted);margin-left:6px;vertical-align:middle}
+code{font-family:ui-monospace,Menlo,monospace;font-size:.88em;background:var(--card);border:1px solid var(--line);padding:1px 5px;border-radius:4px}
+pre{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px;overflow-x:auto;font-size:.86rem}
+.note{color:var(--muted);font-size:.88rem}
+@media (max-width:600px){ table{font-size:.86rem} th,td{padding:6px 7px} }
+</style>
+</head>
+<body>
+<main>
+<h1>블렌더 FX 오픈소스 기획 검토</h1>
+<p class="sub">2026-09-19 · 파괴·폭발·물 시뮬레이션 애드온을 오픈소스로 만들 때의 판단</p>
+
+<div class="box accent">
+  <strong class="t">결론</strong>
+  <p>세 가지(건물 파괴, 폭발, 물)를 한 번에 만들면 끝을 못 봅니다. <b>물리 계산기(솔버)를 새로 짜지 말고, 블렌더에 이미 들어 있는 물리를 "버튼 하나로 영화처럼 나오게" 감싸는 애드온</b>으로 시작하세요. 첫 버전은 <b>건물 파괴 하나만</b> 만듭니다.</p>
+</div>
+
+<h2>1. 먼저, 실패할 수 있는 이유</h2>
+<div class="box warn">
+  <strong class="t">약점과 반대 근거</strong>
+  <ol>
+    <li><b>범위가 세 배입니다.</b> 파괴는 "딱딱한 물건 물리", 폭발은 "연기·불 물리", 물은 "액체 물리"로 계산 방식이 전부 다릅니다. 각각이 별도 프로젝트 크기입니다.</li>
+    <li><b>이미 파는 물건이 있습니다.</b> 폭발·파괴는 KHAOS(유료), 파괴 전용 RBDLab(유료), 물은 FLIP Fluids(소스 공개, 판매는 유료)가 자리 잡았습니다. "더 좋게"로는 못 이깁니다.</li>
+    <li><b>솔버를 직접 쓰는 건 비현실적입니다.</b> 액체 솔버 하나가 논문급 작업입니다. 혼자 몇 달 안에 안 나옵니다.</li>
+    <li><b>블렌더 API가 자주 바뀝니다.</b> 버전이 오를 때마다 애드온이 깨지는 일이 흔합니다. 유지보수가 계속 따라옵니다.</li>
+    <li><b>라이선스를 고를 수 없습니다.</b> 블렌더 파이썬(bpy)을 쓰면 GPL을 따라야 합니다. 나중에 "유료 버전"으로 돌리기 어렵습니다.</li>
+    <li><b>시뮬레이션은 사용자 문의가 많습니다.</b> 캐시 용량, 렌더 시간, 그래픽카드 차이로 "안 돼요"가 쏟아집니다.</li>
+  </ol>
+</div>
+
+<h2>2. 그래도 해볼 만한 틈새</h2>
+<div class="box ok">
+  <ul>
+    <li><b>블렌더 기본 FX는 여전히 클릭 30번짜리입니다.</b> 조각내기, 물리 켜기, 충격 주기, 먼지 붙이기, 굽기(계산 결과 저장)를 손으로 다 합니다. "버튼 하나"는 실제 수요입니다.</li>
+    <li><b>무료로 세 가지를 한데 묶은 툴킷이 없습니다.</b> 유료 애드온은 각자 따로 팝니다.</li>
+    <li><b>지오메트리 노드 시뮬레이션 존(3.6+)</b>으로 파편·먼지 같은 건 솔버 없이도 만들 수 있습니다.</li>
+    <li><b>확장 플랫폼(extensions.blender.org, 4.2+)</b>이 생겨서 배포와 설치가 쉬워졌습니다.</li>
+    <li><b>Sam의 시네마틱 감각이 차별점입니다.</b> 카메라 흔들림, 먼지 타이밍, 모션블러, 파편 속도 곡선 같은 "영화처럼 보이는 마감"은 기술보다 눈이 결정합니다. 경쟁 애드온이 약한 부분입니다.</li>
+  </ul>
+</div>
+
+<h2>3. 무엇을 만들 것인가</h2>
+<table>
+  <tr><th style="width:28%">항목</th><th>내용</th></tr>
+  <tr><td>한 줄 정의</td><td>블렌더 내장 물리를 <b>영화적 프리셋</b>으로 감싼 <b>원클릭 FX 애드온</b></td></tr>
+  <tr><td>대상</td><td>후디니 없는 1인 영상 제작자, 쇼츠·인디 필름 팀, 블렌더 초보~중급</td></tr>
+  <tr><td>핵심 약속</td><td>"오브젝트 고르고 버튼 누르면 5분 안에 파괴 씬이 나온다"</td></tr>
+  <tr><td>차별점 3개</td><td>① 원클릭 프리셋 ② 시네마틱 마감(카메라 흔들림·먼지·타이밍) ③ 무료·통합</td></tr>
+  <tr><td><b>안 만드는 것</b></td><td>자체 물리 솔버, 실시간 미리보기, 게임엔진 내보내기, GPU 가속 유체</td></tr>
+</table>
+
+<h2>4. 단계별 로드맵</h2>
+<table>
+  <tr><th style="width:16%">버전</th><th style="width:18%">기간(가정)</th><th>내용</th></tr>
+  <tr><td><b>v0.1</b><span class="tag">파괴</span></td><td>4~6주</td><td>오브젝트 선택 → 버튼 → 조각내기 + 리지드바디 + 충격 지점 + 먼지 + 굽기. 프리셋 3개(콘크리트·유리·나무).</td></tr>
+  <tr><td><b>v0.2</b><span class="tag">폭발</span></td><td>+4주</td><td>Mantaflow 연기·불 프리셋 + 힘장(밀어내는 바람) + 파편 + 카메라 흔들림. 파괴와 연결(폭발이 건물을 부순다).</td></tr>
+  <tr><td><b>v0.3</b><span class="tag">물</span></td><td>+4주</td><td>Mantaflow 액체 프리셋: 컵에 붓기, 물 튀김, 파도. 해상도 3단계(미리보기·중간·최종).</td></tr>
+  <tr><td><b>v1.0</b><span class="tag">공개</span></td><td>+2주</td><td>프리셋을 JSON 파일로 분리(코드 몰라도 기여 가능), 문서·데모 영상, 확장 플랫폼 등록.</td></tr>
+</table>
+<p class="note">기간은 주 15시간 작업 기준 가정입니다. v0.1이 끝나기 전에는 v0.2를 시작하지 않습니다.</p>
+
+<h2>5. 기술 구성</h2>
+<table>
+  <tr><th style="width:28%">구분</th><th>선택</th><th style="width:34%">이유</th></tr>
+  <tr><td>형태</td><td>파이썬 애드온, 블렌더 4.2+ 확장 형식(<code>blender_manifest.toml</code>)</td><td>확장 플랫폼 배포 조건</td></tr>
+  <tr><td>파괴</td><td>Cell Fracture(내장 또는 확장 설치) + Rigid Body(Bullet)</td><td>검증된 내장 물리</td></tr>
+  <tr><td>폭발·물</td><td>Mantaflow(내장 연기·불·액체)</td><td>솔버 직접 구현 회피</td></tr>
+  <tr><td>파편·먼지</td><td>지오메트리 노드 시뮬레이션 존 + 파티클</td><td>가볍고 버전 안정성 높음</td></tr>
+  <tr><td>라이선스</td><td>GPL-2.0-or-later</td><td>bpy 사용 시 필수</td></tr>
+  <tr><td>테스트</td><td><code>blender --background --python</code> 헤드리스 + GitHub Actions 버전 매트릭스(4.2 LTS, 최신)</td><td>API 변경 조기 발견</td></tr>
+  <tr><td>배포</td><td>extensions.blender.org + GitHub Releases</td><td>설치 한 번에 끝</td></tr>
+</table>
+
+<h2>6. 첫 2주 할 일</h2>
+<div class="box">
+  <ol>
+    <li>GitHub 저장소 생성, GPL 라이선스 파일, <code>blender_manifest.toml</code>, 빈 패널 하나 등록</li>
+    <li>오퍼레이터 1개만: <b>선택한 오브젝트 → 조각내기 → 리지드바디 켜기 → 바닥 충돌 → 굽기</b></li>
+    <li>충격 지점 지정(빈 오브젝트 하나 놓으면 거기서부터 무너짐)</li>
+    <li>먼지 파티클 자동 부착(조각 충돌 시 발생)</li>
+    <li>데모 씬 1개 렌더, 10초 영상 1개</li>
+    <li>헤드리스 테스트 1개(오퍼레이터가 오류 없이 도는지)</li>
+  </ol>
+  <p class="note">2주 뒤 데모 영상이 없으면 범위를 더 줄입니다. 영상이 나오면 v0.1 프리셋 3개로 확장합니다.</p>
+</div>
+
+<h2>7. 완료 기준(무엇으로 확인하나)</h2>
+<ul>
+  <li><b>기능:</b> 블렌더 초보가 설명서 없이 5분 안에 파괴 씬을 만든다(지인 2명 테스트).</li>
+  <li><b>안정:</b> 4.2 LTS와 최신 버전에서 헤드리스 테스트 통과.</li>
+  <li><b>결과물:</b> 파괴·폭발·물 각 10초 데모 영상 3개(v1.0 기준).</li>
+  <li><b>반응:</b> 확장 플랫폼 등록 후 첫 달 다운로드 수, GitHub 이슈 중 "안 돼요" 비율.</li>
+</ul>
+
+<h2>8. 리스크와 대응</h2>
+<table>
+  <tr><th style="width:30%">리스크</th><th>대응</th></tr>
+  <tr><td>블렌더 버전 오르면 깨짐</td><td>지원 버전을 명시(4.2 LTS + 최신 1개). CI에서 두 버전 자동 테스트.</td></tr>
+  <tr><td>유료 애드온과 비교당함</td><td>품질 경쟁 안 함. "무료·5분·통합" 포지션 고수. 고급 기능 요청은 이슈로 받고 거절 가능.</td></tr>
+  <tr><td>혼자 유지보수 지침</td><td>프리셋을 JSON으로 분리해 코드 모르는 사람도 PR 가능. 이슈 템플릿에 버전·GPU·재현 파일 필수.</td></tr>
+  <tr><td>캐시 용량·렌더 시간 문의</td><td>해상도 3단계 기본 제공(미리보기는 1분 안에). 문서 첫 줄에 권장 사양.</td></tr>
+  <tr><td>범위 확장 유혹</td><td>v0.1 데모 영상 전까지 폭발·물 코드 금지. 로드맵 파일에 "안 만드는 것" 고정.</td></tr>
+</table>
+
+<h2>9. 남은 결정</h2>
+<div class="box">
+  <ol>
+    <li><b>프로젝트 이름과 저장소 위치</b>(개인 계정 vs 조직)</li>
+    <li><b>첫 타깃</b>: 건물 파괴로 갈지, 아니면 쇼츠 제작 흐름에 맞춰 "폭발"을 먼저 갈지. 이 문서는 파괴를 추천(내장 도구가 가장 안정적).</li>
+    <li><b>블렌더 최소 지원 버전</b>: 4.2 LTS로 잡을지, 5.x 전용으로 갈지. 지금 설치된 버전 확인 필요(이번 검토 때 블렌더가 꺼져 있어 확인 못 함).</li>
+  </ol>
+</div>
+
+<h2>출처</h2>
+<ul class="note">
+  <li><a href="https://github.com/rlguy/Blender-FLIP-Fluids/wiki/Release-Notes">FLIP Fluids 릴리스 노트(GitHub)</a></li>
+  <li><a href="https://superhivemarket.com/products/khaos-ultimate-explosion-simulator">KHAOS 폭발·파괴 애드온(Superhive)</a></li>
+  <li><a href="https://irendering.net/the-greatest-blender-addons-for-simulation-and-visual-effects/">블렌더 시뮬레이션·VFX 애드온 정리(iRender)</a></li>
+  <li><a href="https://github.com/agmmnn/awesome-blender">awesome-blender 목록(GitHub)</a></li>
+</ul>
+</main>
+</body>
+</html>

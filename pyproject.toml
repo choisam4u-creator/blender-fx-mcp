@@ -1,0 +1,38 @@
+[project]
+name = "blender-fx-mcp"
+version = "0.6.0"
+description = "AI가 말로 시키면 블렌더 FX(파괴·폭발·물)를 만들어 주는 MCP 서버 / Blender FX (destruction, explosion, water) MCP server for AI clients"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Sam Choi" }]
+keywords = ["blender", "mcp", "vfx", "destruction", "explosion", "fluid", "simulation", "model-context-protocol"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: End Users/Desktop",
+  "Topic :: Multimedia :: Graphics :: 3D Modeling",
+  "Programming Language :: Python :: 3",
+  "Operating System :: MacOS",
+  "Operating System :: POSIX :: Linux",
+  "Operating System :: Microsoft :: Windows",
+]
+dependencies = ["mcp[cli]>=2.0"]
+
+[project.scripts]
+blender-fx-mcp = "blender_fx_mcp.server:main"
+blender-fx-headless = "blender_fx_mcp.headless:main"
+blender-fx-doctor = "blender_fx_mcp.doctor:main"
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/blender_fx_mcp"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

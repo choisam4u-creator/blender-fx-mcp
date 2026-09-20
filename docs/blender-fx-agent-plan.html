@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI용 블렌더 FX 도구 기획</title>
+<style>
+:root{
+  --bg:#f7f7f5; --fg:#1c1c1a; --muted:#5f5f5a; --line:#e2e2dd;
+  --card:#ffffff; --accent:#c2410c; --accent-bg:#fff3ec;
+  --warn:#8a1c1c; --warn-bg:#fdecec; --ok:#1c6b3a; --ok-bg:#e9f6ee;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#161614; --fg:#ececea; --muted:#a3a39c; --line:#2e2e2a;
+    --card:#1f1f1c; --accent:#fb923c; --accent-bg:#2a1d14;
+    --warn:#f28b8b; --warn-bg:#2b1717; --ok:#7bd39a; --ok-bg:#142a1c;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#161614; --fg:#ececea; --muted:#a3a39c; --line:#2e2e2a;
+  --card:#1f1f1c; --accent:#fb923c; --accent-bg:#2a1d14;
+  --warn:#f28b8b; --warn-bg:#2b1717; --ok:#7bd39a; --ok-bg:#142a1c;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:-apple-system,"Apple SD Gothic Neo","Pretendard",system-ui,sans-serif;line-height:1.65;font-size:16px}
+main{max-width:820px;margin:0 auto;padding:32px 16px 64px}
+h1{font-size:1.7rem;margin:0 0 4px;line-height:1.3}
+h2{font-size:1.2rem;margin:40px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+p{margin:8px 0}
+.sub{color:var(--muted);font-size:.92rem;margin-bottom:24px}
+.box{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:16px 18px;margin:14px 0}
+.box.accent{background:var(--accent-bg);border-color:var(--accent)}
+.box.warn{background:var(--warn-bg);border-color:var(--warn)}
+.box.ok{background:var(--ok-bg);border-color:var(--ok)}
+.box strong.t{display:block;margin-bottom:6px}
+ul,ol{padding-left:22px;margin:6px 0}
+li{margin:5px 0}
+table{width:100%;border-collapse:collapse;margin:12px 0;font-size:.94rem}
+th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+th{background:var(--card)}
+code{font-family:ui-monospace,Menlo,monospace;font-size:.88em;background:var(--card);border:1px solid var(--line);padding:1px 5px;border-radius:4px}
+pre{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px;overflow-x:auto;font-size:.86rem;line-height:1.5}
+.note{color:var(--muted);font-size:.88rem}
+.chat{border-left:3px solid var(--line);padding-left:12px;margin:10px 0}
+.chat b{color:var(--accent)}
+@media (max-width:600px){ table{font-size:.86rem} th,td{padding:6px 7px} }
+</style>
+</head>
+<body>
+<main>
+<h1>AI용 블렌더 FX 도구 기획 (수정판)</h1>
+<p class="sub">2026-09-19 · 전제 변경: 사용자는 블렌더를 모르고, 클로드·코덱스에게 말로 시켜서 결과를 얻고 싶다</p>
+
+<div class="box accent">
+  <strong class="t">결론</strong>
+  <p>만들 것은 "사람이 클릭하는 애드온"이 아니라 <b>"AI가 호출하는 FX 도구 상자(MCP 서버)"</b>입니다. 사용자는 감독처럼 말로 지시하고, AI가 도구를 골라 실행하고, 결과 그림을 받아 다시 지시합니다. <b>지오메트리 노드 기반이 아니라 파이썬 레시피 기반</b>이 맞습니다.</p>
+</div>
+
+<h2>1. 질문에 답: 지오메트리 노드로 하는 건가?</h2>
+<div class="box">
+  <p><b>아니요, 주 재료가 아닙니다.</b></p>
+  <ul>
+    <li><b>지오메트리 노드</b>는 "레고 조립 설명서를 그림으로 그린 것"입니다. 모양을 만들거나 바꾸는 데 씁니다. 파괴·폭발·물의 <b>물리 계산은 따로 있는 엔진</b>이 합니다. 파괴는 리지드바디(딱딱한 물건 물리), 폭발과 물은 Mantaflow(연기·불·액체 물리)입니다.</li>
+    <li>AI가 조종하기엔 노드보다 <b>파이썬(bpy)</b>이 훨씬 쉽습니다. 노드는 선을 수십 개 이어야 해서 AI가 말로 만들면 자주 틀립니다. 파이썬은 "이 물건을 조각내고, 물리 켜고, 계산 저장해"를 글로 쓰면 끝입니다.</li>
+    <li>지오메트리 노드는 <b>먼지·파편 뿌리기</b> 같은 보조 효과에만 씁니다. 그것도 AI가 매번 만들지 않고, <b>미리 만들어 둔 노드 묶음을 파일에서 꺼내 붙이기만</b> 합니다.</li>
+  </ul>
+</div>
+
+<h2>2. 먼저, 안 되는 부분</h2>
+<div class="box warn">
+  <strong class="t">약점과 실패 가능성</strong>
+  <ol>
+    <li><b>"말 한마디에 원하는 그림"은 첫 시도엔 안 나옵니다.</b> FX는 계산(굽기)에 몇 분 걸리고, 결과 보고 고치기를 3~10번 반복해야 봐줄 만한 게 나옵니다. 이 반복 고리를 설계하지 않으면 실패합니다.</li>
+    <li><b>블렌더를 모르면 AI가 낸 오류를 못 잡습니다.</b> AI가 쓴 파이썬은 블렌더 버전 차이로 자주 깨집니다. 대응은 "AI가 매번 코드를 짜게 하지 말고, 검증된 레시피를 도구로 고정"하는 것입니다. 그래서 도구 상자가 필요합니다.</li>
+    <li><b>움직임은 사진 한 장으로 못 봅니다.</b> 폭발이 "좋은지"는 시간 흐름을 봐야 압니다. 도구가 프레임 4~6장 묶음이나 짧은 영상을 돌려줘야 하고, 그걸 판단하는 건 결국 사람 눈입니다.</li>
+    <li><b>이미 비슷한 게 있습니다.</b> 지금 쓰는 blender-mcp가 "아무 파이썬이나 실행"과 "화면 캡처"를 제공합니다. 차이를 못 만들면 그냥 그걸 쓰는 게 낫습니다. 차이는 아래 4번에 있습니다.</li>
+    <li><b>컴퓨터가 감당해야 합니다.</b> 물 시뮬레이션은 메모리·시간을 많이 먹습니다. 미리보기 해상도를 도구가 강제로 낮춰야 합니다.</li>
+  </ol>
+</div>
+
+<h2>3. 어떻게 돌아가나</h2>
+<div class="box">
+  <div class="chat"><b>사용자:</b> 3층 건물이 왼쪽 아래에서 충격 받고 무너지는 장면, 먼지 많이.</div>
+  <div class="chat"><b>AI:</b> <code>fx.destroy(target="Building", impact="left-bottom", material="concrete", dust="high", preview=True)</code> 호출 → 도구가 조각내기·물리·굽기·저해상도 렌더까지 한 번에 실행 → 프레임 5장 묶음 반환.</div>
+  <div class="chat"><b>AI:</b> (그림 보여주며) 조각이 큰 편입니다. 더 잘게 갈까요?</div>
+  <div class="chat"><b>사용자:</b> 더 잘게, 그리고 느리게.</div>
+  <div class="chat"><b>AI:</b> <code>fx.destroy(..., pieces=400, time_scale=0.6)</code> → 새 묶음 반환.</div>
+  <div class="chat"><b>사용자:</b> 좋아. 최종으로.</div>
+  <div class="chat"><b>AI:</b> <code>fx.render(quality="final")</code> → 영상 파일 경로.</div>
+  <p class="note">클로드든 코덱스든 MCP를 쓰는 어떤 AI든 같은 도구를 부릅니다. 사용자는 블렌더 화면을 열 필요가 없습니다.</p>
+</div>
+
+<h2>4. 구조와 기존 blender-mcp의 차이</h2>
+<table>
+  <tr><th style="width:24%">구분</th><th style="width:38%">지금 blender-mcp</th><th>이 프로젝트</th></tr>
+  <tr><td>AI가 하는 일</td><td>파이썬 코드를 <b>매번 새로 짜서</b> 보냄</td><td>검증된 <b>도구를 고르고 값만</b> 넣음</td></tr>
+  <tr><td>도구 종류</td><td>코드 실행, 장면 정보, 화면 캡처, 에셋 다운로드</td><td><code>destroy</code> <code>explode</code> <code>pour_liquid</code> <code>render_preview</code> <code>render_final</code></td></tr>
+  <tr><td>결과 확인</td><td>화면 캡처 1장</td><td>프레임 묶음(4~6장) 또는 짧은 mp4</td></tr>
+  <tr><td>실패 시</td><td>오류 메시지를 AI가 해석</td><td>도구가 원인을 한글로 돌려줌("메모리 부족, 해상도 낮춤")</td></tr>
+  <tr><td>버전 깨짐</td><td>AI 코드가 깨짐</td><td>도구 안에서 한 번 고치면 끝</td></tr>
+</table>
+<pre>[클로드 / 코덱스]
+      │  "건물 무너뜨려"
+      ▼
+[FX MCP 서버]  ← 이 프로젝트. 파이썬. 도구 5개로 시작
+      │  레시피 스크립트 전송
+      ▼
+[블렌더 안 애드온]  ← 소켓으로 명령 받아 실행 (blender-mcp 방식 재사용)
+      │
+      ▼
+[리지드바디 / Mantaflow / 미리 만든 노드 묶음]
+      │
+      ▼
+[프레임 묶음 이미지] → AI와 사용자가 봄</pre>
+<p class="note">블렌더 안쪽 코드는 GPL이 필수입니다. 바깥 MCP 서버는 자유롭게 정할 수 있지만, 한 저장소면 GPL로 통일하는 게 단순합니다.</p>
+
+<h2>5. 첫 2주: 도구 만들기 전에 레시피부터</h2>
+<div class="box ok">
+  <ol>
+    <li><b>1~3일:</b> 지금 있는 blender-mcp로 "건물 파괴" 파이썬 레시피 1개를 AI에게 짜게 하고, 실제로 그림이 나오는지 봅니다. 서버를 새로 만들지 않습니다.</li>
+    <li><b>4~7일:</b> 그 레시피가 5번 연속 오류 없이 돌 때까지 고칩니다. 값 3개(조각 수, 충격 위치, 재질)만 바꿔도 결과가 달라지게 만듭니다.</li>
+    <li><b>2주차:</b> 레시피를 <code>destroy</code> 도구 하나로 감싸고, 프레임 묶음 반환까지 붙입니다. 클로드와 코덱스 양쪽에서 말로 시켜 봅니다.</li>
+  </ol>
+  <p class="note">2주 뒤 "말로 시켜서 파괴 프레임 묶음이 나온다"가 안 되면 폭발·물로 가지 않습니다. 되면 같은 방식으로 <code>explode</code>를 붙입니다.</p>
+</div>
+
+<h2>6. 사용자의 역할</h2>
+<ul>
+  <li><b>감독:</b> 장면을 말로 설명하고, 결과를 보고 "더 느리게, 먼지 많이" 같은 연출 지시를 합니다. 이건 블렌더 지식이 아니라 눈이 하는 일입니다.</li>
+  <li><b>레시피 검수자:</b> AI가 만든 레시피가 "봐줄 만한 그림"을 내는지 판정합니다. 오픈소스에서 가장 부족한 게 이 눈입니다.</li>
+  <li><b>안 해도 되는 것:</b> 파이썬 읽기, 블렌더 화면 조작, 노드 연결.</li>
+</ul>
+
+<h2>7. 남은 결정</h2>
+<div class="box">
+  <ol>
+    <li><b>blender-mcp를 확장할지, 따로 만들지.</b> 추천은 따로 만들되 소켓 방식은 그대로 빌리기. 원본은 범용이라 FX 도구가 섞이면 무거워집니다.</li>
+    <li><b>결과 형식:</b> 프레임 묶음 이미지 1장으로 갈지, 짧은 mp4로 갈지. 추천은 묶음 이미지 먼저(AI가 바로 볼 수 있음), mp4는 최종용.</li>
+    <li><b>첫 레시피 대상:</b> 건물 파괴. 내장 물리가 가장 안정적이고 계산이 빠릅니다.</li>
+  </ol>
+</div>
+
+<p class="note">이전 문서(blender-fx-opensource-plan.html)의 로드맵 순서(파괴 → 폭발 → 물)와 리스크 표는 그대로 유효합니다. 바뀐 건 "누가 쓰는가"(사람 → AI)와 "형태"(애드온 → MCP 도구)입니다.</p>
+</main>
+</body>
+</html>

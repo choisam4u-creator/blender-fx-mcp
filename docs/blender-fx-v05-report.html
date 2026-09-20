@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>v0.5 남은 기능 완료 보고</title>
+<style>
+:root{
+  --bg:#f7f7f5; --fg:#1c1c1a; --muted:#5f5f5a; --line:#e2e2dd;
+  --card:#ffffff; --accent:#c2410c; --accent-bg:#fff3ec;
+  --warn:#8a1c1c; --warn-bg:#fdecec; --ok:#1c6b3a; --ok-bg:#e9f6ee;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#161614; --fg:#ececea; --muted:#a3a39c; --line:#2e2e2a;
+    --card:#1f1f1c; --accent:#fb923c; --accent-bg:#2a1d14;
+    --warn:#f28b8b; --warn-bg:#2b1717; --ok:#7bd39a; --ok-bg:#142a1c;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#161614; --fg:#ececea; --muted:#a3a39c; --line:#2e2e2a;
+  --card:#1f1f1c; --accent:#fb923c; --accent-bg:#2a1d14;
+  --warn:#f28b8b; --warn-bg:#2b1717; --ok:#7bd39a; --ok-bg:#142a1c;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:-apple-system,"Apple SD Gothic Neo","Pretendard",system-ui,sans-serif;line-height:1.65;font-size:16px}
+main{max-width:860px;margin:0 auto;padding:32px 16px 64px}
+h1{font-size:1.7rem;margin:0 0 4px;line-height:1.3}
+h2{font-size:1.2rem;margin:40px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+p{margin:8px 0}
+.sub{color:var(--muted);font-size:.92rem;margin-bottom:24px}
+.box{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:16px 18px;margin:14px 0}
+.box.accent{background:var(--accent-bg);border-color:var(--accent)}
+.box.warn{background:var(--warn-bg);border-color:var(--warn)}
+.box strong.t{display:block;margin-bottom:6px}
+ul,ol{padding-left:22px;margin:6px 0}
+li{margin:5px 0}
+table{width:100%;border-collapse:collapse;margin:12px 0;font-size:.92rem}
+th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top}
+th{background:var(--card)}
+code{font-family:ui-monospace,Menlo,monospace;font-size:.88em;background:var(--card);border:1px solid var(--line);padding:1px 5px;border-radius:4px}
+.ok{color:var(--ok);font-weight:600}
+.note{color:var(--muted);font-size:.88rem}
+@media (max-width:600px){ table{font-size:.84rem} th,td{padding:6px 6px} }
+</style>
+</head>
+<body>
+<main>
+<h1>v0.5 — 미뤄 뒀던 7개 전부 완료</h1>
+<p class="sub">2026-09-20 · 공개 전 마지막 기능 묶음. 도구 28개, 테스트 24개</p>
+
+<div class="box accent">
+  <strong class="t">결론</strong>
+  <p>v0.4 문서에서 "아직 안 만든 것"으로 남겼던 7개를 모두 만들었습니다. 가장 위험했던 <b>되돌리기</b>는 실제 블렌더 창을 띄운 소켓 경로로 확인했고, 되돌린 뒤에도 블렌더와 연결이 끊기지 않았습니다.</p>
+</div>
+
+<h2>1. 먼저, 약점</h2>
+<div class="box warn">
+  <ol>
+    <li><b>되돌리기는 파일을 다시 엽니다.</b> 저장하지 않은 지금 장면은 사라집니다. 블렌더 자체의 "되돌리기(Revert)"와 같은 방식이라, 여러 단계 실행 취소(Undo)가 아닙니다.</li>
+    <li><b>조각 접착은 느립니다.</b> 조각 60개에 제약 145개가 생깁니다. 조각을 200개 넘게 하면 굽기가 눈에 띄게 길어집니다.</li>
+    <li><b>하늘 텍스처는 빠른 미리보기에 안 보입니다.</b> 워크벤치는 하늘을 단색으로 그립니다. 확인하려면 <code>quality="smoke"</code> 이상이 필요합니다.</li>
+    <li><b>HDRI는 파일이 있어야 합니다.</b> 인터넷에서 받아오지 않습니다. 없는 경로를 주면 한 줄로 알려 줍니다.</li>
+    <li><b>영어 메시지는 문장만입니다.</b> 도구 설명(AI가 읽는 문서)은 아직 한국어입니다. AI는 둘 다 읽지만, 영어권 기여자에게는 불편합니다.</li>
+    <li><b>창문은 벽에 붙인 판입니다.</b> 진짜 구멍이 아니라서 안이 비치지 않습니다. 부서질 때 같이 깨지긴 합니다.</li>
+  </ol>
+</div>
+
+<h2>2. 만든 것과 확인 방법</h2>
+<table>
+  <tr><th style="width:20%">기능</th><th style="width:30%">무엇을 하나</th><th style="width:8%">상태</th><th>확인한 근거</th></tr>
+  <tr><td>스냅샷·되돌리기</td><td><code>snapshot</code> 저장 → <code>restore</code> 로 그때로</td><td class="ok">완료</td><td>건물 → 저장 → 25조각 파괴 → 되돌리기 → 조각 0개, 건물 보임. 실제 블렌더 창 소켓 경로에서도 성공</td></tr>
+  <tr><td>조각 접착</td><td><code>glue</code>: 이웃 조각을 붙여 맞은 곳만 무너짐</td><td class="ok">완료</td><td>같은 충격에서 접착 있을 때가 덜 내려앉음(테스트가 두 번 돌려 비교). 60조각에 제약 145개</td></tr>
+  <tr><td>창문 건물</td><td><code>style="windows"</code></td><td class="ok">완료</td><td>3층×4면×3칸 = 창문 36개, 면 230개. 민무늬와 픽셀이 다름. 실제 그림 확인</td></tr>
+  <tr><td>연기·조각 충돌</td><td><code>smoke_collision=True</code></td><td class="ok">완료</td><td>조각 25개가 연기 장애물로 등록, 굽기 결과 생성 확인</td></tr>
+  <tr><td>하늘 텍스처·HDRI</td><td><code>sky="procedural"</code>, <code>hdri=경로</code></td><td class="ok">완료</td><td>단색 하늘과 픽셀이 다름. 없는 HDRI 경로는 한 줄 오류</td></tr>
+  <tr><td>바닥 재질</td><td><code>set_ground</code> 6종</td><td class="ok">완료</td><td>아스팔트(어두운 회색)와 잔디(초록) 실제 그림 확인, 픽셀 다름</td></tr>
+  <tr><td>영어 메시지</td><td><code>BLENDER_FX_LANG=en</code></td><td class="ok">완료</td><td>서버·연결 오류·레시피 오류 모두 영어로 나옴(테스트 4개)</td></tr>
+</table>
+
+<h2>3. 중간에 잡은 문제</h2>
+<div class="box">
+  <ul>
+    <li><b>낙하 높이가 항상 0이었습니다.</b> 마지막 프레임에서 재야 하는데 프레임을 1로 되돌린 뒤에 재고 있었습니다. 접착 비교 테스트가 이걸 잡아냈습니다.</li>
+    <li><b>하늘이 두 번 비췄습니다.</b> 하늘 텍스처와 태양이 같이 비춰 바닥이 하얗게 날아갔습니다. 하늘 조명이 켜지면 태양을 45%로 낮췄습니다.</li>
+    <li><b>접착이 있으면 조각이 잠들면 안 됩니다.</b> 기본은 맞기 전까지 조각을 재워 두는데, 접착은 힘을 전달해야 해서 접착이 있을 때만 깨워 둡니다.</li>
+  </ul>
+</div>
+
+<h2>4. 검증 요약</h2>
+<table>
+  <tr><th>검사</th><th>결과</th></tr>
+  <tr><td>pytest 전체 (서버 9 + 헤드리스 15)</td><td>24개 통과, 19.3초</td></tr>
+  <tr><td>실제 블렌더 창 소켓 경로 (doctor → 창문건물 → 잔디 → 카메라 → 스냅샷 → 파괴 → 되돌리기)</td><td>11단계 전부 성공, 되돌린 뒤 조각 0개</td></tr>
+  <tr><td>실제 픽셀</td><td>창문 건물, 아스팔트 바닥, 잔디 바닥</td></tr>
+</table>
+
+<h2>5. 남은 것</h2>
+<div class="box">
+  <ol>
+    <li><b>첫 커밋</b> — 상위 폴더 규칙이 "요청 없는 commit 금지"라 하지 않았습니다.</li>
+    <li><b>GitHub 공개</b> — 외부 게시라 승인이 필요합니다. 계정 이름을 주시면 README와 <code>server.json.example</code> 의 <code>&lt;계정&gt;</code> 자리를 채웁니다.</li>
+    <li><b>클로드 코드 등록</b> — 설정 파일 수정이라 직접 실행해 주세요.</li>
+  </ol>
+  <p class="note">v1.0 후보로 남긴 것: 프리셋을 JSON 파일로 분리, 자체 수신기 애드온 동봉, 모션블러 프리셋, 도로·차량 같은 소품 프리셋, 도구 설명 영어화.</p>
+</div>
+</main>
+</body>
+</html>

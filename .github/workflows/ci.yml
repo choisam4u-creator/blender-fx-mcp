@@ -1,0 +1,21 @@
+# 블렌더 없이 도는 서버 단위 테스트만 CI 에서 돌린다. 레시피 테스트는 블렌더가 있는 로컬에서 `uv run pytest -q`.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  server-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv python install ${{ matrix.python }}
+      - run: uv sync --group dev --python ${{ matrix.python }}
+      - run: uv run pytest -q tests/test_server.py
+      - run: uv build

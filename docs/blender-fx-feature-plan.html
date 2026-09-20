@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FX 작업 도구 기획·결과</title>
+<style>
+:root{
+  --bg:#f7f7f5; --fg:#1c1c1a; --muted:#5f5f5a; --line:#e2e2dd;
+  --card:#ffffff; --accent:#c2410c; --accent-bg:#fff3ec;
+  --warn:#8a1c1c; --warn-bg:#fdecec; --ok:#1c6b3a; --ok-bg:#e9f6ee;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#161614; --fg:#ececea; --muted:#a3a39c; --line:#2e2e2a;
+    --card:#1f1f1c; --accent:#fb923c; --accent-bg:#2a1d14;
+    --warn:#f28b8b; --warn-bg:#2b1717; --ok:#7bd39a; --ok-bg:#142a1c;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#161614; --fg:#ececea; --muted:#a3a39c; --line:#2e2e2a;
+  --card:#1f1f1c; --accent:#fb923c; --accent-bg:#2a1d14;
+  --warn:#f28b8b; --warn-bg:#2b1717; --ok:#7bd39a; --ok-bg:#142a1c;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:-apple-system,"Apple SD Gothic Neo","Pretendard",system-ui,sans-serif;line-height:1.65;font-size:16px}
+main{max-width:860px;margin:0 auto;padding:32px 16px 64px}
+h1{font-size:1.7rem;margin:0 0 4px;line-height:1.3}
+h2{font-size:1.2rem;margin:40px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+p{margin:8px 0}
+.sub{color:var(--muted);font-size:.92rem;margin-bottom:24px}
+.box{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:16px 18px;margin:14px 0}
+.box.accent{background:var(--accent-bg);border-color:var(--accent)}
+.box.warn{background:var(--warn-bg);border-color:var(--warn)}
+.box strong.t{display:block;margin-bottom:6px}
+ul,ol{padding-left:22px;margin:6px 0}
+li{margin:5px 0}
+table{width:100%;border-collapse:collapse;margin:12px 0;font-size:.92rem}
+th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top}
+th{background:var(--card)}
+code{font-family:ui-monospace,Menlo,monospace;font-size:.88em;background:var(--card);border:1px solid var(--line);padding:1px 5px;border-radius:4px}
+.ok{color:var(--ok);font-weight:600}
+.no{color:var(--muted)}
+.note{color:var(--muted);font-size:.88rem}
+@media (max-width:600px){ table{font-size:.84rem} th,td{padding:6px 6px} }
+</style>
+</head>
+<body>
+<main>
+<h1>FX 작업 도구 기획·결과 (v0.4)</h1>
+<p class="sub">2026-09-19 · 공개 전에 "파괴·폭발·물" 외에 실제 FX 작업에 필요한 기능을 정하고 만든 기록</p>
+
+<div class="box accent">
+  <strong class="t">결론</strong>
+  <p>FX 작업 흐름을 "모델 가져오기 → 구도·조명 → 효과 → 타이밍 → 내보내기"로 놓고 빠진 자리를 13개 도구로 채웠습니다. 전부 헤드리스 테스트(14개)와 실제 픽셀로 확인했고, 도구는 총 24개가 됐습니다. 아직 못 한 것 7개는 아래에 이유와 함께 적었습니다.</p>
+</div>
+
+<h2>1. 먼저, 약점</h2>
+<div class="box warn">
+  <ol>
+    <li><b>불은 해상도를 먹습니다.</b> 건물 크기 대상은 64 이상이어야 벽의 불이 보입니다. 처음엔 꼭대기에만 왕관처럼 붙었고, 대상 복사본을 장애물로 두고 표면 띠를 복셀보다 두껍게 잡아서 해결했습니다.</li>
+    <li><b>슬로모션이 파티클엔 안 걸립니다.</b> 블렌더 파티클은 시간 배속을 애니메이션할 수 없습니다. 리지드바디·연기·물만 느려집니다.</li>
+    <li><b>파티클 수를 2만 개로 막았습니다.</b> 바다(40m) 위에 눈을 뿌리면 17만 개가 나와서 캡을 걸었습니다. 넓은 장면은 <code>count</code>를 직접 주세요.</li>
+    <li><b>내보내기는 메시·키프레임만.</b> 연기·물·파티클은 glb/fbx 로 못 가져갑니다. 조각 물리는 <code>bake_physics=True</code>로 키프레임으로 구워 내보내지만 되돌릴 수 없습니다(먼저 <code>save_blend</code>).</li>
+    <li><b>바람이 연기에 얼마나 먹히는지는 눈으로 안 봤습니다.</b> 테스트는 힘장이 생기고 시뮬레이션이 다시 구워지는 것까지만 확인합니다.</li>
+    <li><b>소켓 경로 재검증은 안 했습니다.</b> 새 도구 13개는 창 없이(헤드리스) 검증했고 통신 코드는 그대로입니다. 블렌더를 켜고 <code>scripts/e2e_socket.py</code>를 돌리면 전체가 확인됩니다.</li>
+  </ol>
+</div>
+
+<h2>2. 기능 표 (계획 → 결과)</h2>
+<table>
+  <tr><th style="width:15%">도구</th><th style="width:30%">왜 필요한가</th><th style="width:10%">상태</th><th>검증 근거</th></tr>
+  <tr><td><code>import_model</code></td><td>상자 말고 진짜 모델을 부숴야 한다. glb/fbx/obj/stl/usd/blend</td><td class="ok">완료</td><td>내보낸 glb 를 다시 가져와 이름·크기(6m) 확인. 여러 메시는 하나로 합침</td></tr>
+  <tr><td><code>export_model</code></td><td>결과를 다른 프로그램(언리얼·후디니 등)으로</td><td class="ok">완료</td><td>glb 1KB 이상 생성. 처음엔 "실제 선택" 없이 빈 파일이 나와 고침</td></tr>
+  <tr><td><code>camera</code></td><td>"로우앵글로", "옆에서" 같은 연출 지시</td><td class="ok">완료</td><td>프리셋 8개, low 는 렌즈 28mm 확인</td></tr>
+  <tr><td><code>camera_shake</code></td><td>충돌·폭발 순간의 흔들림</td><td class="ok">완료</td><td>흔들리는 프레임과 안 흔들리는 프레임의 픽셀이 다름</td></tr>
+  <tr><td><code>set_look</code></td><td>낮·노을·밤·흐림 분위기</td><td class="ok">완료</td><td>노을 프리셋 적용 확인. 처음 노을은 너무 갈색이라 하늘 세기를 낮춤</td></tr>
+  <tr><td><code>set_timing</code></td><td>프레임·fps·슬로모션</td><td class="ok">완료</td><td>연기 도메인에 배속 키프레임 적용, 다시 굽기 확인</td></tr>
+  <tr><td><code>clear_caches</code></td><td>연기·물 캐시가 디스크를 채운다</td><td class="ok">완료</td><td>가짜 캐시 파일이 지워짐</td></tr>
+  <tr><td><code>fire</code> / <code>smoke</code></td><td>불타는 건물, 굴뚝 연기 (폭발과 다름)</td><td class="ok">완료</td><td>건물 벽을 타고 오르는 불 + 연기 픽셀 확인 (해상도 64)</td></tr>
+  <tr><td><code>particles</code></td><td>비·눈·불꽃·재</td><td class="ok">완료</td><td>눈·불꽃 생성, 프레임 픽셀 차이 확인. 바닥에 닿으면 사라짐</td></tr>
+  <tr><td><code>wind</code></td><td>깃발·파티클·연기 밀기</td><td class="ok">완료</td><td>바람+난류 힘장 생성, 시뮬레이션 재굽기</td></tr>
+  <tr><td><code>ocean</code></td><td>바다·파도 장면</td><td class="ok">완료</td><td>파도 움직임 픽셀 확인. 바닥 평면과 겹치던 문제 수정</td></tr>
+  <tr><td><code>cloth_flag</code></td><td>천 시뮬레이션 대표 사례</td><td class="ok">완료</td><td>깃발 끝이 3.86m 움직임</td></tr>
+</table>
+
+<h2>3. 실제 그림으로 확인한 것</h2>
+<ul>
+  <li>불: 24프레임에 벽면 불길, 48프레임에 불 + 회색 연기가 건물을 감쌈</li>
+  <li>바다 + 바람 + 눈 + 깃발: 40m 파도 위에 깃발, 눈이 흰 점으로 내림 (외곽선 문제 수정 후)</li>
+  <li>파괴 + 카메라 흔들림 + 불꽃 + 슬로모션: 16프레임 충돌 장면에서 카메라가 흔들림</li>
+</ul>
+
+<h2>4. 아직 안 만든 것 (다음 후보)</h2>
+<table>
+  <tr><th style="width:26%">기능</th><th>왜 미뤘나</th></tr>
+  <tr><td>장면 스냅샷/되돌리기</td><td>파일 다시 열기가 소켓 수신기와 어떻게 얽히는지 검증이 필요. 지금은 <code>save_blend</code>로 대신</td></tr>
+  <tr><td>조각 접착(구조 붕괴)</td><td>리지드바디 제약을 수백 개 만들어야 해서 굽기가 느려짐. 지금은 "잠들었다 깨는" 방식으로 대체</td></tr>
+  <tr><td>창문 있는 건물 프리셋</td><td>연습용 상자로도 흐름 검증엔 충분. 실제 모델은 <code>import_model</code>로</td></tr>
+  <tr><td>연기가 조각과 충돌</td><td>조각 80개를 연기 장애물로 등록하면 굽기 시간이 몇 배</td></tr>
+  <tr><td>HDRI 하늘 조명</td><td>인터넷 다운로드가 필요. 지금은 단색 하늘 프리셋</td></tr>
+  <tr><td>영어 메시지</td><td>모든 문장을 두 벌로 관리해야 함. README 영문 요약으로 시작</td></tr>
+  <tr><td>바닥 재질(아스팔트·잔디)</td><td>절차적 재질 몇 개면 되지만 우선순위가 낮음</td></tr>
+</table>
+
+<h2>5. 검증 요약</h2>
+<table>
+  <tr><th>검사</th><th>결과</th></tr>
+  <tr><td>pytest 전체</td><td>14개 통과 (서버 6 + 헤드리스 8)</td></tr>
+  <tr><td>불 파이프라인 (건물, 해상도 64, 48프레임)</td><td>성공, 약 3초</td></tr>
+  <tr><td>바다·바람·눈·깃발 파이프라인</td><td>성공, 깃발 끝 3.86m 이동</td></tr>
+  <tr><td>패키지 빌드 → 휠에서 uvx 실행</td><td>v0.3 에서 확인, 구조 변경 없음</td></tr>
+</table>
+<p class="note">이 문서는 저장소 <code>docs/</code>에 함께 들어 있습니다.</p>
+</main>
+</body>
+</html>
