@@ -4,7 +4,7 @@
 def main():
     p = PARAMS
     obj = get_target(p.get("target"))
-    bm, ratio = bm_from_object(obj, int(p.get("decimate_to") or 0))
+    bm, ratio, _ = bm_from_object(obj, int(p.get("decimate_to") or 0), repair=False)
     health = mesh_health(bm)
 
     # 볼록한가? 볼록 껍질 부피와 비교하면 오목한 정도를 알 수 있다

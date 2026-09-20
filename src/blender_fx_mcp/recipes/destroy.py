@@ -1,7 +1,7 @@
 # 파괴 레시피: 메시를 수리하고 보로노이로 조각내어 물리로 무너뜨린다.
 # PARAMS: target, impact, material, pieces, pattern, focus, time_scale, frames, impact_height, impact_power,
 #         dust, glue, glue_neighbors, glue_max, seed, collision, interior, repair, shell_thickness,
-#         decimate_to, density, friction, bounce, margin, neighbors, hold_until
+#         decimate_to, density, friction, bounce, margin, hold_until
 
 MATERIALS = {
     # 밀도(kg/m³), 마찰, 튐, 속 재질 색
@@ -140,7 +140,6 @@ def main():
     impact_power = float(p.get("impact_power", 0.06))
     hold_until = int(p.get("hold_until", 0))
     focus = float(p.get("focus", 0.5))
-    neighbors = max(4, min(int(p.get("neighbors", 10)), 24))
     decimate_to = int(p.get("decimate_to", 20000))
     shell_thickness = float(p.get("shell_thickness", 0.0))
     do_repair = bool(p.get("repair", True))
@@ -166,18 +165,12 @@ def main():
     # 1) 메시 읽기·수리
     source = target
     solidified = None
-    bm, ratio = bm_from_object(source, decimate_to)
+    bm, ratio, repair_info = bm_from_object(source, decimate_to, repair=do_repair)
     health = mesh_health(bm)
-    repair_info = None
-    if do_repair:
-        repair_info = repair_bm(bm)
-        health = repair_info["after"]
     if not health["closed"] and shell_thickness > 0:
         bm.free()
         solidified = solidify_object(target, shell_thickness)
-        bm, ratio = bm_from_object(solidified, decimate_to)
-        if do_repair:
-            repair_info = repair_bm(bm)
+        bm, ratio, repair_info = bm_from_object(solidified, decimate_to, repair=do_repair)
         health = mesh_health(bm)
     if len(bm.faces) == 0:
         bm.free()
@@ -208,17 +201,24 @@ def main():
     prep.hide_render = True
     for mm in all_mats:
         prep.data.materials.append(mm)
-    source_volume, _ = mesh_volume(prep)
+    # 겹치거나 맞닿은 덩어리를 먼저 하나의 solid 로 정리한다. 이걸 빼먹으면 셀 불리언이
+    # 빈 결과를 내서 조각이 통째로 사라진다(무료 에셋에서 흔함).
+    resolved, source_volume = resolve_solid(prep, local_lo, local_hi)
 
     rng = random.Random(seed)
+    # 표면에 딱 붙은 씨앗은 얇아서 버려지는 조각을 만든다. 크기에 비례해 살짝 안쪽만 쓴다.
+    seed_margin = max(local_hi.x - local_lo.x, local_hi.y - local_lo.y, local_hi.z - local_lo.z) * 0.002
     anchor = impact_anchor(lo, hi, side, height_frac)
     mw_inv = target.matrix_world.inverted() if abs(target.matrix_world.determinant()) > 1e-12 else Matrix.Identity(4)
+    # 조각 하나의 예상 반지름. 씨앗끼리 이보다 가까우면 종잇장 같은 조각이 나온다.
+    min_sep = (source_volume / max(pieces, 1)) ** (1.0 / 3.0) * 0.55 if source_volume > 1e-9 else 0.0
     seeds = voronoi_seeds(local_lo, local_hi, pieces, pattern, focus, mw_inv @ anchor, rng,
-                          inside=inside_tester(prep) if health["closed"] else None)
+                          inside=inside_tester(prep, margin=seed_margin) if health["closed"] else None,
+                          min_sep=min_sep)
     cell_objs = voronoi_cell_objects(local_lo, local_hi, seeds, target.matrix_world,
-                                     all_mats[interior_index] if interior_index < len(all_mats) else all_mats[0],
-                                     neighbors=neighbors)
+                                     all_mats[interior_index] if interior_index < len(all_mats) else all_mats[0])
     coll = get_collection("FX_Chunks")
+    cells_built = len(cell_objs)
     chunks = boolean_chunks(prep, cell_objs, all_mats, coll, f"{target.name}_chunk")
     for c in cell_objs:
         remove_object(c)
@@ -331,7 +331,9 @@ def main():
         dust=dust, dust_particles=dust_total, glue=glue, glue_constraints=glued,
         max_fall_m=round(max_fall, 2), pattern=pattern, focus=focus, collision=shape,
         density=density, friction=friction, bounce=bounce, interior=interior_kind,
-        mesh_closed=health["closed"], open_chunks=open_chunks, source_volume_m3=round(source_volume, 3),
+        mesh_closed=health["closed"], open_chunks=open_chunks, cells_built=cells_built,
+        empty_cells=cells_built - len(chunks), solid_resolved=resolved,
+        source_volume_m3=round(source_volume, 3),
         chunk_volume_m3=round(chunk_volume, 3), volume_kept=volume_kept,
         repaired=dict(merged_verts=repair_info["merged_verts"], filled_faces=repair_info["filled_faces"]) if repair_info else None,
         notes=notes,

@@ -243,33 +243,44 @@ def add_dust(chunks, per_chunk, f_impact, size_ref, gravity=0.03, drag=0.35, siz
 
 # ---------- 메시 진단·수리 ----------
 
-def bm_from_object(obj, decimate_to=0):
-    """모디파이어까지 적용된 메시를 bmesh 로 읽는다. 면이 너무 많으면 줄인다(줄인 비율을 함께 돌려준다)."""
+def decimate_bm(bm, matrix, target_faces):
+    """면이 너무 많은 bmesh 를 줄인다. 임시 오브젝트에 Decimate 를 걸어 평가한다."""
+    faces = len(bm.faces)
+    if not target_faces or faces <= target_faces:
+        return bm, 1.0
+    ratio = target_faces / float(faces)
+    me = bpy.data.meshes.new("FX_DecimateTmp")
+    bm.to_mesh(me)
+    tmp = bpy.data.objects.new("FX_DecimateTmp", me)
+    tmp[FX_TAG] = "cell"
+    tmp.matrix_world = matrix.copy()
+    link(tmp)
+    d = tmp.modifiers.new("FX_Decimate", "DECIMATE")
+    d.ratio = ratio
     view_layer_update()
     dg = bpy.context.evaluated_depsgraph_get()
-    faces = len(obj.evaluated_get(dg).data.polygons)
-    ratio = 1.0
-    if decimate_to and faces > decimate_to:
-        ratio = decimate_to / float(faces)
-        tmp = obj.copy()
-        tmp.data = obj.data.copy()
-        link(tmp)
-        for m in list(tmp.modifiers):
-            tmp.modifiers.remove(m)
-        for m in obj.modifiers:
-            pass  # 원본 모디파이어는 무시한다. 조각내기는 눈에 보이는 모양만 쓴다
-        d = tmp.modifiers.new("FX_Decimate", "DECIMATE")
-        d.ratio = ratio
-        view_layer_update()
-        dg = bpy.context.evaluated_depsgraph_get()
-        bm = bmesh.new()
-        bm.from_object(tmp, dg)
-        remove_object(tmp)
-        view_layer_update()
-        return bm, ratio
+    out = bmesh.new()
+    out.from_object(tmp, dg)
+    remove_object(tmp)
+    view_layer_update()
+    bm.free()
+    return out, ratio
+
+
+def bm_from_object(obj, decimate_to=0, repair=True):
+    """모디파이어까지 적용된 메시를 bmesh 로 읽는다.
+    먼저 겹친 꼭짓점을 붙이고(수리) 그다음에 면 수를 줄인다. 순서가 반대면 결과가 망가진다."""
+    view_layer_update()
+    dg = bpy.context.evaluated_depsgraph_get()
     bm = bmesh.new()
     bm.from_object(obj, dg)
-    return bm, ratio
+    info = None
+    if repair and bm.verts:
+        info = repair_bm(bm)
+    bm, ratio = decimate_bm(bm, obj.matrix_world, decimate_to)
+    if ratio < 1.0 and repair:
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    return bm, ratio, info
 
 
 def mesh_health(bm):
@@ -320,37 +331,55 @@ def solidify_object(obj, thickness):
 
 # ---------- 보로노이 조각내기 ----------
 
-def inside_tester(obj):
-    """점이 메시 안에 있는지 판단하는 함수. 닫힌 메시에서만 믿을 만하다."""
-    mw = obj.matrix_world
-    try:
-        inv = mw.inverted()
-    except Exception:
-        return lambda p: True
+def inside_tester(obj, margin=0.0):
+    """점이 메시 안에 있는지 판단하는 함수. 닫힌 메시에서만 믿을 만하다.
+
+    margin 을 주면 표면에서 그만큼 안쪽으로 들어온 점만 안쪽으로 친다.
+    표면에 딱 붙은 씨앗은 면도날처럼 얇은 조각을 만들고, 그런 조각은 버려져서
+    사용자가 요청한 개수보다 적게 나온다.
+
+    넘기는 점 p 는 오브젝트의 로컬 좌표다. closest_point_on_mesh 가 로컬 좌표를 받기
+    때문이고, 씨앗도 로컬 상자 안에서 만들기 때문이다. 세계 좌표를 넣으면 물체가
+    원점에서 떨어져 있을 때 전부 "바깥"으로 판정되어 씨앗이 거의 안 놓인다.
+    """
 
     def inside(p):
         try:
-            ok, loc, nor, _idx = obj.closest_point_on_mesh(inv @ p)
+            ok, loc, nor, _idx = obj.closest_point_on_mesh(p)
         except Exception:
             return True
         if not ok:
             return True
-        return ((inv @ p) - loc).dot(nor) < 0.0
+        d = p - loc
+        return d.dot(nor) < 0.0 and d.length >= margin
 
     return inside
 
 
-def voronoi_seeds(lo, hi, count, pattern, focus, impact_point, rng, inside=None):
-    """조각 씨앗 점을 뿌린다. pattern 이 어디를 촘촘하게 할지 정한다."""
+def voronoi_seeds(lo, hi, count, pattern, focus, impact_point, rng, inside=None, min_sep=0.0):
+    """조각 씨앗 점을 뿌린다. pattern 이 어디를 촘촘하게 할지 정한다.
+
+    min_sep 은 씨앗끼리 최소 간격이다. 두 씨앗이 붙어 있으면 그 사이 셀이 종잇장처럼
+    얇아져 조각이 만들어지지 않고 버려진다. 자리를 못 찾으면 간격을 스스로 줄인다.
+    """
     size = hi - lo
     center = (lo + hi) / 2
     focus = max(0.0, min(float(focus), 1.0))
     span = max(size.x, size.y, size.z, 1e-6)
     pts = []
     tries = 0
-    limit = count * 60
+    limit = count * 400  # 벽이 얇은 물건은 상자 대비 속이 좁아 시도를 넉넉히 줘야 한다
+    sep = max(0.0, float(min_sep))
+    stall = 0
     while len(pts) < count and tries < limit:
         tries += 1
+        if sep > 0.0:
+            stall += 1
+            if stall > count * 8:  # 자리를 못 찾으면 간격을 절반으로 낮춘다
+                sep *= 0.5
+                stall = 0
+                if sep < 1e-6:
+                    sep = 0.0
         p = Vector((rng.uniform(lo.x, hi.x), rng.uniform(lo.y, hi.y), rng.uniform(lo.z, hi.z)))
         if pattern == "impact" and impact_point is not None and focus > 0:
             # 맞은 곳 근처를 촘촘하게. 전체를 덮되 가까운 점을 더 자주 받아들인다(거부 표본)
@@ -369,10 +398,49 @@ def voronoi_seeds(lo, hi, count, pattern, focus, impact_point, rng, inside=None)
             p.z = lo.z + step * (0.5 + rng.randrange(layers)) + rng.uniform(-step * 0.12, step * 0.12)
         if inside is not None and not inside(p):
             continue
+        if sep > 0.0 and any((p - q).length < sep for q in pts):
+            continue
         pts.append(p)
+        stall = 0
     if not pts:  # 안쪽 판정이 실패하면 상자 안 무작위로 되돌린다
         pts = [Vector((rng.uniform(lo.x, hi.x), rng.uniform(lo.y, hi.y), rng.uniform(lo.z, hi.z))) for _ in range(count)]
     return pts
+
+
+def convex_hull_from_points(points):
+    """점들을 감싸는 볼록 껍질 bmesh. 반드시 닫혀 있다. 못 만들면 None."""
+    if len(points) < 4:
+        return None
+    bm = bmesh.new()
+    for p in points:
+        bm.verts.new(p)
+    bm.verts.ensure_lookup_table()
+    try:
+        r = bmesh.ops.convex_hull(bm, input=bm.verts[:], use_existing_faces=False)
+    except Exception:
+        bm.free()
+        return None
+    seen = set()
+    junk = []
+    for g in list(r.get("geom_interior", [])) + list(r.get("geom_unused", [])):
+        key = (type(g).__name__, g.index if hasattr(g, "index") else id(g), id(g))
+        if id(g) in seen:
+            continue
+        seen.add(id(g))
+        junk.append(g)
+    if junk:
+        bmesh.ops.delete(bm, geom=junk, context="VERTS")
+    holes = [f for f in r.get("geom_holes", []) if isinstance(f, bmesh.types.BMFace) and f.is_valid]
+    if holes:
+        bmesh.ops.delete(bm, geom=holes, context="FACES")
+    if len(bm.faces) < 4:
+        bm.free()
+        return None
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    if not all(len(e.link_faces) == 2 for e in bm.edges):
+        bm.free()
+        return None
+    return bm
 
 
 def boundary_loops(bm):
@@ -439,31 +507,83 @@ def is_closed(bm):
     return all(len(e.link_faces) == 2 for e in bm.edges) and len(bm.faces) > 3
 
 
-def voronoi_cell_objects(lo, hi, seeds, matrix, interior_mat, neighbors=12):
+def covering_cube_bm(lo, hi):
+    """주어진 상자를 넉넉히 감싸는 큰 육면체 bmesh(로컬 좌표)."""
+    size = hi - lo
+    center = (lo + hi) / 2
+    pad = max(size.x, size.y, size.z) * 1.2 + 1.0
+    bm = bmesh.new()
+    bmesh.ops.create_cube(bm, size=1.0)
+    for v in bm.verts:
+        v.co = Vector((center.x + v.co.x * (size.x + pad),
+                       center.y + v.co.y * (size.y + pad),
+                       center.z + v.co.z * (size.z + pad)))
+    return bm
+
+
+def resolve_solid(obj, lo, hi):
+    """서로 겹치거나 맞닿아 있는 덩어리들을 불리언이 이해하는 하나의 solid 로 정리한다.
+
+    무료 에셋은 바퀴가 몸통에 박혀 있거나 내용물이 바닥에 딱 붙어 있는 경우가 흔하다.
+    그대로 두면 셀 불리언이 아무것도 못 만들어 조각과 부피가 통째로 사라진다
+    (실측: 통 0.69, 수레 0.93). 여기서 한 번 정리하면 1.00 이 된다.
+    되돌려주는 값은 (정리했는지, 정리 뒤 부피).
+    """
+    before, _ = mesh_volume(obj)
+    box_bm = covering_cube_bm(lo, hi)
+    box = new_mesh_object("FX_ResolveBox", box_bm, obj.matrix_world.copy(), tag="cell")
+    box_bm.free()
+    slots = len(obj.data.materials)
+    mod = obj.modifiers.new("fx_resolve", "BOOLEAN")
+    mod.operation = "INTERSECT"
+    mod.solver = "EXACT"
+    mod.use_self = True
+    mod.object = box
+    view_layer_update()
+    dg = bpy.context.evaluated_depsgraph_get()
+    me = bpy.data.meshes.new_from_object(obj.evaluated_get(dg))
+    obj.modifiers.remove(mod)
+    remove_object(box)
+    ok = False
+    volume = before
+    if len(me.polygons) >= 4 and len(me.vertices) >= 4:
+        b = bmesh.new()
+        b.from_mesh(me)
+        v = abs(b.calc_volume(signed=False))
+        b.free()
+        # 결과가 터무니없으면(절반 아래로 줄거나 부풀면) 원본을 그대로 쓴다
+        if before <= 1e-9 or 0.5 <= v / before <= 1.5:
+            old = obj.data
+            obj.data = me
+            bpy.data.meshes.remove(old)
+            while len(obj.data.materials) > slots:
+                obj.data.materials.pop()
+            view_layer_update()
+            ok = True
+            volume = v
+            me = None
+    if me is not None:
+        bpy.data.meshes.remove(me)
+    return ok, volume
+
+
+def voronoi_cell_objects(lo, hi, seeds, matrix, interior_mat):
     """씨앗마다 볼록한 셀 다면체 오브젝트를 만든다.
     큰 상자를 이웃과의 중간 평면으로 잘라 만들기 때문에 항상 닫혀 있다."""
-    size = hi - lo
-    pad = max(size.x, size.y, size.z) * 1.2 + 1.0
-    center = (lo + hi) / 2
     objs = []
     n = len(seeds)
     for i, seed in enumerate(seeds):
-        bm = bmesh.new()
-        bmesh.ops.create_cube(bm, size=1.0)
-        for v in bm.verts:
-            v.co = Vector((center.x + v.co.x * (size.x + pad),
-                           center.y + v.co.y * (size.y + pad),
-                           center.z + v.co.z * (size.z + pad)))
+        bm = covering_cube_bm(lo, hi)  # 정리 단계와 똑같은 상자에서 시작한다
         others = sorted(((seed - seeds[j]).length, j) for j in range(n) if j != i)
         ok = True
         # 씨앗에서 가장 먼 꼭짓점까지의 거리. 중간 평면이 이보다 멀면 더는 자를 수 없다(정확한 조기 종료)
         max_radius = max((v.co - seed).length for v in bm.verts)
         cuts = 0
+        # 조기 종료 조건이 수학적으로 정확하므로 자르는 횟수를 따로 제한하지 않는다.
+        # 제한을 두면 조각 수가 많을 때 셀이 덜 잘려 서로 겹치고 부피가 부풀었다(실측 1.172).
         for _d, j in others:
             if _d * 0.5 > max_radius:
                 break  # 남은 이웃은 이 셀을 자를 수 없다
-            if cuts >= neighbors * 4:
-                break  # 안전장치
             direction = seeds[j] - seed
             if direction.length < 1e-6:
                 continue
@@ -481,10 +601,16 @@ def voronoi_cell_objects(lo, hi, seeds, matrix, interior_mat, neighbors=12):
                 ok = False
                 break
             max_radius = max((v.co - seed).length for v in bm.verts)
-        if not ok or len(bm.faces) < 4:
+        if not ok or len(bm.verts) < 4:
             bm.free()
             continue
-        bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+        # 셀은 반평면들의 교집합이라 반드시 볼록하다. 꼭짓점만 뽑아 볼록 껍질을 새로 만들면
+        # 자르는 도중 생긴 틈이 사라져 불리언이 실패하지 않는다.
+        hull = convex_hull_from_points([v.co.copy() for v in bm.verts])
+        bm.free()
+        if hull is None:
+            continue
+        bm = hull
         o = new_mesh_object(f"FX_Cell_{i:04d}", bm, matrix.copy(), tag="cell")
         bm.free()
         o.hide_render = True

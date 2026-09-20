@@ -268,7 +268,6 @@ def destroy(
     density: float = 0.0,
     friction: float = -1.0,
     bounce: float = -1.0,
-    neighbors: int = 10,
     decimate_to: int = 20000,
     seed: int = 1,
     preview_frames: int = 5,
@@ -289,14 +288,13 @@ def destroy(
     repair: 구멍 난 메시를 자동 수리 (남의 모델에 특히 필요)
     shell_thickness: 껍데기뿐인 모델에 줄 두께(m). 닫히지 않은 모델에서만 쓰임
     density / friction / bounce: 재질 프리셋을 덮어쓰는 값 (0 또는 음수면 프리셋 그대로)
-    neighbors: 셀 이웃 수. 기본이면 충분하다
     decimate_to: 면이 이 수보다 많으면 줄여서 부순다
     결과의 volume_kept 가 1.0 에 가까우면 물리적으로 맞게 쪼개진 것이다."""
     params = dict(
         target=target, impact=impact, material=material, pieces=pieces, pattern=pattern, focus=focus,
         time_scale=time_scale, frames=frames, impact_height=impact_height, impact_power=impact_power,
         dust=dust, glue=glue, collision=collision, interior=interior, repair=repair,
-        shell_thickness=shell_thickness, neighbors=neighbors, decimate_to=decimate_to, seed=seed,
+        shell_thickness=shell_thickness, decimate_to=decimate_to, seed=seed,
         density=density or None, friction=friction if friction >= 0 else None,
         bounce=bounce if bounce >= 0 else None,
     )

@@ -75,6 +75,21 @@ def main():
         bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
     view_layer_update()
 
+    # glTF/GLB 는 저장할 때 꼭짓점을 쪼개 둔다. 그대로 두면 모든 면이 따로 놀아
+    # "닫히지 않은 메시"가 되고 조각내기가 망가진다. 여기서 다시 붙인다.
+    weld = bmesh.new()
+    weld.from_mesh(obj.data)
+    before_verts = len(weld.verts)
+    size_hint = max((max(v.co[i] for v in weld.verts) - min(v.co[i] for v in weld.verts)) for i in range(3)) if weld.verts else 1.0
+    bmesh.ops.remove_doubles(weld, verts=weld.verts[:], dist=max(1e-6, size_hint * 1e-5))
+    bmesh.ops.recalc_face_normals(weld, faces=weld.faces[:])
+    merged = before_verts - len(weld.verts)
+    health = mesh_health(weld)
+    weld.to_mesh(obj.data)
+    weld.free()
+    obj.data.update()
+    view_layer_update()
+
     lo, hi = world_bbox(obj)
     dims = hi - lo
     longest = max(dims.x, dims.y, dims.z, 1e-6)
@@ -97,8 +112,19 @@ def main():
     ensure_ground(lo.z)
     ensure_camera(lo, hi, reframe=True)
     ensure_light()
+    notes = []
+    if not health["closed"]:
+        notes.append(L("가져온 모델이 닫혀 있지 않습니다(구멍이나 두께 없는 면). destroy 가 자동 수리하지만, "
+                       "껍데기뿐이면 shell_thickness 로 두께를 주세요.",
+                       "The imported model is not closed (holes or zero-thickness faces). destroy repairs it "
+                       "automatically, but for pure shells set shell_thickness."))
+    if len(obj.data.polygons) > 20000:
+        notes.append(L(f"면이 {len(obj.data.polygons)}개로 많습니다. 조각낼 때 자동으로 줄입니다.",
+                       f"{len(obj.data.polygons)} faces is a lot; it will be decimated when fracturing."))
     return dict(name=obj.name, size_m=[round(dims.x, 2), round(dims.y, 2), round(dims.z, 2)],
-                vertices=len(obj.data.vertices), faces=len(obj.data.polygons), joined=len(meshes), source=path)
+                vertices=len(obj.data.vertices), faces=len(obj.data.polygons), joined=len(meshes),
+                merged_verts=merged, closed=health["closed"], volume_m3=health["volume_m3"],
+                notes=notes, source=path)
 
 
 run_guarded(main)
