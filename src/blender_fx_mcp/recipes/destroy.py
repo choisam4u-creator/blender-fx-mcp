@@ -49,7 +49,53 @@ def impact_anchor(lo, hi, side, height_frac):
     return Vector((center.x + d.x * size.x / 2, center.y + d.y * size.y / 2, z))
 
 
-def add_impactor(lo, hi, side, height_frac, frames_in, mass):
+def surface_aim(obj, lo, hi, side, height_frac):
+    """충격체가 실제로 닿을 표면 점을 찾는다(세계 좌표). 못 찾으면 None.
+
+    바운딩 박스 면을 그대로 조준하면 팔을 벌린 사람처럼 얄팍한 모델에서 허공을 친다.
+    실제로 광선을 쏴서 맞는 자리를 찾고, 요청한 높이에서 빗나가면 높이를 훑는다.
+    (T 포즈 캐릭터에서 조각이 하나도 안 움직이던 원인)
+    """
+    center = (lo + hi) / 2
+    size = hi - lo
+    reach = max(size.x, size.y, size.z) * 2.0 + 1.0
+    try:
+        inv = obj.matrix_world.inverted()
+    except Exception:
+        return None
+    mw = obj.matrix_world
+
+    def shoot(origin_w, dir_w):
+        try:
+            ok, loc, _n, _i = obj.ray_cast(inv @ origin_w, (inv.to_3x3() @ dir_w).normalized(),
+                                           distance=reach * 3.0)
+        except Exception:
+            return None
+        return (mw @ loc) if ok else None
+
+    if side == "top":
+        for dx, dy in ((0.0, 0.0), (0.25, 0.0), (-0.25, 0.0), (0.0, 0.25), (0.0, -0.25)):
+            hit = shoot(Vector((center.x + dx * size.x, center.y + dy * size.y, hi.z + reach)),
+                        Vector((0.0, 0.0, -1.0)))
+            if hit is not None:
+                return hit
+        return None
+
+    d = SIDES.get(side)
+    if d is None:
+        return None
+    d = Vector(d)
+    want = max(0.02, min(0.98, height_frac))
+    fracs = [want] + [i / 12.0 for i in range(11, 0, -1)]
+    for f in fracs:
+        z = lo.z + f * size.z
+        hit = shoot(Vector((center.x, center.y, z)) + d * reach, -d)
+        if hit is not None:
+            return hit
+    return None
+
+
+def add_impactor(lo, hi, side, height_frac, frames_in, mass, aim=None):
     """충격체(무거운 공)를 만들어 건물 쪽으로 날린다. 처음 몇 프레임은 손으로 움직이고 그 뒤 물리에 맡긴다."""
     d = Vector(SIDES[side])
     center = (lo + hi) / 2
@@ -57,7 +103,12 @@ def add_impactor(lo, hi, side, height_frac, frames_in, mass):
     radius = max(0.3, 0.22 * min(size.x, size.y))
     # 손으로 움직이는 동안 물체 안으로 파고들면, 물리가 켜지는 순간 겹침이 풀리며 폭발한다.
     # 그래서 표면에 닿는 지점까지만 데려가고 그 뒤는 물리에 맡긴다.
-    if side == "top":
+    if aim is not None:
+        # 실제 표면 점을 찾았으면 거기서 공 반지름만큼 떨어진 자리까지만 데려간다
+        step = Vector((0.0, 0.0, 1.0)) if side == "top" else d
+        end = aim + step * radius
+        start = end + step * (radius * 5.0)
+    elif side == "top":
         surface = hi.z + radius
         start = Vector((center.x, center.y, surface + radius * 5.0))
         end = Vector((center.x, center.y, surface))
@@ -213,6 +264,9 @@ def main():
     # 표면에 딱 붙은 씨앗은 얇아서 버려지는 조각을 만든다. 크기에 비례해 살짝 안쪽만 쓴다.
     seed_margin = max(local_hi.x - local_lo.x, local_hi.y - local_lo.y, local_hi.z - local_lo.z) * 0.002
     anchor = impact_anchor(lo, hi, side, height_frac)
+    aim = surface_aim(prep, lo, hi, side, height_frac)
+    if aim is not None:
+        anchor = aim
     mw_inv = target.matrix_world.inverted() if abs(target.matrix_world.determinant()) > 1e-12 else Matrix.Identity(4)
     # 조각 하나의 예상 반지름. 씨앗끼리 이보다 가까우면 종잇장 같은 조각이 나온다.
     min_sep = (source_volume / max(pieces, 1)) ** (1.0 / 3.0) * 0.55 if source_volume > 1e-9 else 0.0
@@ -288,7 +342,7 @@ def main():
     if side == "none":
         radius, method = 0.0, "none"
     else:
-        _imp, radius, method = add_impactor(lo, hi, side, height_frac, frames_in=frames_in,
+        _imp, radius, method = add_impactor(lo, hi, side, height_frac, aim=aim, frames_in=frames_in,
                                             mass=max(300.0, total_mass * impact_power))
 
     size = hi - lo

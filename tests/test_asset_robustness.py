@@ -126,3 +126,81 @@ def test_real_skinned_character():
     assert 0.97 <= d["volume_kept"] <= 1.03, d
     assert d["pieces"] >= 42, d
     assert any("껍데기" in n or "hollow shell" in n for n in d["notes"]), d
+
+
+# 같은 면이 두 장 겹쳐 있는 상자
+DUP_FACES = HEAD + """
+bm = bmesh.new()
+bmesh.ops.create_cube(bm, size=1.2)
+bm.faces.ensure_lookup_table()
+copies = [bm.verts.new(v.co.copy()) for v in bm.faces[0].verts]
+bm.faces.new(copies)
+bm.faces.ensure_lookup_table()
+copies2 = [bm.verts.new(v.co.copy()) for v in bm.faces[1].verts]
+bm.faces.new(list(reversed(copies2)))
+_finish(bm, "Asset")
+"""
+
+# 5각 이상 n각형으로만 된 통
+NGON = HEAD + """
+bm = bmesh.new()
+bmesh.ops.create_cone(bm, cap_ends=True, segments=9, radius1=0.6, radius2=0.6, depth=1.4)
+_finish(bm, "Asset")
+"""
+
+# 크기 값이 음수(거울상)인 물건
+MIRRORED = HEAD + """
+bm = bmesh.new()
+bmesh.ops.create_cube(bm, size=1.2)
+bmesh.ops.create_cone(bm, cap_ends=True, segments=12, radius1=0.3, radius2=0.0, depth=0.8,
+                      matrix=Matrix.Translation((0.4, 0, 0.8)))
+o = _finish(bm, "Asset")
+o.scale = (-1.0, 1.0, 1.0)
+"""
+
+# 축마다 크기 값이 다른 물건
+SQUASHED = HEAD + """
+bm = bmesh.new()
+bmesh.ops.create_cube(bm, size=1.0)
+o = _finish(bm, "Asset")
+o.scale = (3.0, 0.4, 1.7)
+"""
+
+
+@pytest.mark.parametrize("name,extra", [("겹친면", DUP_FACES), ("n각형", NGON),
+                                        ("거울상", MIRRORED), ("납작", SQUASHED)])
+def test_more_defect_shapes_keep_volume(name, extra):
+    """겹친 면·n각형·음수 크기·비균등 크기에서도 부피가 보존되어야 한다."""
+    d = _destroy(extra)
+    assert 0.98 <= d["volume_kept"] <= 1.02, (name, d)
+    assert d["open_chunks"] == 0, (name, d)
+    assert d["pieces"] >= 36, (name, d)
+
+
+def test_impact_hits_thin_wide_shape():
+    """가로로 넓고 얄팍한 모양도 충격체가 실제로 맞아야 한다.
+
+    예전에는 바운딩 박스 면만 보고 조준해서 팔 바깥 허공을 쳤고, 조각이 하나도
+    움직이지 않았다(움직인 비율 0.0, 최대 낙하 0.0m).
+    """
+    extra = HEAD + """
+bm = bmesh.new()
+tmp = bmesh.new(); bmesh.ops.create_cube(tmp, size=1.0)
+bmesh.ops.scale(tmp, verts=tmp.verts[:], vec=(0.3, 0.3, 2.0))
+me = bpy.data.meshes.new("t"); tmp.to_mesh(me); tmp.free(); bm.from_mesh(me); bpy.data.meshes.remove(me)
+tmp = bmesh.new(); bmesh.ops.create_cube(tmp, size=1.0)
+bmesh.ops.scale(tmp, verts=tmp.verts[:], vec=(2.4, 0.25, 0.25))
+bmesh.ops.translate(tmp, verts=tmp.verts[:], vec=Vector((0, 0, 0.6)))
+me = bpy.data.meshes.new("a"); tmp.to_mesh(me); tmp.free(); bm.from_mesh(me); bpy.data.meshes.remove(me)
+_finish(bm, "Asset")
+"""
+    results = run_steps([
+        ("demo_scene", {"style": "plain"}),
+        ("destroy", {"target": "Asset", "pieces": 40, "frames": 20, "dust": "none", "seed": 3}),
+    ], blender=BLENDER, extra_code=extra)
+    for r in results:
+        assert r["ok"], r
+    d = results[1]
+    assert d["moved_ratio"] > 0.3, d
+    assert d["max_fall_m"] > 0.1, d
+    assert 0.98 <= d["volume_kept"] <= 1.02, d

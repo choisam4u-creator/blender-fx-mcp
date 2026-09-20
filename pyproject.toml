@@ -1,6 +1,6 @@
 [project]
 name = "blender-fx-mcp"
-version = "0.6.2"
+version = "0.6.3"
 description = "AI가 말로 시키면 블렌더 FX(파괴·폭발·물)를 만들어 주는 MCP 서버 / Blender FX (destruction, explosion, water) MCP server for AI clients"
 readme = "README.md"
 requires-python = ">=3.10"
