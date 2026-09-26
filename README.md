@@ -1,5 +1,23 @@
 # blender-fx-mcp
 
+> **말로 시키면 블렌더에서 건물을 부수고, 터뜨리고, 물을 쏴 주는 MCP 서버.** / Tell an AI "collapse it from the left" and Blender does it.
+
+![결과 GIF 자리 — docs/demo-script.md 대본으로 촬영 후 docs/media/demo.gif 로 교체](docs/media/demo.gif)
+
+**Claude에 연결 (3줄)** — 블렌더 5.2 + [blender-mcp](https://github.com/ahujasid/blender-mcp) 수신기 애드온 켜기 + `uv` 설치 후:
+
+```bash
+claude mcp add -s user blender-fx -- uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-mcp
+uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-doctor   # 준비물 점검
+# 블렌더에서 N 키 → BlenderMCP 탭 → Connect to MCP server
+```
+
+**첫 명령 예시** — AI에게 이렇게 말합니다:
+
+> 연습용 건물 하나 만들고, 왼쪽에서 충격 줘서 콘크리트처럼 무너뜨려. 끝나면 미리보기 보여 줘.
+
+---
+
 **[English]** An MCP server that lets an AI (Claude, Codex, Cursor, any MCP client) build Blender FX from plain language: building destruction, explosions with smoke and fire, water splashes, fire, particles, wind, ocean and cloth. You direct ("collapse it from the left, slower, more dust"), the AI picks a tool, Blender simulates, and preview frames come back. No Blender knowledge needed. Requires Blender 5.2, the [blender-mcp](https://github.com/ahujasid/blender-mcp) receiver add-on inside Blender, and `uv`. Set `BLENDER_FX_LANG=en` for English messages. See the Korean sections below for install and daily use; the commands are the same.
 
 ---
