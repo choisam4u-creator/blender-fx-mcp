@@ -2,7 +2,9 @@
 
 > **말로 시키면 블렌더에서 건물을 부수고, 터뜨리고, 물을 쏴 주는 MCP 서버.** / Tell an AI "collapse it from the left" and Blender does it.
 
+<!-- 결과 GIF 자리: docs/demo-script.md 대본으로 촬영해 docs/media/demo.gif 를 넣은 뒤 아래 줄의 주석을 푼다.
 ![결과 GIF 자리 — docs/demo-script.md 대본으로 촬영 후 docs/media/demo.gif 로 교체](docs/media/demo.gif)
+-->
 
 **Claude에 연결 (3줄)** — 블렌더 5.2 + [blender-mcp](https://github.com/ahujasid/blender-mcp) 수신기 애드온 켜기 + `uv` 설치 후:
 

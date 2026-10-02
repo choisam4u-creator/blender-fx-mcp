@@ -62,9 +62,9 @@ def send_command(cmd_type: str, params: dict | None = None, timeout: float | Non
             )) from e
         raise BlenderError(t(
             f"블렌더에 연결할 수 없습니다({host()}:{port()}). "
-            "블렌더를 켜고, 3D 화면에서 N 키 → BlenderMCP 탭 → 서버 시작(Connect)을 눌렀는지 확인하세요.",
+            "블렌더를 켜고, 3D 화면에서 N 키 → BlenderMCP 탭 → Connect to MCP server 를 눌렀는지 확인하세요.",
             f"Cannot connect to Blender ({host()}:{port()}). "
-            "Open Blender, press N in the 3D view, go to the BlenderMCP tab and start the server.",
+            "Open Blender, press N in the 3D view, go to the BlenderMCP tab and click Connect to MCP server.",
         )) from e
 
     if resp is None:

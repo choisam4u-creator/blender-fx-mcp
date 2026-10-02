@@ -4,7 +4,7 @@ README 맨 위 `docs/media/demo.gif` 를 만들기 위한 순서. 길이 목표 
 
 ## 준비
 
-1. 블렌더 5.2 새 장면(기본 큐브 삭제), `N` → BlenderMCP → Connect.
+1. 블렌더 5.2 새 장면(기본 큐브 삭제), `N` → BlenderMCP → Connect to MCP server.
 2. Claude 에 blender-fx 가 연결돼 있는지 `doctor` 로 확인.
 3. `reset_destroy` 로 이전 결과를 비운다.
 
