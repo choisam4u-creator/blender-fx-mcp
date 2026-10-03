@@ -17,5 +17,5 @@ jobs:
       - uses: astral-sh/setup-uv@v5
       - run: uv python install ${{ matrix.python }}
       - run: uv sync --group dev --python ${{ matrix.python }}
-      - run: uv run pytest -q tests/test_server.py
+      - run: uv run pytest -q tests/test_server.py tests/test_server_params.py
       - run: uv build
