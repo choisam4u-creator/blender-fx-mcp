@@ -1,5 +1,18 @@
 # 클라우드 회차 기록
 
+## 2026-10-04 (2회차)
+
+- 한 일: `latest.md`(10/1) FAIL 2건은 10/2 회차에 이미 고쳐 main 에 병합됨 → 백로그로 진행. main(PR #2 병합분)을 먼저 받아 옴. 백로그 4개 완료, 남은 항목이 2개라 새 항목 5개 추가.
+  1. **레시피 오류 한/영 쌍 정적 시험** `tests/test_recipe_messages.py` — 모든 `raise FxError` 가 `L(한국어, 영어)` 인지, `L()` 60곳이 (한글, 한글 없는 영어) 순서인지 AST 로 검사. 한국어만 나가던 힘장 오류 2곳(`explode.py`, `_common.py`) 고침.
+  2. **이슈 양식** — `feature_request.md`, `config.yml`(보안 비공개 신고·recipes 링크), 버그 양식에 수신기 버전·`BLENDER_FX_LANG` 칸. `blender-fx-doctor` 첫 줄에 blender-fx-mcp 판 번호 표시. `tests/test_repo_files.py`.
+  3. **`SECURITY.md`·`CODE_OF_CONDUCT.md`** — 9876 포트 무인증 수신기 위험, `BLENDER_FX_HOST` 를 localhost 로 둘 것, GitHub 비공개 신고 양식. 행동 강령은 Contributor Covenant 2.1 요약+링크. README 에 보안 절.
+  4. **bpy 4.5 LTS 로 유체 — 안 됨.** 4.5.14·4.2.23 휠도 `LevelsetGrid.setConst` 없음, 접착 세그폴트도 같음. 대신 공식 블렌더 Linux 빌드를 받아 `app_only` 를 돌리는 **손 실행** 워크플로 `.github/workflows/app-tests.yml`(PR 에서는 안 돎). 클라우드에서는 download.blender.org 가 프록시에 막혀(403) **미검증**. 덤: bpy 4.5.14 로 나머지 레시피 시험 133개 통과.
+- 돌린 시험: `uv run pytest -q` → 106 통과, 34 건너뜀(블렌더 없음). bpy 4.5.14 로 → 133 통과, 7 건너뜀(앱 전용 6 + 실제 캐릭터 파일 없음 1). `-m app_only` 를 bpy 4.5·4.2 로 강제 실행 → 유체·접착 실패(위 결함, 블렌더 앱 필요). 워크플로 두 개는 GitHub 워크플로 스키마 검증 통과.
+- Mac에서 확인할 것:
+  1. `uv run pytest -q && uv run blender-fx-doctor | head -1` (첫 줄 `blender-fx-mcp: 0.6.3`)
+  2. GitHub Actions → app-tests → Run workflow (기본값 5.2.0) 가 초록인지
+  3. 저장소 Settings → Security 에서 Private vulnerability reporting 켜기(SECURITY.md 링크가 이것을 씀)
+
 ## 2026-10-04
 
 - 한 일: `latest.md`(10/1) FAIL 2건은 10/2 회차에 이미 고쳐 main 에 병합됨(PR #1) → 백로그로 진행. 백로그 4개 모두 완료 후 새 항목 6개 추가.
