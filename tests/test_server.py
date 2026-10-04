@@ -3,7 +3,7 @@ import asyncio
 
 import pytest
 
-from blender_fx_mcp import bridge
+from blender_fx_mcp import __version__, bridge
 from blender_fx_mcp.bridge import BlenderError
 from blender_fx_mcp.server import build_code, mcp, parse_result
 
@@ -58,6 +58,7 @@ def test_doctor_runs_without_blender(monkeypatch):
     checks = run_checks()
     by_name = {c["name"]: c for c in checks}
     assert by_name["python"]["ok"] and by_name["mcp 라이브러리"]["ok"]
+    assert by_name["blender-fx-mcp"]["detail"] == __version__
     assert by_name["수신기 연결"]["ok"] is False
     assert "확인 필요" in format_report(checks)
 

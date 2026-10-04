@@ -111,7 +111,7 @@ def make_blast(center, radius, burst, strength):
             bpy.ops.object.forcefield_toggle()
     f = e.field
     if f is None:
-        raise FxError("힘장(force field)을 만들지 못했습니다.")
+        raise FxError(L("힘장(force field)을 만들지 못했습니다.", "Could not create the force field."))
     f.type = "FORCE"
     f.shape = "POINT"
     f.falloff_type = "SPHERE"

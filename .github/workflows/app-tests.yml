@@ -1,0 +1,40 @@
+# 블렌더 앱(공식 Linux 빌드)으로 `app_only` 시험(Mantaflow 유체 5개·리지드바디 접착 1개)을 돌린다.
+# pip 의 bpy 휠은 4.2·4.5·5.0 모두 Mantaflow 가 깨져 있어(`LevelsetGrid.setConst` 없음) 이 시험을 못 돌린다.
+# 굽기가 길고 내려받기가 커서 PR 마다 돌리지 않는다. Actions 탭 → app-tests → Run workflow 로 손으로 돌린다.
+name: app-tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      blender_version:
+        description: "블렌더 판 (예: 5.2.0)"
+        default: "5.2.0"
+      marker:
+        description: "pytest -m 식 (빈 칸이면 전체 레시피 시험)"
+        default: "app_only"
+
+jobs:
+  app-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      BV: ${{ inputs.blender_version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: sudo apt-get update && sudo apt-get install -y libxi6 libxxf86vm1 libxfixes3 libxrender1 libgl1 libsm6 libxkbcommon0 libegl1 libegl-mesa0 libgl1-mesa-dri
+      - name: 블렌더 내려받기
+        run: |
+          series="${BV%.*}"
+          url="https://download.blender.org/release/Blender${series}/blender-${BV}-linux-x64.tar.xz"
+          curl -fsSL --retry 3 -o blender.tar.xz "$url"
+          mkdir -p "$RUNNER_TEMP/blender"
+          tar -xJf blender.tar.xz -C "$RUNNER_TEMP/blender" --strip-components=1
+          "$RUNNER_TEMP/blender/blender" --version | head -1
+      - run: uv sync --group dev
+      - name: 레시피 시험
+        env:
+          BLENDER_FX_BLENDER: ${{ runner.temp }}/blender/blender
+          MARKER: ${{ inputs.marker }}
+        run: |
+          if [ -n "$MARKER" ]; then uv run pytest -q -m "$MARKER"; else uv run pytest -q; fi

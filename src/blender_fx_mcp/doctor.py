@@ -13,7 +13,7 @@ import subprocess
 import sys
 from importlib import metadata
 
-from . import bridge
+from . import __version__, bridge
 from .headless import find_blender
 from .i18n import t
 
@@ -33,6 +33,9 @@ def run_checks() -> list[dict]:
     out: list[dict] = []
     v = sys.version_info
     out.append(_check("python", v >= (3, 10), f"{v.major}.{v.minor}.{v.micro} ({platform.system()} {platform.machine()})"))
+
+    # 이슈에 붙인 결과만 보고 어느 판인지 알 수 있게 맨 위에 둔다
+    out.append(_check("blender-fx-mcp", True, __version__))
 
     name_mcp = t("mcp 라이브러리", "mcp library")
     try:

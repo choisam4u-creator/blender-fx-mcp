@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 보안 문제 신고 / Report a security issue
+    url: https://github.com/choisam4u-creator/blender-fx-mcp/security/advisories/new
+    about: 공개 이슈에 쓰지 말고 비공개로 알려 주세요 (SECURITY.md) / Please report privately, not in a public issue.
+  - name: 사용 예시와 결과 수치 / Recipes and expected results
+    url: https://github.com/choisam4u-creator/blender-fx-mcp/blob/main/docs/recipes.md
+    about: 질문하기 전에 자연어 명령 예시를 먼저 확인해 보세요 / Check the natural-language examples first.

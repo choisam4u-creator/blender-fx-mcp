@@ -1138,7 +1138,7 @@ def make_force_field(name, tag, field_type, location):
         with bpy.context.temp_override(scene=scene(), object=e, active_object=e, selected_objects=[e]):
             bpy.ops.object.forcefield_toggle()
     if e.field is None:
-        raise FxError(f"힘장({field_type})을 만들지 못했습니다.")
+        raise FxError(L(f"힘장({field_type})을 만들지 못했습니다.", f"Could not create the {field_type} force field."))
     e.field.type = field_type
     return e
 

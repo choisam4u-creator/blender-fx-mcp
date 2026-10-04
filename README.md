@@ -225,6 +225,11 @@ import_model(path="adventurer.glb", size=2.0, parts=["Adventurer", "Backpack"])
 ## 기여
 
 [CONTRIBUTING.md](CONTRIBUTING.md)를 보세요. 레시피 하나 = 파일 하나라, 새 효과는 `recipes/` 에 파일을 추가하고 `server.py` 에 도구 하나를 붙이면 됩니다.
+참여할 때는 [행동 강령](CODE_OF_CONDUCT.md)을 지켜 주세요.
+
+## 보안
+
+수신기는 인증 없이 `localhost:9876` 으로 받은 파이썬을 블렌더 안에서 실행합니다. 포트를 밖으로 열지 마세요. 위험과 비공개 신고 방법은 [SECURITY.md](SECURITY.md).
 
 ## 라이선스
 
