@@ -148,3 +148,20 @@ def test_alembic_export(tmp_path):
     for r in results:
         assert r["ok"], r
     assert os.path.exists(abc) and os.path.getsize(abc) > 5000, results[2]
+
+
+def test_import_resize_reports_scaled_volume(tmp_path):
+    """size 로 크기를 맞추면 결과의 부피도 바뀐 크기 기준이어야 한다(예전엔 원본 부피를 그대로 냈다)."""
+    glb = tmp_path / "b.glb"
+    results = run_steps([
+        ("demo_scene", {}),  # 4×4×9m, 144㎥
+        ("export_model", {"path": str(glb), "names": ["Building"]}),
+    ], blender=BLENDER)
+    assert all(r["ok"] for r in results), results
+    imp, insp = run_steps([
+        ("import_model", {"path": str(glb), "name": "Small", "size": 4.5}),  # 절반 → 부피 1/8
+        ("inspect_mesh", {"target": "Small"}),
+    ], blender=BLENDER)
+    assert imp["ok"] and insp["ok"], (imp, insp)
+    assert abs(imp["volume_m3"] - 18.0) < 0.1, imp["volume_m3"]
+    assert abs(imp["volume_m3"] - insp["volume_m3"]) < 0.1, (imp["volume_m3"], insp["volume_m3"])
