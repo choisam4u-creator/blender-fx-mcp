@@ -102,13 +102,13 @@ pre code{border:0;padding:0;background:none}
   <p><code>~/Library/Application Support/Claude/claude_desktop_config.json</code>의 <code>mcpServers</code> 안, 기존 <code>"blender"</code> 옆에 추가:</p>
 <pre><code>"blender-fx": {
   "command": "/opt/homebrew/bin/uv",
-  "args": ["--directory", "/Users/sam/Desktop/클로드/blender-fx-mcp", "run", "server.py"]
+  "args": ["--directory", "/path/to/blender-fx-mcp", "run", "blender-fx-mcp"]
 }</code></pre>
   <h3>코덱스</h3>
   <p><code>~/.codex/config.toml</code>에 추가:</p>
 <pre><code>[mcp_servers.blender_fx]
 command = "/opt/homebrew/bin/uv"
-args = ["--directory", "/Users/sam/Desktop/클로드/blender-fx-mcp", "run", "server.py"]</code></pre>
+args = ["--directory", "/path/to/blender-fx-mcp", "run", "blender-fx-mcp"]</code></pre>
   <p class="note">등록 후 앱이나 세션을 다시 시작해야 도구가 보입니다. 데스크톱 앱은 Cmd+Q로 완전히 껐다 켭니다.</p>
 </div>
 
