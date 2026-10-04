@@ -36,6 +36,7 @@ src/blender_fx_mcp/
      Linux 에서 렌더하려면 `libegl1 libegl-mesa0 libgl1-mesa-dri` 가 있어야 한다.
      bpy 모듈은 Mantaflow(연기·불·물)와 리지드바디 접착이 깨져 있어 `@pytest.mark.app_only` 시험은 건너뛴다.
      이런 기능을 쓰는 새 시험에는 `@pytest.mark.app_only` 를 붙인다.
+     bpy 4.2·4.5 LTS 휠도 같은 결함이 있다(2026-10 확인). 이 시험은 Actions 의 **app-tests** 작업(손으로 실행, 공식 블렌더 Linux 빌드)으로 돌린다.
 
 ## 규칙
 

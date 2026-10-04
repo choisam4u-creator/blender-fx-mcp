@@ -16,6 +16,6 @@
 - [x] 모든 레시피 오류(`FxError`, recipes 안 45곳)가 `L(한국어, 영어)` 쌍인지 정적으로 검사하는 단위 시험 + 빠진 곳 고치기 (시험·오류 메시지: `BLENDER_FX_LANG=en` 사용자에게 한국어만 나오면 안 됨) — `tests/test_recipe_messages.py`(AST 검사, L() 60곳의 한/영 순서도 확인), 한국어만 있던 힘장 오류 2곳 고침
 - [x] `.github/ISSUE_TEMPLATE` 에 기능 요청 양식·`config.yml` 추가, 버그 양식에 `blender-fx-doctor` 출력과 블렌더 버전 칸 (이슈 대응: 재현 정보 없이 들어오는 이슈 줄이기) — 기능 요청 양식·`config.yml`(보안 비공개 신고·recipes 링크), 버그 양식에 수신기 버전·언어 칸, doctor 첫 줄에 blender-fx-mcp 버전, `tests/test_repo_files.py`
 - [x] `SECURITY.md`(로컬 9876 포트로 파이썬을 보내는 구조의 위험과 신고 경로)·`CODE_OF_CONDUCT.md` (라이선스·커뮤니티 표준: GitHub 커뮤니티 프로필 항목) — 한/영, 지원 판·9876 무인증 위험·비공개 신고 양식, CoC 는 Contributor Covenant 2.1 요약+링크, README 에 보안 절, 시험 3개
-- [ ] bpy 4.5 LTS 휠로 Mantaflow 가 도는지 확인, 되면 CI 에 유체 시험 추가 (시험: 지금 bpy 5.0.1 에서는 유체 5개를 못 돌림)
+- [x] bpy 4.5 LTS 휠로 Mantaflow 가 도는지 확인, 되면 CI 에 유체 시험 추가 (시험: 지금 bpy 5.0.1 에서는 유체 5개를 못 돌림) — **안 됨.** bpy 4.5.14·4.2.23 LTS 휠도 `LevelsetGrid.setConst` 없음(유체), 접착은 4.5 에서도 세그폴트. 대신 공식 블렌더 Linux 빌드로 `app_only` 를 돌리는 손 실행 작업 `.github/workflows/app-tests.yml` 추가(클라우드에서는 download.blender.org 가 막혀 미검증). 덤: bpy 4.5.14 로 나머지 레시피 시험 133개 모두 통과
 - [ ] 접착(glue) 세그폴트를 bpy 로 짧게 재현해 원인 좁히기, 레시피 쪽에서 피할 수 있으면 고치기 (유지보수: 블렌더 앱에서도 같은 위험이 있는지 판단 근거)
 - [ ] README 영어 절을 설치·첫 명령·도구 목록까지 늘리기 (문서: 해외 심사자·사용자가 한국어 없이 시작할 수 있게)
