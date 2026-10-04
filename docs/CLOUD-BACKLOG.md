@@ -7,5 +7,5 @@
 - [x] 블렌더 없이 도는 단위 시험 늘리기(인자 검증, 명령→파라미터 변환, 오류 메시지) + CI 연결
 - [x] pip install bpy 헤드리스 통합 시험 가능 여부 확인, 되면 CI에 일부 추가 — 됨(bpy 5.0.1·Py3.11+libEGL). 유체 5개·접착 1개는 `app_only` 표시로 건너뜀
 - [x] server.json.example을 공식 MCP 레지스트리 형식에 맞게 점검, 절차는 docs/registry.md — 2025-12-11 스키마·camelCase·0.6.3, tests/test_registry.py
-- [ ] docs/recipes.md: 자연어 명령 5개와 예상 결과
+- [x] docs/recipes.md: 자연어 명령 5개와 예상 결과 — 1~3번은 bpy 실측값, 4·5번(유체)은 확인할 칸
 - [ ] CHANGELOG와 버전 0.7.0 준비

@@ -20,6 +20,8 @@ uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-do
 
 > 연습용 건물 하나 만들고, 왼쪽에서 충격 줘서 콘크리트처럼 무너뜨려. 끝나면 미리보기 보여 줘.
 
+더 많은 예시(유리 슬로모션·모델 가져와 부수기·폭발·물 쏘기)와 실제 결과 수치는 [docs/recipes.md](docs/recipes.md).
+
 ---
 
 **[English]** An MCP server that lets an AI (Claude, Codex, Cursor, any MCP client) build Blender FX from plain language: building destruction, explosions with smoke and fire, water splashes, fire, particles, wind, ocean and cloth. You direct ("collapse it from the left, slower, more dust"), the AI picks a tool, Blender simulates, and preview frames come back. No Blender knowledge needed. Requires Blender 5.2, the [blender-mcp](https://github.com/ahujasid/blender-mcp) receiver add-on inside Blender, and `uv`. Set `BLENDER_FX_LANG=en` for English messages. See the Korean sections below for install and daily use; the commands are the same.
