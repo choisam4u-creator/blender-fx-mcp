@@ -94,11 +94,13 @@ def test_many_pieces_do_not_overlap():
     assert d["open_chunks"] == 0, d
 
 
-# 실제로 내려받은 게임 캐릭터(CC0). 이 컴퓨터에만 있어 없으면 건너뛴다.
-REAL_CHARACTER = "/Users/sam/Desktop/Gpt_Codex/bonewright/tests/assets/quaternius_adventurer.glb"
+# 실제로 내려받은 게임 캐릭터(CC0, Quaternius Adventurer). 저장소에 넣지 않으므로
+# BLENDER_FX_REAL_CHARACTER 환경변수로 파일 경로를 알려 준다. 없으면 건너뛴다.
+REAL_CHARACTER = os.environ.get("BLENDER_FX_REAL_CHARACTER", "")
 
 
-@pytest.mark.skipif(not os.path.exists(REAL_CHARACTER), reason="실제 캐릭터 파일이 없어 건너뜀")
+@pytest.mark.skipif(not REAL_CHARACTER or not os.path.exists(REAL_CHARACTER),
+                    reason="실제 캐릭터 파일이 없어 건너뜀(BLENDER_FX_REAL_CHARACTER 로 경로 지정)")
 def test_real_skinned_character():
     """뼈대에 묶인 진짜 게임 캐릭터가 부피를 지키며 부서져야 한다.
 

@@ -3,6 +3,7 @@
 사용:
   uv run blender-fx-headless demo destroy render
   BLENDER_FX_BLENDER=/path/to/blender uv run blender-fx-headless destroy
+  BLENDER_FX_BLENDER=/path/to/venv/bin/python uv run blender-fx-headless destroy   # pip install bpy 한 파이썬
 """
 
 from __future__ import annotations
@@ -70,6 +71,25 @@ def find_blender() -> str | None:
     return None
 
 
+def is_bpy_python(exe: str) -> bool:
+    """블렌더 앱이 아니라 `pip install bpy` 한 파이썬 인터프리터인지. 이름으로만 판단한다."""
+    return Path(exe).name.lower().startswith("python")
+
+
+def _exit_reason(code: int) -> str:
+    """종료 코드를 사람이 읽을 말로. 음수는 시그널로 죽은 것(-11 이면 세그폴트)."""
+    if code is None or code >= 0:
+        return str(code)
+    names = {-11: "세그폴트(SIGSEGV)", -6: "중단(SIGABRT)", -9: "강제 종료(SIGKILL, 메모리 부족일 수 있음)"}
+    return f"{code} {names.get(code, '시그널')}"
+
+
+def blender_command(exe: str, script: str) -> list[str]:
+    if is_bpy_python(exe):
+        return [exe, script]
+    return [exe, "--background", "--factory-startup", "--python", script]
+
+
 # 기본 장면의 큐브·카메라·조명을 지워 빈 장면에서 시작한다
 CLEAN_SCENE = "import bpy\nfor _o in list(bpy.data.objects):\n    bpy.data.objects.remove(_o, do_unlink=True)\n"
 
@@ -88,7 +108,7 @@ def run_steps(steps: list[tuple[str, dict]], blender: str | None = None, timeout
         script = f.name
     try:
         proc = subprocess.run(
-            [blender, "--background", "--factory-startup", "--python", script],
+            blender_command(blender, script),
             capture_output=True, text=True, timeout=timeout,
         )
     finally:
@@ -96,7 +116,8 @@ def run_steps(steps: list[tuple[str, dict]], blender: str | None = None, timeout
     results = parse_results(proc.stdout)
     if len(results) != len(steps):
         raise RuntimeError(
-            f"결과 {len(results)}개 (기대 {len(steps)}개). 블렌더 출력 끝부분:\n"
+            f"결과 {len(results)}개 (기대 {len(steps)}개, {len(results) + 1}번째 단계 "
+            f"'{steps[len(results)][0]}' 에서 멈춤), 종료 코드 {_exit_reason(proc.returncode)}. 블렌더 출력 끝부분:\n"
             + proc.stdout[-1500:] + "\n" + proc.stderr[-1500:]
         )
     return results

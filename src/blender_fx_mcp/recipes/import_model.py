@@ -154,6 +154,8 @@ def main():
         view_layer_update()
         lo, hi = world_bbox(obj)
         dims = hi - lo
+        # 부피는 크기를 맞추기 전에 쟀으므로 같은 비율의 세제곱으로 고친다
+        health["volume_m3"] = round(health["volume_m3"] * f ** 3, 4)
     if p.get("center", True):
         obj.location.x -= (lo.x + hi.x) / 2
         obj.location.y -= (lo.y + hi.y) / 2

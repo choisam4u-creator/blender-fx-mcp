@@ -42,6 +42,7 @@ def test_scene_tools(tmp_path):
     assert any(o["name"] == "Imported" for o in listing["objects"])
 
 
+@pytest.mark.app_only
 def test_fire_wind_timing(tmp_path):
     results = run_steps([
         ("demo_scene", {}),

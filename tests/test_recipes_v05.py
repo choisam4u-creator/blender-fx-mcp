@@ -35,6 +35,7 @@ def test_snapshot_and_restore(tmp_path):
     assert restored["meshes"] >= 2 and restored["camera"]
 
 
+@pytest.mark.app_only
 def test_glue_holds_the_building(tmp_path):
     """같은 약한 충격에서 접착이 있으면 덜 무너져야 한다."""
     common = dict(target="Building", pieces=60, frames=48, dust="none", impact_power=0.06, seed=3)
@@ -101,6 +102,7 @@ def test_sky_procedural_and_hdri_error(tmp_path):
     assert results[5]["ok"] is False and "HDRI" in results[5]["error"]
 
 
+@pytest.mark.app_only
 def test_smoke_collides_with_chunks(tmp_path):
     results = run_steps([
         ("demo_scene", {}),

@@ -1,5 +1,19 @@
 # 클라우드 회차 기록
 
+## 2026-10-04
+
+- 한 일: `latest.md`(10/1) FAIL 2건은 10/2 회차에 이미 고쳐 main 에 병합됨(PR #1) → 백로그로 진행. 백로그 4개 모두 완료 후 새 항목 6개 추가.
+  1. **`pip install bpy` 헤드리스 시험 가능 — 됨.** bpy 5.0.1(Python 3.11) + libEGL(소프트웨어 Mesa)로 레시피 시험 64개 통과. `headless.py` 가 bpy 를 설치한 파이썬도 실행기로 받음. bpy 모듈에서 깨지는 6개(Mantaflow 유체 5개 `LevelsetGrid.setConst` 없음, 리지드바디 접착 1개 세그폴트)는 `@pytest.mark.app_only` 로 표시해 bpy 일 때만 건너뜀. CI 에 `recipe-tests-bpy` 작업 추가. `run_steps` 실패 메시지에 멈춘 단계·종료 이유 표시.
+  2. **`server.json.example` 레지스트리 점검.** 2025-12-11 스키마로 검증 — 옛 snake_case 키는 `registryType` 누락으로 거부됨 → camelCase 로, 버전 0.6.0 → 0.6.3, README 에 `mcp-name` 줄. `docs/registry.md`(절차), `tests/test_registry.py` 6개.
+  3. **`docs/recipes.md`**: 자연어 명령 5개. 1~3번은 bpy 실측값, 4·5번(유체)은 확인할 칸.
+  4. **CHANGELOG 0.7.0(미출시) 절과 출시 순서.** 버전 번호는 출시 때 올림.
+  - 덤: bpy 로 돌리다 찾은 버그 수정 — `import_model(size=…)` 의 `volume_m3` 가 크기 바꾸기 전 값(144㎥, 실제 18㎥). 회귀 시험 추가. 저장소의 개인 경로 2곳 제거(실제 캐릭터 시험은 이제 `BLENDER_FX_REAL_CHARACTER` 환경변수 필요).
+- 돌린 시험: `uv run pytest -q` → 37 통과, 34 건너뜀(블렌더 없음). bpy 로 `BLENDER_FX_BLENDER=<bpy 파이썬> uv run pytest -q` → **64 통과, 7 건너뜀**(앱 전용 6 + 실제 캐릭터 파일 없음 1). `uv build` 성공. 못 돌린 것: 유체 5개·접착 1개(bpy 모듈 결함, 블렌더 앱 필요), 실제 캐릭터 1개(파일 없음).
+- Mac에서 확인할 것:
+  1. `BLENDER_FX_REAL_CHARACTER=<캐릭터 glb 경로> uv run pytest -q` (71개 모두 통과하는지)
+  2. `uv run pytest -q -m app_only` (앱에서 유체·접착 6개 통과하는지)
+  3. GitHub Actions 의 `recipe-tests-bpy` 작업이 초록인지
+
 ## 2026-10-03
 
 - 한 일: `latest.md`(10/1)의 FAIL 2건은 지난 회차(6587f84)에서 이미 고쳤고 그 뒤 새 Mac 결과가 없어 백로그로 진행. 백로그 3번 "블렌더 없이 도는 단위 시험 + CI" 완료 — `tests/test_server_params.py` 19개 추가(run_recipe 의 None 제거·언어 주입·오류+traceback 메시지, destroy/explode/set_render/inspect_mesh 의 기본값→파라미터 변환, snapshot 이름 정리, restore 실패 흐름, 가짜 소켓 수신기로 bridge 의 분할 응답·error 상태·빈 응답 처리). CI(`ci.yml`)에 이 파일을 추가.

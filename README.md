@@ -1,5 +1,7 @@
 # blender-fx-mcp
 
+<!-- mcp-name: io.github.choisam4u-creator/blender-fx-mcp -->
+
 > **말로 시키면 블렌더에서 건물을 부수고, 터뜨리고, 물을 쏴 주는 MCP 서버.** / Tell an AI "collapse it from the left" and Blender does it.
 
 <!-- 결과 GIF 자리: docs/demo-script.md 대본으로 촬영해 docs/media/demo.gif 를 넣은 뒤 아래 줄의 주석을 푼다.
@@ -17,6 +19,8 @@ uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-do
 **첫 명령 예시** — AI에게 이렇게 말합니다:
 
 > 연습용 건물 하나 만들고, 왼쪽에서 충격 줘서 콘크리트처럼 무너뜨려. 끝나면 미리보기 보여 줘.
+
+더 많은 예시(유리 슬로모션·모델 가져와 부수기·폭발·물 쏘기)와 실제 결과 수치는 [docs/recipes.md](docs/recipes.md).
 
 ---
 
