@@ -76,7 +76,7 @@ def test_broken_mesh_is_repaired(tmp_path):
     assert dest["source_volume_m3"] > 0.1, dest  # 두께를 줘서 부피가 생겼다
 
 
-@pytest.mark.fluid
+@pytest.mark.app_only
 def test_water_direction_and_viscosity(tmp_path):
     """옆으로 쏜 물은 옆으로 가야 하고, 꿀은 물보다 덜 퍼져야 한다."""
     base = dict(mode="stream", at=[-6.0, 0.0, 5.0], size=0.5, direction_deg=90, pitch_deg=-10,

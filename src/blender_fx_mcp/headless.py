@@ -76,6 +76,14 @@ def is_bpy_python(exe: str) -> bool:
     return Path(exe).name.lower().startswith("python")
 
 
+def _exit_reason(code: int) -> str:
+    """종료 코드를 사람이 읽을 말로. 음수는 시그널로 죽은 것(-11 이면 세그폴트)."""
+    if code is None or code >= 0:
+        return str(code)
+    names = {-11: "세그폴트(SIGSEGV)", -6: "중단(SIGABRT)", -9: "강제 종료(SIGKILL, 메모리 부족일 수 있음)"}
+    return f"{code} {names.get(code, '시그널')}"
+
+
 def blender_command(exe: str, script: str) -> list[str]:
     if is_bpy_python(exe):
         return [exe, script]
@@ -108,7 +116,8 @@ def run_steps(steps: list[tuple[str, dict]], blender: str | None = None, timeout
     results = parse_results(proc.stdout)
     if len(results) != len(steps):
         raise RuntimeError(
-            f"결과 {len(results)}개 (기대 {len(steps)}개). 블렌더 출력 끝부분:\n"
+            f"결과 {len(results)}개 (기대 {len(steps)}개, {len(results) + 1}번째 단계 "
+            f"'{steps[len(results)][0]}' 에서 멈춤), 종료 코드 {_exit_reason(proc.returncode)}. 블렌더 출력 끝부분:\n"
             + proc.stdout[-1500:] + "\n" + proc.stderr[-1500:]
         )
     return results

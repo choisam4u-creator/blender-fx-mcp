@@ -33,8 +33,9 @@ src/blender_fx_mcp/
 5. `uv run pytest -q` 통과 후 PR.
    - 블렌더 앱이 없으면 `pip install bpy` 한 파이썬 3.11 로도 레시피 시험 대부분이 돈다:
      `uv pip install bpy==5.0.1` 뒤 `BLENDER_FX_BLENDER=.venv/bin/python uv run pytest -q`.
-     bpy 모듈은 Mantaflow 가 깨져 있어 연기·불·물·먼지를 쓰는 시험(`@pytest.mark.fluid`)은 건너뛴다.
-     유체를 쓰는 새 시험에는 `@pytest.mark.fluid` 를 붙인다.
+     Linux 에서 렌더하려면 `libegl1 libegl-mesa0 libgl1-mesa-dri` 가 있어야 한다.
+     bpy 모듈은 Mantaflow(연기·불·물)와 리지드바디 접착이 깨져 있어 `@pytest.mark.app_only` 시험은 건너뛴다.
+     이런 기능을 쓰는 새 시험에는 `@pytest.mark.app_only` 를 붙인다.
 
 ## 규칙
 

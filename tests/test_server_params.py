@@ -201,3 +201,26 @@ def test_blender_command_app_vs_bpy_python():
     assert blender_command("/usr/bin/blender", "s.py") == [
         "/usr/bin/blender", "--background", "--factory-startup", "--python", "s.py"]
     assert blender_command("/opt/venv/bin/python", "s.py") == ["/opt/venv/bin/python", "s.py"]
+
+
+def test_exit_reason_names_signals():
+    from blender_fx_mcp.headless import _exit_reason
+
+    assert _exit_reason(0) == "0"
+    assert "세그폴트" in _exit_reason(-11)
+    assert "SIGABRT" in _exit_reason(-6)
+    assert "시그널" in _exit_reason(-15)
+
+
+def test_run_steps_error_names_stuck_step(monkeypatch, tmp_path):
+    """블렌더가 중간에 죽으면 어느 단계에서 멈췄는지와 종료 이유를 알려 준다."""
+    import subprocess
+
+    from blender_fx_mcp import headless
+
+    fake = subprocess.CompletedProcess([], -11, stdout='FX_RESULT {"ok": true}\n', stderr="")
+    monkeypatch.setattr(headless.subprocess, "run", lambda *a, **k: fake)
+    with pytest.raises(RuntimeError) as e:
+        headless.run_steps([("demo_scene", {}), ("destroy", {"target": "Building"})], blender="/usr/bin/blender")
+    msg = str(e.value)
+    assert "2번째 단계 'destroy'" in msg and "세그폴트" in msg

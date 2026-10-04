@@ -36,4 +36,4 @@ packages = ["src/blender_fx_mcp"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-markers = ["fluid: Mantaflow(연기·불·물·먼지)를 쓰는 시험. bpy 모듈로는 건너뛴다"]
+markers = ["app_only: 블렌더 앱에서만 도는 시험(Mantaflow 유체·리지드바디 접착). bpy 모듈로는 건너뛴다"]

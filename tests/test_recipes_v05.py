@@ -35,7 +35,7 @@ def test_snapshot_and_restore(tmp_path):
     assert restored["meshes"] >= 2 and restored["camera"]
 
 
-@pytest.mark.fluid
+@pytest.mark.app_only
 def test_glue_holds_the_building(tmp_path):
     """같은 약한 충격에서 접착이 있으면 덜 무너져야 한다."""
     common = dict(target="Building", pieces=60, frames=48, dust="none", impact_power=0.06, seed=3)
@@ -53,7 +53,6 @@ def test_glue_holds_the_building(tmp_path):
     assert glued["max_fall_m"] < loose["max_fall_m"], (loose["max_fall_m"], glued["max_fall_m"])
 
 
-@pytest.mark.fluid
 def test_windows_building_and_ground(tmp_path):
     plain = run_steps([
         ("demo_scene", {"style": "plain"}),
@@ -71,7 +70,6 @@ def test_windows_building_and_ground(tmp_path):
     assert _differ(plain[1]["paths"][0], fancy[1]["paths"][0])
 
 
-@pytest.mark.fluid
 def test_ground_materials_differ(tmp_path):
     results = run_steps([
         ("demo_scene", {}),
@@ -87,7 +85,6 @@ def test_ground_materials_differ(tmp_path):
     assert _differ(results[2]["paths"][0], results[4]["paths"][0])
 
 
-@pytest.mark.fluid
 def test_sky_procedural_and_hdri_error(tmp_path):
     results = run_steps([
         ("demo_scene", {}),
@@ -105,7 +102,7 @@ def test_sky_procedural_and_hdri_error(tmp_path):
     assert results[5]["ok"] is False and "HDRI" in results[5]["error"]
 
 
-@pytest.mark.fluid
+@pytest.mark.app_only
 def test_smoke_collides_with_chunks(tmp_path):
     results = run_steps([
         ("demo_scene", {}),
