@@ -32,3 +32,22 @@ def test_issue_config_links():
     for u in urls:
         if "/blob/main/" in u:
             assert (ROOT / u.split("/blob/main/", 1)[1]).is_file(), u
+
+
+def test_security_policy_has_private_reporting_and_port_warning():
+    text = (ROOT / "SECURITY.md").read_text(encoding="utf-8")
+    assert "/security/advisories/new" in text
+    assert "9876" in text and "BLENDER_FX_HOST" in text
+
+
+def test_security_port_matches_bridge_default(monkeypatch):
+    from blender_fx_mcp import bridge
+    monkeypatch.delenv("BLENDER_FX_PORT", raising=False)
+    monkeypatch.delenv("BLENDER_FX_HOST", raising=False)
+    text = (ROOT / "SECURITY.md").read_text(encoding="utf-8")
+    assert f"{bridge.host()}:{bridge.port()}" in text
+
+
+def test_code_of_conduct_present():
+    text = (ROOT / "CODE_OF_CONDUCT.md").read_text(encoding="utf-8")
+    assert "Contributor Covenant" in text and "2.1" in text
