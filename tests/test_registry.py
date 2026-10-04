@@ -59,3 +59,9 @@ def test_env_vars_are_used_by_code():
     for pkg in SERVER["packages"]:
         for env in pkg.get("environmentVariables", []):
             assert env["name"] in src, env["name"]
+
+
+def test_package_version_matches_pyproject():
+    from blender_fx_mcp import __version__
+
+    assert __version__ == _project_version()

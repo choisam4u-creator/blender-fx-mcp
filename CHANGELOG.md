@@ -1,5 +1,40 @@
 # 변경 이력
 
+## 0.7.0 — 미출시 (준비 중)
+
+출시 전까지 `pyproject.toml`·`src/blender_fx_mcp/__init__.py`·`server.json.example` 의 버전은 0.6.3 으로 둔다.
+아래 "출시 순서"에서 한꺼번에 올린다(`tests/test_registry.py` 가 셋이 어긋나면 실패한다).
+
+**고침**
+- `import_model` 에 `size` 를 주면 결과의 `volume_m3` 가 크기를 바꾸기 **전** 부피로 나오던 문제.
+  4.5m 로 줄인 건물이 144㎥(실제 18㎥)로 보고됐다
+
+**시험·CI**
+- 블렌더 없이 도는 서버 단위 시험 추가(파라미터 변환·오류 메시지·가짜 소켓 수신기·레지스트리 형식). 9 → 37개
+- `pip install bpy`(5.0.1, Python 3.11)로 **레시피 시험 대부분을 블렌더 앱 없이** 돌린다.
+  `BLENDER_FX_BLENDER` 에 bpy 를 설치한 파이썬 경로를 주면 된다. CI 에 이 작업을 추가(Linux, 소프트웨어 EGL 렌더)
+- bpy 모듈에서 깨지는 기능(Mantaflow 유체, 리지드바디 접착)을 쓰는 시험은 `@pytest.mark.app_only` 로 표시해
+  bpy 로 돌릴 때만 건너뛴다. 블렌더 앱에서는 전부 돈다
+- `run_steps` 실패 메시지에 **몇 번째 단계에서 멈췄는지**와 종료 이유(세그폴트·중단 등)를 넣었다
+- 시험 42 → 71개
+
+**문서**
+- README 첫 화면: 한 줄 소개, Claude 연결 3줄, 첫 명령 예시, 데모 GIF 자리
+- `docs/recipes.md`: 자연어 명령 5개와 실제 결과 수치
+- `docs/demo-script.md`: 데모 GIF 촬영 대본
+- `docs/registry.md`: 공식 MCP 레지스트리 등록 절차
+- 버튼 이름을 "Connect to MCP server" 로 통일
+
+**배포 준비**
+- `server.json.example` 을 MCP 레지스트리 2025-12-11 스키마(camelCase 키)에 맞춤
+- README 에 PyPI 소유 확인용 `mcp-name` 줄 추가
+
+**출시 순서 (샘님 Mac)**
+1. Mac 에서 `uv run pytest -q` 전부 통과(블렌더 앱으로 71개)
+2. 데모 GIF 를 찍어 `docs/media/demo.gif` 로 넣고 README 주석을 푼다(선택)
+3. 버전 세 곳을 0.7.0 으로, 이 절의 제목을 날짜로 바꾼다
+4. 태그·PyPI·레지스트리 등록은 `docs/registry.md` 순서대로
+
 ## 0.6.3 — 2026-09-21
 
 **진짜 파일로 끝까지 확인**
