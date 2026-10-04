@@ -189,3 +189,15 @@ def test_bridge_empty_response(receiver):
 def test_bridge_ping_false_without_pong(receiver):
     receiver(json.dumps({"status": "success", "result": {}}).encode())
     assert bridge.ping() is False
+
+
+# ---- headless: 블렌더 앱과 bpy 파이썬 구분 ----
+
+def test_blender_command_app_vs_bpy_python():
+    from blender_fx_mcp.headless import blender_command, is_bpy_python
+
+    assert not is_bpy_python("/Applications/Blender.app/Contents/MacOS/Blender")
+    assert is_bpy_python("/opt/venv/bin/python3.11")
+    assert blender_command("/usr/bin/blender", "s.py") == [
+        "/usr/bin/blender", "--background", "--factory-startup", "--python", "s.py"]
+    assert blender_command("/opt/venv/bin/python", "s.py") == ["/opt/venv/bin/python", "s.py"]

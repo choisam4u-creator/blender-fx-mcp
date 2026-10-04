@@ -9,6 +9,7 @@ BLENDER = find_blender()
 pytestmark = pytest.mark.skipif(BLENDER is None, reason="블렌더 실행 파일이 없어 건너뜀")
 
 
+@pytest.mark.fluid
 def test_demo_destroy_render(tmp_path):
     results = run_steps([
         ("demo_scene", {"floors": 3}),
@@ -31,6 +32,7 @@ def test_demo_destroy_render(tmp_path):
     assert listing["chunk_count"] == destroy["pieces"]
 
 
+@pytest.mark.fluid
 def test_explode_building(tmp_path):
     cache = tmp_path / "cache_fluid"
     results = run_steps([
@@ -53,6 +55,7 @@ def test_explode_building(tmp_path):
     assert open(paths[0], "rb").read() != open(paths[1], "rb").read()
 
 
+@pytest.mark.fluid
 def test_water_drop_on_building(tmp_path):
     cache = tmp_path / "cache_liquid"
     results = run_steps([
@@ -71,6 +74,7 @@ def test_water_drop_on_building(tmp_path):
     assert open(paths[0], "rb").read() != open(paths[1], "rb").read()
 
 
+@pytest.mark.fluid
 def test_video_and_save(tmp_path):
     results = run_steps([
         ("demo_scene", {}),

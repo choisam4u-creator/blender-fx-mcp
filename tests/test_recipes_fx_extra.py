@@ -13,6 +13,7 @@ def _differ(a, b):
     return open(a, "rb").read() != open(b, "rb").read()
 
 
+@pytest.mark.fluid
 def test_scene_tools(tmp_path):
     glb = tmp_path / "model.glb"
     cache = tmp_path / "cache"
@@ -42,6 +43,7 @@ def test_scene_tools(tmp_path):
     assert any(o["name"] == "Imported" for o in listing["objects"])
 
 
+@pytest.mark.fluid
 def test_fire_wind_timing(tmp_path):
     results = run_steps([
         ("demo_scene", {}),
@@ -60,6 +62,7 @@ def test_fire_wind_timing(tmp_path):
     assert _differ(*render["paths"])
 
 
+@pytest.mark.fluid
 def test_particles_ocean_flag(tmp_path):
     results = run_steps([
         ("ocean", {"size": 30, "frames": 24}),

@@ -3,6 +3,7 @@
 사용:
   uv run blender-fx-headless demo destroy render
   BLENDER_FX_BLENDER=/path/to/blender uv run blender-fx-headless destroy
+  BLENDER_FX_BLENDER=/path/to/venv/bin/python uv run blender-fx-headless destroy   # pip install bpy 한 파이썬
 """
 
 from __future__ import annotations
@@ -70,6 +71,17 @@ def find_blender() -> str | None:
     return None
 
 
+def is_bpy_python(exe: str) -> bool:
+    """블렌더 앱이 아니라 `pip install bpy` 한 파이썬 인터프리터인지. 이름으로만 판단한다."""
+    return Path(exe).name.lower().startswith("python")
+
+
+def blender_command(exe: str, script: str) -> list[str]:
+    if is_bpy_python(exe):
+        return [exe, script]
+    return [exe, "--background", "--factory-startup", "--python", script]
+
+
 # 기본 장면의 큐브·카메라·조명을 지워 빈 장면에서 시작한다
 CLEAN_SCENE = "import bpy\nfor _o in list(bpy.data.objects):\n    bpy.data.objects.remove(_o, do_unlink=True)\n"
 
@@ -88,7 +100,7 @@ def run_steps(steps: list[tuple[str, dict]], blender: str | None = None, timeout
         script = f.name
     try:
         proc = subprocess.run(
-            [blender, "--background", "--factory-startup", "--python", script],
+            blender_command(blender, script),
             capture_output=True, text=True, timeout=timeout,
         )
     finally:

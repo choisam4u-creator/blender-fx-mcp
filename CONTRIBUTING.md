@@ -31,6 +31,10 @@ src/blender_fx_mcp/
 3. `server.py` 에 `@mcp.tool()` 함수를 하나 붙인다. 인자 설명(docstring)이 곧 AI가 보는 설명서다.
 4. `headless.py` 의 `STEPS` 에 단계를 추가하고, `tests/test_recipes_headless.py` 에 테스트를 넣는다. 결과 이미지가 실제로 달라지는지(픽셀) 확인하는 assert 를 포함한다.
 5. `uv run pytest -q` 통과 후 PR.
+   - 블렌더 앱이 없으면 `pip install bpy` 한 파이썬 3.11 로도 레시피 시험 대부분이 돈다:
+     `uv pip install bpy==5.0.1` 뒤 `BLENDER_FX_BLENDER=.venv/bin/python uv run pytest -q`.
+     bpy 모듈은 Mantaflow 가 깨져 있어 연기·불·물·먼지를 쓰는 시험(`@pytest.mark.fluid`)은 건너뛴다.
+     유체를 쓰는 새 시험에는 `@pytest.mark.fluid` 를 붙인다.
 
 ## 규칙
 
