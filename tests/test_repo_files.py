@@ -84,3 +84,13 @@ def test_readme_english_section_is_self_contained():
     for needed in ("blender-fx-doctor", "claude mcp add", "BLENDER_FX_LANG=en", "Connect to MCP server", "SECURITY.md"):
         assert needed in section, needed
     assert "(#english)" in (ROOT / "README.md").read_text(encoding="utf-8")
+
+
+def test_dependabot_watches_uv_and_actions():
+    """의존성(uv.lock)과 워크플로 액션 판이 주 1회 갱신 PR 로 들어와야 한다."""
+    text = (ROOT / ".github" / "dependabot.yml").read_text(encoding="utf-8")
+    assert re.search(r"^version: 2$", text, re.M)
+    ecosystems = re.findall(r'package-ecosystem: "([^"]+)"', text)
+    assert set(ecosystems) == {"uv", "github-actions"}
+    assert text.count('interval: "weekly"') == len(ecosystems)
+    assert (ROOT / "uv.lock").is_file()

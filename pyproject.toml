@@ -49,3 +49,13 @@ packages = ["src/blender_fx_mcp"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = ["app_only: 블렌더 앱에서만 도는 시험(Mantaflow 유체). bpy 모듈로는 건너뛴다"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+
+[tool.ruff.lint.per-file-ignores]
+# 레시피는 서버가 `PARAMS = {...}` 와 _common.py 를 앞에 붙여 블렌더로 보낸다. 그 이름들은 파일 안에 정의가 없다.
+"src/blender_fx_mcp/recipes/*.py" = ["F821"]
+# _common.py 의 import 는 뒤에 붙는 레시피 파일들이 쓴다.
+"src/blender_fx_mcp/recipes/_common.py" = ["F401"]

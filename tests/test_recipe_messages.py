@@ -2,7 +2,6 @@
 # 모든 `raise FxError(...)` 는 `L(한국어, 영어)` 한 쌍을 넘겨야 BLENDER_FX_LANG=en 사용자에게 영어가 나간다.
 import ast
 import re
-from pathlib import Path
 
 import pytest
 

@@ -24,6 +24,14 @@
 
 - [x] `server.py` 의 사용자 메시지 `t(한국어, 영어)` 쌍 정적 검사 + 모든 MCP 도구 설명(docstring) 첫 줄이 영어인지 검사, 빠진 곳 고치기 (시험·오류 메시지: 레시피 쪽은 검사했지만 서버가 만드는 문장은 아직 검사 없음. 해외 클라이언트의 AI는 도구 설명 첫 줄로 도구를 고른다) — `tests/test_server_messages.py`(server·bridge·doctor 의 `t()` 70곳 한/영 순서, `a if c else b` 두 갈래까지, t() 밖 한글 문자열 누출, 도구 32개 설명 첫 줄 영어). 도구 설명은 이미 모두 영어였음. 고친 것: 서버 안내문(instructions)이 한국어뿐이던 것을 한/영 두 판으로 나눠 `BLENDER_FX_LANG` 로 고름. CI 에 추가
 - [x] `pyproject.toml` 에 `[project.urls]`(Homepage·Issues·Changelog·Security)와 Python 판 분류자(3.10~3.13) 추가, 시험으로 고정 (문서·라이선스: PyPI·레지스트리 페이지에서 이슈·보안 경로가 바로 보여야 함) — Homepage·Documentation·Issues·Changelog·Security, 3.10~3.13 와 `3 :: Only` 분류자. `uv build` 로 휠 METADATA 에 들어간 것 확인. 시험: 주소가 저장소·server.json 과 일치, 분류자가 `requires-python` 부터 빈틈없이 이어지는지(3.11+ 에서 tomllib 로)
-- [ ] CI 파이썬 행렬에 3.13 추가 (시험: Mac 실측 환경이 Python 3.13.12 인데 CI 는 3.10·3.12 만 돈다)
-- [ ] `.github/dependabot.yml`(GitHub Actions·uv 주 1회) (유지보수: 의존성 갱신이 자동으로 PR 로 들어와 "활발한 유지보수" 근거가 됨, `mcp>=2.0` 이 빠르게 바뀜)
-- [ ] ruff 설정과 CI lint 단계(레시피는 블렌더 안에서 `PARAMS`·공용 함수가 붙으므로 `F821` 은 recipes 에서 끔) (유지보수: 기여자 PR 품질을 자동으로 맞춤)
+- [x] CI 파이썬 행렬에 3.13 추가 (시험: Mac 실측 환경이 Python 3.13.12 인데 CI 는 3.10·3.12 만 돈다) — 3.10·3.12·3.13. 로컬 3.13.14 로 185 통과. 시험: 분류자의 가장 낮은·높은 판이 CI 행렬에 있는지(`test_ci_matrix_covers_classifier_ends`)
+- [x] `.github/dependabot.yml`(GitHub Actions·uv 주 1회) (유지보수: 의존성 갱신이 자동으로 PR 로 들어와 "활발한 유지보수" 근거가 됨, `mcp>=2.0` 이 빠르게 바뀜) — uv·github-actions 주 1회, 커밋 접두어 `deps`/`ci`. schemastore dependabot-2.0 스키마로 검증 통과. 시험 `test_dependabot_watches_uv_and_actions`
+- [x] ruff 설정과 CI lint 단계(레시피는 블렌더 안에서 `PARAMS`·공용 함수가 붙으므로 `F821` 은 recipes 에서 끔) (유지보수: 기여자 PR 품질을 자동으로 맞춤) — `[tool.ruff]`(py310, 120자), recipes `F821`·_common `F401` 만 끔. CI `lint` 작업(`uvx ruff@0.15.20 check .`, 판 고정). 고친 것: 안 쓰는 변수 1·import 1. CONTRIBUTING 에 한 줄
+
+### 2026-10-05 (2회차) 추가
+
+- [x] 시간 초과 오류에 기다린 초와 `BLENDER_FX_TIMEOUT` 으로 늘리는 법을 넣기 + 가짜 소켓 시험 (오류 메시지: 지금은 "pieces·frames 를 줄여라"만 있어, 무거운 장면을 일부러 굽는 사용자가 해결책을 모른다. 10/5 에 이 변수가 굽기 도구에도 먹게 고쳤으니 안내도 따라가야 함) — 한/영 메시지에 기다린 초와 `BLENDER_FX_TIMEOUT`(초)·재시작 안내. 시험: 받기만 하고 답 안 하는 가짜 수신기로 한/영 2개
+- [ ] `.github/pull_request_template.md`(한/영: 무엇을·왜, `uvx ruff check .`·`uv run pytest -q` 체크, 새 레시피면 `L()` 쌍·headless 단계·README 도구 표) + 존재 시험 (이슈 대응·기여: 외부 PR 이 CONTRIBUTING 절차를 빠뜨리지 않게)
+- [ ] `examples/` 에 클라이언트별 연결 설정(Claude Desktop `claude_desktop_config.json`, Cursor `.cursor/mcp.json`, Codex `config.toml`)과 영어 환경 예시, 시험으로 JSON/TOML 이 읽히고 진입점 이름이 `pyproject` 와 맞는지 확인 (문서: README 에 Claude Code 명령만 있고 다른 클라이언트는 한 줄 설명뿐)
+- [ ] README 맨 위 배지(CI 상태·라이선스·Python 판) + 배지 주소가 실제 워크플로 파일·라이선스와 맞는지 시험 (문서·유지보수: 심사자가 첫 화면에서 CI 가 도는지 바로 봄)
+- [ ] CI 에 `pytest --cov`(블렌더 없이 도는 서버 쪽만) 요약 출력 추가, CONTRIBUTING 에 수치 기록 (시험: "시험이 있다"를 넘어 서버 코드 몇 %를 덮는지 근거)

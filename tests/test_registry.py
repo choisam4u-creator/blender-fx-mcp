@@ -95,3 +95,15 @@ def test_python_classifiers_match_requires_python():
     assert minors[0] == low[0], (minors, proj["requires-python"])
     assert minors == list(range(minors[0], minors[-1] + 1)), f"빠진 판이 있음: {minors}"
     assert "License :: " not in " ".join(proj["classifiers"]), "license = 'MIT' 와 License 분류자를 같이 쓰면 빌드가 거부한다"
+
+
+def test_ci_matrix_covers_classifier_ends():
+    """분류자에 적은 가장 낮은 판과 가장 높은 판은 CI 가 실제로 돌려 봐야 한다(Mac 실측 환경이 3.13)."""
+    proj = _pyproject()
+    minors = sorted(int(m) for c in proj["classifiers"]
+                    for m in re.findall(r"^Programming Language :: Python :: 3\.(\d+)$", c))
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    m = re.search(r"^\s+python: \[(.*?)\]$", ci, re.M)
+    assert m, "ci.yml 에 python 행렬이 없음"
+    tested = {int(v) for v in re.findall(r'"3\.(\d+)"', m.group(1))}
+    assert {minors[0], minors[-1]} <= tested, (sorted(tested), minors)

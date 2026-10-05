@@ -1,6 +1,6 @@
 # 기여 안내 / Contributing
 
-**English:** Every effect is one recipe file in `src/blender_fx_mcp/recipes/` plus one tool in `server.py`. Recipes run inside Blender with `PARAMS` prepended by the server and must end with `run_guarded(main)`, printing one `FX_RESULT` JSON line. Test headlessly with `uv run pytest -q` (needs Blender on this machine) and, with Blender open, `uv run python scripts/e2e_socket.py`. Keep error messages human-readable; the AI shows them to a non-technical user.
+**English:** Every effect is one recipe file in `src/blender_fx_mcp/recipes/` plus one tool in `server.py`. Recipes run inside Blender with `PARAMS` prepended by the server and must end with `run_guarded(main)`, printing one `FX_RESULT` JSON line. Lint with `uvx ruff check .`. Test headlessly with `uv run pytest -q` (needs Blender on this machine) and, with Blender open, `uv run python scripts/e2e_socket.py`. Keep error messages human-readable; the AI shows them to a non-technical user.
 
 ## 구조
 
@@ -30,7 +30,7 @@ src/blender_fx_mcp/
    AI가 그 문장을 그대로 사용자에게 보여주므로, 무엇을 바꾸면 되는지까지 쓴다.
 3. `server.py` 에 `@mcp.tool()` 함수를 하나 붙인다. 인자 설명(docstring)이 곧 AI가 보는 설명서다.
 4. `headless.py` 의 `STEPS` 에 단계를 추가하고, `tests/test_recipes_headless.py` 에 테스트를 넣는다. 결과 이미지가 실제로 달라지는지(픽셀) 확인하는 assert 를 포함한다.
-5. `uv run pytest -q` 통과 후 PR.
+5. `uvx ruff check .` 와 `uv run pytest -q` 통과 후 PR.
    - 블렌더 앱이 없으면 `pip install bpy` 한 파이썬 3.11 로도 레시피 시험 대부분이 돈다:
      `uv pip install bpy==5.0.1` 뒤 `BLENDER_FX_BLENDER=.venv/bin/python uv run pytest -q`.
      Linux 에서 렌더하려면 `libegl1 libegl-mesa0 libgl1-mesa-dri` 가 있어야 한다.
