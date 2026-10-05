@@ -8,6 +8,7 @@
   3. **ruff** — `[tool.ruff]`(recipes 의 `F821`, `_common.py` 의 `F401` 만 끔: 서버가 이어 붙이는 구조라서), CI `lint` 작업(`uvx ruff@0.15.20 check .`). 지적 2곳 정리(안 쓰는 변수·import). CONTRIBUTING 에 한 줄.
   4. **시간 초과 오류 안내** — 기다린 초와 `BLENDER_FX_TIMEOUT`(초)로 늘리고 재시작하라는 문장(한/영). 답 안 하는 가짜 수신기로 시험 2개.
   - CHANGELOG 미출시 절에 위 내용 반영.
+  - PR #5 Codex 리뷰 지적 1건 고침: 연결 단계(10초 고정)의 시간 초과까지 `BLENDER_FX_TIMEOUT` 안내가 나가던 것 → 연결 실패 안내로. 회귀 시험 1개(블렌더 없이 190 통과).
 - 돌린 시험: `uvx ruff check .` 통과. `uv run pytest -q`(Python 3.13) → 189 통과, 34 건너뜀(블렌더 없음). bpy 5.0.1(Python 3.11, 소프트웨어 EGL)로 → **217 통과, 6 건너뜀**(유체 5개는 bpy 모듈의 Mantaflow 결함이라 블렌더 앱 필요, 실제 캐릭터 1개는 파일 없음).
 - Mac에서 확인할 것:
   1. `uv run pytest -q` (블렌더 앱에서 전체 통과)

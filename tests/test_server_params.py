@@ -227,6 +227,18 @@ def test_bridge_timeout_names_seconds_and_env(monkeypatch, lang, words):
         assert w in str(ei.value)
 
 
+def test_bridge_connect_timeout_is_connection_error(monkeypatch):
+    """연결 자체가 시간 초과면(닿지 않는 주소) BLENDER_FX_TIMEOUT 이 아니라 연결 안내를 낸다."""
+    def no_route(*a, **k):
+        raise socket.timeout("timed out")
+    monkeypatch.setattr(bridge.socket, "create_connection", no_route)
+    monkeypatch.setenv("BLENDER_FX_LANG", "en")
+    with pytest.raises(BlenderError) as ei:
+        bridge.send_command("ping", timeout=600)
+    msg = str(ei.value)
+    assert "Cannot connect to Blender" in msg and "BLENDER_FX_TIMEOUT" not in msg and "600" not in msg
+
+
 def test_bridge_ping_false_without_pong(receiver):
     receiver(json.dumps({"status": "success", "result": {}}).encode())
     assert bridge.ping() is False

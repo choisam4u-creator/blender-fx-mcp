@@ -37,8 +37,10 @@ def send_command(cmd_type: str, params: dict | None = None, timeout: float | Non
     timeout = timeout or default_timeout()
     buf = b""
     resp: dict | None = None
+    connected = False  # 연결 단계(10초 고정)의 시간 초과는 BLENDER_FX_TIMEOUT 과 무관하다
     try:
         with socket.create_connection((host(), port()), timeout=10.0) as s:
+            connected = True
             s.settimeout(timeout)
             s.sendall(payload)
             while True:
@@ -53,7 +55,7 @@ def send_command(cmd_type: str, params: dict | None = None, timeout: float | Non
                     # 아직 덜 온 것. 더 받는다
                     continue
     except (ConnectionRefusedError, OSError) as e:
-        if isinstance(e, socket.timeout):
+        if connected and isinstance(e, socket.timeout):
             raise BlenderError(t(
                 f"블렌더가 {timeout:.0f}초 안에 응답하지 않았습니다(시간 초과). 굽기나 렌더가 너무 오래 걸리거나 블렌더가 멈췄을 수 있습니다. "
                 "조각 수(pieces)나 프레임 수(frames)를 줄여 보세요. 무거운 장면을 일부러 굽는 중이면 "
