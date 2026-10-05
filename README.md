@@ -24,7 +24,7 @@ uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-do
 
 ---
 
-**[English]** An MCP server that lets an AI (Claude, Codex, Cursor, any MCP client) build Blender FX from plain language: building destruction, explosions with smoke and fire, water splashes, fire, particles, wind, ocean and cloth. You direct ("collapse it from the left, slower, more dust"), the AI picks a tool, Blender simulates, and preview frames come back. No Blender knowledge needed. Requires Blender 5.2, the [blender-mcp](https://github.com/ahujasid/blender-mcp) receiver add-on inside Blender, and `uv`. Set `BLENDER_FX_LANG=en` for English messages. See the Korean sections below for install and daily use; the commands are the same.
+**[English]** An MCP server that lets an AI (Claude, Codex, Cursor, any MCP client) build Blender FX from plain language: building destruction, explosions with smoke and fire, water splashes, fire, particles, wind, ocean and cloth. You direct ("collapse it from the left, slower, more dust"), the AI picks a tool, Blender simulates, and preview frames come back. No Blender knowledge needed. Requires Blender 5.2, the [blender-mcp](https://github.com/ahujasid/blender-mcp) receiver add-on inside Blender, and `uv`. Set `BLENDER_FX_LANG=en` for English messages. **Full English guide: [English](#english) (install, first command, all tools).**
 
 ---
 
@@ -234,3 +234,92 @@ import_model(path="adventurer.glb", size=2.0, parts=["Adventurer", "Backpack"])
 ## 라이선스
 
 MIT (이 저장소). 블렌더 안 수신기 애드온은 blender-mcp 프로젝트 것이며 그쪽 라이선스를 따릅니다.
+
+## English
+
+### What you need
+
+1. **Blender 5.2** (built against the 5.x LTS line).
+2. **The receiver add-on inside Blender**: install `addon.py` from [blender-mcp](https://github.com/ahujasid/blender-mcp) and enable it.
+   In the 3D view press `N` → **BlenderMCP** tab → **Connect to MCP server**. It listens on `localhost:9876`.
+3. **uv** (Python runner): `brew install uv`, or see [docs.astral.sh/uv](https://docs.astral.sh/uv/).
+
+Check everything at once (Python, mcp, uv, Blender, receiver, output folder):
+
+```bash
+uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-doctor
+```
+
+### Install
+
+Claude Code:
+
+```bash
+claude mcp add -s user blender-fx -e BLENDER_FX_LANG=en -- uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-mcp
+```
+
+Claude Desktop, Codex, Cursor and other MCP clients: add the same command (`uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-mcp`)
+to the client's MCP server config with the environment variable `BLENDER_FX_LANG=en`, then fully restart the app.
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `BLENDER_FX_LANG` | `ko` | `en` for English tool messages and errors |
+| `BLENDER_FX_OUT` | `~/blender-fx-output` | where previews, videos, `.blend` files and caches go |
+| `BLENDER_FX_HOST` / `BLENDER_FX_PORT` | `localhost` / `9876` | where the receiver listens. Keep it on localhost |
+| `BLENDER_FX_TIMEOUT` | `600` | seconds to wait for one Blender step (bakes can be slow) |
+
+### First command
+
+Open Blender, connect the receiver, then tell your AI:
+
+> Make a practice building, hit it from the left and collapse it like concrete. Show me a preview when it's done.
+
+Then keep directing from the preview frames: "smaller pieces", "only break where it was hit", "like glass", "shoot water sideways from the left",
+"thick like honey", "half gravity", "slow motion", "set it on fire", "make it snow", "low angle", "sunset".
+When you like it: "render a video", "save the scene", "export as glb".
+
+Your own model works too: **"Import ~/Desktop/tower.glb, stand it up 12 m tall and break it from the left."**
+More examples with measured results: [docs/recipes.md](docs/recipes.md).
+
+### Tools
+
+| Tool | What it does |
+|---|---|
+| `doctor` | Checks prerequisites (Python, mcp, uv, Blender, receiver, output folder). Call it first when something fails |
+| `ping_blender` | Checks the connection to the receiver |
+| `list_objects` | Lists mesh names and sizes in the scene (to pick a target) |
+| `inspect_mesh` | Diagnoses a model before breaking it: closed or not, volume, concavity, face count, whether repair helps |
+| `make_demo_building` | Practice building + ground + camera + lights. `style` (plain/windows), `ground` material |
+| `destroy` | Breaks **any mesh** into Voronoi chunks and collapses it with rigid-body physics; repairs the mesh first. `impact`, `material`, `pieces`, `pattern`, `focus`, `glue`, `collision`, `interior`, `dust`, `impact_power`, `time_scale`, `frames`, `seed` and more |
+| `explode` | Explosion. With `target` it fractures the object and blows it apart with smoke and fire; otherwise smoke and fire at `at=[x,y,z]` |
+| `water` | Liquid with direction, shape and viscosity. `mode` (drop/stream/pool/object), `direction_deg`, `pitch_deg`, `speed`, `liquid` (water/oil/honey/lava/mercury/slime), `viscosity`, `resolution` |
+| `splash` | Simple version of `water(mode="drop")` |
+| `fire` / `smoke` | Continuous fire / rising smoke. `resolution=0` sizes the domain automatically |
+| `particles` | Rain, snow, sparks, ash |
+| `wind` | Wind force field that pushes particles, cloth and smoke |
+| `ocean` | Animated ocean surface |
+| `cloth_flag` | A cloth flag on a pole, waving in the wind |
+| `import_model` | Imports glb/gltf/fbx/obj/stl/usd/blend, joins parts, scales and places it on the ground |
+| `export_model` | Exports glb/gltf/fbx/obj/**abc**. Alembic keeps per-frame water and chunk motion |
+| `camera` | Framing presets wide/medium/closeup/low/high/top/front/side + `angle_deg`, `height`, `lens` |
+| `camera_shake` | Camera shake at an impact or explosion |
+| `set_look` | Lighting mood day/sunset/night/overcast/studio, procedural sky or your own HDRI |
+| `set_ground` | Ground material asphalt/concrete/grass/sand/dirt/snow |
+| `snapshot` / `list_snapshots` / `restore` | Save the scene and roll back to it later. Use before risky steps |
+| `set_timing` | Frame range, fps, slow motion for a frame range or globally |
+| `set_physics` | Gravity strength and tilt, substeps, solver iterations, simulation speed |
+| `set_render` | Samples, motion blur, resolution, exposure, film look, transparent background |
+| `render_preview` | Re-renders the scene. `quality` = `preview` (fast, no smoke/water), `smoke`, `final` |
+| `render_video` | Renders the whole scene to mp4 (H.264) |
+| `save_blend` | Saves the scene as `.blend` to open and tweak in Blender |
+| `clear_caches` | Empties baked caches and cache folders |
+| `reset_destroy` | Removes everything this server created and restores the original objects |
+
+Outputs go to per-run folders under `~/blender-fx-output/` (`BLENDER_FX_OUT`). Smoke and water caches pile up in
+`cache_fluid/` and `cache_liquid/` there; delete them when they get large.
+
+### Security, contributing, license
+
+The receiver runs Python it receives on `localhost:9876` without authentication. Never expose that port.
+See [SECURITY.md](SECURITY.md) for the risks and private reporting. Contributions: [CONTRIBUTING.md](CONTRIBUTING.md)
+and the [Code of Conduct](CODE_OF_CONDUCT.md). License: MIT.

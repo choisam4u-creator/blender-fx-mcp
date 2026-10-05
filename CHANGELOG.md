@@ -28,6 +28,7 @@
 **문서**
 - README 첫 화면: 한 줄 소개, Claude 연결 3줄, 첫 명령 예시, 데모 GIF 자리
 - `docs/recipes.md`: 자연어 명령 5개와 실제 결과 수치
+- README 에 영어 절(설치·환경변수·첫 명령·도구 전체 표). 한/영 도구 표가 실제 도구와 어긋나면 시험이 실패한다
 - `docs/demo-script.md`: 데모 GIF 촬영 대본
 - `docs/registry.md`: 공식 MCP 레지스트리 등록 절차
 - 버튼 이름을 "Connect to MCP server" 로 통일
