@@ -8,7 +8,7 @@
   3. **서버 메시지 정적 시험** `tests/test_server_messages.py` — server·bridge·doctor 의 `t()` 70곳 한/영 순서, t() 밖 한국어 누출, 도구 설명 첫 줄 영어(이미 모두 영어였음). 서버 안내문(instructions)이 한국어뿐이라 한/영 두 판으로 나눔. CI 에 추가.
   4. **`pyproject.toml` `[project.urls]`·Python 3.10~3.13 분류자** + 시험 2개. `uv build` 로 METADATA 확인.
 - 돌린 시험: `uv run pytest -q` → 182 통과, 34 건너뜀(블렌더 없음). bpy 5.0.1(Python 3.11, 소프트웨어 EGL)로 → **210 통과, 6 건너뜀**(유체 5개는 bpy 모듈의 Mantaflow 결함이라 블렌더 앱 필요, 실제 캐릭터 1개는 파일 없음). `uv build` 성공.
-- PR: claude/cloud-work → main 을 새로 열었음(아래 확인 후 Mac 총괄이 병합).
+- PR: claude/cloud-work → main #4 를 새로 열었음(아래 확인 후 Mac 총괄이 병합). CI 3개 초록. Codex 리뷰 지적 1건(`BLENDER_FX_TIMEOUT` 이 굽기·렌더 도구에 안 먹음) 고침 — 더 큰 값이면 그 도구들도 따라 늘어남, 시험 3개 추가(블렌더 없이 185 통과).
 - Mac에서 확인할 것:
   1. `uv run pytest -q tests/test_recipes_v05.py -k glue` (블렌더 앱에서도 접착이 붙고 덜 무너지는지)
   2. `uv run pytest -q` (전체 통과)
