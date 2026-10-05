@@ -1,4 +1,4 @@
-# 블렌더 앱(공식 Linux 빌드)으로 `app_only` 시험(Mantaflow 유체 5개·리지드바디 접착 1개)을 돌린다.
+# 블렌더 앱(공식 Linux 빌드)으로 `app_only` 시험(Mantaflow 유체 5개)을 돌린다.
 # pip 의 bpy 휠은 4.2·4.5·5.0 모두 Mantaflow 가 깨져 있어(`LevelsetGrid.setConst` 없음) 이 시험을 못 돌린다.
 # 굽기가 길고 내려받기가 커서 PR 마다 돌리지 않는다. Actions 탭 → app-tests → Run workflow 로 손으로 돌린다.
 name: app-tests

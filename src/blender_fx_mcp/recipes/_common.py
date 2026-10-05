@@ -837,6 +837,9 @@ def glue_chunks(chunks, threshold, max_neighbors=4, max_constraints=600):
         if len(pairs) >= max_constraints:
             break
 
+    # constraint_add 는 temp_override 의 active_object 가 아니라 뷰 레이어의 실제 활성 객체에 붙인다.
+    # 활성 객체가 없으면 bpy 모듈에서 세그폴트, 있으면 엉뚱한 객체에 붙는다. 그래서 진짜로 활성화했다가 되돌린다.
+    prev_active = vl.objects.active
     made = 0
     for i, j in sorted(pairs):
         a, ca, _ = info[i]
@@ -847,6 +850,7 @@ def glue_chunks(chunks, threshold, max_neighbors=4, max_constraints=600):
         e.empty_display_size = 0.1
         e.location = (ca + cb) / 2
         coll.objects.link(e)
+        vl.objects.active = e
         with bpy.context.temp_override(scene=sc, view_layer=vl, active_object=e, object=e, selected_objects=[e]):
             try:
                 bpy.ops.rigidbody.constraint_add(type="FIXED")
@@ -861,6 +865,10 @@ def glue_chunks(chunks, threshold, max_neighbors=4, max_constraints=600):
         rbc.breaking_threshold = threshold
         rbc.disable_collisions = False
         made += 1
+    try:
+        vl.objects.active = prev_active
+    except Exception:
+        pass
     return made
 
 

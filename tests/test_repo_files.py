@@ -51,3 +51,36 @@ def test_security_port_matches_bridge_default(monkeypatch):
 def test_code_of_conduct_present():
     text = (ROOT / "CODE_OF_CONDUCT.md").read_text(encoding="utf-8")
     assert "Contributor Covenant" in text and "2.1" in text
+
+
+def _server_tools():
+    src = (ROOT / "src" / "blender_fx_mcp" / "server.py").read_text(encoding="utf-8")
+    return re.findall(r"@mcp\.tool\(\)\s*\ndef (\w+)\(", src)
+
+
+def _readme_section(title):
+    text = (ROOT / "README.md").read_text(encoding="utf-8")
+    m = re.search(rf"^## {re.escape(title)}\n(.*?)(?=^## |\Z)", text, re.S | re.M)
+    assert m, f"README 에 '## {title}' 절이 없음"
+    return m.group(1)
+
+
+@pytest.mark.parametrize("title", ["도구 목록", "English"])
+def test_readme_tool_tables_cover_every_tool(title):
+    """README 의 도구 표(한국어·영어)에 server.py 의 MCP 도구가 빠짐없이 있어야 한다."""
+    tools = _server_tools()
+    assert len(tools) >= 30
+    section = _readme_section(title)
+    listed = set(re.findall(r"^\| (.+?) \|", section, re.M))
+    names = {n for cell in listed for n in re.findall(r"`(\w+)`", cell)}
+    missing = [t for t in tools if t not in names]
+    assert not missing, f"README '{title}' 표에 없는 도구: {missing}"
+
+
+def test_readme_english_section_is_self_contained():
+    """해외 사용자가 한국어 없이 설치·첫 명령까지 갈 수 있어야 한다."""
+    section = _readme_section("English")
+    assert not re.search(r"[가-힣]", section), "영어 절에 한글이 섞여 있음"
+    for needed in ("blender-fx-doctor", "claude mcp add", "BLENDER_FX_LANG=en", "Connect to MCP server", "SECURITY.md"):
+        assert needed in section, needed
+    assert "(#english)" in (ROOT / "README.md").read_text(encoding="utf-8")

@@ -22,7 +22,12 @@ from .i18n import is_en, t
 RECIPES = Path(__file__).parent / "recipes"
 LONG = 1800.0  # 굽기가 오래 걸리는 도구의 대기 시간(초)
 
-INSTRUCTIONS = """블렌더 FX 도구 상자 / Blender FX toolbox. Answer in the user's language.
+
+def long_timeout(floor: float = LONG) -> float:
+    """굽기·렌더 도구의 대기 시간. BLENDER_FX_TIMEOUT 이 더 크면 그 값을 쓴다(늘릴 수만 있고 줄이지는 않는다)."""
+    return max(floor, bridge.default_timeout())
+
+INSTRUCTIONS_KO = """블렌더 FX 도구 상자. 사용자의 언어로 답한다.
 사용자는 블렌더를 모르는 감독이고, 당신이 손이다.
 
 ① doctor 로 준비 확인 ② list_objects 로 대상 확인, 남의 모델은 import_model + inspect_mesh 로 상태 점검
@@ -36,6 +41,24 @@ INSTRUCTIONS = """블렌더 FX 도구 상자 / Blender FX toolbox. Answer in the
 돌아온 미리보기 프레임을 보고 무엇이 보이는지 쉬운 말로 설명한다.
 사용자의 지시("더 잘게", "맞은 데만 부서지게", "물을 옆으로 쏴", "꿀처럼", "중력 절반")를 인자로 바꿔 다시 실행한다.
 실패 메시지는 무엇을 바꾸면 되는지까지 들어 있으니 그대로 전달하면 된다."""
+
+INSTRUCTIONS_EN = """Blender FX toolbox. Answer in the user's language.
+The user is a director who does not know Blender; you are the hands.
+
+1. doctor to check the setup  2. list_objects to see targets; for someone else's model use import_model + inspect_mesh
+3. Effects: destroy / explode / water / fire, smoke / particles (rain, snow, sparks, ash) / ocean / cloth_flag
+4. Direction: camera, camera_shake, set_look (sky), set_ground, wind, set_timing (slow motion),
+   set_physics (gravity, accuracy), set_render (samples, motion blur)
+5. Keep it undoable: snapshot before risky steps, restore if the user does not like the result
+6. Finish: render_video (mp4), save_blend, export_model (glb/fbx/obj/abc)
+
+Describe what you see in the returned preview frames in plain words.
+Turn the user's directions ("smaller pieces", "only break where it was hit", "shoot the water sideways",
+"like honey", "half gravity") into arguments and run again.
+Failure messages already say what to change, so pass them on as they are."""
+
+# 서버를 띄울 때의 BLENDER_FX_LANG 으로 고른다
+INSTRUCTIONS = t(INSTRUCTIONS_KO, INSTRUCTIONS_EN)
 
 mcp = MCPServer("blender-fx", instructions=INSTRUCTIONS)
 
@@ -113,7 +136,7 @@ def _render(label: str, quality: str = "preview", frame_count: int = 3, frames: 
     params = dict(out_dir=str(run_dir), quality=quality, frame_count=frame_count)
     if frames:
         params["frames"] = list(frames)
-    return run_recipe("render", params, timeout=LONG), run_dir
+    return run_recipe("render", params, timeout=long_timeout()), run_dir
 
 
 def _preview_note(rend: dict) -> str:
@@ -170,7 +193,7 @@ def inspect_mesh(target: str, decimate_to: int = 0) -> str:
     부수기 전에 모델 상태를 본다. 닫혀 있는지, 부피, 오목한 정도, 면 수, 수리하면 얼마나 나아지는지.
     남이 만든 모델을 가져왔을 때 destroy 전에 부르면 문제를 미리 알 수 있다."""
     try:
-        res = run_recipe("inspect_mesh", dict(target=target, decimate_to=decimate_to or None), timeout=LONG)
+        res = run_recipe("inspect_mesh", dict(target=target, decimate_to=decimate_to or None), timeout=long_timeout())
     except BlenderError as e:
         return _fail(e)
     return json.dumps(res, ensure_ascii=False, indent=1)
@@ -214,7 +237,7 @@ def import_model(path: str, name: str = "", size: float = 0.0, on_ground: bool =
     parts: 파일 안 부품 중 남길 것의 이름(일부만 적어도 됨). 비우면 전부 합친다."""
     try:
         res = run_recipe("import_model", dict(path=path, name=name or None, size=size,
-                                              on_ground=on_ground, center=center, parts=parts), timeout=LONG)
+                                              on_ground=on_ground, center=center, parts=parts), timeout=long_timeout())
         rend, _ = _render(f"import_{res['name']}", frames=[1])
     except BlenderError as e:
         return _fail(e)
@@ -235,7 +258,7 @@ def export_model(path: str, names: list[str] | None = None, bake_physics: bool =
     bake_physics=True 면 조각 물리를 키프레임으로 굽는다(되돌릴 수 없으니 먼저 snapshot).
     연기(볼륨)는 어떤 형식으로도 나가지 않는다."""
     try:
-        res = run_recipe("export_model", dict(path=path, names=names or [], bake_physics=bake_physics), timeout=LONG)
+        res = run_recipe("export_model", dict(path=path, names=names or [], bake_physics=bake_physics), timeout=long_timeout())
     except BlenderError as e:
         return _fail(e)
     mb = res["size_bytes"] / 1_000_000
@@ -301,7 +324,7 @@ def destroy(
         bounce=bounce if bounce >= 0 else None,
     )
     try:
-        res = run_recipe("destroy", params, timeout=LONG)
+        res = run_recipe("destroy", params, timeout=long_timeout())
         rend, run_dir = _render(f"destroy_{target}", frame_count=preview_frames)
     except BlenderError as e:
         return _fail(e)
@@ -351,12 +374,12 @@ def explode(
             run_recipe("destroy", dict(
                 target=target, impact="none", hold_until=max(1, burst_frame - 1), material=material,
                 pieces=pieces, frames=frames, dust=dust, glue=glue, pattern=pattern,
-            ), timeout=LONG)
+            ), timeout=long_timeout())
         res = run_recipe("explode", dict(
             target=target or None, at=at, radius=radius, power=power, fire=fire, frames=frames,
             burst_frame=burst_frame, resolution=resolution, smoke_collision=smoke_collision,
             cache_dir=_cache_dirs()["fluid"],
-        ), timeout=LONG)
+        ), timeout=long_timeout())
         rend, run_dir = _render(f"explode_{target or 'point'}", quality="smoke", frame_count=preview_frames)
     except BlenderError as e:
         return _fail(e)
@@ -431,7 +454,7 @@ def water(
             obstacles=obstacles or None, source_object=source_object or None, spray=spray,
             smoothing=smoothing, particle_radius=particle_radius,
             domain_at=domain_at, domain_size=domain_size or None, cache_dir=_cache_dirs()["liquid"],
-        ), timeout=LONG)
+        ), timeout=long_timeout())
         rend, run_dir = _render(f"water_{mode}_{liquid}", quality="smoke", frame_count=preview_frames)
     except BlenderError as e:
         return _fail(e)
@@ -471,7 +494,7 @@ def _emit(kind: str, target: str, at, radius: float, power: float, frames: int, 
                                       frames=frames, start_frame=start_frame, end_frame=end_frame or None,
                                       resolution=resolution or None, smoke_collision=smoke_collision,
                                       density=density, dissolve=dissolve, vorticity=vorticity, noise=noise,
-                                      cache_dir=_cache_dirs()["emit"]), timeout=LONG)
+                                      cache_dir=_cache_dirs()["emit"]), timeout=long_timeout())
         rend, run_dir = _render(f"{kind}_{target or 'point'}", quality="smoke", frame_count=preview_frames)
     except BlenderError as e:
         return _fail(e)
@@ -524,7 +547,7 @@ def particles(kind: str = "snow", target: str = "", at: list[float] | None = Non
                                            height=height or None, size=size or None,
                                            gravity=gravity if gravity >= 0 else None,
                                            drag=drag if drag >= 0 else None, lifetime=lifetime or None,
-                                           speed=speed if speed >= 0 else None), timeout=LONG)
+                                           speed=speed if speed >= 0 else None), timeout=long_timeout())
         rend, _ = _render(f"particles_{kind}", frame_count=preview_frames)
     except BlenderError as e:
         return _fail(e)
@@ -543,7 +566,7 @@ def wind(direction_deg: float = 90.0, strength: float = 3.0, turbulence: float =
     바람. direction_deg 0=+Y 쪽, 90=+X 쪽. strength 1 산들 / 3 보통 / 8 강풍. turbulence 흔들림(0~3)."""
     try:
         res = run_recipe("wind", dict(direction_deg=direction_deg, strength=strength, turbulence=turbulence),
-                         timeout=LONG)
+                         timeout=long_timeout())
     except BlenderError as e:
         return _fail(e)
     return t(f"바람: 방향 {res['direction_deg']}°, 세기 {res['strength']}, 난류 {res['turbulence']} ({res['objects']}).",
@@ -557,7 +580,7 @@ def ocean(size: float = 60.0, wave_scale: float = 1.5, choppiness: float = 1.2, 
     바다 표면. size 넓이(m), wave_scale 파도 높이(0.5 잔잔 / 1.5 보통 / 4 거침)."""
     try:
         res = run_recipe("ocean", dict(size=size, wave_scale=wave_scale, choppiness=choppiness,
-                                       wind_velocity=wind_velocity, frames=frames or None), timeout=LONG)
+                                       wind_velocity=wind_velocity, frames=frames or None), timeout=long_timeout())
         rend, _ = _render("ocean", frame_count=preview_frames)
     except BlenderError as e:
         return _fail(e)
@@ -573,7 +596,7 @@ def cloth_flag(at: list[float] | None = None, width: float = 3.0, height: float 
     깃대에 걸린 깃발이 바람에 펄럭인다. at 은 깃대 밑 위치."""
     try:
         res = run_recipe("cloth_flag", dict(at=at, width=width, height=height, wind_strength=wind_strength,
-                                            frames=frames or None), timeout=LONG)
+                                            frames=frames or None), timeout=long_timeout())
         rend, _ = _render("flag", frame_count=preview_frames)
     except BlenderError as e:
         return _fail(e)
@@ -651,7 +674,7 @@ def set_timing(frame_start: int = 0, frame_end: int = 0, fps: int = 0, slow_from
     try:
         res = run_recipe("set_timing", dict(frame_start=frame_start or None, frame_end=frame_end or None,
                                             fps=fps or None, slow_from=slow_from or None, slow_to=slow_to or None,
-                                            slow_factor=slow_factor, global_slow=global_slow or None), timeout=LONG)
+                                            slow_factor=slow_factor, global_slow=global_slow or None), timeout=long_timeout())
     except BlenderError as e:
         return _fail(e)
     text = t(f"타이밍: 프레임 {res['frame_range'][0]}~{res['frame_range'][1]}, {res['fps']}fps.",
@@ -678,7 +701,7 @@ def set_physics(gravity: float = -1.0, gravity_deg: float = 0.0, substeps: int =
         res = run_recipe("set_physics", dict(gravity=gravity if gravity >= 0 else None, gravity_deg=gravity_deg,
                                              substeps=substeps or None, solver_iterations=solver_iterations or None,
                                              speed=speed if speed >= 0 else None, fps=fps or None, rebake=rebake),
-                         timeout=LONG)
+                         timeout=long_timeout())
     except BlenderError as e:
         return _fail(e)
     return t(
@@ -717,7 +740,7 @@ def snapshot(name: str = "") -> str:
     지금 장면을 저장한다. 되돌리고 싶을 수 있는 작업 전에 부른다."""
     try:
         label = re.sub(r"[^\w\-]+", "_", name)[:40] or time.strftime("%Y%m%d-%H%M%S")
-        res = run_recipe("snapshot", dict(path=str(snapshot_dir() / f"{label}.blend")), timeout=LONG)
+        res = run_recipe("snapshot", dict(path=str(snapshot_dir() / f"{label}.blend")), timeout=long_timeout())
     except BlenderError as e:
         return _fail(e)
     return t(f"스냅샷 저장: {label} ({res['size_bytes'] / 1_000_000:.1f}MB, 오브젝트 {res['objects']}개). "
@@ -747,7 +770,7 @@ def restore(name: str) -> str:
     label = re.sub(r"[^\w\-]+", "_", name)[:40]
     auto = True
     try:
-        run_recipe("snapshot", dict(path=str(snapshot_dir() / "before_restore.blend")), timeout=LONG)
+        run_recipe("snapshot", dict(path=str(snapshot_dir() / "before_restore.blend")), timeout=long_timeout())
     except BlenderError:
         auto = False
     try:
@@ -771,7 +794,7 @@ def save_blend(name: str = "fx_scene") -> str:
     현재 장면을 .blend 로 저장한다."""
     try:
         run_dir = new_run_dir(f"blend_{name}")
-        res = run_recipe("save_blend", dict(path=str(run_dir / f"{name}.blend")), timeout=LONG)
+        res = run_recipe("save_blend", dict(path=str(run_dir / f"{name}.blend")), timeout=long_timeout())
     except BlenderError as e:
         return _fail(e)
     return t(f"저장 완료: {res['path']} ({res['size_bytes'] / 1_000_000:.1f}MB). {res['note']}",
@@ -791,7 +814,7 @@ def render_preview(frame_count: int = 5, quality: str = "preview", width: int = 
         params = dict(out_dir=str(run_dir), frame_count=frame_count, quality=quality, width=width, height=height)
         if frames:
             params["frames"] = list(frames)
-        rend = run_recipe("render", params, timeout=LONG)
+        rend = run_recipe("render", params, timeout=long_timeout())
     except BlenderError as e:
         return _fail(e)
     text = t(f"렌더 ({rend['engine']}, {rend['size'][0]}×{rend['size'][1]}): 프레임 {rend['frames']} → {run_dir}",
@@ -809,7 +832,7 @@ def render_video(quality: str = "smoke", width: int = 1280, height: int = 720, f
         res = run_recipe("render_video", dict(
             out_path=str(run_dir / f"{name or 'fx'}.mp4"), quality=quality, width=width, height=height,
             fps=fps or None, frame_start=frame_start or None, frame_end=frame_end or None,
-        ), timeout=max(LONG, 3600.0))
+        ), timeout=long_timeout(3600.0))
     except BlenderError as e:
         return _fail(e)
     mb = res["size_bytes"] / 1_000_000
@@ -826,7 +849,7 @@ def clear_caches() -> str:
     """Clear baked caches and free disk space.
     구운 캐시와 캐시 폴더를 비운다. 다음 도구 호출 때 다시 굽는다."""
     try:
-        res = run_recipe("clear_caches", dict(cache_dirs=list(_cache_dirs().values())), timeout=LONG)
+        res = run_recipe("clear_caches", dict(cache_dirs=list(_cache_dirs().values())), timeout=long_timeout())
     except BlenderError as e:
         return _fail(e)
     return t(f"캐시 정리: {res['freed_mb']}MB 비움, 유체 도메인 {res['fluid_domains']}개 초기화.",
@@ -838,7 +861,7 @@ def reset_destroy(target: str = "") -> str:
     """Remove everything this toolbox created and bring the originals back.
     이 도구가 만든 것(조각·먼지·연기·물·파티클·바다·깃발·접착)을 지우고 원본을 되살린다."""
     try:
-        res = run_recipe("reset", dict(target=target or None), timeout=LONG)
+        res = run_recipe("reset", dict(target=target or None), timeout=long_timeout())
     except BlenderError as e:
         return _fail(e)
     return t(f"정리 완료: 오브젝트 {res['removed']}개 제거, 원본 복구.",

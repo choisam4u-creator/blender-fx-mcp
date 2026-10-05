@@ -4,6 +4,8 @@ import json
 import re
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parent.parent
 SERVER = json.loads((ROOT / "server.json.example").read_text(encoding="utf-8"))
 PYPROJECT = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
@@ -65,3 +67,31 @@ def test_package_version_matches_pyproject():
     from blender_fx_mcp import __version__
 
     assert __version__ == _project_version()
+
+
+def _pyproject():
+    tomllib = pytest.importorskip("tomllib")  # 3.11+
+    return tomllib.loads(PYPROJECT)["project"]
+
+
+def test_project_urls_point_to_repo():
+    """PyPI·레지스트리 페이지에서 이슈·보안 신고·변경 기록 경로가 바로 보여야 한다."""
+    urls = _pyproject()["urls"]
+    for k in ("Homepage", "Issues", "Changelog", "Security"):
+        assert urls.get(k, "").startswith("https://github.com/choisam4u-creator/blender-fx-mcp"), k
+    assert urls["Homepage"].rstrip("/") == SERVER["repository"]["url"].rstrip("/")
+    for u in urls.values():
+        if "/blob/main/" in u:
+            assert (ROOT / u.split("/blob/main/", 1)[1]).is_file(), u
+    assert (ROOT / "SECURITY.md").is_file()
+
+
+def test_python_classifiers_match_requires_python():
+    proj = _pyproject()
+    low = tuple(int(x) for x in re.search(r">=\s*3\.(\d+)", proj["requires-python"]).groups())
+    minors = sorted(int(m) for c in proj["classifiers"]
+                    for m in re.findall(r"^Programming Language :: Python :: 3\.(\d+)$", c))
+    assert minors, "Python 판 분류자가 없음"
+    assert minors[0] == low[0], (minors, proj["requires-python"])
+    assert minors == list(range(minors[0], minors[-1] + 1)), f"빠진 판이 있음: {minors}"
+    assert "License :: " not in " ".join(proj["classifiers"]), "license = 'MIT' 와 License 분류자를 같이 쓰면 빌드가 거부한다"
