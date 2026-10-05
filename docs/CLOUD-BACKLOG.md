@@ -23,7 +23,7 @@
 ### 2026-10-04 (2회차) 추가
 
 - [x] `server.py` 의 사용자 메시지 `t(한국어, 영어)` 쌍 정적 검사 + 모든 MCP 도구 설명(docstring) 첫 줄이 영어인지 검사, 빠진 곳 고치기 (시험·오류 메시지: 레시피 쪽은 검사했지만 서버가 만드는 문장은 아직 검사 없음. 해외 클라이언트의 AI는 도구 설명 첫 줄로 도구를 고른다) — `tests/test_server_messages.py`(server·bridge·doctor 의 `t()` 70곳 한/영 순서, `a if c else b` 두 갈래까지, t() 밖 한글 문자열 누출, 도구 32개 설명 첫 줄 영어). 도구 설명은 이미 모두 영어였음. 고친 것: 서버 안내문(instructions)이 한국어뿐이던 것을 한/영 두 판으로 나눠 `BLENDER_FX_LANG` 로 고름. CI 에 추가
-- [ ] `pyproject.toml` 에 `[project.urls]`(Homepage·Issues·Changelog·Security)와 Python 판 분류자(3.10~3.13) 추가, 시험으로 고정 (문서·라이선스: PyPI·레지스트리 페이지에서 이슈·보안 경로가 바로 보여야 함)
+- [x] `pyproject.toml` 에 `[project.urls]`(Homepage·Issues·Changelog·Security)와 Python 판 분류자(3.10~3.13) 추가, 시험으로 고정 (문서·라이선스: PyPI·레지스트리 페이지에서 이슈·보안 경로가 바로 보여야 함) — Homepage·Documentation·Issues·Changelog·Security, 3.10~3.13 와 `3 :: Only` 분류자. `uv build` 로 휠 METADATA 에 들어간 것 확인. 시험: 주소가 저장소·server.json 과 일치, 분류자가 `requires-python` 부터 빈틈없이 이어지는지(3.11+ 에서 tomllib 로)
 - [ ] CI 파이썬 행렬에 3.13 추가 (시험: Mac 실측 환경이 Python 3.13.12 인데 CI 는 3.10·3.12 만 돈다)
 - [ ] `.github/dependabot.yml`(GitHub Actions·uv 주 1회) (유지보수: 의존성 갱신이 자동으로 PR 로 들어와 "활발한 유지보수" 근거가 됨, `mcp>=2.0` 이 빠르게 바뀜)
 - [ ] ruff 설정과 CI lint 단계(레시피는 블렌더 안에서 `PARAMS`·공용 함수가 붙으므로 `F821` 은 recipes 에서 끔) (유지보수: 기여자 PR 품질을 자동으로 맞춤)

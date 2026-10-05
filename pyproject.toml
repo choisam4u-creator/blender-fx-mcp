@@ -13,11 +13,23 @@ classifiers = [
   "Intended Audience :: End Users/Desktop",
   "Topic :: Multimedia :: Graphics :: 3D Modeling",
   "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Operating System :: MacOS",
   "Operating System :: POSIX :: Linux",
   "Operating System :: Microsoft :: Windows",
 ]
 dependencies = ["mcp[cli]>=2.0"]
+
+[project.urls]
+Homepage = "https://github.com/choisam4u-creator/blender-fx-mcp"
+Documentation = "https://github.com/choisam4u-creator/blender-fx-mcp#readme"
+Issues = "https://github.com/choisam4u-creator/blender-fx-mcp/issues"
+Changelog = "https://github.com/choisam4u-creator/blender-fx-mcp/blob/main/CHANGELOG.md"
+Security = "https://github.com/choisam4u-creator/blender-fx-mcp/security/policy"
 
 [project.scripts]
 blender-fx-mcp = "blender_fx_mcp.server:main"
@@ -36,4 +48,4 @@ packages = ["src/blender_fx_mcp"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-markers = ["app_only: 블렌더 앱에서만 도는 시험(Mantaflow 유체·리지드바디 접착). bpy 모듈로는 건너뛴다"]
+markers = ["app_only: 블렌더 앱에서만 도는 시험(Mantaflow 유체). bpy 모듈로는 건너뛴다"]
