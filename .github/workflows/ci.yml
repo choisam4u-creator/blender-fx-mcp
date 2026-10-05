@@ -21,7 +21,7 @@ jobs:
       - run: uv build
 
   # `pip install bpy` 로 레시피 시험 대부분을 블렌더 앱 없이 돌린다.
-  # 렌더에는 libEGL(소프트웨어 Mesa)이 필요하다. bpy 휠에서 깨지는 유체·접착 시험(`app_only`)은 tests/conftest.py 가 건너뛴다.
+  # 렌더에는 libEGL(소프트웨어 Mesa)이 필요하다. bpy 휠에서 깨지는 유체 시험(`app_only`)은 tests/conftest.py 가 건너뛴다.
   recipe-tests-bpy:
     runs-on: ubuntu-latest
     steps:
