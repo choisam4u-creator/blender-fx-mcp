@@ -1,5 +1,19 @@
 # 클라우드 회차 기록
 
+## 2026-10-05
+
+- 한 일: `latest.md`(10/1) FAIL 2건은 10/2 회차에 이미 고쳐 main 에 병합됨 → 백로그로 진행. main(PR #3 병합분)을 먼저 받아 옴(빨리감기). 백로그 4개 완료, 남은 항목 3개라 새 항목은 안 넣음.
+  1. **접착(glue) 세그폴트 원인 찾아 고침.** gdb 로 보니 시뮬레이션이 아니라 첫 `bpy.ops.rigidbody.constraint_add` 에서 Object 가 NULL. 이 연산자는 `temp_override(active_object=…)` 가 아니라 뷰 레이어의 **실제 활성 객체**를 씀 → bpy 에선 활성 객체가 없어 세그폴트, 앱에선 활성 조각에 빈 제약이 하나 더 붙음(bpy 로 재현: 147+1개). 접착 빈 객체를 `view_layer.objects.active` 로 진짜 활성화했다가 되돌림. 접착 시험의 `app_only` 해제 → 이제 bpy CI 에서도 돎.
+  2. **README 영어 절** — 준비물·doctor·설치(`-e BLENDER_FX_LANG=en`)·환경변수 표·첫 명령·도구 32개 표·보안/기여/라이선스. 시험: 한/영 도구 표가 `server.py` 도구를 다 담는지, 영어 절에 한글이 없는지.
+  3. **서버 메시지 정적 시험** `tests/test_server_messages.py` — server·bridge·doctor 의 `t()` 70곳 한/영 순서, t() 밖 한국어 누출, 도구 설명 첫 줄 영어(이미 모두 영어였음). 서버 안내문(instructions)이 한국어뿐이라 한/영 두 판으로 나눔. CI 에 추가.
+  4. **`pyproject.toml` `[project.urls]`·Python 3.10~3.13 분류자** + 시험 2개. `uv build` 로 METADATA 확인.
+- 돌린 시험: `uv run pytest -q` → 182 통과, 34 건너뜀(블렌더 없음). bpy 5.0.1(Python 3.11, 소프트웨어 EGL)로 → **210 통과, 6 건너뜀**(유체 5개는 bpy 모듈의 Mantaflow 결함이라 블렌더 앱 필요, 실제 캐릭터 1개는 파일 없음). `uv build` 성공.
+- PR: claude/cloud-work → main 을 새로 열었음(아래 확인 후 Mac 총괄이 병합).
+- Mac에서 확인할 것:
+  1. `uv run pytest -q tests/test_recipes_v05.py -k glue` (블렌더 앱에서도 접착이 붙고 덜 무너지는지)
+  2. `uv run pytest -q` (전체 통과)
+  3. `BLENDER_FX_LANG=en uv run python -c "from blender_fx_mcp import server; print(server.INSTRUCTIONS[:40])"` (영어 안내문)
+
 ## 2026-10-04 (2회차)
 
 - 한 일: `latest.md`(10/1) FAIL 2건은 10/2 회차에 이미 고쳐 main 에 병합됨 → 백로그로 진행. main(PR #2 병합분)을 먼저 받아 옴. 백로그 4개 완료, 남은 항목이 2개라 새 항목 5개 추가.
