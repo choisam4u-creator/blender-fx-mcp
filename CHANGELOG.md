@@ -14,6 +14,7 @@
   접착용 빈 객체를 진짜로 활성화했다가 원래대로 되돌린다
 - MCP 서버 안내문(instructions)이 한국어뿐이던 문제. `BLENDER_FX_LANG=en` 이면 영어 안내문을 보낸다
 - `BLENDER_FX_TIMEOUT` 이 굽기·렌더 도구(1800초 고정, `render_video` 3600초)에는 먹지 않던 문제. 이제 더 큰 값을 주면 그 도구들도 따라 늘어난다
+- 시간 초과 오류가 몇 초 기다렸는지와 `BLENDER_FX_TIMEOUT` 으로 늘리는 방법을 알려 준다
 - `blender-fx-doctor` 첫 줄에 blender-fx-mcp 판 번호를 표시(이슈 재현용)
 
 **시험·CI**
@@ -29,7 +30,7 @@
 - CI 파이썬 행렬에 3.13 추가(3.10·3.12·3.13). 분류자의 양 끝 판이 행렬에 빠지면 시험이 실패한다
 - ruff lint 작업(판 고정 0.15.20, 설정은 `pyproject.toml`)
 - dependabot: uv 의존성·GitHub Actions 판을 주 1회 갱신 PR 로
-- 시험 42 → 221개(블렌더 없이 187개)
+- 시험 42 → 223개(블렌더 없이 189개)
 
 **문서**
 - PyPI 페이지용 `[project.urls]`(이슈·변경 기록·보안 정책)와 Python 3.10~3.13 분류자

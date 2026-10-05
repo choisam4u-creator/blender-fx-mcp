@@ -209,6 +209,24 @@ def test_bridge_empty_response(receiver):
         bridge.send_command("ping", timeout=5)
 
 
+@pytest.mark.parametrize("lang, words", [("ko", ["2초", "BLENDER_FX_TIMEOUT"]), ("en", ["2 s", "BLENDER_FX_TIMEOUT"])])
+def test_bridge_timeout_names_seconds_and_env(monkeypatch, lang, words):
+    """연결은 되는데 답이 없으면, 기다린 초와 늘리는 방법(BLENDER_FX_TIMEOUT)을 알려 준다."""
+    srv = socket.socket()
+    srv.bind(("127.0.0.1", 0))
+    srv.listen(1)  # 받아만 두고 답하지 않는다
+    monkeypatch.setenv("BLENDER_FX_HOST", "127.0.0.1")
+    monkeypatch.setenv("BLENDER_FX_PORT", str(srv.getsockname()[1]))
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    try:
+        with pytest.raises(BlenderError) as ei:
+            bridge.send_command("execute_code", timeout=1.6)
+    finally:
+        srv.close()
+    for w in words:
+        assert w in str(ei.value)
+
+
 def test_bridge_ping_false_without_pong(receiver):
     receiver(json.dumps({"status": "success", "result": {}}).encode())
     assert bridge.ping() is False

@@ -55,10 +55,12 @@ def send_command(cmd_type: str, params: dict | None = None, timeout: float | Non
     except (ConnectionRefusedError, OSError) as e:
         if isinstance(e, socket.timeout):
             raise BlenderError(t(
-                "블렌더가 응답하지 않습니다(시간 초과). 굽기나 렌더가 너무 오래 걸리거나 블렌더가 멈췄을 수 있습니다. "
-                "조각 수(pieces)나 프레임 수(frames)를 줄여 보세요.",
-                "Blender did not respond in time. A bake or render may be too heavy, or Blender is stuck. "
-                "Try lowering pieces or frames.",
+                f"블렌더가 {timeout:.0f}초 안에 응답하지 않았습니다(시간 초과). 굽기나 렌더가 너무 오래 걸리거나 블렌더가 멈췄을 수 있습니다. "
+                "조각 수(pieces)나 프레임 수(frames)를 줄여 보세요. 무거운 장면을 일부러 굽는 중이면 "
+                "MCP 설정의 환경변수 BLENDER_FX_TIMEOUT(초)을 더 크게 주고 다시 시작하세요.",
+                f"Blender did not respond within {timeout:.0f} s. A bake or render may be too heavy, or Blender is stuck. "
+                "Try lowering pieces or frames. If the heavy scene is intended, set the environment variable "
+                "BLENDER_FX_TIMEOUT (seconds) higher in your MCP config and restart.",
             )) from e
         raise BlenderError(t(
             f"블렌더에 연결할 수 없습니다({host()}:{port()}). "
