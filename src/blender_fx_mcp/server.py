@@ -22,7 +22,7 @@ from .i18n import is_en, t
 RECIPES = Path(__file__).parent / "recipes"
 LONG = 1800.0  # 굽기가 오래 걸리는 도구의 대기 시간(초)
 
-INSTRUCTIONS = """블렌더 FX 도구 상자 / Blender FX toolbox. Answer in the user's language.
+INSTRUCTIONS_KO = """블렌더 FX 도구 상자. 사용자의 언어로 답한다.
 사용자는 블렌더를 모르는 감독이고, 당신이 손이다.
 
 ① doctor 로 준비 확인 ② list_objects 로 대상 확인, 남의 모델은 import_model + inspect_mesh 로 상태 점검
@@ -36,6 +36,24 @@ INSTRUCTIONS = """블렌더 FX 도구 상자 / Blender FX toolbox. Answer in the
 돌아온 미리보기 프레임을 보고 무엇이 보이는지 쉬운 말로 설명한다.
 사용자의 지시("더 잘게", "맞은 데만 부서지게", "물을 옆으로 쏴", "꿀처럼", "중력 절반")를 인자로 바꿔 다시 실행한다.
 실패 메시지는 무엇을 바꾸면 되는지까지 들어 있으니 그대로 전달하면 된다."""
+
+INSTRUCTIONS_EN = """Blender FX toolbox. Answer in the user's language.
+The user is a director who does not know Blender; you are the hands.
+
+1. doctor to check the setup  2. list_objects to see targets; for someone else's model use import_model + inspect_mesh
+3. Effects: destroy / explode / water / fire, smoke / particles (rain, snow, sparks, ash) / ocean / cloth_flag
+4. Direction: camera, camera_shake, set_look (sky), set_ground, wind, set_timing (slow motion),
+   set_physics (gravity, accuracy), set_render (samples, motion blur)
+5. Keep it undoable: snapshot before risky steps, restore if the user does not like the result
+6. Finish: render_video (mp4), save_blend, export_model (glb/fbx/obj/abc)
+
+Describe what you see in the returned preview frames in plain words.
+Turn the user's directions ("smaller pieces", "only break where it was hit", "shoot the water sideways",
+"like honey", "half gravity") into arguments and run again.
+Failure messages already say what to change, so pass them on as they are."""
+
+# 서버를 띄울 때의 BLENDER_FX_LANG 으로 고른다
+INSTRUCTIONS = t(INSTRUCTIONS_KO, INSTRUCTIONS_EN)
 
 mcp = MCPServer("blender-fx", instructions=INSTRUCTIONS)
 
