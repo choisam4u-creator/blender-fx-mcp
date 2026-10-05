@@ -498,7 +498,6 @@ def convex_hull_from_points(points):
     seen = set()
     junk = []
     for g in list(r.get("geom_interior", [])) + list(r.get("geom_unused", [])):
-        key = (type(g).__name__, g.index if hasattr(g, "index") else id(g), id(g))
         if id(g) in seen:
             continue
         seen.add(id(g))

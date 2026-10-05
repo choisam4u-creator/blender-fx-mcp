@@ -7,6 +7,14 @@ on:
   pull_request:
 
 jobs:
+  # 판을 고정해 규칙이 저절로 바뀌지 않게 한다. 설정은 pyproject.toml 의 [tool.ruff].
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uvx ruff@0.15.20 check .
+
   server-tests:
     runs-on: ubuntu-latest
     strategy:
