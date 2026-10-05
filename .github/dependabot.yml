@@ -1,0 +1,16 @@
+# 의존성 갱신 PR 을 주 1회 자동으로 연다. mcp>=2.0 이 빠르게 바뀌어 uv.lock 을 따라가야 한다.
+version: 2
+updates:
+  - package-ecosystem: "uv"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps"
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "ci"
