@@ -47,6 +47,29 @@ def test_run_recipe_error_includes_traceback(monkeypatch):
     assert str(e.value) == "대상 없음\nTraceback: X"
 
 
+@pytest.mark.parametrize("env,expect_destroy,expect_video", [
+    (None, 1800.0, 3600.0),          # 기본값(600)은 굽기 도구의 하한보다 작다
+    ("2400", 2400.0, 3600.0),        # 늘리면 굽기 도구도 따라간다
+    ("7200", 7200.0, 7200.0),
+])
+def test_long_tools_honor_timeout_env(monkeypatch, tmp_path, env, expect_destroy, expect_video):
+    monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path))
+    if env is None:
+        monkeypatch.delenv("BLENDER_FX_TIMEOUT", raising=False)
+    else:
+        monkeypatch.setenv("BLENDER_FX_TIMEOUT", env)
+    seen = []
+
+    def fake_run_python(code, timeout=None):
+        seen.append(timeout)
+        return 'FX_RESULT {"ok": false, "error": "stop"}'
+
+    monkeypatch.setattr(server.bridge, "run_python", fake_run_python)
+    server.destroy(target="Building")
+    server.render_video()
+    assert seen == [expect_destroy, expect_video]
+
+
 def test_run_recipe_error_without_reason(monkeypatch):
     monkeypatch.setenv("BLENDER_FX_LANG", "en")
     monkeypatch.setattr(server.bridge, "run_python", lambda code, timeout=None: 'FX_RESULT {"ok": false}')

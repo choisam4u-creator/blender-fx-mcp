@@ -266,7 +266,7 @@ to the client's MCP server config with the environment variable `BLENDER_FX_LANG
 | `BLENDER_FX_LANG` | `ko` | `en` for English tool messages and errors |
 | `BLENDER_FX_OUT` | `~/blender-fx-output` | where previews, videos, `.blend` files and caches go |
 | `BLENDER_FX_HOST` / `BLENDER_FX_PORT` | `localhost` / `9876` | where the receiver listens. Keep it on localhost |
-| `BLENDER_FX_TIMEOUT` | `600` | seconds to wait for one Blender step (bakes can be slow) |
+| `BLENDER_FX_TIMEOUT` | `600` | seconds to wait for a quick step. Bake and render tools wait at least 1800 (`render_video` 3600); set a larger value to extend those too |
 
 ### First command
 
