@@ -1,5 +1,19 @@
 # 클라우드 회차 기록
 
+## 2026-10-05 (2회차)
+
+- 한 일: `latest.md`(10/1) FAIL 2건은 10/2 회차에 이미 고쳐 main 에 병합됨 → 백로그로 진행. 시작 때 main(PR #4 병합분)을 받아 옴(빨리감기). 남은 백로그 3개 완료 → 새 항목 5개 추가 → 그중 1개 더 완료(모두 4개).
+  1. **CI 파이썬 행렬에 3.13** (3.10·3.12·3.13). 시험: 분류자의 가장 낮은·높은 판이 CI 행렬에 있는지.
+  2. **`.github/dependabot.yml`** — uv·GitHub Actions 주 1회. schemastore 의 dependabot-2.0 스키마로 검증 통과. 시험 1개.
+  3. **ruff** — `[tool.ruff]`(recipes 의 `F821`, `_common.py` 의 `F401` 만 끔: 서버가 이어 붙이는 구조라서), CI `lint` 작업(`uvx ruff@0.15.20 check .`). 지적 2곳 정리(안 쓰는 변수·import). CONTRIBUTING 에 한 줄.
+  4. **시간 초과 오류 안내** — 기다린 초와 `BLENDER_FX_TIMEOUT`(초)로 늘리고 재시작하라는 문장(한/영). 답 안 하는 가짜 수신기로 시험 2개.
+  - CHANGELOG 미출시 절에 위 내용 반영.
+- 돌린 시험: `uvx ruff check .` 통과. `uv run pytest -q`(Python 3.13) → 189 통과, 34 건너뜀(블렌더 없음). bpy 5.0.1(Python 3.11, 소프트웨어 EGL)로 → **217 통과, 6 건너뜀**(유체 5개는 bpy 모듈의 Mantaflow 결함이라 블렌더 앱 필요, 실제 캐릭터 1개는 파일 없음).
+- Mac에서 확인할 것:
+  1. `uv run pytest -q` (블렌더 앱에서 전체 통과)
+  2. `uvx ruff check .`
+  3. GitHub → Settings → Code security 에서 Dependabot version updates 가 켜졌는지(설정 파일만으로 동작)
+
 ## 2026-10-05
 
 - 한 일: `latest.md`(10/1) FAIL 2건은 10/2 회차에 이미 고쳐 main 에 병합됨 → 백로그로 진행. main(PR #3 병합분)을 먼저 받아 옴(빨리감기). 백로그 4개 완료, 남은 항목 3개라 새 항목은 안 넣음.
