@@ -1,5 +1,19 @@
 # 클라우드 회차 기록
 
+## 2026-10-06 (2회차)
+
+- 한 일: `latest.md`(10/1) FAIL 2건은 10/2 회차에 이미 고쳐 main 에 병합됨 → 백로그로 진행. 시작 때 main(PR #8 병합분)을 받아 옴(빨리감기). 백로그 4개 완료 → 남은 항목 1개라 새 항목 5개 추가.
+  1. **워크플로 최소 권한** — `ci.yml`·`app-tests.yml` 최상위 `permissions: contents: read`. 시험: 모든 워크플로에 있는지, write 없는지.
+  2. **MCP 도구 annotations** — 32개 모두(READ_ONLY 5·SETTING 7·ADDITIVE 15·DESTRUCTIVE 5, `openWorldHint=false`). 백로그에 적힌 `reset_scene` 등은 없는 이름이라 `restore`·`clear_caches`·`reset_destroy`·`export_model`·`snapshot` 을 destructive 로. 시험 5종. 이 변경으로 README 도구 표 시험의 정규식이 도구를 못 찾게 돼 함께 고침.
+  3. **도구 성공 갈래 시험** `tests/test_server_tools.py` — 가짜 레시피 결과로 도구 29개를 한/영 끝까지 호출. 커버리지 **server 49% → 88%, 전체 59% → 84%**(CONTRIBUTING 갱신, CI 목록에 추가).
+  4. **`docs/troubleshooting.md`(한/영)** — 오류 문장 8묶음별 해결법. 연결·시간 초과 오류와 doctor 의 확인 필요 줄에 링크(절 제목 영어 → ASCII 앵커). `tests/test_troubleshooting.py`(문장 25개가 소스·문서 양쪽에 있는지, 링크 절 존재). CI 목록에 추가.
+  - CHANGELOG 미출시 절 반영, 시험 수 348개(블렌더 없이 314개).
+- 돌린 시험: `uvx ruff@0.15.20 check .` 통과. `uv run pytest -q`(Python 3.13) → **314 통과, 34 건너뜀**(블렌더 없음). CI 서버 시험 목록을 Python 3.10 + `--cov` 로 → 310 통과, 4 건너뜀, 커버리지 84%. `uv lock --check`·`uv build` 통과. 못 돌린 것: 레시피 시험 34개(블렌더 필요 — 이번 회차는 레시피를 건드리지 않아 bpy 로도 안 돌림). 오류 문장 끝 링크는 GitHub 에서 앵커가 실제로 열리는지 브라우저로 확인 못 함(병합 전이라 main 에 문서가 없음).
+- Mac에서 확인할 것:
+  1. `uv run pytest -q` (블렌더 앱으로 전체 통과)
+  2. `BLENDER_FX_PORT=1 uv run blender-fx-doctor | tail -1` (끝에 troubleshooting.md 링크)
+  3. 병합 뒤 그 링크에 `#connection-refused` 를 붙여 열었을 때 해당 절로 가는지
+
 ## 2026-10-06
 
 - 한 일: `latest.md`(10/1) FAIL 2건은 10/2 회차에 이미 고쳐 main 에 병합됨 → 백로그로 진행. PR #5 가 병합돼 `claude/cloud-work` 를 main(6385bb4)에서 다시 시작. 남은 백로그 4개 완료 → 남은 항목이 0개라 새 항목 5개 추가.
