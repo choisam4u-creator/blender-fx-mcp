@@ -131,3 +131,15 @@ def test_readme_badges_match_repo():
     assert lic in alts and lic in (ROOT / "LICENSE").read_text(encoding="utf-8")
     vers = re.findall(r"Programming Language :: Python :: (3\.\d+)\"", pyproject)
     assert f"{vers[0]}–{vers[-1]}" in alts, f"Python 배지가 분류자 {vers[0]}–{vers[-1]} 와 다름"
+
+
+def test_ci_reports_server_coverage_without_recipes():
+    """CI 서버 시험이 커버리지를 내고, 블렌더 안에서만 도는 레시피는 측정에서 빠져야 한다."""
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    assert re.search(r"pytest .*--cov .*markdown-append:\$GITHUB_STEP_SUMMARY", ci)
+    pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    assert "pytest-cov" in pyproject
+    assert re.search(r'^omit = \[.*recipes/\*.*\]$', pyproject, re.M)
+    # CI 가 돌리는 시험 파일이 모두 실제로 있어야 한다
+    for name in re.findall(r"tests/(test_\w+\.py)", ci):
+        assert (ROOT / "tests" / name).is_file(), name

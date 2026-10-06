@@ -37,7 +37,7 @@ blender-fx-headless = "blender_fx_mcp.headless:main"
 blender-fx-doctor = "blender_fx_mcp.doctor:main"
 
 [dependency-groups]
-dev = ["pytest>=8"]
+dev = ["pytest>=8", "pytest-cov>=7"]
 
 [build-system]
 requires = ["hatchling"]
@@ -59,3 +59,12 @@ line-length = 120
 "src/blender_fx_mcp/recipes/*.py" = ["F821"]
 # _common.py 의 import 는 뒤에 붙는 레시피 파일들이 쓴다.
 "src/blender_fx_mcp/recipes/_common.py" = ["F401"]
+
+[tool.coverage.run]
+source = ["blender_fx_mcp"]
+# 레시피는 블렌더 안에서 문자열로 실행되므로 파이썬 커버리지로 잴 수 없다. 서버 쪽만 잰다.
+omit = ["*/blender_fx_mcp/recipes/*"]
+
+[tool.coverage.report]
+show_missing = false
+skip_empty = true
