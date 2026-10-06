@@ -41,6 +41,7 @@
 - `docs/registry.md`: 공식 MCP 레지스트리 등록 절차
 - 버튼 이름을 "Connect to MCP server" 로 통일
 - `SECURITY.md`(9876 포트 무인증 수신기 위험·비공개 신고)·`CODE_OF_CONDUCT.md`·기능 요청 이슈 양식
+- PR 양식(한/영): ruff·pytest·한/영 문장·새 레시피 확인 칸
 
 **배포 준비**
 - `server.json.example` 을 MCP 레지스트리 2025-12-11 스키마(camelCase 키)에 맞춤
