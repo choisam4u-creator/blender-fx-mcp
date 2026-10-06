@@ -9,7 +9,7 @@
   4. **CI 커버리지 요약** — `pytest-cov>=7`, 레시피 제외(블렌더 안 문자열 실행이라 못 잼). 서버 쪽 **59%**(bridge·i18n 100%, doctor 80%, headless 56%, server 49%) — CONTRIBUTING 에 기록, CI 작업 요약에 표.
   - CHANGELOG 미출시 절에 반영.
 - 돌린 시험: `uvx ruff@0.15.20 check .` 통과. `uv run pytest -q`(Python 3.13) → **198 통과, 34 건너뜀**(블렌더 없음). CI 서버 시험 목록을 `--cov` 와 함께 Python 3.10·3.13 으로 → 193+4건너뜀 / 197 통과, 작업 요약 markdown 생성 확인. `uv lock --check` 통과. 못 돌린 것: 레시피 시험 34개(블렌더 필요 — 이번 회차는 레시피를 건드리지 않아 bpy 로도 안 돌림).
-- PR: 아래 참고(claude/cloud-work → main).
+- PR: claude/cloud-work → main #8 을 새로 열었음(Mac 총괄이 확인 후 병합).
 - Mac에서 확인할 것:
   1. `uv sync --group dev && uv run pytest -q` (pytest-cov 추가 뒤에도 전체 통과)
   2. GitHub PR 화면에서 PR 양식이 뜨는지, Actions → ci → server-tests 요약에 커버리지 표가 있는지
