@@ -16,6 +16,9 @@
 - `BLENDER_FX_TIMEOUT` 이 굽기·렌더 도구(1800초 고정, `render_video` 3600초)에는 먹지 않던 문제. 이제 더 큰 값을 주면 그 도구들도 따라 늘어난다
 - 시간 초과 오류가 몇 초 기다렸는지와 `BLENDER_FX_TIMEOUT` 으로 늘리는 방법을 알려 준다
 - `blender-fx-doctor` 첫 줄에 blender-fx-mcp 판 번호를 표시(이슈 재현용)
+- 32개 도구 모두에 MCP annotations(`readOnlyHint`·`destructiveHint`·`idempotentHint`·`openWorldHint=false`).
+  `restore`·`clear_caches`·`reset_destroy`·`export_model`·`snapshot`(같은 이름 덮어쓰기)은 destructive 로 표시해
+  클라이언트가 실행 전에 확인을 띄울 수 있다
 
 **시험·CI**
 - 블렌더 없이 도는 서버 단위 시험 추가(파라미터 변환·오류 메시지·가짜 소켓 수신기·레지스트리 형식). 9 → 37개
