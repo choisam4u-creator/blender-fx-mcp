@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: astral-sh/setup-uv@v7
       - run: uvx ruff@0.15.20 check .
 
   # 서버 쪽(레시피 제외) 커버리지를 로그와 작업 요약에 남긴다. 설정은 pyproject.toml 의 [tool.coverage].
@@ -27,7 +27,7 @@ jobs:
         python: ["3.10", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: astral-sh/setup-uv@v7
       - run: uv python install ${{ matrix.python }}
       - run: uv sync --group dev --python ${{ matrix.python }}
       - run: uv run pytest -q tests/test_server.py tests/test_server_params.py tests/test_registry.py tests/test_recipe_messages.py tests/test_server_messages.py tests/test_repo_files.py tests/test_examples.py tests/test_server_tools.py tests/test_troubleshooting.py --cov --cov-report=term --cov-report=markdown-append:$GITHUB_STEP_SUMMARY
@@ -39,7 +39,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: astral-sh/setup-uv@v7
       - run: sudo apt-get update && sudo apt-get install -y libxi6 libxxf86vm1 libxfixes3 libxrender1 libgl1 libsm6 libxkbcommon0 libegl1 libegl-mesa0 libgl1-mesa-dri
       - run: uv python install 3.11
       - run: uv sync --group dev --python 3.11
