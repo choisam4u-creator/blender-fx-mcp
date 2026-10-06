@@ -55,7 +55,7 @@ def test_code_of_conduct_present():
 
 def _server_tools():
     src = (ROOT / "src" / "blender_fx_mcp" / "server.py").read_text(encoding="utf-8")
-    return re.findall(r"@mcp\.tool\(\)\s*\ndef (\w+)\(", src)
+    return re.findall(r"@mcp\.tool\([^)]*\)\s*\ndef (\w+)\(", src)
 
 
 def _readme_section(title):
