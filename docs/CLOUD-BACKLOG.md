@@ -38,7 +38,7 @@
 
 ### 2026-10-06 추가
 
-- [ ] 워크플로 최소 권한: `ci.yml`·`app-tests.yml` 맨 위에 `permissions: contents: read` + 시험(모든 워크플로에 최상위 `permissions` 가 있는지) (보안·유지보수: OpenSSF Scorecard 의 Token-Permissions 항목이고, 기본 토큰이 쓰기 권한이면 외부 PR 의 액션이 저장소를 바꿀 수 있다)
+- [x] 워크플로 최소 권한: `ci.yml`·`app-tests.yml` 맨 위에 `permissions: contents: read` + 시험(모든 워크플로에 최상위 `permissions` 가 있는지) (보안·유지보수: OpenSSF Scorecard 의 Token-Permissions 항목이고, 기본 토큰이 쓰기 권한이면 외부 PR 의 액션이 저장소를 바꿀 수 있다)
 - [ ] MCP 도구 annotations(`readOnlyHint`·`destructiveHint`·`idempotentHint`)를 32개 도구에 달고, 시험으로 `reset_scene`·`cleanup_fx`·`open_blend` 같은 되돌리기 어려운 도구가 destructive 로 표시됐는지 확인 (오류·안전: 클라이언트가 위험 도구 앞에서 사용자 확인을 띄우는 근거. 지금은 도구 설명 문장으로만 경고)
 - [ ] `server.py` 커버리지 49% → 65% 이상: 가짜 수신기로 도구 함수 10개 이상을 끝까지 불러 인자 검증·결과 문장(한/영)을 확인 (시험: 10/6 에 잰 수치 중 가장 낮은 파일. 심사자가 CI 요약에서 바로 봄)
 - [ ] `docs/troubleshooting.md`(한/영): 연결 거부·시간 초과·포트 충돌·유체 굽기 실패·미리보기 검은 화면 등 실제 오류 문장별 해결법, 오류 문장에서 이 문서로 링크 + 시험(bridge 오류 문장이 문서에 모두 있는지) (문서·이슈 대응: 같은 질문 이슈를 줄임)

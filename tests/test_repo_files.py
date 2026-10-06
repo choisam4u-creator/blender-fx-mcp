@@ -149,3 +149,14 @@ def test_coverage_artifacts_are_ignored():
     """`pytest --cov` 가 남기는 .coverage 는 기기마다 다른 SQLite 파일이라 저장소에 들어가면 안 된다."""
     ignored = (ROOT / ".gitignore").read_text(encoding="utf-8").splitlines()
     assert ".coverage" in ignored and "htmlcov/" in ignored
+
+
+@pytest.mark.parametrize("path", sorted((ROOT / ".github" / "workflows").glob("*.yml")), ids=lambda p: p.name)
+def test_workflow_top_level_permissions_read_only(path):
+    text = path.read_text(encoding="utf-8")
+    # 최상위(들여쓰기 없는) permissions 가 jobs 보다 먼저 있고, 쓰기 권한이 없어야 한다
+    m = re.search(r"^permissions:\n((?:[ \t]+.*\n)+)", text, re.M)
+    assert m, f"{path.name}: 최상위 permissions 가 없음"
+    assert text.index("\npermissions:") < text.index("\njobs:")
+    assert "contents: read" in m.group(1)
+    assert "write" not in text, f"{path.name}: write 권한이 있음"

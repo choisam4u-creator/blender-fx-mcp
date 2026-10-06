@@ -6,6 +6,10 @@ on:
     branches: [main]
   pull_request:
 
+# 기본 토큰은 읽기만. 외부 PR 의 액션이 저장소를 바꾸지 못하게 한다(OpenSSF Scorecard Token-Permissions).
+permissions:
+  contents: read
+
 jobs:
   # 판을 고정해 규칙이 저절로 바뀌지 않게 한다. 설정은 pyproject.toml 의 [tool.ruff].
   lint:

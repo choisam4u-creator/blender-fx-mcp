@@ -31,6 +31,7 @@
 - ruff lint 작업(판 고정 0.15.20, 설정은 `pyproject.toml`)
 - dependabot: uv 의존성·GitHub Actions 판을 주 1회 갱신 PR 로
 - CI 서버 시험이 커버리지(레시피 제외, 59%)를 작업 요약에 남긴다
+- 워크플로 기본 토큰을 읽기 전용(`permissions: contents: read`)으로. 빠지면 시험이 실패한다
 - 시험 42 → 232개(블렌더 없이 198개)
 
 **문서**

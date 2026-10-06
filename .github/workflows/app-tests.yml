@@ -13,6 +13,10 @@ on:
         description: "pytest -m 식 (빈 칸이면 전체 레시피 시험)"
         default: "app_only"
 
+# 기본 토큰은 읽기만. 외부 PR 의 액션이 저장소를 바꾸지 못하게 한다(OpenSSF Scorecard Token-Permissions).
+permissions:
+  contents: read
+
 jobs:
   app-only:
     runs-on: ubuntu-latest
