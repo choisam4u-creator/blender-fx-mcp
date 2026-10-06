@@ -16,6 +16,9 @@
 - `BLENDER_FX_TIMEOUT` 이 굽기·렌더 도구(1800초 고정, `render_video` 3600초)에는 먹지 않던 문제. 이제 더 큰 값을 주면 그 도구들도 따라 늘어난다
 - 시간 초과 오류가 몇 초 기다렸는지와 `BLENDER_FX_TIMEOUT` 으로 늘리는 방법을 알려 준다
 - `blender-fx-doctor` 첫 줄에 blender-fx-mcp 판 번호를 표시(이슈 재현용)
+- 32개 도구 모두에 MCP annotations(`readOnlyHint`·`destructiveHint`·`idempotentHint`·`openWorldHint=false`).
+  `restore`·`clear_caches`·`reset_destroy`·`export_model`·`snapshot`(같은 이름 덮어쓰기)은 destructive 로 표시해
+  클라이언트가 실행 전에 확인을 띄울 수 있다
 
 **시험·CI**
 - 블렌더 없이 도는 서버 단위 시험 추가(파라미터 변환·오류 메시지·가짜 소켓 수신기·레지스트리 형식). 9 → 37개
@@ -30,8 +33,10 @@
 - CI 파이썬 행렬에 3.13 추가(3.10·3.12·3.13). 분류자의 양 끝 판이 행렬에 빠지면 시험이 실패한다
 - ruff lint 작업(판 고정 0.15.20, 설정은 `pyproject.toml`)
 - dependabot: uv 의존성·GitHub Actions 판을 주 1회 갱신 PR 로
-- CI 서버 시험이 커버리지(레시피 제외, 59%)를 작업 요약에 남긴다
-- 시험 42 → 232개(블렌더 없이 198개)
+- CI 서버 시험이 커버리지(레시피 제외)를 작업 요약에 남긴다. 59% → 84%
+- 도구 29개를 가짜 레시피 결과로 끝까지 불러 한/영 결과 문장·미리보기 이미지를 확인하는 시험(`tests/test_server_tools.py`). server.py 커버리지 49% → 88%
+- 워크플로 기본 토큰을 읽기 전용(`permissions: contents: read`)으로. 빠지면 시험이 실패한다
+- 시험 42 → 348개(블렌더 없이 314개)
 
 **문서**
 - PyPI 페이지용 `[project.urls]`(이슈·변경 기록·보안 정책)와 Python 3.10~3.13 분류자
@@ -45,6 +50,9 @@
 - `examples/`: 클로드 데스크톱·커서·코덱스 연결 설정(코덱스는 굽기용 `tool_timeout_sec`)
 - README 맨 위 배지(CI·라이선스·Python 판). 실제 파일과 어긋나면 시험이 실패한다
 - PR 양식(한/영): ruff·pytest·한/영 문장·새 레시피 확인 칸
+- `docs/troubleshooting.md`(한/영): 연결 거부·시간 초과·빈 응답·포트 충돌·유체 굽기 실패·검은 미리보기·부수기/가져오기·영상 실패의
+  오류 문장별 해결법. 연결·시간 초과 오류와 doctor 의 "확인 필요" 줄 끝에 이 문서 링크를 붙였다.
+  문서의 오류 문장이 소스와 어긋나거나 링크한 절이 없으면 시험이 실패한다
 
 **배포 준비**
 - `server.json.example` 을 MCP 레지스트리 2025-12-11 스키마(camelCase 키)에 맞춤

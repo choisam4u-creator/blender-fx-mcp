@@ -14,6 +14,7 @@ import time
 from pathlib import Path
 
 from mcp.server.mcpserver import Image, MCPServer
+from mcp.types import ToolAnnotations
 
 from . import bridge
 from .bridge import BlenderError
@@ -59,6 +60,18 @@ Failure messages already say what to change, so pass them on as they are."""
 
 # 서버를 띄울 때의 BLENDER_FX_LANG 으로 고른다
 INSTRUCTIONS = t(INSTRUCTIONS_KO, INSTRUCTIONS_EN)
+
+
+# MCP 도구 annotations. 클라이언트가 위험한 도구 앞에서 사용자 확인을 띄우는 근거가 된다.
+# 모두 이 컴퓨터의 블렌더만 건드리므로 openWorldHint=False.
+# 읽기만: 장면·파일을 바꾸지 않는다
+READ_ONLY = ToolAnnotations(read_only_hint=True, destructive_hint=False, idempotent_hint=True, open_world_hint=False)
+# 설정: 장면 설정을 같은 값으로 덮어쓴다(같은 인자로 다시 불러도 결과가 같다)
+SETTING = ToolAnnotations(read_only_hint=False, destructive_hint=False, idempotent_hint=True, open_world_hint=False)
+# 더하기: 효과를 만든다. 같은 효과를 다시 부르면 이 도구가 만든 이전 결과만 바꾼다(reset_destroy 로 되돌림)
+ADDITIVE = ToolAnnotations(read_only_hint=False, destructive_hint=False, idempotent_hint=False, open_world_hint=False)
+# 되돌리기 어려움: 장면을 통째로 바꾸거나, 오브젝트·캐시를 지우거나, 같은 이름의 파일을 덮어쓴다
+DESTRUCTIVE = ToolAnnotations(read_only_hint=False, destructive_hint=True, idempotent_hint=False, open_world_hint=False)
 
 mcp = MCPServer("blender-fx", instructions=INSTRUCTIONS)
 
@@ -158,7 +171,7 @@ def _cache_dirs() -> dict:
 
 # ---------- 점검·조회 ----------
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def doctor() -> str:
     """Check prerequisites (python, mcp, uv, Blender, receiver add-on, connection, output folder).
     준비물 점검. 뭔가 안 될 때 먼저 부른다."""
@@ -166,7 +179,7 @@ def doctor() -> str:
     return format_report(run_checks())
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def ping_blender() -> str:
     """Check the socket connection to Blender.
     블렌더 수신기와 연결되는지 확인한다."""
@@ -177,7 +190,7 @@ def ping_blender() -> str:
         return _fail(e)
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def list_objects() -> str:
     """List mesh objects with their names and sizes.
     장면에 있는 메시 이름과 크기(m)를 돌려준다. 효과의 target 을 고를 때 쓴다."""
@@ -187,7 +200,7 @@ def list_objects() -> str:
         return _fail(e)
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def inspect_mesh(target: str, decimate_to: int = 0) -> str:
     """Diagnose a mesh before fracturing it: closed?, volume, concavity, face count, repair preview.
     부수기 전에 모델 상태를 본다. 닫혀 있는지, 부피, 오목한 정도, 면 수, 수리하면 얼마나 나아지는지.
@@ -201,7 +214,7 @@ def inspect_mesh(target: str, decimate_to: int = 0) -> str:
 
 # ---------- 장면 만들기 ----------
 
-@mcp.tool()
+@mcp.tool(annotations=ADDITIVE)
 def make_demo_building(floors: int = 3, width: float = 4.0, depth: float = 4.0, floor_height: float = 3.0,
                        name: str = "Building", style: str = "plain", windows_per_side: int = 3, ground: str = ""):
     """Create a practice building with ground, camera and light. Returns one preview frame.
@@ -228,7 +241,7 @@ def make_demo_building(floors: int = 3, width: float = 4.0, depth: float = 4.0, 
     return [text + _notes(res) + _preview_note(rend)] + _images(rend["paths"])
 
 
-@mcp.tool()
+@mcp.tool(annotations=ADDITIVE)
 def import_model(path: str, name: str = "", size: float = 0.0, on_ground: bool = True, center: bool = True,
                  parts: list[str] | None = None):
     """Import a 3D model (glb/gltf/fbx/obj/stl/usd/blend), join it into one mesh and stand it on the ground.
@@ -251,7 +264,7 @@ def import_model(path: str, name: str = "", size: float = 0.0, on_ground: bool =
     return [text + _preview_note(rend)] + _images(rend["paths"])
 
 
-@mcp.tool()
+@mcp.tool(annotations=DESTRUCTIVE)
 def export_model(path: str, names: list[str] | None = None, bake_physics: bool = False) -> str:
     """Export to glb/gltf/fbx/obj, or .abc (Alembic) which also carries the animated water surface.
     장면을 내보낸다. .abc 로 하면 물 표면과 조각 움직임이 프레임마다 구워져 다른 프로그램에서 그대로 보인다.
@@ -272,7 +285,7 @@ def export_model(path: str, names: list[str] | None = None, bake_physics: bool =
 
 # ---------- 파괴·폭발 ----------
 
-@mcp.tool()
+@mcp.tool(annotations=ADDITIVE)
 def destroy(
     target: str,
     impact: str = "left",
@@ -347,7 +360,7 @@ def destroy(
     return [text + _notes(res) + _preview_note(rend)] + _images(rend["paths"])
 
 
-@mcp.tool()
+@mcp.tool(annotations=ADDITIVE)
 def explode(
     target: str = "",
     at: list[float] | None = None,
@@ -400,7 +413,7 @@ def explode(
 
 # ---------- 물 ----------
 
-@mcp.tool()
+@mcp.tool(annotations=ADDITIVE)
 def water(
     mode: str = "drop",
     at: list[float] | None = None,
@@ -471,7 +484,7 @@ def water(
     return [text] + _images(rend["paths"])
 
 
-@mcp.tool()
+@mcp.tool(annotations=ADDITIVE)
 def splash(target: str = "", at: list[float] | None = None, radius: float = 0.0, drop_height: float = 0.0,
            velocity: float = 3.0, frames: int = 48, resolution: int = 64, preview_frames: int = 5):
     """Drop a blob of water on something (shortcut for water(mode="drop")).
@@ -509,7 +522,7 @@ def _emit(kind: str, target: str, at, radius: float, power: float, frames: int, 
     return [text] + _images(rend["paths"])
 
 
-@mcp.tool()
+@mcp.tool(annotations=ADDITIVE)
 def fire(target: str = "", at: list[float] | None = None, radius: float = 0.0, power: float = 1.0, frames: int = 72,
          start_frame: int = 1, end_frame: int = 0, resolution: int = 0, smoke_collision: bool = False,
          density: float = 3.5, dissolve: int = 160, vorticity: float = 0.35, noise: bool = False,
@@ -522,7 +535,7 @@ def fire(target: str = "", at: list[float] | None = None, radius: float = 0.0, p
                  smoke_collision, density, dissolve, vorticity, noise, preview_frames)
 
 
-@mcp.tool()
+@mcp.tool(annotations=ADDITIVE)
 def smoke(target: str = "", at: list[float] | None = None, radius: float = 0.0, power: float = 1.0, frames: int = 72,
           start_frame: int = 1, end_frame: int = 0, resolution: int = 0, smoke_collision: bool = False,
           density: float = 3.5, dissolve: int = 160, vorticity: float = 0.35, noise: bool = False,
@@ -533,7 +546,7 @@ def smoke(target: str = "", at: list[float] | None = None, radius: float = 0.0, 
                  smoke_collision, density, dissolve, vorticity, noise, preview_frames)
 
 
-@mcp.tool()
+@mcp.tool(annotations=ADDITIVE)
 def particles(kind: str = "snow", target: str = "", at: list[float] | None = None, area: float = 0.0, count: int = 0,
               frames: int = 0, start_frame: int = 1, height: float = 0.0, size: float = 0.0, gravity: float = -1.0,
               drag: float = -1.0, lifetime: int = 0, speed: float = -1.0, preview_frames: int = 3):
@@ -560,7 +573,7 @@ def particles(kind: str = "snow", target: str = "", at: list[float] | None = Non
     return [text + _preview_note(rend)] + _images(rend["paths"])
 
 
-@mcp.tool()
+@mcp.tool(annotations=SETTING)
 def wind(direction_deg: float = 90.0, strength: float = 3.0, turbulence: float = 0.0) -> str:
     """Wind force that pushes particles, cloth and smoke.
     바람. direction_deg 0=+Y 쪽, 90=+X 쪽. strength 1 산들 / 3 보통 / 8 강풍. turbulence 흔들림(0~3)."""
@@ -573,7 +586,7 @@ def wind(direction_deg: float = 90.0, strength: float = 3.0, turbulence: float =
              f"Wind: direction {res['direction_deg']}°, strength {res['strength']}, turbulence {res['turbulence']}.")
 
 
-@mcp.tool()
+@mcp.tool(annotations=ADDITIVE)
 def ocean(size: float = 60.0, wave_scale: float = 1.5, choppiness: float = 1.2, wind_velocity: float = 25.0,
           frames: int = 0, preview_frames: int = 3):
     """Animated ocean surface. Hides the flat ground while it exists.
@@ -589,7 +602,7 @@ def ocean(size: float = 60.0, wave_scale: float = 1.5, choppiness: float = 1.2, 
     return [text + _preview_note(rend)] + _images(rend["paths"])
 
 
-@mcp.tool()
+@mcp.tool(annotations=ADDITIVE)
 def cloth_flag(at: list[float] | None = None, width: float = 3.0, height: float = 2.0, wind_strength: float = 6.0,
                frames: int = 0, preview_frames: int = 3):
     """A cloth flag on a pole, flapping in the wind.
@@ -607,7 +620,7 @@ def cloth_flag(at: list[float] | None = None, width: float = 3.0, height: float 
 
 # ---------- 연출 ----------
 
-@mcp.tool()
+@mcp.tool(annotations=SETTING)
 def set_ground(material: str = "concrete", size: float = 0.0, z: float | None = None):
     """Set the ground material: asphalt, concrete, grass, sand, dirt or snow.
     바닥 재질을 바꾼다. size 는 한 변 길이(m), z 는 높이."""
@@ -621,7 +634,7 @@ def set_ground(material: str = "concrete", size: float = 0.0, z: float | None = 
     return [text + _preview_note(rend)] + _images(rend["paths"])
 
 
-@mcp.tool()
+@mcp.tool(annotations=SETTING)
 def camera(preset: str = "medium", target: str = "", distance_factor: float = 0.0, height: float | None = None,
            angle_deg: float | None = None, lens: float = 0.0):
     """Frame the shot: wide, medium, closeup, low, high, top, front or side.
@@ -637,7 +650,7 @@ def camera(preset: str = "medium", target: str = "", distance_factor: float = 0.
     return [text + _preview_note(rend)] + _images(rend["paths"])
 
 
-@mcp.tool()
+@mcp.tool(annotations=ADDITIVE)
 def camera_shake(frame: int = 12, strength: float = 0.3, duration: int = 20, seed: int = 1) -> str:
     """Shake the camera at an impact, settling down over time.
     카메라 흔들림. strength m 단위(0.1 살짝, 0.3 보통, 0.8 강하게)."""
@@ -649,7 +662,7 @@ def camera_shake(frame: int = 12, strength: float = 0.3, duration: int = 20, see
              f"Camera shake: from frame {res['frame']} for {res['duration']} frames, strength {res['strength']}m.")
 
 
-@mcp.tool()
+@mcp.tool(annotations=SETTING)
 def set_look(preset: str = "day", sun_strength: float = 1.0, sky: str = "flat", hdri: str = ""):
     """Lighting and sky: day, sunset, night, overcast or studio; flat colour, procedural sky, or your own HDRI file.
     조명·하늘. sky="procedural" 은 진짜 하늘 텍스처(EEVEE/Cycles 에서만 보임).
@@ -664,7 +677,7 @@ def set_look(preset: str = "day", sun_strength: float = 1.0, sky: str = "flat", 
     return [text] + _images(rend["paths"])
 
 
-@mcp.tool()
+@mcp.tool(annotations=SETTING)
 def set_timing(frame_start: int = 0, frame_end: int = 0, fps: int = 0, slow_from: int = 0, slow_to: int = 0,
                slow_factor: float = 0.25, global_slow: float = 0.0) -> str:
     """Frame range, fps and slow motion.
@@ -690,7 +703,7 @@ def set_timing(frame_start: int = 0, frame_end: int = 0, fps: int = 0, slow_from
     return text
 
 
-@mcp.tool()
+@mcp.tool(annotations=SETTING)
 def set_physics(gravity: float = -1.0, gravity_deg: float = 0.0, substeps: int = 0, solver_iterations: int = 0,
                 speed: float = -1.0, fps: int = 0, rebake: bool = True) -> str:
     """Global physics: gravity strength and tilt, simulation accuracy, playback speed.
@@ -712,7 +725,7 @@ def set_physics(gravity: float = -1.0, gravity_deg: float = 0.0, substeps: int =
     )
 
 
-@mcp.tool()
+@mcp.tool(annotations=SETTING)
 def set_render(samples: int = 0, motion_blur: bool | None = None, shutter: float = 0.5, width: int = 0,
                height: int = 0, exposure: float | None = None, view_transform: str = "", look: str = "",
                fps: int = 0, transparent_background: bool | None = None) -> str:
@@ -734,7 +747,7 @@ def set_render(samples: int = 0, motion_blur: bool | None = None, shutter: float
 
 # ---------- 저장·되돌리기 ----------
 
-@mcp.tool()
+@mcp.tool(annotations=DESTRUCTIVE)
 def snapshot(name: str = "") -> str:
     """Save the current scene as a snapshot you can go back to.
     지금 장면을 저장한다. 되돌리고 싶을 수 있는 작업 전에 부른다."""
@@ -749,7 +762,7 @@ def snapshot(name: str = "") -> str:
              f"Snapshots: {res['snapshots']}")
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def list_snapshots() -> str:
     """List saved snapshots.
     저장해 둔 스냅샷 목록."""
@@ -763,7 +776,7 @@ def list_snapshots() -> str:
     return t("스냅샷 목록:\n", "Snapshots:\n") + "\n".join(f"- {n} ({mb}MB, {when})" for n, mb, when in items)
 
 
-@mcp.tool()
+@mcp.tool(annotations=DESTRUCTIVE)
 def restore(name: str) -> str:
     """Go back to a snapshot. The current scene is auto-saved as "before_restore" first, so this is undoable.
     스냅샷으로 되돌린다. 되돌리기 직전 상태가 before_restore 로 자동 저장되므로 되돌리기도 되돌릴 수 있다."""
@@ -788,7 +801,7 @@ def restore(name: str) -> str:
     return text
 
 
-@mcp.tool()
+@mcp.tool(annotations=ADDITIVE)
 def save_blend(name: str = "fx_scene") -> str:
     """Save the scene as a .blend file you can open in Blender yourself.
     현재 장면을 .blend 로 저장한다."""
@@ -804,7 +817,7 @@ def save_blend(name: str = "fx_scene") -> str:
 
 # ---------- 렌더·정리 ----------
 
-@mcp.tool()
+@mcp.tool(annotations=ADDITIVE)
 def render_preview(frame_count: int = 5, quality: str = "preview", width: int = 640, height: int = 360,
                    frames: list[int] | None = None):
     """Re-render the current scene. quality: preview (fast, no sky/smoke/water), smoke (shows them), final (high quality).
@@ -822,7 +835,7 @@ def render_preview(frame_count: int = 5, quality: str = "preview", width: int = 
     return [text + _preview_note(rend)] + _images(rend["paths"])
 
 
-@mcp.tool()
+@mcp.tool(annotations=ADDITIVE)
 def render_video(quality: str = "smoke", width: int = 1280, height: int = 720, fps: int = 0,
                  frame_start: int = 0, frame_end: int = 0, name: str = "") -> str:
     """Render the whole scene to an mp4 video.
@@ -844,7 +857,7 @@ def render_video(quality: str = "smoke", width: int = 1280, height: int = 720, f
     )
 
 
-@mcp.tool()
+@mcp.tool(annotations=DESTRUCTIVE)
 def clear_caches() -> str:
     """Clear baked caches and free disk space.
     구운 캐시와 캐시 폴더를 비운다. 다음 도구 호출 때 다시 굽는다."""
@@ -856,7 +869,7 @@ def clear_caches() -> str:
              f"Caches cleared: freed {res['freed_mb']}MB, reset {res['fluid_domains']} fluid domains.")
 
 
-@mcp.tool()
+@mcp.tool(annotations=DESTRUCTIVE)
 def reset_destroy(target: str = "") -> str:
     """Remove everything this toolbox created and bring the originals back.
     이 도구가 만든 것(조각·먼지·연기·물·파티클·바다·깃발·접착)을 지우고 원본을 되살린다."""

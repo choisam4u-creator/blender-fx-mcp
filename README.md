@@ -67,6 +67,8 @@ AI는 코드를 짜지 않습니다. 도구와 값만 고릅니다. 그래서 �
 uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-doctor
 ```
 
+오류 문장별 해결법(연결 거부·시간 초과·포트 충돌·유체 굽기 실패·검은 미리보기): [docs/troubleshooting.md](docs/troubleshooting.md)
+
 ## 설치 (한 줄)
 
 클로드 코드:
@@ -254,6 +256,8 @@ Check everything at once (Python, mcp, uv, Blender, receiver, output folder):
 ```bash
 uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-doctor
 ```
+
+Fixes for each error message (connection refused, timeout, port in use, fluid bake failed, black preview): [docs/troubleshooting.md](docs/troubleshooting.md)
 
 ### Install
 

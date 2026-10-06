@@ -90,7 +90,8 @@ def format_report(checks: list[dict]) -> str:
     lines = [f"[{'OK' if c['ok'] else 'X '}] {c['name']}: {c['detail']}" for c in checks]
     bad = [c["name"] for c in checks if not c["ok"]]
     lines.append(t("모두 정상입니다.", "Everything looks good.") if not bad
-                 else t(f"확인 필요: {', '.join(bad)}", f"Needs attention: {', '.join(bad)}"))
+                 else t(f"확인 필요: {', '.join(bad)}. 해결법: {bridge.TROUBLESHOOTING_URL}",
+                        f"Needs attention: {', '.join(bad)}. Help: {bridge.TROUBLESHOOTING_URL}"))
     return "\n".join(lines)
 
 

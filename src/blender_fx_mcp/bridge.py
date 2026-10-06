@@ -15,6 +15,10 @@ import socket
 from .i18n import t
 
 
+# 오류 문장 끝에 붙이는 해결법 문서. 문서의 절 제목이 바뀌면 tests/test_troubleshooting.py 가 알려 준다
+TROUBLESHOOTING_URL = "https://github.com/choisam4u-creator/blender-fx-mcp/blob/main/docs/troubleshooting.md"
+
+
 class BlenderError(RuntimeError):
     """사용자에게 그대로 보여줄 오류 메시지"""
 
@@ -59,16 +63,20 @@ def send_command(cmd_type: str, params: dict | None = None, timeout: float | Non
             raise BlenderError(t(
                 f"블렌더가 {timeout:.0f}초 안에 응답하지 않았습니다(시간 초과). 굽기나 렌더가 너무 오래 걸리거나 블렌더가 멈췄을 수 있습니다. "
                 "조각 수(pieces)나 프레임 수(frames)를 줄여 보세요. 무거운 장면을 일부러 굽는 중이면 "
-                "MCP 설정의 환경변수 BLENDER_FX_TIMEOUT(초)을 더 크게 주고 다시 시작하세요.",
+                "MCP 설정의 환경변수 BLENDER_FX_TIMEOUT(초)을 더 크게 주고 다시 시작하세요. "
+                f"해결법: {TROUBLESHOOTING_URL}#timeout",
                 f"Blender did not respond within {timeout:.0f} s. A bake or render may be too heavy, or Blender is stuck. "
                 "Try lowering pieces or frames. If the heavy scene is intended, set the environment variable "
-                "BLENDER_FX_TIMEOUT (seconds) higher in your MCP config and restart.",
+                "BLENDER_FX_TIMEOUT (seconds) higher in your MCP config and restart. "
+                f"Help: {TROUBLESHOOTING_URL}#timeout",
             )) from e
         raise BlenderError(t(
             f"블렌더에 연결할 수 없습니다({host()}:{port()}). "
-            "블렌더를 켜고, 3D 화면에서 N 키 → BlenderMCP 탭 → Connect to MCP server 를 눌렀는지 확인하세요.",
+            "블렌더를 켜고, 3D 화면에서 N 키 → BlenderMCP 탭 → Connect to MCP server 를 눌렀는지 확인하세요. "
+            f"해결법: {TROUBLESHOOTING_URL}#connection-refused",
             f"Cannot connect to Blender ({host()}:{port()}). "
-            "Open Blender, press N in the 3D view, go to the BlenderMCP tab and click Connect to MCP server.",
+            "Open Blender, press N in the 3D view, go to the BlenderMCP tab and click Connect to MCP server. "
+            f"Help: {TROUBLESHOOTING_URL}#connection-refused",
         )) from e
 
     if resp is None:

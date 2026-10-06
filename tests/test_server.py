@@ -20,6 +20,37 @@ def test_tools_registered():
     } <= names
 
 
+
+def _annotations():
+    return {t.name: t.annotations for t in asyncio.run(mcp.list_tools())}
+
+
+def test_every_tool_has_annotations():
+    for name, a in _annotations().items():
+        assert a is not None, f"{name}: annotations 없음"
+        # 셋 다 직접 정해야 한다(빠지면 클라이언트가 기본값 destructive=True 로 본다)
+        assert None not in (a.read_only_hint, a.destructive_hint, a.idempotent_hint), name
+        assert a.open_world_hint is False, name
+        assert not (a.read_only_hint and a.destructive_hint), name
+
+
+@pytest.mark.parametrize("name", ["restore", "clear_caches", "reset_destroy", "export_model", "snapshot"])
+def test_hard_to_undo_tools_are_destructive(name):
+    a = _annotations()[name]
+    assert a.destructive_hint is True and a.read_only_hint is False
+
+
+@pytest.mark.parametrize("name", ["doctor", "ping_blender", "list_objects", "inspect_mesh", "list_snapshots"])
+def test_query_tools_are_read_only(name):
+    assert _annotations()[name].read_only_hint is True
+
+
+def test_annotations_reach_the_wire():
+    # MCP 로 나갈 때 camelCase 키(readOnlyHint 등)로 바뀌는지
+    tool = next(t for t in asyncio.run(mcp.list_tools()) if t.name == "restore")
+    wire = tool.model_dump(by_alias=True, exclude_none=True)["annotations"]
+    assert wire["destructiveHint"] is True and wire["readOnlyHint"] is False
+
 def test_language_switch(monkeypatch):
     from blender_fx_mcp.i18n import t
     monkeypatch.delenv("BLENDER_FX_LANG", raising=False)
