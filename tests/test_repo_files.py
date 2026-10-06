@@ -143,3 +143,9 @@ def test_ci_reports_server_coverage_without_recipes():
     # CI 가 돌리는 시험 파일이 모두 실제로 있어야 한다
     for name in re.findall(r"tests/(test_\w+\.py)", ci):
         assert (ROOT / "tests" / name).is_file(), name
+
+
+def test_coverage_artifacts_are_ignored():
+    """`pytest --cov` 가 남기는 .coverage 는 기기마다 다른 SQLite 파일이라 저장소에 들어가면 안 된다."""
+    ignored = (ROOT / ".gitignore").read_text(encoding="utf-8").splitlines()
+    assert ".coverage" in ignored and "htmlcov/" in ignored

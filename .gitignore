@@ -8,3 +8,7 @@ build/
 .env
 output/
 server.json
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
