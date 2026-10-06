@@ -1,5 +1,9 @@
 # blender-fx-mcp
 
+[![ci](https://github.com/choisam4u-creator/blender-fx-mcp/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/choisam4u-creator/blender-fx-mcp/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Python 3.10–3.13](https://img.shields.io/badge/python-3.10%E2%80%933.13-blue.svg)](pyproject.toml)
+
 <!-- mcp-name: io.github.choisam4u-creator/blender-fx-mcp -->
 
 > **말로 시키면 블렌더에서 건물을 부수고, 터뜨리고, 물을 쏴 주는 MCP 서버.** / Tell an AI "collapse it from the left" and Blender does it.

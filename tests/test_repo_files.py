@@ -105,3 +105,29 @@ def test_pull_request_template_matches_contributing():
     for needed in ("L(", "t(", "run_guarded(main)", "STEPS", "## 도구 목록", "## English", "app_only", "CHANGELOG.md"):
         assert needed in text, needed
     assert len(re.findall(r"^- \[ \] ", text, re.M)) >= 6
+
+
+def _badges():
+    head = (ROOT / "README.md").read_text(encoding="utf-8").split("\n> ", 1)[0]
+    return re.findall(r"\[!\[([^\]]*)\]\(([^)]+)\)\]\(([^)]+)\)", head)
+
+
+def test_readme_badges_match_repo():
+    """README 맨 위 배지가 실제 워크플로·라이선스·지원 파이썬 판과 맞아야 한다."""
+    badges = _badges()
+    assert len(badges) >= 3, "README 첫 화면에 배지(CI·라이선스·Python)가 없음"
+    workflows = ROOT / ".github" / "workflows"
+    for alt, img, link in badges:
+        m = re.search(r"/actions/workflows/([\w.-]+\.yml)/badge\.svg", img)
+        if m:
+            assert (workflows / m.group(1)).is_file(), m.group(1)
+            assert img.startswith("https://github.com/choisam4u-creator/blender-fx-mcp/")
+            assert link.endswith(f"/actions/workflows/{m.group(1)}")
+        elif not link.startswith("http"):
+            assert (ROOT / link).is_file(), link
+    alts = " ".join(a for a, _, _ in badges)
+    pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    lic = re.search(r'^license = "([^"]+)"$', pyproject, re.M).group(1)
+    assert lic in alts and lic in (ROOT / "LICENSE").read_text(encoding="utf-8")
+    vers = re.findall(r"Programming Language :: Python :: (3\.\d+)\"", pyproject)
+    assert f"{vers[0]}–{vers[-1]}" in alts, f"Python 배지가 분류자 {vers[0]}–{vers[-1]} 와 다름"

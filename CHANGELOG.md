@@ -42,6 +42,7 @@
 - 버튼 이름을 "Connect to MCP server" 로 통일
 - `SECURITY.md`(9876 포트 무인증 수신기 위험·비공개 신고)·`CODE_OF_CONDUCT.md`·기능 요청 이슈 양식
 - `examples/`: 클로드 데스크톱·커서·코덱스 연결 설정(코덱스는 굽기용 `tool_timeout_sec`)
+- README 맨 위 배지(CI·라이선스·Python 판). 실제 파일과 어긋나면 시험이 실패한다
 - PR 양식(한/영): ruff·pytest·한/영 문장·새 레시피 확인 칸
 
 **배포 준비**
