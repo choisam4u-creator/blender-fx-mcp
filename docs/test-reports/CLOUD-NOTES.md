@@ -1,5 +1,20 @@
 # 클라우드 회차 기록
 
+## 2026-10-06
+
+- 한 일: `latest.md`(10/1) FAIL 2건은 10/2 회차에 이미 고쳐 main 에 병합됨 → 백로그로 진행. PR #5 가 병합돼 `claude/cloud-work` 를 main(6385bb4)에서 다시 시작. 남은 백로그 4개 완료 → 남은 항목이 0개라 새 항목 5개 추가.
+  1. **PR 양식** `.github/pull_request_template.md`(한/영, 확인 칸 8개). 시험: 명령이 CONTRIBUTING 과 같은지, 새 레시피 칸이 빠지지 않았는지.
+  2. **`examples/`** — 클로드 데스크톱·커서(`.cursor/mcp.json`)·코덱스(`config.toml`, 굽기용 `tool_timeout_sec = 3600`) 설정과 한/영 안내. README 한/영 설치 절에서 링크. `tests/test_examples.py` 5개(CI 에 추가, tomllib 시험은 3.10 에서 건너뜀).
+  3. **README 배지** CI·MIT·Python 3.10–3.13. 시험: 워크플로 파일·라이선스·분류자 양 끝과 일치.
+  4. **CI 커버리지 요약** — `pytest-cov>=7`, 레시피 제외(블렌더 안 문자열 실행이라 못 잼). 서버 쪽 **59%**(bridge·i18n 100%, doctor 80%, headless 56%, server 49%) — CONTRIBUTING 에 기록, CI 작업 요약에 표.
+  - CHANGELOG 미출시 절에 반영.
+- 돌린 시험: `uvx ruff@0.15.20 check .` 통과. `uv run pytest -q`(Python 3.13) → **198 통과, 34 건너뜀**(블렌더 없음). CI 서버 시험 목록을 `--cov` 와 함께 Python 3.10·3.13 으로 → 193+4건너뜀 / 197 통과, 작업 요약 markdown 생성 확인. `uv lock --check` 통과. 못 돌린 것: 레시피 시험 34개(블렌더 필요 — 이번 회차는 레시피를 건드리지 않아 bpy 로도 안 돌림).
+- PR: 아래 참고(claude/cloud-work → main).
+- Mac에서 확인할 것:
+  1. `uv sync --group dev && uv run pytest -q` (pytest-cov 추가 뒤에도 전체 통과)
+  2. GitHub PR 화면에서 PR 양식이 뜨는지, Actions → ci → server-tests 요약에 커버리지 표가 있는지
+  3. README 첫 화면 배지 3개가 깨지지 않는지
+
 ## 2026-10-05 (2회차)
 
 - 한 일: `latest.md`(10/1) FAIL 2건은 10/2 회차에 이미 고쳐 main 에 병합됨 → 백로그로 진행. 시작 때 main(PR #4 병합분)을 받아 옴(빨리감기). 남은 백로그 3개 완료 → 새 항목 5개 추가 → 그중 1개 더 완료(모두 4개).
