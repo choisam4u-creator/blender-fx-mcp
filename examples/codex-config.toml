@@ -1,0 +1,9 @@
+# ~/.codex/config.toml 에 붙여 넣는다. / Paste into ~/.codex/config.toml.
+[mcp_servers.blender_fx]
+command = "uvx"
+args = ["--from", "git+https://github.com/choisam4u-creator/blender-fx-mcp", "blender-fx-mcp"]
+# 굽기·렌더가 오래 걸리면 도구 시간 제한을 늘린다. / Bakes and renders can take minutes.
+tool_timeout_sec = 3600
+
+[mcp_servers.blender_fx.env]
+BLENDER_FX_LANG = "en"

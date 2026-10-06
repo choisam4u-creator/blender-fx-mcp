@@ -32,6 +32,6 @@
 
 - [x] 시간 초과 오류에 기다린 초와 `BLENDER_FX_TIMEOUT` 으로 늘리는 법을 넣기 + 가짜 소켓 시험 (오류 메시지: 지금은 "pieces·frames 를 줄여라"만 있어, 무거운 장면을 일부러 굽는 사용자가 해결책을 모른다. 10/5 에 이 변수가 굽기 도구에도 먹게 고쳤으니 안내도 따라가야 함) — 한/영 메시지에 기다린 초와 `BLENDER_FX_TIMEOUT`(초)·재시작 안내. 시험: 받기만 하고 답 안 하는 가짜 수신기로 한/영 2개
 - [x] `.github/pull_request_template.md`(한/영: 무엇을·왜, `uvx ruff check .`·`uv run pytest -q` 체크, 새 레시피면 `L()` 쌍·headless 단계·README 도구 표) + 존재 시험 (이슈 대응·기여: 외부 PR 이 CONTRIBUTING 절차를 빠뜨리지 않게) — 한/영 양식(무엇을·왜, 확인 칸 8개, 블렌더에서 확인한 것). 시험 `test_pull_request_template_matches_contributing`(CONTRIBUTING 과 명령이 같은지, 새 레시피 칸이 빠지지 않았는지)
-- [ ] `examples/` 에 클라이언트별 연결 설정(Claude Desktop `claude_desktop_config.json`, Cursor `.cursor/mcp.json`, Codex `config.toml`)과 영어 환경 예시, 시험으로 JSON/TOML 이 읽히고 진입점 이름이 `pyproject` 와 맞는지 확인 (문서: README 에 Claude Code 명령만 있고 다른 클라이언트는 한 줄 설명뿐)
+- [x] `examples/` 에 클라이언트별 연결 설정(Claude Desktop `claude_desktop_config.json`, Cursor `.cursor/mcp.json`, Codex `config.toml`)과 영어 환경 예시, 시험으로 JSON/TOML 이 읽히고 진입점 이름이 `pyproject` 와 맞는지 확인 (문서: README 에 Claude Code 명령만 있고 다른 클라이언트는 한 줄 설명뿐) — `examples/`(claude_desktop_config.json·cursor-mcp.json·codex-config.toml, 한/영 README). 코덱스는 기본 도구 시간 제한이 짧아 `tool_timeout_sec = 3600`. README 한/영 설치 절에서 링크. 시험 `tests/test_examples.py` 5개(CI 에 추가)
 - [ ] README 맨 위 배지(CI 상태·라이선스·Python 판) + 배지 주소가 실제 워크플로 파일·라이선스와 맞는지 시험 (문서·유지보수: 심사자가 첫 화면에서 CI 가 도는지 바로 봄)
 - [ ] CI 에 `pytest --cov`(블렌더 없이 도는 서버 쪽만) 요약 출력 추가, CONTRIBUTING 에 수치 기록 (시험: "시험이 있다"를 넘어 서버 코드 몇 %를 덮는지 근거)

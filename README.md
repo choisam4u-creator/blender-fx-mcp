@@ -79,6 +79,7 @@ claude mcp add -s user blender-fx -- uv --directory /절대/경로/blender-fx-mc
 
 클로드 데스크톱 앱은 `~/Library/Application Support/Claude/claude_desktop_config.json`의 `mcpServers`에,
 코덱스는 `~/.codex/config.toml`의 `[mcp_servers.blender_fx]`에 같은 명령을 적습니다.
+바로 붙여 넣을 수 있는 설정(클로드 데스크톱·커서·코덱스)은 [examples/](examples/)에 있습니다.
 등록 후 앱을 완전히 껐다 켜야 도구가 보입니다.
 
 ## 매일 쓰는 순서
@@ -260,6 +261,7 @@ claude mcp add -s user blender-fx -e BLENDER_FX_LANG=en -- uvx --from git+https:
 
 Claude Desktop, Codex, Cursor and other MCP clients: add the same command (`uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-mcp`)
 to the client's MCP server config with the environment variable `BLENDER_FX_LANG=en`, then fully restart the app.
+Ready-to-paste configs for Claude Desktop, Cursor and Codex are in [examples/](examples/).
 
 | Variable | Default | Meaning |
 |---|---|---|
