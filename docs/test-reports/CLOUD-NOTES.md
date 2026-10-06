@@ -9,6 +9,7 @@
   4. **`docs/troubleshooting.md`(한/영)** — 오류 문장 8묶음별 해결법. 연결·시간 초과 오류와 doctor 의 확인 필요 줄에 링크(절 제목 영어 → ASCII 앵커). `tests/test_troubleshooting.py`(문장 25개가 소스·문서 양쪽에 있는지, 링크 절 존재). CI 목록에 추가.
   - CHANGELOG 미출시 절 반영, 시험 수 348개(블렌더 없이 314개).
 - 돌린 시험: `uvx ruff@0.15.20 check .` 통과. `uv run pytest -q`(Python 3.13) → **314 통과, 34 건너뜀**(블렌더 없음). CI 서버 시험 목록을 Python 3.10 + `--cov` 로 → 310 통과, 4 건너뜀, 커버리지 84%. `uv lock --check`·`uv build` 통과. 못 돌린 것: 레시피 시험 34개(블렌더 필요 — 이번 회차는 레시피를 건드리지 않아 bpy 로도 안 돌림). 오류 문장 끝 링크는 GitHub 에서 앵커가 실제로 열리는지 브라우저로 확인 못 함(병합 전이라 main 에 문서가 없음).
+- PR: claude/cloud-work → main #9 를 새로 열었음(Mac 총괄이 확인 후 병합).
 - Mac에서 확인할 것:
   1. `uv run pytest -q` (블렌더 앱으로 전체 통과)
   2. `BLENDER_FX_PORT=1 uv run blender-fx-doctor | tail -1` (끝에 troubleshooting.md 링크)
