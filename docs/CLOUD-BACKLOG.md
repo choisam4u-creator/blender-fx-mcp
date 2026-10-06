@@ -31,7 +31,15 @@
 ### 2026-10-05 (2회차) 추가
 
 - [x] 시간 초과 오류에 기다린 초와 `BLENDER_FX_TIMEOUT` 으로 늘리는 법을 넣기 + 가짜 소켓 시험 (오류 메시지: 지금은 "pieces·frames 를 줄여라"만 있어, 무거운 장면을 일부러 굽는 사용자가 해결책을 모른다. 10/5 에 이 변수가 굽기 도구에도 먹게 고쳤으니 안내도 따라가야 함) — 한/영 메시지에 기다린 초와 `BLENDER_FX_TIMEOUT`(초)·재시작 안내. 시험: 받기만 하고 답 안 하는 가짜 수신기로 한/영 2개
-- [ ] `.github/pull_request_template.md`(한/영: 무엇을·왜, `uvx ruff check .`·`uv run pytest -q` 체크, 새 레시피면 `L()` 쌍·headless 단계·README 도구 표) + 존재 시험 (이슈 대응·기여: 외부 PR 이 CONTRIBUTING 절차를 빠뜨리지 않게)
-- [ ] `examples/` 에 클라이언트별 연결 설정(Claude Desktop `claude_desktop_config.json`, Cursor `.cursor/mcp.json`, Codex `config.toml`)과 영어 환경 예시, 시험으로 JSON/TOML 이 읽히고 진입점 이름이 `pyproject` 와 맞는지 확인 (문서: README 에 Claude Code 명령만 있고 다른 클라이언트는 한 줄 설명뿐)
-- [ ] README 맨 위 배지(CI 상태·라이선스·Python 판) + 배지 주소가 실제 워크플로 파일·라이선스와 맞는지 시험 (문서·유지보수: 심사자가 첫 화면에서 CI 가 도는지 바로 봄)
-- [ ] CI 에 `pytest --cov`(블렌더 없이 도는 서버 쪽만) 요약 출력 추가, CONTRIBUTING 에 수치 기록 (시험: "시험이 있다"를 넘어 서버 코드 몇 %를 덮는지 근거)
+- [x] `.github/pull_request_template.md`(한/영: 무엇을·왜, `uvx ruff check .`·`uv run pytest -q` 체크, 새 레시피면 `L()` 쌍·headless 단계·README 도구 표) + 존재 시험 (이슈 대응·기여: 외부 PR 이 CONTRIBUTING 절차를 빠뜨리지 않게) — 한/영 양식(무엇을·왜, 확인 칸 8개, 블렌더에서 확인한 것). 시험 `test_pull_request_template_matches_contributing`(CONTRIBUTING 과 명령이 같은지, 새 레시피 칸이 빠지지 않았는지)
+- [x] `examples/` 에 클라이언트별 연결 설정(Claude Desktop `claude_desktop_config.json`, Cursor `.cursor/mcp.json`, Codex `config.toml`)과 영어 환경 예시, 시험으로 JSON/TOML 이 읽히고 진입점 이름이 `pyproject` 와 맞는지 확인 (문서: README 에 Claude Code 명령만 있고 다른 클라이언트는 한 줄 설명뿐) — `examples/`(claude_desktop_config.json·cursor-mcp.json·codex-config.toml, 한/영 README). 코덱스는 기본 도구 시간 제한이 짧아 `tool_timeout_sec = 3600`. README 한/영 설치 절에서 링크. 시험 `tests/test_examples.py` 5개(CI 에 추가)
+- [x] README 맨 위 배지(CI 상태·라이선스·Python 판) + 배지 주소가 실제 워크플로 파일·라이선스와 맞는지 시험 (문서·유지보수: 심사자가 첫 화면에서 CI 가 도는지 바로 봄) — CI(ci.yml, main)·MIT·Python 3.10–3.13 배지. 시험 `test_readme_badges_match_repo`(워크플로 파일이 있는지, 라이선스가 pyproject·LICENSE 와 같은지, Python 범위가 분류자 양 끝과 같은지)
+- [x] CI 에 `pytest --cov`(블렌더 없이 도는 서버 쪽만) 요약 출력 추가, CONTRIBUTING 에 수치 기록 (시험: "시험이 있다"를 넘어 서버 코드 몇 %를 덮는지 근거) — `pytest-cov>=7`(dev), `[tool.coverage.run]` 에서 recipes 제외(블렌더 안에서 문자열로 실행돼 못 잼). CI 서버 시험이 터미널 표와 작업 요약(markdown)을 남김. 2026-10-06 **59%**(bridge·i18n 100%, doctor 80%, headless 56%, server 49%) — CONTRIBUTING 에 기록. 시험 `test_ci_reports_server_coverage_without_recipes`
+
+### 2026-10-06 추가
+
+- [ ] 워크플로 최소 권한: `ci.yml`·`app-tests.yml` 맨 위에 `permissions: contents: read` + 시험(모든 워크플로에 최상위 `permissions` 가 있는지) (보안·유지보수: OpenSSF Scorecard 의 Token-Permissions 항목이고, 기본 토큰이 쓰기 권한이면 외부 PR 의 액션이 저장소를 바꿀 수 있다)
+- [ ] MCP 도구 annotations(`readOnlyHint`·`destructiveHint`·`idempotentHint`)를 32개 도구에 달고, 시험으로 `reset_scene`·`cleanup_fx`·`open_blend` 같은 되돌리기 어려운 도구가 destructive 로 표시됐는지 확인 (오류·안전: 클라이언트가 위험 도구 앞에서 사용자 확인을 띄우는 근거. 지금은 도구 설명 문장으로만 경고)
+- [ ] `server.py` 커버리지 49% → 65% 이상: 가짜 수신기로 도구 함수 10개 이상을 끝까지 불러 인자 검증·결과 문장(한/영)을 확인 (시험: 10/6 에 잰 수치 중 가장 낮은 파일. 심사자가 CI 요약에서 바로 봄)
+- [ ] `docs/troubleshooting.md`(한/영): 연결 거부·시간 초과·포트 충돌·유체 굽기 실패·미리보기 검은 화면 등 실제 오류 문장별 해결법, 오류 문장에서 이 문서로 링크 + 시험(bridge 오류 문장이 문서에 모두 있는지) (문서·이슈 대응: 같은 질문 이슈를 줄임)
+- [ ] `headless.py` 커버리지 56% → 80%: 가짜 실행 파일(즉시 종료·세그폴트·FX_RESULT 없음)로 `run_steps` 실패 갈래 시험 (시험: 레시피 개발자가 쓰는 도구의 실패 안내가 깨지지 않게)

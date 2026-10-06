@@ -15,6 +15,7 @@ jobs:
       - uses: astral-sh/setup-uv@v5
       - run: uvx ruff@0.15.20 check .
 
+  # 서버 쪽(레시피 제외) 커버리지를 로그와 작업 요약에 남긴다. 설정은 pyproject.toml 의 [tool.coverage].
   server-tests:
     runs-on: ubuntu-latest
     strategy:
@@ -25,7 +26,7 @@ jobs:
       - uses: astral-sh/setup-uv@v5
       - run: uv python install ${{ matrix.python }}
       - run: uv sync --group dev --python ${{ matrix.python }}
-      - run: uv run pytest -q tests/test_server.py tests/test_server_params.py tests/test_registry.py tests/test_recipe_messages.py tests/test_server_messages.py tests/test_repo_files.py
+      - run: uv run pytest -q tests/test_server.py tests/test_server_params.py tests/test_registry.py tests/test_recipe_messages.py tests/test_server_messages.py tests/test_repo_files.py tests/test_examples.py --cov --cov-report=term --cov-report=markdown-append:$GITHUB_STEP_SUMMARY
       - run: uv build
 
   # `pip install bpy` 로 레시피 시험 대부분을 블렌더 앱 없이 돌린다.

@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "blender-fx": {
+      "command": "uvx",
+      "args": ["--from", "git+https://github.com/choisam4u-creator/blender-fx-mcp", "blender-fx-mcp"],
+      "env": {
+        "BLENDER_FX_LANG": "ko"
+      }
+    }
+  }
+}

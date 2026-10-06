@@ -94,3 +94,58 @@ def test_dependabot_watches_uv_and_actions():
     assert set(ecosystems) == {"uv", "github-actions"}
     assert text.count('interval: "weekly"') == len(ecosystems)
     assert (ROOT / "uv.lock").is_file()
+
+
+def test_pull_request_template_matches_contributing():
+    """PR 양식의 확인 칸이 CONTRIBUTING 절차(ruff·pytest·한/영 문장·README 도구 표)를 빠뜨리지 않아야 한다."""
+    text = (ROOT / ".github" / "pull_request_template.md").read_text(encoding="utf-8")
+    contributing = (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
+    for cmd in ("uvx ruff check .", "uv run pytest -q"):
+        assert cmd in text and cmd in contributing, cmd
+    for needed in ("L(", "t(", "run_guarded(main)", "STEPS", "## 도구 목록", "## English", "app_only", "CHANGELOG.md"):
+        assert needed in text, needed
+    assert len(re.findall(r"^- \[ \] ", text, re.M)) >= 6
+
+
+def _badges():
+    head = (ROOT / "README.md").read_text(encoding="utf-8").split("\n> ", 1)[0]
+    return re.findall(r"\[!\[([^\]]*)\]\(([^)]+)\)\]\(([^)]+)\)", head)
+
+
+def test_readme_badges_match_repo():
+    """README 맨 위 배지가 실제 워크플로·라이선스·지원 파이썬 판과 맞아야 한다."""
+    badges = _badges()
+    assert len(badges) >= 3, "README 첫 화면에 배지(CI·라이선스·Python)가 없음"
+    workflows = ROOT / ".github" / "workflows"
+    for alt, img, link in badges:
+        m = re.search(r"/actions/workflows/([\w.-]+\.yml)/badge\.svg", img)
+        if m:
+            assert (workflows / m.group(1)).is_file(), m.group(1)
+            assert img.startswith("https://github.com/choisam4u-creator/blender-fx-mcp/")
+            assert link.endswith(f"/actions/workflows/{m.group(1)}")
+        elif not link.startswith("http"):
+            assert (ROOT / link).is_file(), link
+    alts = " ".join(a for a, _, _ in badges)
+    pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    lic = re.search(r'^license = "([^"]+)"$', pyproject, re.M).group(1)
+    assert lic in alts and lic in (ROOT / "LICENSE").read_text(encoding="utf-8")
+    vers = re.findall(r"Programming Language :: Python :: (3\.\d+)\"", pyproject)
+    assert f"{vers[0]}–{vers[-1]}" in alts, f"Python 배지가 분류자 {vers[0]}–{vers[-1]} 와 다름"
+
+
+def test_ci_reports_server_coverage_without_recipes():
+    """CI 서버 시험이 커버리지를 내고, 블렌더 안에서만 도는 레시피는 측정에서 빠져야 한다."""
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    assert re.search(r"pytest .*--cov .*markdown-append:\$GITHUB_STEP_SUMMARY", ci)
+    pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    assert "pytest-cov" in pyproject
+    assert re.search(r'^omit = \[.*recipes/\*.*\]$', pyproject, re.M)
+    # CI 가 돌리는 시험 파일이 모두 실제로 있어야 한다
+    for name in re.findall(r"tests/(test_\w+\.py)", ci):
+        assert (ROOT / "tests" / name).is_file(), name
+
+
+def test_coverage_artifacts_are_ignored():
+    """`pytest --cov` 가 남기는 .coverage 는 기기마다 다른 SQLite 파일이라 저장소에 들어가면 안 된다."""
+    ignored = (ROOT / ".gitignore").read_text(encoding="utf-8").splitlines()
+    assert ".coverage" in ignored and "htmlcov/" in ignored

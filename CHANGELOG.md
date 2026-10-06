@@ -30,7 +30,8 @@
 - CI 파이썬 행렬에 3.13 추가(3.10·3.12·3.13). 분류자의 양 끝 판이 행렬에 빠지면 시험이 실패한다
 - ruff lint 작업(판 고정 0.15.20, 설정은 `pyproject.toml`)
 - dependabot: uv 의존성·GitHub Actions 판을 주 1회 갱신 PR 로
-- 시험 42 → 224개(블렌더 없이 190개)
+- CI 서버 시험이 커버리지(레시피 제외, 59%)를 작업 요약에 남긴다
+- 시험 42 → 232개(블렌더 없이 198개)
 
 **문서**
 - PyPI 페이지용 `[project.urls]`(이슈·변경 기록·보안 정책)와 Python 3.10~3.13 분류자
@@ -41,6 +42,9 @@
 - `docs/registry.md`: 공식 MCP 레지스트리 등록 절차
 - 버튼 이름을 "Connect to MCP server" 로 통일
 - `SECURITY.md`(9876 포트 무인증 수신기 위험·비공개 신고)·`CODE_OF_CONDUCT.md`·기능 요청 이슈 양식
+- `examples/`: 클로드 데스크톱·커서·코덱스 연결 설정(코덱스는 굽기용 `tool_timeout_sec`)
+- README 맨 위 배지(CI·라이선스·Python 판). 실제 파일과 어긋나면 시험이 실패한다
+- PR 양식(한/영): ruff·pytest·한/영 문장·새 레시피 확인 칸
 
 **배포 준비**
 - `server.json.example` 을 MCP 레지스트리 2025-12-11 스키마(camelCase 키)에 맞춤
