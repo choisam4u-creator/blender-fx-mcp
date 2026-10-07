@@ -46,7 +46,7 @@
 
 ### 2026-10-06 (2회차) 추가
 
-- [ ] 워크플로의 `uses:` 를 커밋 SHA 로 고정(`actions/checkout@<sha> # v4`), dependabot 이 SHA 도 갱신하는지 확인 + 시험(모든 `uses:` 가 40자 SHA 와 판 주석인지) (보안·유지보수: OpenSSF Scorecard Pinned-Dependencies 항목. 태그는 옮겨질 수 있어 공급망 위험)
+- [x] 워크플로의 `uses:` 를 커밋 SHA 로 고정(`actions/checkout@<sha> # v4`), dependabot 이 SHA 도 갱신하는지 확인 + 시험(모든 `uses:` 가 40자 SHA 와 판 주석인지) (보안·유지보수: OpenSSF Scorecard Pinned-Dependencies 항목. 태그는 옮겨질 수 있어 공급망 위험) — `actions/checkout` v4.4.0(11d5960…), `astral-sh/setup-uv` v5.4.2(d4b2f3b…) 로 두 워크플로 8곳 고정(태그가 가리키는 커밋을 `git ls-remote` 로 확인, 판은 그대로). dependabot 은 `# vX.Y.Z` 주석이 있으면 SHA 와 주석을 함께 올린다(GitHub 문서 동작 — 실제 PR 은 다음 주 갱신 때 확인). 시험 `test_workflow_actions_pinned_to_sha`(워크플로마다)
 - [ ] 서버 쪽 인자 미리 검사: `impact`·`material`·`pattern`·`glue`·`mode`·`liquid`·`kind`·`preset`·`quality` 같은 고정 목록 인자를 블렌더로 보내기 전에 확인하고, 틀리면 가능한 값과 가장 가까운 값을 한/영으로 알려 주기 + 시험(레시피의 목록과 서버 목록이 같은지) (오류 메시지: 지금은 블렌더가 꺼져 있으면 오타도 "연결할 수 없습니다"로만 보이고, 켜져 있어도 한 번 왕복해야 안다)
 - [ ] `doctor.py` 커버리지 80% → 95%: 블렌더 실행 파일 실행 실패·애드온 파일 없음·출력 폴더 쓰기 실패·mcp 없음 갈래를 가짜로 시험, `main()` 종료 코드 확인 (시험: 사용자가 가장 먼저 돌리는 명령의 실패 안내가 깨지지 않게)
 - [ ] `docs/architecture.md`(한/영): MCP 클라이언트 → server.py → bridge(소켓 9876) → 블렌더 수신기 → 레시피(`PARAMS`+`_common.py`+레시피 본문) → `FX_RESULT` 흐름 그림과 파일별 역할, headless 시험 경로 + README·CONTRIBUTING 에서 링크, 시험(문서에 적힌 파일 경로가 모두 있는지) (문서·기여: 새 기여자가 코드를 읽기 전에 구조를 잡게)

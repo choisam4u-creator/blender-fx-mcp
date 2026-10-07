@@ -160,3 +160,16 @@ def test_workflow_top_level_permissions_read_only(path):
     assert text.index("\npermissions:") < text.index("\njobs:")
     assert "contents: read" in m.group(1)
     assert "write" not in text, f"{path.name}: write 권한이 있음"
+
+
+@pytest.mark.parametrize("path", sorted((ROOT / ".github" / "workflows").glob("*.yml")), ids=lambda p: p.name)
+def test_workflow_actions_pinned_to_sha(path):
+    """외부 액션은 40자 커밋 SHA 로 고정하고 판 주석을 단다(OpenSSF Scorecard Pinned-Dependencies).
+    태그는 옮겨질 수 있다. dependabot 은 SHA 와 판 주석을 함께 올린다."""
+    uses = re.findall(r"^\s*-?\s*uses:\s*(.+)$", path.read_text(encoding="utf-8"), re.M)
+    assert uses, f"{path.name}: uses 가 없음"
+    for u in uses:
+        if u.startswith("./"):  # 저장소 안 액션은 고정 대상이 아님
+            continue
+        assert re.fullmatch(r"[\w.-]+/[\w./-]+@[0-9a-f]{40} # v\d+(\.\d+){0,2}", u.strip()), \
+            f"{path.name}: SHA 고정 아님 또는 판 주석 없음: {u}"
