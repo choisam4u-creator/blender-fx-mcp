@@ -174,9 +174,51 @@ def check_choices(recipe: str, params: dict) -> None:
         raise BlenderError(msg)
 
 
+# 숫자 인자 범위 (가장 작은 값, 가장 큰 값 — None 이면 끝 없음). 레시피는 범위 밖 값을 조용히 잘라 쓰므로,
+# 사용자가 준 값과 다르게 돌지 않도록 서버에서 먼저 알려 준다.
+# 레시피 쪽 max(...)/min(...) 과 같아야 한다 — tests/test_server_ranges.py 가 레시피 파일과 비교한다.
+RANGES: dict[str, dict[str, tuple[float, float | None]]] = {
+    "destroy": {"pieces": (2, 1500), "frames": (12, None), "focus": (0.0, 1.0)},
+    "explode": {"frames": (12, None), "resolution": (16, 256)},
+    "water": {"frames": (12, None), "resolution": (16, 320)},
+    "emit": {"frames": (12, None), "resolution": (16, 256)},
+    "particles": {"frames": (12, None)},
+    "set_render": {"samples": (1, None)},
+}
+
+def _range_hint(name: str) -> str:
+    """범위 오류에 덧붙이는 권장 값."""
+    if name == "pieces":
+        return t("50~400 권장. 많을수록 잘게 부서지고 오래 걸립니다.", "50-400 recommended; more pieces take longer.")
+    if name == "resolution":
+        return t("32 빠름 / 64 보통 / 128 고화질. 높을수록 몇십 분씩 걸릴 수 있습니다.",
+                 "32 fast / 64 normal / 128 high quality; higher values can take tens of minutes.")
+    if name == "frames":
+        return t("24fps 기준 72 = 3초.", "72 frames = 3 seconds at 24 fps.")
+    if name == "focus":
+        return t("1 이면 맞은 곳만 아주 잘게, 0 이면 고르게.", "1 = only the hit area is finely broken, 0 = even.")
+    return ""
+
+
+def check_ranges(recipe: str, params: dict) -> None:
+    """숫자 인자가 레시피가 쓸 수 있는 범위 밖이면 범위와 권장 값을 알려 주는 BlenderError 를 낸다."""
+    for name, (lo, hi) in RANGES.get(recipe, {}).items():
+        value = params.get(name)
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            continue
+        if lo <= value and (hi is None or value <= hi):
+            continue
+        span = f"{lo} ~ {hi}" if hi is not None else t(f"{lo} 이상", f"at least {lo}")
+        msg = t(f"{name} 값 {value} 은(는) 범위 밖입니다. 가능한 범위: {span}.",
+                f"{name} {value} is out of range. Allowed: {span}.")
+        hint = _range_hint(name)
+        raise BlenderError(msg + (" " + hint if hint else ""))
+
+
 def run_recipe(recipe: str, params: dict, timeout: float | None = None) -> dict:
     params = {k: v for k, v in params.items() if v is not None}
     check_choices(recipe, params)
+    check_ranges(recipe, params)
     params.setdefault("_lang", "en" if is_en() else "ko")
     stdout = bridge.run_python(build_code(recipe, params), timeout=timeout)
     res = parse_result(stdout)
@@ -368,7 +410,7 @@ def destroy(
     target: 부술 메시 이름
     impact: 충격 방향 left / right / front / back / top / none(충격체 없이)
     material: concrete / brick / glass / wood / stone / metal / ice / plaster (무게·마찰·튐·속 색)
-    pieces: 조각 수 (50~400 권장). 많을수록 잘게 부서지고 느려진다
+    pieces: 조각 수 2~1500 (50~400 권장). 많을수록 잘게 부서지고 느려진다
     pattern: 조각이 촘촘해지는 곳. impact(맞은 곳) / uniform(고르게) / radial(중심에서) / slabs(층층이)
     focus: 0~1. pattern 의 집중도. 1이면 맞은 곳만 아주 잘게
     impact_power: 충격체 무게 = 대상 전체 무게 × 이 값 (0.02 약하게, 0.04 보통, 0.15 폭발처럼)
@@ -433,7 +475,7 @@ def explode(
 ):
     """Explosion: fracture the target, blow the chunks outward, and add smoke and fire.
     폭발. target 을 주면 그 물건을 조각내 안에서 터뜨리고, 없으면 at 위치에 연기·불만 만든다.
-    power 0.5 작게 / 1 보통 / 2 크게. resolution 32 빠름 / 48 보통 / 96 고화질.
+    power 0.5 작게 / 1 보통 / 2 크게. resolution 16~256: 32 빠름 / 48 보통 / 96 고화질.
     smoke_collision=True 면 연기가 조각을 통과하지 않고 부딪힌다(느려짐).
     material: concrete / brick / glass / wood / stone / metal / ice / plaster
     pattern: radial(중심에서) / impact / uniform / slabs
@@ -513,7 +555,7 @@ def water(
     obstacles: 물이 부딪힐 물건 이름 목록. 비우면 보이는 메시 전부(바닥판 제외)
     source_object: mode="object" 일 때 물이 될 메시 이름
     spray: 물보라·거품 알갱이 계산 켜기
-    resolution: 32 빠름 / 64 보통 / 128 고화질(느리고 메모리 많이 씀)
+    resolution: 16~320. 32 빠름 / 64 보통 / 128 고화질(느리고 메모리 많이 씀)
     결과의 drift 로 물이 실제로 어느 쪽으로 갔는지 확인할 수 있다."""
     try:
         res = run_recipe("water", dict(

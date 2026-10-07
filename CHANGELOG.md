@@ -22,6 +22,9 @@
 - 고정 목록 인자(`impact`·`material`·`pattern`·`glue`·`dust`·`collision`·`interior`·`mode`·`shape`·`liquid`·`kind`·`preset`·`sky`·`quality`)를
   블렌더로 보내기 **전에** 검사한다. 틀리면 가능한 값과 가장 가까운 값을 알려 준다(예: `concret` → "혹시 'concrete' 인가요?").
   지금까지는 블렌더가 꺼져 있으면 오타도 "연결할 수 없습니다"로만 보였고, `interior`·`quality` 오타는 조용히 다른 값으로 돌았다
+- 숫자 인자 범위(`pieces` 2~1500, `resolution` 16~320/256, `frames` 12 이상, `focus` 0~1, `samples` 1 이상)를 블렌더로 보내기 **전에**
+  검사하고 권장 값을 알려 준다. 지금까지 레시피는 범위 밖 값을 조용히 잘라 써서, `resolution=2000` 을 줘도 320 으로 돌고
+  사용자는 왜 결과가 다른지 몰랐다
 - `make_demo_building` 의 `style`·`ground` 도 블렌더로 보내기 전에 검사한다
 - 도구 설명(docstring)의 값 목록을 실제 허용 값과 맞췄다. `explode` 의 `material`·`pattern`·`dust`·`glue`,
   `destroy` 의 `dust`, `render_video` 의 `quality` 는 설명에 값이 없었고, `interior` 는 "다른 material 이름"으로만 적혀 있었다.
