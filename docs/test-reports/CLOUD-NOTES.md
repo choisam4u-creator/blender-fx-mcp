@@ -1,5 +1,20 @@
 # 클라우드 회차 기록
 
+## 2026-10-07
+
+- 한 일: `latest.md`(10/1)의 FAIL 2건은 10/2 회차에 이미 고쳐 main에 병합됨 → 백로그로 진행. 시작할 때 main(PR #9 병합분)을 받아 옴(빨리감기). 백로그 4개 완료 → 남은 항목이 2개라 새 항목 5개 추가.
+  1. **`headless.py` 실패 갈래 시험** `tests/test_headless.py` 16개(`/bin/sh` 가짜 블렌더). 커버리지 56% → 99%.
+  2. **액션 SHA 고정** — checkout v4.4.0(11d5960…), setup-uv v5.4.2(d4b2f3b…). 태그가 가리키는 커밋은 `git ls-remote` 로 확인. 시험 `test_workflow_actions_pinned_to_sha`.
+  3. **고정 목록 인자 미리 검사** — `server.CHOICES` + `check_choices`(`run_recipe` 맨 앞). 가능한 값과 가장 가까운 값을 한/영으로 알려 줌. `tests/test_server_choices.py` 33개(레시피 상수와 ast로 비교). 동작 변화: `interior`·`quality` 오타가 이제 오류로 나옴.
+  4. **`doctor.py` 실패 갈래 시험** `tests/test_doctor.py` 21개. 80% → 99%. `--version` 출력이 비면 "list index out of range"로 보이던 것을 고침.
+  - CI 서버 시험 목록에 새 시험 파일 3개 추가. CHANGELOG·CONTRIBUTING 갱신(서버 쪽 커버리지 84% → **94%**, 시험 421개).
+- 돌린 시험: `uvx ruff@0.15.20 check .` 통과. `uv run pytest -q`(Python 3.13) → **387 통과, 34 건너뜀**(블렌더 없음). CI 서버 시험 목록을 Python 3.10 으로 → 383 통과, 4 건너뜀(tomllib). `--cov` 결과 94%(bridge 96%: 58–60줄은 이번 변경 전에도 안 덮였음. 10/6 기록의 "100%"는 잘못 적은 것으로 보임). `uv lock --check`·`uv build` 통과. 못 돌린 것: 레시피 시험 34개(블렌더 필요 — 레시피 파일은 안 건드림). dependabot 이 SHA 고정 액션을 실제로 올리는지는 다음 주 갱신 PR 이 나와야 확인 가능.
+- PR: claude/cloud-work → main #10 을 새로 열었음(Mac 총괄이 확인 후 병합). dependabot PR(checkout v7·setup-uv v7)은 이번 SHA 고정과 겹치므로, #10 병합 뒤 dependabot 이 다시 만들게 두는 것이 낫다.
+- Mac에서 확인할 것:
+  1. `uv run pytest -q` (블렌더 앱으로 전체 통과, 특히 test_headless·test_doctor 가 macOS /bin/sh 에서)
+  2. `BLENDER_FX_PORT=1 uv run python -c "from blender_fx_mcp import server; print(server.destroy('B', material='concret'))"` (블렌더 없이 "혹시 'concrete'")
+  3. 병합 뒤 GitHub Actions 에서 SHA 고정 액션으로 ci 가 초록인지
+
 ## 2026-10-06 (2회차)
 
 - 한 일: `latest.md`(10/1) FAIL 2건은 10/2 회차에 이미 고쳐 main 에 병합됨 → 백로그로 진행. 시작 때 main(PR #8 병합분)을 받아 옴(빨리감기). 백로그 4개 완료 → 남은 항목 1개라 새 항목 5개 추가.

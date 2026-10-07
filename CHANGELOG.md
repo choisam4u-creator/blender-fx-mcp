@@ -19,6 +19,10 @@
 - 32개 도구 모두에 MCP annotations(`readOnlyHint`·`destructiveHint`·`idempotentHint`·`openWorldHint=false`).
   `restore`·`clear_caches`·`reset_destroy`·`export_model`·`snapshot`(같은 이름 덮어쓰기)은 destructive 로 표시해
   클라이언트가 실행 전에 확인을 띄울 수 있다
+- 고정 목록 인자(`impact`·`material`·`pattern`·`glue`·`dust`·`collision`·`interior`·`mode`·`shape`·`liquid`·`kind`·`preset`·`sky`·`quality`)를
+  블렌더로 보내기 **전에** 검사한다. 틀리면 가능한 값과 가장 가까운 값을 알려 준다(예: `concret` → "혹시 'concrete' 인가요?").
+  지금까지는 블렌더가 꺼져 있으면 오타도 "연결할 수 없습니다"로만 보였고, `interior`·`quality` 오타는 조용히 다른 값으로 돌았다
+- `blender-fx-doctor` 가 `--version` 에 아무것도 출력하지 않는 블렌더를 "실행 실패: list index out of range" 대신 "버전 출력 없음"으로 보여 준다
 
 **시험·CI**
 - 블렌더 없이 도는 서버 단위 시험 추가(파라미터 변환·오류 메시지·가짜 소켓 수신기·레지스트리 형식). 9 → 37개
@@ -36,7 +40,9 @@
 - CI 서버 시험이 커버리지(레시피 제외)를 작업 요약에 남긴다. 59% → 84%
 - 도구 29개를 가짜 레시피 결과로 끝까지 불러 한/영 결과 문장·미리보기 이미지를 확인하는 시험(`tests/test_server_tools.py`). server.py 커버리지 49% → 88%
 - 워크플로 기본 토큰을 읽기 전용(`permissions: contents: read`)으로. 빠지면 시험이 실패한다
-- 시험 42 → 348개(블렌더 없이 314개)
+- `headless.py`·`doctor.py` 실패 갈래 시험(가짜 실행 파일로 즉시 종료·세그폴트·시간 초과·애드온 없음·출력 폴더 쓰기 실패·종료 코드). 서버 쪽 커버리지 84% → 94%
+- 워크플로의 외부 액션을 커밋 SHA + 판 주석으로 고정(OpenSSF Scorecard Pinned-Dependencies). 태그로 되돌아가면 시험이 실패한다
+- 시험 42 → 421개(블렌더 없이 387개)
 
 **문서**
 - PyPI 페이지용 `[project.urls]`(이슈·변경 기록·보안 정책)와 Python 3.10~3.13 분류자

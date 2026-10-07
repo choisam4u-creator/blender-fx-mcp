@@ -1,6 +1,6 @@
 # 기여 안내 / Contributing
 
-**English:** Every effect is one recipe file in `src/blender_fx_mcp/recipes/` plus one tool in `server.py`. Recipes run inside Blender with `PARAMS` prepended by the server and must end with `run_guarded(main)`, printing one `FX_RESULT` JSON line. Lint with `uvx ruff check .`. Server-side coverage (recipes excluded): `uv run pytest -q --cov` on the CI test list (84% on 2026-10-06, after the tool success-path tests). Test headlessly with `uv run pytest -q` (needs Blender on this machine) and, with Blender open, `uv run python scripts/e2e_socket.py`. Keep error messages human-readable; the AI shows them to a non-technical user.
+**English:** Every effect is one recipe file in `src/blender_fx_mcp/recipes/` plus one tool in `server.py`. Recipes run inside Blender with `PARAMS` prepended by the server and must end with `run_guarded(main)`, printing one `FX_RESULT` JSON line. Lint with `uvx ruff check .`. Server-side coverage (recipes excluded): `uv run pytest -q --cov` on the CI test list (94% on 2026-10-07, after the headless/doctor failure-path tests). Test headlessly with `uv run pytest -q` (needs Blender on this machine) and, with Blender open, `uv run python scripts/e2e_socket.py`. Keep error messages human-readable; the AI shows them to a non-technical user.
 
 ## 구조
 
@@ -34,7 +34,7 @@ src/blender_fx_mcp/
 5. `uvx ruff check .` 와 `uv run pytest -q` 통과 후 PR.
    - 서버 쪽 커버리지: `uv run pytest -q --cov --cov-report=term tests/test_server*.py tests/test_registry.py tests/test_recipe_messages.py tests/test_repo_files.py tests/test_examples.py`.
      레시피는 블렌더 안에서 문자열로 실행돼 잴 수 없으므로 뺀다(`[tool.coverage.run] omit`). CI 는 이 표를 작업 요약에 남긴다.
-     2026-10-06 기준 **84%**(bridge·i18n 100%, server 88%, doctor 80%, headless 56%. 도구 성공 갈래 시험 전에는 59%). 줄면 PR 에 이유를 적는다.
+     2026-10-07 기준 **94%**(i18n 100%, doctor·headless 99%, bridge 96%, server 92%. 10-06 에는 84%, 도구 성공 갈래 시험 전에는 59%). 줄면 PR 에 이유를 적는다.
    - 블렌더 앱이 없으면 `pip install bpy` 한 파이썬 3.11 로도 레시피 시험 대부분이 돈다:
      `uv pip install bpy==5.0.1` 뒤 `BLENDER_FX_BLENDER=.venv/bin/python uv run pytest -q`.
      Linux 에서 렌더하려면 `libegl1 libegl-mesa0 libgl1-mesa-dri` 가 있어야 한다.
