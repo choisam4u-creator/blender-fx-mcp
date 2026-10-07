@@ -42,7 +42,7 @@
 - [x] MCP 도구 annotations(`readOnlyHint`·`destructiveHint`·`idempotentHint`)를 32개 도구에 달고, 시험으로 `reset_scene`·`cleanup_fx`·`open_blend` 같은 되돌리기 어려운 도구가 destructive 로 표시됐는지 확인 (오류·안전: 클라이언트가 위험 도구 앞에서 사용자 확인을 띄우는 근거. 지금은 도구 설명 문장으로만 경고) — 실제 도구 이름은 `reset_scene`·`cleanup_fx`·`open_blend` 가 아니어서 `restore`·`clear_caches`·`reset_destroy`·`export_model`(bake_physics·덮어쓰기)·`snapshot`(같은 이름 덮어쓰기)을 destructive 로. 네 묶음(READ_ONLY 5·SETTING 7·ADDITIVE 15·DESTRUCTIVE 5), 모두 `openWorldHint=false`. 시험 5종(빠진 값 없음·destructive·read-only·camelCase 로 나가는지)
 - [x] `server.py` 커버리지 49% → 65% 이상: 가짜 수신기로 도구 함수 10개 이상을 끝까지 불러 인자 검증·결과 문장(한/영)을 확인 (시험: 10/6 에 잰 수치 중 가장 낮은 파일. 심사자가 CI 요약에서 바로 봄) — `tests/test_server_tools.py`: 가짜 레시피 결과로 도구 29개를 한/영 모두 끝까지 불러 결과 문장·영어 문장의 한글 누출·미리보기 이미지 확인, 갈래 시험 9개. **server 49% → 88%, 전체 59% → 84%**. 덤: annotations 뒤 README 도구 표 시험이 도구를 못 찾던 것 고침
 - [x] `docs/troubleshooting.md`(한/영): 연결 거부·시간 초과·포트 충돌·유체 굽기 실패·미리보기 검은 화면 등 실제 오류 문장별 해결법, 오류 문장에서 이 문서로 링크 + 시험(bridge 오류 문장이 문서에 모두 있는지) (문서·이슈 대응: 같은 질문 이슈를 줄임) — 8개 절(연결 거부·시간 초과·빈 응답·포트 충돌·유체 굽기·검은 미리보기·부수기/가져오기·영상). 연결·시간 초과 오류와 doctor 의 확인 필요 줄에 링크(절 제목은 영어라 앵커가 ASCII). README 한/영에서 링크. 시험 `tests/test_troubleshooting.py`(오류 문장 25개가 소스와 문서 양쪽에 있는지, bridge 오류 전부, 링크한 절이 있는지)
-- [ ] `headless.py` 커버리지 56% → 80%: 가짜 실행 파일(즉시 종료·세그폴트·FX_RESULT 없음)로 `run_steps` 실패 갈래 시험 (시험: 레시피 개발자가 쓰는 도구의 실패 안내가 깨지지 않게)
+- [x] `headless.py` 커버리지 56% → 80%: 가짜 실행 파일(즉시 종료·세그폴트·FX_RESULT 없음)로 `run_steps` 실패 갈래 시험 (시험: 레시피 개발자가 쓰는 도구의 실패 안내가 깨지지 않게) — `tests/test_headless.py` 16개: `/bin/sh` 가짜 블렌더를 진짜로 띄워 성공·bpy 파이썬 인자·임시 스크립트 삭제·즉시 종료(코드·stderr)·세그폴트(-11)·FX_RESULT 없음·긴 출력 자르기·시간 초과·장면 비우기/extra_code 순서·블렌더 찾기·`main()`(모르는 단계 종료 2, 출력 경로 채우기). 56% → **99%**. CI 목록에 추가
 
 ### 2026-10-06 (2회차) 추가
 
