@@ -31,6 +31,10 @@
   이제 모든 고정 목록 인자를 `이름: a / b / c` 한 줄로 적고, 시험이 서버 목록과 같은지 확인한다
 - `blender-fx-doctor` 가 `--version` 에 아무것도 출력하지 않는 블렌더를 "실행 실패: list index out of range" 대신 "버전 출력 없음"으로 보여 준다
 
+**문서**
+- `docs/architecture.md`(한/영): 도구 호출 한 번이 서버 → 소켓 → 수신기 → 레시피 → `FX_RESULT` 로 지나가는 길, 파일별 역할, 시험 경로.
+  README·CONTRIBUTING 에서 링크. CONTRIBUTING 구조 그림의 없는 파일(`splash.py`)을 `water.py` 로 고침
+
 **시험·CI**
 - 블렌더 없이 도는 서버 단위 시험 추가(파라미터 변환·오류 메시지·가짜 소켓 수신기·레지스트리 형식). 9 → 37개
 - `pip install bpy`(5.0.1, Python 3.11)로 **레시피 시험 대부분을 블렌더 앱 없이** 돌린다.

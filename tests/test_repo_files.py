@@ -173,3 +173,47 @@ def test_workflow_actions_pinned_to_sha(path):
             continue
         assert re.fullmatch(r"[\w.-]+/[\w./-]+@[0-9a-f]{40} # v\d+(\.\d+){0,2}", u.strip()), \
             f"{path.name}: SHA 고정 아님 또는 판 주석 없음: {u}"
+
+
+# ---------- docs/architecture.md ----------
+ARCH = ROOT / "docs" / "architecture.md"
+
+
+def test_architecture_paths_exist():
+    """구조 문서에 적은 파일 경로가 모두 저장소에 있어야 한다(파일이 옮겨지면 문서도 고친다)."""
+    text = ARCH.read_text(encoding="utf-8")
+    paths = set(re.findall(r"(?:src|scripts|tests|docs)/[\w./*-]+\.(?:py|md)", text))
+    assert len(paths) >= 8
+    missing = sorted(p for p in paths if "*" not in p and not (ROOT / p).exists())
+    assert not missing, f"architecture.md 에 있지만 저장소에 없는 파일: {missing}"
+
+
+def test_architecture_names_exist_in_code():
+    """그림에 적은 함수·상수 이름이 실제 코드에 있어야 한다."""
+    from blender_fx_mcp import bridge, server
+    for name in ("check_choices", "check_ranges", "build_code", "parse_result", "CHOICES", "RANGES"):
+        assert hasattr(server, name), name
+    assert hasattr(bridge, "run_python")
+    common = (ROOT / "src/blender_fx_mcp/recipes/_common.py").read_text(encoding="utf-8")
+    for name in ("def run_guarded", "def L(", "class FxError", '"FX_RESULT "'):
+        assert name in common, name
+    assert '"execute_code"' in (ROOT / "src/blender_fx_mcp/bridge.py").read_text(encoding="utf-8")
+    assert "app_only" in (ROOT / "tests/conftest.py").read_text(encoding="utf-8")
+
+
+def test_architecture_tool_count_matches_server():
+    import asyncio
+
+    from blender_fx_mcp import server
+    count = len(asyncio.run(server.mcp.list_tools()))
+    text = ARCH.read_text(encoding="utf-8")
+    assert f"도구 {count}개" in text and f"{count} tools" in text
+
+
+def test_architecture_has_both_languages_and_is_linked():
+    text = ARCH.read_text(encoding="utf-8")
+    assert "## 한국어" in text and "## English" in text
+    english = text[text.index("## English"):]
+    assert not re.search(r"[가-힣]", english), "영어 절에 한글"
+    for doc in ("README.md", "CONTRIBUTING.md"):
+        assert "docs/architecture.md" in (ROOT / doc).read_text(encoding="utf-8"), f"{doc} 에서 링크 없음"

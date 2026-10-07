@@ -1,8 +1,10 @@
 # 기여 안내 / Contributing
 
-**English:** Every effect is one recipe file in `src/blender_fx_mcp/recipes/` plus one tool in `server.py`. Recipes run inside Blender with `PARAMS` prepended by the server and must end with `run_guarded(main)`, printing one `FX_RESULT` JSON line. Lint with `uvx ruff check .`. Server-side coverage (recipes excluded): `uv run pytest -q --cov` on the CI test list (94% on 2026-10-07, after the headless/doctor failure-path tests). Test headlessly with `uv run pytest -q` (needs Blender on this machine) and, with Blender open, `uv run python scripts/e2e_socket.py`. Keep error messages human-readable; the AI shows them to a non-technical user.
+**English:** Every effect is one recipe file in `src/blender_fx_mcp/recipes/` plus one tool in `server.py`. Recipes run inside Blender with `PARAMS` prepended by the server and must end with `run_guarded(main)`, printing one `FX_RESULT` JSON line. Lint with `uvx ruff check .`. Server-side coverage (recipes excluded): `uv run pytest -q --cov` on the CI test list (94% on 2026-10-07, after the headless/doctor failure-path tests). Test headlessly with `uv run pytest -q` (needs Blender on this machine) and, with Blender open, `uv run python scripts/e2e_socket.py`. Keep error messages human-readable; the AI shows them to a non-technical user. Start with [docs/architecture.md](docs/architecture.md) for the call path and test paths.
 
 ## 구조
+
+도구 호출이 지나가는 길과 시험 경로 그림은 [docs/architecture.md](docs/architecture.md).
 
 ```
 src/blender_fx_mcp/
@@ -16,7 +18,7 @@ src/blender_fx_mcp/
     demo_scene.py  연습용 건물
     destroy.py     파괴
     explode.py     폭발
-    splash.py      물
+    water.py       물
     render.py      프레임 렌더
     render_video.py mp4 렌더
     save_blend.py  장면 저장

@@ -53,6 +53,7 @@ AI가 도구를 골라 실행한 뒤 미리보기 프레임을 보여 줍니다.
 ```
 
 AI는 코드를 짜지 않습니다. 도구와 값만 고릅니다. 그래서 블렌더 버전이 바뀌어도 레시피 한 곳만 고치면 됩니다.
+파일별 역할과 시험 경로는 [docs/architecture.md](docs/architecture.md).
 
 ## 준비물 3가지
 
@@ -332,4 +333,4 @@ Outputs go to per-run folders under `~/blender-fx-output/` (`BLENDER_FX_OUT`). S
 
 The receiver runs Python it receives on `localhost:9876` without authentication. Never expose that port.
 See [SECURITY.md](SECURITY.md) for the risks and private reporting. Contributions: [CONTRIBUTING.md](CONTRIBUTING.md)
-and the [Code of Conduct](CODE_OF_CONDUCT.md). License: MIT.
+and the [Code of Conduct](CODE_OF_CONDUCT.md); how the code fits together: [docs/architecture.md](docs/architecture.md). License: MIT.
