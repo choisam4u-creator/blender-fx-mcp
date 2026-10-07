@@ -1,5 +1,19 @@
 # 클라우드 회차 기록
 
+## 2026-10-07 (2회차)
+
+- 한 일: `latest.md`(10/1) FAIL 2건(README GIF 링크·버튼 이름)은 10/2 회차에 이미 고쳐 main 에 있음을 다시 확인 → 백로그로 진행. 시작 때 main(PR #10 병합분)을 받아 옴(빨리감기). 백로그 4개 완료, 남은 항목 3개라 새 항목은 추가하지 않음.
+  1. **도구 설명 ↔ `server.CHOICES` 일치** — 고정 목록 인자 23개를 `이름: a / b / c` 줄로 통일(explode 의 material·pattern·dust·glue, destroy 의 dust, render_video 의 quality 등이 설명에 없었음). `make_demo_building` 의 style·ground 도 서버 검사에 넣음. 시험: 설명과 목록 일치, 새 도구 누락 방지.
+  2. **숫자 인자 범위 미리 검사** — 레시피는 범위 밖 값을 조용히 잘라 썼음(resolution=2000 → 320). `server.RANGES`(pieces·resolution·frames·focus·samples) + `check_ranges`, 범위·권장 값을 한/영으로. `tests/test_server_ranges.py` 32개(레시피의 max/min 을 ast 로 비교). **동작 변화:** 예전에 조용히 잘리던 값(frames=6 등)이 이제 오류.
+  3. **`docs/architecture.md`(한/영)** — 호출 경로·파일 역할·레시피 규칙·시험 경로. README·CONTRIBUTING 에서 링크, CONTRIBUTING 의 없는 파일 `splash.py` → `water.py`. 시험 4개.
+  4. **`scripts/release_check.py`** — 버전 세 곳·CHANGELOG 맨 위 절(판·날짜·중복)·mcp-name, `--build` 면 휠 METADATA. 지금은 "판 다름"·"미출시" 2줄만 FAIL(정상). 출시 순서·registry.md 에 단계 추가. 시험 11개.
+- 돌린 시험: `uvx ruff@0.15.20 check .` 통과. `uv run pytest -q`(Python 3.13) → **466 통과, 34 건너뜀**(블렌더 없음). CI 서버 시험 목록을 Python 3.10 + `--cov` → 461 통과, 5 건너뜀(tomllib), 커버리지 94%(server 93%). `uv lock --check` 통과, `release_check.py --build` 로 휠 빌드 확인. 못 돌린 것: 레시피 시험 34개(블렌더 필요 — 레시피 파일은 안 건드림, 레시피 시험은 서버를 거치지 않아 새 범위 검사의 영향 없음).
+- PR: claude/cloud-work → main 을 새로 열었음(Mac 총괄이 확인 후 병합).
+- Mac에서 확인할 것:
+  1. `uv run pytest -q` (블렌더 앱으로 전체 통과)
+  2. `BLENDER_FX_PORT=1 uv run python -c "from blender_fx_mcp import server; print(server.water(resolution=2000))"` (블렌더 없이 범위 오류)
+  3. `uv run python scripts/release_check.py --build` (지금은 FAIL 2줄·종료 코드 1이 정상)
+
 ## 2026-10-07
 
 - 한 일: `latest.md`(10/1)의 FAIL 2건은 10/2 회차에 이미 고쳐 main에 병합됨 → 백로그로 진행. 시작할 때 main(PR #9 병합분)을 받아 옴(빨리감기). 백로그 4개 완료 → 남은 항목이 2개라 새 항목 5개 추가.
