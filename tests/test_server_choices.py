@@ -48,6 +48,8 @@ RECIPE_SIDE = {
     ("set_look", "preset"): lambda: _module_constant("set_look.py", "LOOKS"),
     ("set_look", "sky"): lambda: _not_in_literal("set_look.py", "sky_mode"),
     ("camera", "preset"): lambda: _module_constant("camera.py", "PRESETS"),
+    ("demo_scene", "style"): lambda: _not_in_literal("demo_scene.py", "style"),
+    ("demo_scene", "ground"): lambda: _module_constant("_common.py", "GROUND_MATERIALS"),
 }
 
 
@@ -132,3 +134,78 @@ def test_none_and_unlisted_recipes_pass(monkeypatch):
     monkeypatch.setattr(bridge, "run_python", lambda code, timeout=None: 'FX_RESULT {"ok": true}')
     assert server.run_recipe("destroy", {"target": "B", "material": None})["ok"]
     assert server.run_recipe("list_objects", {"anything": "x"})["ok"]
+
+
+# ---------- 도구 설명(docstring)의 값 목록 ----------
+# AI 는 도구 설명만 보고 값을 고른다. 설명에 적힌 값과 서버가 받는 값이 어긋나면 바로 오류가 난다.
+# 도구 → 그 도구가 고정 목록 인자를 넘기는 레시피
+TOOL_RECIPE = {
+    "make_demo_building": "demo_scene",
+    "destroy": "destroy",
+    "explode": "destroy",
+    "water": "water",
+    "particles": "particles",
+    "set_ground": "set_ground",
+    "set_look": "set_look",
+    "camera": "camera",
+    "render_preview": "render",
+    "render_video": "render_video",
+}
+
+
+def _tool_functions() -> dict[str, ast.FunctionDef]:
+    tree = ast.parse(Path(server.__file__).read_text(encoding="utf-8"))
+    return {n.name: n for n in tree.body if isinstance(n, ast.FunctionDef)}
+
+
+def _documented_values(doc: str, name: str) -> tuple[str, ...] | None:
+    """설명에서 `name: a / b(설명) / c` 로 시작하는 줄의 값들. 괄호 속은 빼고, 각 칸의 첫 영어 낱말을 값으로 본다."""
+    import re
+    for line in doc.splitlines():
+        line = re.sub(r"\([^)]*\)", "", line).strip()
+        if line.startswith(f"{name}:"):
+            values = []
+            for part in line[len(name) + 1:].split("/"):
+                m = re.search(r"[a-z][a-z_]*", part)
+                assert m, f"{name} 줄의 '{part}' 칸에 값이 없음"
+                values.append(m.group(0))
+            return tuple(values)
+    return None
+
+
+def _cases():
+    funcs = _tool_functions()
+    for tool, recipe in TOOL_RECIPE.items():
+        params = {a.arg for a in funcs[tool].args.args}
+        for name in server.CHOICES[recipe]:
+            if name in params:
+                yield tool, recipe, name
+
+
+@pytest.mark.parametrize("tool,recipe,name", list(_cases()), ids=lambda v: v if isinstance(v, str) else "")
+def test_docstring_lists_exactly_the_allowed_values(tool, recipe, name):
+    doc = ast.get_docstring(_tool_functions()[tool])
+    documented = _documented_values(doc, name)
+    assert documented is not None, f"{tool} 설명에 `{name}: a / b / c` 줄이 없음"
+    allowed = server.CHOICES[recipe][name]
+    assert set(documented) == set(allowed), (
+        f"{tool}.{name}: 설명에만 있음 {sorted(set(documented) - set(allowed))}, "
+        f"설명에 빠짐 {sorted(set(allowed) - set(documented))}")
+    assert len(documented) == len(set(documented)), f"{tool}.{name}: 설명에 같은 값이 두 번"
+
+
+def test_every_tool_with_choice_args_is_checked():
+    """CHOICES 레시피로 가는 도구가 새로 생기면 TOOL_RECIPE 에도 넣게 한다."""
+    import re
+    src = Path(server.__file__).read_text(encoding="utf-8")
+    funcs = _tool_functions()
+    for name, fn in funcs.items():
+        if not any(getattr(d, "func", None) is not None and getattr(d.func, "attr", "") == "tool"
+                   for d in fn.decorator_list):
+            continue
+        body = ast.get_source_segment(src, fn)
+        called = set(re.findall(r'run_recipe\("(\w+)"', body))
+        params = {a.arg for a in fn.args.args}
+        for recipe in called & set(server.CHOICES):
+            if params & set(server.CHOICES[recipe]):
+                assert name in TOOL_RECIPE, f"{name} 도구가 {recipe} 고정 목록 인자를 받는데 설명 검사 목록에 없음"

@@ -142,6 +142,10 @@ CHOICES: dict[str, dict[str, tuple[str, ...]]] = {
         "shape": ("sphere", "box", "column"),
         "liquid": ("water", "oil", "honey", "lava", "mercury", "slime"),
     },
+    "demo_scene": {
+        "style": ("plain", "windows"),
+        "ground": ("asphalt", "concrete", "grass", "sand", "dirt", "snow"),
+    },
     "particles": {"kind": ("rain", "snow", "sparks", "ash")},
     "emit": {"kind": ("fire", "smoke", "both")},
     "set_ground": {"material": ("asphalt", "concrete", "grass", "sand", "dirt", "snow")},
@@ -267,8 +271,8 @@ def make_demo_building(floors: int = 3, width: float = 4.0, depth: float = 4.0, 
                        name: str = "Building", style: str = "plain", windows_per_side: int = 3, ground: str = ""):
     """Create a practice building with ground, camera and light. Returns one preview frame.
     연습용 건물과 바닥·카메라·조명을 만든다. 부술 오브젝트가 없을 때 쓴다.
-    style: "plain" 민무늬 / "windows" 벽을 실제로 파낸 창문 건물.
-    ground: asphalt/concrete/grass/sand/dirt/snow, 비우면 기본."""
+    style: plain(민무늬) / windows(벽을 실제로 파낸 창문 건물)
+    ground: asphalt / concrete / grass / sand / dirt / snow. 비우면 기본 바닥"""
     try:
         res = run_recipe("demo_scene", dict(floors=floors, width=width, depth=depth, floor_height=floor_height,
                                             name=name, style=style, windows_per_side=windows_per_side,
@@ -368,9 +372,10 @@ def destroy(
     pattern: 조각이 촘촘해지는 곳. impact(맞은 곳) / uniform(고르게) / radial(중심에서) / slabs(층층이)
     focus: 0~1. pattern 의 집중도. 1이면 맞은 곳만 아주 잘게
     impact_power: 충격체 무게 = 대상 전체 무게 × 이 값 (0.02 약하게, 0.04 보통, 0.15 폭발처럼)
+    dust: none / low / high. 무너질 때 날리는 먼지 양
     glue: none / weak / medium / strong. 조각을 붙여 두면 맞은 곳만 무너지고 나머지는 버틴다
     collision: auto / convex(빠름) / mesh(오목한 모양 정확) / box / sphere
-    interior: 부순 단면 재질. auto(재질에 맞춰) / none / 다른 material 이름
+    interior: 부순 단면 재질. auto(재질에 맞춰) / none(속 재질 없음) / concrete / brick / glass / wood / stone / metal / ice / plaster
     repair: 구멍 난 메시를 자동 수리 (남의 모델에 특히 필요)
     shell_thickness: 껍데기뿐인 모델에 줄 두께(m). 닫히지 않은 모델에서만 쓰임
     density / friction / bounce: 재질 프리셋을 덮어쓰는 값 (0 또는 음수면 프리셋 그대로)
@@ -429,7 +434,11 @@ def explode(
     """Explosion: fracture the target, blow the chunks outward, and add smoke and fire.
     폭발. target 을 주면 그 물건을 조각내 안에서 터뜨리고, 없으면 at 위치에 연기·불만 만든다.
     power 0.5 작게 / 1 보통 / 2 크게. resolution 32 빠름 / 48 보통 / 96 고화질.
-    smoke_collision=True 면 연기가 조각을 통과하지 않고 부딪힌다(느려짐)."""
+    smoke_collision=True 면 연기가 조각을 통과하지 않고 부딪힌다(느려짐).
+    material: concrete / brick / glass / wood / stone / metal / ice / plaster
+    pattern: radial(중심에서) / impact / uniform / slabs
+    dust: none / low / high
+    glue: none / weak / medium / strong"""
     try:
         if target:
             run_recipe("destroy", dict(
@@ -599,7 +608,8 @@ def particles(kind: str = "snow", target: str = "", at: list[float] | None = Non
               frames: int = 0, start_frame: int = 1, height: float = 0.0, size: float = 0.0, gravity: float = -1.0,
               drag: float = -1.0, lifetime: int = 0, speed: float = -1.0, preview_frames: int = 3):
     """Rain, snow, sparks or ash particles.
-    비·눈·불꽃·재. kind: rain / snow / sparks / ash.
+    비·눈·불꽃·재.
+    kind: rain / snow / sparks / ash
     size 알갱이 크기, gravity 중력 비율, drag 공기 저항, lifetime 수명(프레임), speed 튀어나가는 속도.
     음수/0 이면 프리셋 그대로."""
     try:
@@ -671,7 +681,8 @@ def cloth_flag(at: list[float] | None = None, width: float = 3.0, height: float 
 @mcp.tool(annotations=SETTING)
 def set_ground(material: str = "concrete", size: float = 0.0, z: float | None = None):
     """Set the ground material: asphalt, concrete, grass, sand, dirt or snow.
-    바닥 재질을 바꾼다. size 는 한 변 길이(m), z 는 높이."""
+    바닥 재질을 바꾼다. size 는 한 변 길이(m), z 는 높이.
+    material: asphalt / concrete / grass / sand / dirt / snow"""
     try:
         res = run_recipe("set_ground", dict(material=material, size=size or None, z=z))
         rend, _ = _render(f"ground_{material}", frames=[1])
@@ -686,7 +697,8 @@ def set_ground(material: str = "concrete", size: float = 0.0, z: float | None = 
 def camera(preset: str = "medium", target: str = "", distance_factor: float = 0.0, height: float | None = None,
            angle_deg: float | None = None, lens: float = 0.0):
     """Frame the shot: wide, medium, closeup, low, high, top, front or side.
-    카메라 구도. angle_deg 0=정면, 90=오른쪽, -90=왼쪽. height 0=바닥, 1=꼭대기. lens mm."""
+    카메라 구도. angle_deg 0=정면, 90=오른쪽, -90=왼쪽. height 0=바닥, 1=꼭대기. lens mm.
+    preset: wide / medium / closeup / low / high / top / front / side"""
     try:
         res = run_recipe("camera", dict(preset=preset, target=target or None, distance_factor=distance_factor or None,
                                         height=height, angle_deg=angle_deg, lens=lens or None))
@@ -713,7 +725,9 @@ def camera_shake(frame: int = 12, strength: float = 0.3, duration: int = 20, see
 @mcp.tool(annotations=SETTING)
 def set_look(preset: str = "day", sun_strength: float = 1.0, sky: str = "flat", hdri: str = ""):
     """Lighting and sky: day, sunset, night, overcast or studio; flat colour, procedural sky, or your own HDRI file.
-    조명·하늘. sky="procedural" 은 진짜 하늘 텍스처(EEVEE/Cycles 에서만 보임).
+    조명·하늘.
+    preset: day / sunset / night / overcast / studio
+    sky: flat(단색) / procedural(진짜 하늘 텍스처, EEVEE/Cycles 에서만 보임)
     hdri 는 가지고 있는 .hdr/.exr 파일 경로. 인터넷에서 받아오지는 않는다."""
     try:
         res = run_recipe("set_look", dict(preset=preset, sun_strength=sun_strength, sky=sky, hdri=hdri or None))
@@ -869,7 +883,8 @@ def save_blend(name: str = "fx_scene") -> str:
 def render_preview(frame_count: int = 5, quality: str = "preview", width: int = 640, height: int = 360,
                    frames: list[int] | None = None):
     """Re-render the current scene. quality: preview (fast, no sky/smoke/water), smoke (shows them), final (high quality).
-    현재 장면을 다시 렌더한다."""
+    현재 장면을 다시 렌더한다.
+    quality: preview(빠름, 하늘·연기·물 안 보임) / smoke(그것들까지 보임) / final(고화질)"""
     try:
         run_dir = new_run_dir(f"render_{quality}")
         params = dict(out_dir=str(run_dir), frame_count=frame_count, quality=quality, width=width, height=height)
@@ -887,7 +902,8 @@ def render_preview(frame_count: int = 5, quality: str = "preview", width: int = 
 def render_video(quality: str = "smoke", width: int = 1280, height: int = 720, fps: int = 0,
                  frame_start: int = 0, frame_end: int = 0, name: str = "") -> str:
     """Render the whole scene to an mp4 video.
-    장면 전체를 mp4 로 렌더한다. 72프레임 720p 기준 1~3분."""
+    장면 전체를 mp4 로 렌더한다. 72프레임 720p 기준 1~3분.
+    quality: preview / smoke / final"""
     try:
         run_dir = new_run_dir(f"video_{name or quality}")
         res = run_recipe("render_video", dict(

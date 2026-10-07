@@ -54,7 +54,7 @@
 
 ### 2026-10-07 추가
 
-- [ ] 도구 설명(docstring)의 값 목록과 `server.CHOICES` 일치 시험: `material: concrete / brick …` 처럼 설명에 적힌 값이 실제 허용 값과 모두 같은지(빠진 값·없는 값) 확인하고 어긋난 곳 고치기 (문서: AI 는 도구 설명만 보고 값을 고른다. 10/7 에 서버 검사를 넣었으니 설명이 틀리면 바로 오류가 난다)
+- [x] 도구 설명(docstring)의 값 목록과 `server.CHOICES` 일치 시험: `material: concrete / brick …` 처럼 설명에 적힌 값이 실제 허용 값과 모두 같은지(빠진 값·없는 값) 확인하고 어긋난 곳 고치기 (문서: AI 는 도구 설명만 보고 값을 고른다. 10/7 에 서버 검사를 넣었으니 설명이 틀리면 바로 오류가 난다) — 도구 10개·인자 23개를 `이름: a / b / c` 줄로 통일. 빠져 있던 것: `explode` 의 material·pattern·dust·glue, `destroy` 의 dust, `render_video`·`render_preview` 의 quality, `set_look`·`camera`·`set_ground`·`particles` 는 첫 줄 문장에만 있었음, `interior` 는 "다른 material 이름". 덤: `make_demo_building` 의 style·ground 도 `CHOICES` 에 넣음. 시험 `test_docstring_lists_exactly_the_allowed_values`(괄호 속 제외, 빠진 값·없는 값·중복)·`test_every_tool_with_choice_args_is_checked`(새 도구가 검사 목록에서 빠지면 실패)
 - [ ] 숫자 인자 범위 미리 검사: `pieces`(1~2000)·`resolution`(16~512)·`frames`(1 이상)·`focus`(0~1)·`samples` 등 블렌더를 오래 붙잡거나 터뜨리는 값을 서버에서 먼저 막고, 권장 범위를 한/영으로 알려 주기 + 시험 (오류 메시지·안정성: 지금은 resolution=2000 같은 값이 블렌더를 몇십 분 멈추게 한 뒤 시간 초과로만 보인다)
 - [ ] 버그 신고 양식을 YAML 폼(`bug_report.yml`)으로: doctor 출력·OS·블렌더 판·재현 명령을 필수 칸으로, 한/영 + 시험(필수 칸·라벨, config.yml 과 충돌 없음) (이슈 대응: 재현 정보 없는 이슈를 줄이고 분류를 빠르게. 지금 .md 양식은 칸을 비워도 올라간다)
 - [ ] `SUPPORT.md`(한/영): 질문·버그·보안 신고를 어디로 보내는지, 응답 목표(예: 7일 안 첫 답), 지원하는 블렌더·파이썬 판 표 + 시험(표의 파이썬 판이 분류자와, 블렌더 판이 CI·README 와 같은지) (유지보수 신호: 오픈소스 지원 프로그램 심사에서 "이슈 대응 정책"을 문서로 보여 줌. GitHub 가 이슈 화면에 자동 링크)
