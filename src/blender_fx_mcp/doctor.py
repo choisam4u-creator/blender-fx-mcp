@@ -40,7 +40,7 @@ def run_checks() -> list[dict]:
     name_mcp = t("mcp 라이브러리", "mcp library")
     try:
         out.append(_check(name_mcp, True, metadata.version("mcp")))
-    except Exception as e:  # pragma: no cover
+    except Exception as e:
         out.append(_check(name_mcp, False, t(f"설치 안 됨: {e}", f"not installed: {e}")))
 
     uv = shutil.which("uv")
@@ -50,7 +50,8 @@ def run_checks() -> list[dict]:
     blender = find_blender()
     if blender:
         try:
-            ver = subprocess.run([blender, "--version"], capture_output=True, text=True, timeout=30).stdout.splitlines()[0]
+            lines = subprocess.run([blender, "--version"], capture_output=True, text=True, timeout=30).stdout.splitlines()
+            ver = lines[0] if lines else t("버전 출력 없음", "printed no version")
         except Exception as e:
             ver = t(f"실행 실패: {e}", f"failed to run: {e}")
         out.append(_check(name_blender, True, f"{blender} — {ver}"))
