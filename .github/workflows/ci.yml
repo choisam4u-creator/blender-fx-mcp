@@ -30,7 +30,7 @@ jobs:
       - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5.4.2
       - run: uv python install ${{ matrix.python }}
       - run: uv sync --group dev --python ${{ matrix.python }}
-      - run: uv run pytest -q tests/test_server.py tests/test_server_params.py tests/test_registry.py tests/test_recipe_messages.py tests/test_server_messages.py tests/test_repo_files.py tests/test_examples.py tests/test_server_tools.py tests/test_troubleshooting.py tests/test_headless.py --cov --cov-report=term --cov-report=markdown-append:$GITHUB_STEP_SUMMARY
+      - run: uv run pytest -q tests/test_server.py tests/test_server_params.py tests/test_registry.py tests/test_recipe_messages.py tests/test_server_messages.py tests/test_repo_files.py tests/test_examples.py tests/test_server_tools.py tests/test_troubleshooting.py tests/test_headless.py tests/test_server_choices.py --cov --cov-report=term --cov-report=markdown-append:$GITHUB_STEP_SUMMARY
       - run: uv build
 
   # `pip install bpy` 로 레시피 시험 대부분을 블렌더 앱 없이 돌린다.

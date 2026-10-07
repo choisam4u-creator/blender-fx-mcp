@@ -7,6 +7,7 @@ AI 는 코드를 짜지 않고 도구와 값만 고른다.
 
 from __future__ import annotations
 
+import difflib
 import json
 import os
 import re
@@ -123,8 +124,55 @@ def parse_result(stdout: str) -> dict:
     return results[-1]
 
 
+# 고정 목록 인자. 블렌더로 보내기 전에 검사해 오타를 바로(블렌더가 꺼져 있어도) 알려 준다.
+# 레시피 쪽 목록과 같아야 한다 — tests/test_server_choices.py 가 레시피 파일과 비교한다.
+_DESTROY_MATERIALS = ("concrete", "brick", "glass", "wood", "stone", "metal", "ice", "plaster")
+CHOICES: dict[str, dict[str, tuple[str, ...]]] = {
+    "destroy": {
+        "impact": ("left", "right", "front", "back", "top", "none"),
+        "material": _DESTROY_MATERIALS,
+        "pattern": ("uniform", "impact", "radial", "slabs"),
+        "dust": ("none", "low", "high"),
+        "glue": ("none", "weak", "medium", "strong"),
+        "collision": ("auto", "convex", "mesh", "box", "sphere"),
+        "interior": ("auto", "none") + _DESTROY_MATERIALS,
+    },
+    "water": {
+        "mode": ("drop", "stream", "pool", "object"),
+        "shape": ("sphere", "box", "column"),
+        "liquid": ("water", "oil", "honey", "lava", "mercury", "slime"),
+    },
+    "particles": {"kind": ("rain", "snow", "sparks", "ash")},
+    "emit": {"kind": ("fire", "smoke", "both")},
+    "set_ground": {"material": ("asphalt", "concrete", "grass", "sand", "dirt", "snow")},
+    "set_look": {
+        "preset": ("day", "sunset", "night", "overcast", "studio"),
+        "sky": ("flat", "procedural"),
+    },
+    "camera": {"preset": ("wide", "medium", "closeup", "low", "high", "top", "front", "side")},
+    "render": {"quality": ("preview", "smoke", "final")},
+    "render_video": {"quality": ("preview", "smoke", "final")},
+}
+
+
+def check_choices(recipe: str, params: dict) -> None:
+    """고정 목록 인자가 목록 밖이면 가능한 값과 가장 가까운 값을 알려 주는 BlenderError 를 낸다."""
+    for name, allowed in CHOICES.get(recipe, {}).items():
+        value = params.get(name)
+        if value is None or value in allowed:
+            continue
+        close = difflib.get_close_matches(str(value).strip().lower(), allowed, n=1, cutoff=0.5)
+        listed = " / ".join(allowed)
+        msg = t(f"{name} 값 '{value}' 은(는) 쓸 수 없습니다. 가능한 값: {listed}.",
+                f"{name} '{value}' is not allowed. Choose one of: {listed}.")
+        if close:
+            msg += t(f" 혹시 '{close[0]}' 인가요?", f" Did you mean '{close[0]}'?")
+        raise BlenderError(msg)
+
+
 def run_recipe(recipe: str, params: dict, timeout: float | None = None) -> dict:
     params = {k: v for k, v in params.items() if v is not None}
+    check_choices(recipe, params)
     params.setdefault("_lang", "en" if is_en() else "ko")
     stdout = bridge.run_python(build_code(recipe, params), timeout=timeout)
     res = parse_result(stdout)
