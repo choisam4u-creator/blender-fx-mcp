@@ -8,7 +8,7 @@
   3. **`docs/architecture.md`(한/영)** — 호출 경로·파일 역할·레시피 규칙·시험 경로. README·CONTRIBUTING 에서 링크, CONTRIBUTING 의 없는 파일 `splash.py` → `water.py`. 시험 4개.
   4. **`scripts/release_check.py`** — 버전 세 곳·CHANGELOG 맨 위 절(판·날짜·중복)·mcp-name, `--build` 면 휠 METADATA. 지금은 "판 다름"·"미출시" 2줄만 FAIL(정상). 출시 순서·registry.md 에 단계 추가. 시험 11개.
 - 돌린 시험: `uvx ruff@0.15.20 check .` 통과. `uv run pytest -q`(Python 3.13) → **466 통과, 34 건너뜀**(블렌더 없음). CI 서버 시험 목록을 Python 3.10 + `--cov` → 461 통과, 5 건너뜀(tomllib), 커버리지 94%(server 93%). `uv lock --check` 통과, `release_check.py --build` 로 휠 빌드 확인. 못 돌린 것: 레시피 시험 34개(블렌더 필요 — 레시피 파일은 안 건드림, 레시피 시험은 서버를 거치지 않아 새 범위 검사의 영향 없음).
-- PR: claude/cloud-work → main 을 새로 열었음(Mac 총괄이 확인 후 병합).
+- PR: claude/cloud-work → main #13 을 새로 열었음(Mac 총괄이 확인 후 병합).
 - Mac에서 확인할 것:
   1. `uv run pytest -q` (블렌더 앱으로 전체 통과)
   2. `BLENDER_FX_PORT=1 uv run python -c "from blender_fx_mcp import server; print(server.water(resolution=2000))"` (블렌더 없이 범위 오류)
