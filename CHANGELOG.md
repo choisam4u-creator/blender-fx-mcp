@@ -31,10 +31,6 @@
   이제 모든 고정 목록 인자를 `이름: a / b / c` 한 줄로 적고, 시험이 서버 목록과 같은지 확인한다
 - `blender-fx-doctor` 가 `--version` 에 아무것도 출력하지 않는 블렌더를 "실행 실패: list index out of range" 대신 "버전 출력 없음"으로 보여 준다
 
-**문서**
-- `docs/architecture.md`(한/영): 도구 호출 한 번이 서버 → 소켓 → 수신기 → 레시피 → `FX_RESULT` 로 지나가는 길, 파일별 역할, 시험 경로.
-  README·CONTRIBUTING 에서 링크. CONTRIBUTING 구조 그림의 없는 파일(`splash.py`)을 `water.py` 로 고침
-
 **시험·CI**
 - 블렌더 없이 도는 서버 단위 시험 추가(파라미터 변환·오류 메시지·가짜 소켓 수신기·레지스트리 형식). 9 → 37개
 - `pip install bpy`(5.0.1, Python 3.11)로 **레시피 시험 대부분을 블렌더 앱 없이** 돌린다.
@@ -53,7 +49,8 @@
 - 워크플로 기본 토큰을 읽기 전용(`permissions: contents: read`)으로. 빠지면 시험이 실패한다
 - `headless.py`·`doctor.py` 실패 갈래 시험(가짜 실행 파일로 즉시 종료·세그폴트·시간 초과·애드온 없음·출력 폴더 쓰기 실패·종료 코드). 서버 쪽 커버리지 84% → 94%
 - 워크플로의 외부 액션을 커밋 SHA + 판 주석으로 고정(OpenSSF Scorecard Pinned-Dependencies). 태그로 되돌아가면 시험이 실패한다
-- 시험 42 → 421개(블렌더 없이 387개)
+- 고정 목록 인자·숫자 범위 검사 시험(`tests/test_server_choices.py`·`tests/test_server_ranges.py`, 도구 설명과 레시피 상수를 ast 로 비교)
+- 시험 42 → 489개(블렌더 없이 455개)
 
 **문서**
 - PyPI 페이지용 `[project.urls]`(이슈·변경 기록·보안 정책)와 Python 3.10~3.13 분류자
@@ -70,6 +67,8 @@
 - `docs/troubleshooting.md`(한/영): 연결 거부·시간 초과·빈 응답·포트 충돌·유체 굽기 실패·검은 미리보기·부수기/가져오기·영상 실패의
   오류 문장별 해결법. 연결·시간 초과 오류와 doctor 의 "확인 필요" 줄 끝에 이 문서 링크를 붙였다.
   문서의 오류 문장이 소스와 어긋나거나 링크한 절이 없으면 시험이 실패한다
+- `docs/architecture.md`(한/영): 도구 호출 한 번이 서버 → 소켓 → 수신기 → 레시피 → `FX_RESULT` 로 지나가는 길, 파일별 역할, 시험 경로.
+  README·CONTRIBUTING 에서 링크. CONTRIBUTING 구조 그림의 없는 파일(`splash.py`)을 `water.py` 로 고침
 
 **배포 준비**
 - `server.json.example` 을 MCP 레지스트리 2025-12-11 스키마(camelCase 키)에 맞춤
