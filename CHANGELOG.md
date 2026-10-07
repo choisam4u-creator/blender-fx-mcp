@@ -50,7 +50,7 @@
 - `headless.py`·`doctor.py` 실패 갈래 시험(가짜 실행 파일로 즉시 종료·세그폴트·시간 초과·애드온 없음·출력 폴더 쓰기 실패·종료 코드). 서버 쪽 커버리지 84% → 94%
 - 워크플로의 외부 액션을 커밋 SHA + 판 주석으로 고정(OpenSSF Scorecard Pinned-Dependencies). 태그로 되돌아가면 시험이 실패한다
 - 고정 목록 인자·숫자 범위 검사 시험(`tests/test_server_choices.py`·`tests/test_server_ranges.py`, 도구 설명과 레시피 상수를 ast 로 비교)
-- 시험 42 → 489개(블렌더 없이 455개)
+- 시험 42 → 500개(블렌더 없이 466개)
 
 **문서**
 - PyPI 페이지용 `[project.urls]`(이슈·변경 기록·보안 정책)와 Python 3.10~3.13 분류자
@@ -73,12 +73,15 @@
 **배포 준비**
 - `server.json.example` 을 MCP 레지스트리 2025-12-11 스키마(camelCase 키)에 맞춤
 - README 에 PyPI 소유 확인용 `mcp-name` 줄 추가
+- `scripts/release_check.py`: 출시 전 점검(버전 세 곳·CHANGELOG 맨 위 절의 판과 날짜·`mcp-name`, `--build` 면 휠 METADATA 의 판·URL).
+  실패 줄마다 고칠 곳을 적는다
 
 **출시 순서 (샘님 Mac)**
 1. Mac 에서 `uv run pytest -q` 전부 통과(블렌더 앱으로 71개)
 2. 데모 GIF 를 찍어 `docs/media/demo.gif` 로 넣고 README 주석을 푼다(선택)
 3. 버전 세 곳을 0.7.0 으로, 이 절의 제목을 날짜로 바꾼다
-4. 태그·PyPI·레지스트리 등록은 `docs/registry.md` 순서대로
+4. `uv run python scripts/release_check.py --build` 가 모두 OK 인지 본다(버전 세 곳·CHANGELOG 날짜·휠 METADATA)
+5. 태그·PyPI·레지스트리 등록은 `docs/registry.md` 순서대로
 
 ## 0.6.3 — 2026-09-21
 

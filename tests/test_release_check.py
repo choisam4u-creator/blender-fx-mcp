@@ -1,0 +1,136 @@
+# scripts/release_check.py(출시 전 점검) 시험. 블렌더 없이 돈다.
+import importlib.util
+import shutil
+import zipfile
+from pathlib import Path
+
+import pytest
+
+ROOT = Path(__file__).resolve().parent.parent
+_spec = importlib.util.spec_from_file_location("release_check", ROOT / "scripts" / "release_check.py")
+rc = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(rc)
+
+
+@pytest.fixture
+def repo(tmp_path):
+    """점검에 쓰는 파일만 복사한 가짜 저장소."""
+    for f in ("pyproject.toml", "server.json.example", "CHANGELOG.md", "README.md", "src/blender_fx_mcp/__init__.py"):
+        (tmp_path / f).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(ROOT / f, tmp_path / f)
+    return tmp_path
+
+
+def _release(root: Path, version: str = "9.9.9", date: str = "2026-12-01") -> None:
+    """출시 순서대로 버전 세 곳과 CHANGELOG 맨 위 절을 맞춘다."""
+    old = rc.project_version(root)
+    for f in ("pyproject.toml", "server.json.example", "src/blender_fx_mcp/__init__.py"):
+        p = root / f
+        p.write_text(p.read_text(encoding="utf-8").replace(f'"{old}"', f'"{version}"'), encoding="utf-8")
+    cl = root / "CHANGELOG.md"
+    text = cl.read_text(encoding="utf-8")
+    m = rc.HEADING.search(text)
+    cl.write_text(text[:m.start()] + f"## {version} — {date}" + text[m.end():], encoding="utf-8")
+
+
+def _fails(results):
+    return [line for ok, line in results if not ok]
+
+
+def test_current_repo_state():
+    """준비 중(맨 위 절이 '미출시', 버전은 아직 이전 판)이면 정확히 '판 다름'과 '미출시' 두 줄만 실패하고,
+    출시 순서를 마친 뒤(날짜가 붙음)에는 모두 통과해야 한다."""
+    fails = _fails(rc.check_files(ROOT))
+    top_version, when = rc.HEADING.search((ROOT / "CHANGELOG.md").read_text(encoding="utf-8")).groups()
+    if rc.DATE.fullmatch(when.strip()):
+        assert fails == []
+        return
+    assert top_version != rc.project_version(ROOT), "미출시 절인데 버전을 이미 올렸으면 날짜도 붙인다"
+    assert len(fails) == 2, fails
+    assert "CHANGELOG.md 맨 위 절 판" in fails[0] and "pyproject 판" in fails[0]
+    assert "미출시" in fails[1] and "YYYY-MM-DD" in fails[1]
+
+
+def test_released_state_passes(repo, capsys):
+    _release(repo)
+    assert _fails(rc.check_files(repo)) == []
+    assert rc.main([], root=repo) == 0
+    assert "출시 준비 완료" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("path,label", [
+    ("src/blender_fx_mcp/__init__.py", "__init__.py __version__ = 0.0.1 → 9.9.9 로 고친다"),
+    ("server.json.example", "server.json.example version = 0.0.1 → 9.9.9 로 고친다"),
+])
+def test_version_mismatch_names_the_file(repo, path, label):
+    _release(repo)
+    p = repo / path
+    p.write_text(p.read_text(encoding="utf-8").replace('"9.9.9"', '"0.0.1"', 1), encoding="utf-8")
+    assert any(label in line for line in _fails(rc.check_files(repo)))
+
+
+def test_duplicate_changelog_section(repo):
+    _release(repo)
+    cl = repo / "CHANGELOG.md"
+    cl.write_text(cl.read_text(encoding="utf-8") + "\n## 9.9.9 — 2026-11-01\n", encoding="utf-8")
+    assert any("두 번" in line for line in _fails(rc.check_files(repo)))
+
+
+def test_missing_mcp_name_and_changelog_heading(repo):
+    _release(repo)
+    (repo / "README.md").write_text("# x\n", encoding="utf-8")
+    (repo / "CHANGELOG.md").write_text("# 변경 이력\n", encoding="utf-8")
+    fails = _fails(rc.check_files(repo))
+    assert any("mcp-name" in line for line in fails)
+    assert any("절이 없음" in line for line in fails)
+
+
+def test_project_urls_read_without_tomllib():
+    urls = rc.project_urls(ROOT)
+    assert set(urls) == {"Homepage", "Documentation", "Issues", "Changelog", "Security"}
+    tomllib = pytest.importorskip("tomllib")
+    assert urls == tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]["urls"]
+
+
+def _wheel(tmp_path, meta: str) -> Path:
+    w = tmp_path / "x-1.0-py3-none-any.whl"
+    with zipfile.ZipFile(w, "w") as z:
+        z.writestr("x-1.0.dist-info/METADATA", meta)
+    return w
+
+
+def test_wheel_metadata_checked(tmp_path):
+    urls = {"Homepage": "https://h", "Issues": "https://i"}
+    good = _wheel(tmp_path, "Metadata-Version: 2.4\nName: x\nVersion: 1.0\n"
+                            "Project-URL: Homepage, https://h\nProject-URL: Issues, https://i\n")
+    assert _fails(rc.check_wheel(good, "1.0", urls)) == []
+    bad = _wheel(tmp_path, "Metadata-Version: 2.4\nName: x\nVersion: 0.9\nProject-URL: Homepage, https://h\n")
+    fails = _fails(rc.check_wheel(bad, "1.0", urls))
+    assert any("Version = 0.9" in line for line in fails) and any("Issues" in line for line in fails)
+
+
+def test_wheel_without_metadata(tmp_path):
+    w = tmp_path / "empty.whl"
+    with zipfile.ZipFile(w, "w") as z:
+        z.writestr("x/__init__.py", "")
+    assert "METADATA 가 없음" in _fails(rc.check_wheel(w, "1.0", {}))[0]
+
+
+def test_build_failure_is_reported(repo, monkeypatch, capsys):
+    _release(repo)
+
+    def no_uv(root, dest):
+        raise FileNotFoundError("uv")
+    monkeypatch.setattr(rc, "build_wheel", no_uv)
+    assert rc.main(["--build"], root=repo) == 1
+    assert "FAIL uv build 실패" in capsys.readouterr().out
+
+
+def test_build_checks_wheel(repo, monkeypatch, tmp_path, capsys):
+    """--build 는 만든 휠을 check_wheel 로 넘긴다(실제 빌드 대신 가짜 휠)."""
+    _release(repo)
+    urls = rc.project_urls(repo)
+    meta = "Version: 9.9.9\n" + "".join(f"Project-URL: {k}, {v}\n" for k, v in urls.items())
+    monkeypatch.setattr(rc, "build_wheel", lambda root, dest: _wheel(tmp_path, meta))
+    assert rc.main(["--build"], root=repo) == 0
+    assert "OK   휠 METADATA Version = 9.9.9" in capsys.readouterr().out
