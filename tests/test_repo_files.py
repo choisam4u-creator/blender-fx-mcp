@@ -277,3 +277,56 @@ def test_issue_template_links_point_to_existing_forms():
     for path in [ROOT / "README.md", ROOT / "CONTRIBUTING.md", *ROOT.glob("*.md"), *(ROOT / "docs").glob("*.md")]:
         for name in re.findall(r"issues/new\?template=([\w.-]+)", path.read_text(encoding="utf-8")):
             assert (TEMPLATES / name).is_file(), f"{path.name}: 없는 양식 {name}"
+
+
+def _support_rows():
+    text = (ROOT / "SUPPORT.md").read_text(encoding="utf-8")
+    part = text.split("## 지원하는 판", 1)[1]
+    return text, [[c.strip() for c in line.strip("|").split("|")] for line in part.splitlines()
+                  if line.startswith("| ") and not line.startswith("| 대상")]
+
+
+def test_support_python_versions_match_classifiers_and_ci():
+    _, rows = _support_rows()
+    py = next(r for r in rows if r[0].startswith("파이썬"))
+    listed = [int(m) for m in re.findall(r"3\.(\d+)", py[1])]
+    proj = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    classifiers = [int(m) for m in re.findall(r'"Programming Language :: Python :: 3\.(\d+)"', proj)]
+    assert listed == classifiers, (listed, classifiers)
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    matrix = re.search(r"^\s+python: \[(.*?)\]$", ci, re.M).group(1)
+    in_ci = [int(m) for m in re.findall(r'"3\.(\d+)"', matrix)]
+    said = [int(m) for m in re.findall(r"3\.(\d+)", py[2].split("/")[0])]
+    assert said == in_ci, f"SUPPORT.md 는 CI 가 {said} 를 돈다고 하지만 ci.yml 은 {in_ci}"
+
+
+def test_support_blender_versions_match_ci_and_readme():
+    _, rows = _support_rows()
+    blender = [r for r in rows if r[0].startswith("블렌더")]
+    main = re.match(r"(\d+\.\d+)", blender[0][1]).group(1)
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    assert f"블렌더 {main}" in readme and f"Blender {main}" in readme
+    app = (ROOT / ".github" / "workflows" / "app-tests.yml").read_text(encoding="utf-8")
+    assert re.search(rf'default: "{re.escape(main)}\.\d+"', app), "app-tests 기본 블렌더 판이 SUPPORT.md 와 다름"
+    bpy = re.search(r"`bpy` (\d+\.\d+\.\d+)", blender[1][1]).group(1)
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    assert f"bpy=={bpy}" in ci, f"ci.yml 의 bpy 판이 SUPPORT.md({bpy})와 다름"
+
+
+def test_support_package_line_matches_version_and_security():
+    _, rows = _support_rows()
+    pkg = next(r for r in rows if r[0] == "blender-fx-mcp")
+    series = re.match(r"(\d+\.\d+)\.x", pkg[1]).group(1)
+    proj = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    assert re.search(rf'^version = "{re.escape(series)}\.\d+"', proj, re.M)
+    assert f"| {series}.x" in (ROOT / "SECURITY.md").read_text(encoding="utf-8")
+
+
+def test_support_links_and_reply_target():
+    text, _ = _support_rows()
+    for rel in re.findall(r"\]\(((?!https?:)[^)#]+)\)", text):
+        assert (ROOT / rel).is_file(), rel
+    sec = (ROOT / "SECURITY.md").read_text(encoding="utf-8")
+    assert "7일 안" in sec and "| 보안 신고 / Security report | 7일 안" in text, "보안 응답 목표가 SECURITY.md 와 다름"
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    assert readme.count("(SUPPORT.md)") >= 2, "README 한/영 절에서 SUPPORT.md 링크"
