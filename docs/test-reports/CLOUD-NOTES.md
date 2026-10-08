@@ -1,5 +1,20 @@
 # 클라우드 회차 기록
 
+## 2026-10-08 (2회차)
+
+- 한 일: `latest.md`(10/1) FAIL 2건(GIF 링크·버튼 이름)은 10/2 회차에 고쳐 main 에 있음을 다시 확인 → 백로그로 진행. main 은 앞서 있지 않았음. 백로그 4개 완료 → 남은 항목이 1개 이하라 새 항목 5개 추가.
+  1. **`CITATION.cff`** — GitHub "Cite this repository". `uvx cffconvert --validate` 통과. 출시 때 올릴 버전이 **네 곳**이 됨(`release_check.py`·CHANGELOG 출시 순서·registry.md 갱신). 시험 2개 + release_check 판 어긋남 칸.
+  2. **CHANGELOG 0.7.0 영어 요약** — *Fixes*·*Tests and CI*·*Docs*. 시험: 미출시 절마다 요약이 있고 한글이 없는지, 한국어 상세보다 앞인지.
+  3. **server.py 실패 갈래 시험** — bridge 는 이미 100%. 도구 29개 × 한/영 연결 실패 문장, `ping_blender`·`doctor` 도구 등. **server 94% → 99%**, 서버 쪽 전체 99%.
+  4. **CONTRIBUTING "처음 기여하기 좋은 일"(한/영)** — 작은 일 4가지·파일·시험 명령 표, `good first issue`·`needs-info` 뜻. 시험 3개(파일·`-k` 시험 존재, 라벨이 SUPPORT 와 같은지).
+- 돌린 시험: `uvx ruff@0.15.20 check .` 통과. `uv run pytest -q`(Python 3.11) → **546 통과, 34 건너뜀**(블렌더 없음). CI 서버 시험 목록을 3.10(544 통과, 5 건너뜀 — tomllib)·3.13(549 통과) + `--cov` → 99%. `uv lock --check` 통과. 못 돌린 것: 레시피 시험 34개(블렌더 필요 — 레시피 파일은 안 건드림).
+- 참고: dependabot 이 SHA 고정 액션을 SHA·판 주석 함께 올리는 것 확인(checkout v4.4.0 → v7.0.1, setup-uv v5.4.2 → v10.2.0 브랜치). 메이저 판이라 Mac 에서 변경 기록을 보고 병합할 것(새 백로그 `docs/maintenance.md` 항목에 처리 순서를 적을 예정).
+- PR: 열려 있는 claude/cloud-work → main #13 에 이번 커밋이 함께 올라감(본문에 이번 회차 목록 추가).
+- Mac에서 확인할 것:
+  1. `uv run pytest -q` (블렌더 앱으로 전체 통과)
+  2. `uv run python scripts/release_check.py` (CITATION.cff 줄 OK, FAIL 은 "판 다름"·"미출시" 2줄이 정상)
+  3. 병합 뒤 GitHub 저장소 오른쪽에 "Cite this repository" 가 뜨는지
+
 ## 2026-10-08
 
 - 한 일: `latest.md`(10/1) FAIL 2건(GIF 링크·버튼 이름)은 10/2 회차에 고쳐 main 에 있음을 다시 확인 → 백로그로 진행. main 은 앞서 있지 않았음(병합할 것 없음). PR #13 이 아직 열려 있어 이번 커밋도 그 PR 에 쌓임. 남은 백로그 3개 완료 → 0개가 되어 새 항목 5개 추가, 그중 1개까지 모두 4개.
