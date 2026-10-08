@@ -430,3 +430,52 @@ def test_changelog_english_summary_before_korean_details():
     # 요약이 한국어 상세 목록보다 앞에 있어야 첫 화면에서 보인다
     version, _, body = _changelog_sections()[0]
     assert body.index("**English summary**") < body.index("**고침**"), version
+
+
+def _contributing_section(title, end):
+    text = (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
+    start = text.index(title)
+    return text[start:text.index(end, start + len(title))]
+
+
+HANGUL_RE = re.compile(r"[가-힣]")
+GOOD_FIRST_KO = ("## 처음 기여하기 좋은 일", "### Good first contributions")
+GOOD_FIRST_EN = ("### Good first contributions", "\n## 규칙")
+
+
+@pytest.mark.parametrize("bounds", [GOOD_FIRST_KO, GOOD_FIRST_EN])
+def test_good_first_paths_and_commands_exist(bounds):
+    """'처음 기여하기 좋은 일' 표의 파일·시험 명령이 실제로 있어야 새 기여자가 길을 잃지 않는다."""
+    sec = _contributing_section(*bounds)
+    paths = set(re.findall(r"`((?:src|docs|tests)/[\w./-]+)`", sec)) | set(re.findall(r"(tests/\w+\.py)", sec))
+    assert len(paths) >= 8, paths
+    for p in paths:
+        assert (ROOT / p).is_file(), p
+    commands = re.findall(r"`(uv run pytest -q [^`]+)`", sec)
+    assert len(commands) >= 4
+    for cmd in commands:
+        files = re.findall(r"tests/\w+\.py", cmd)
+        assert files, cmd
+        k = re.search(r"-k (\w+)", cmd)
+        if k:
+            # -k 로 고른 이름의 시험이 그 파일에 실제로 있어야 한다(0개 선택은 통과처럼 보인다)
+            assert any(re.search(rf"def test_\w*{k.group(1)}", (ROOT / f).read_text(encoding="utf-8")) for f in files), cmd
+    # 표에 적은 상수·도구 이름이 코드에 있는지
+    server = (ROOT / "src/blender_fx_mcp/server.py").read_text(encoding="utf-8")
+    common = (ROOT / "src/blender_fx_mcp/recipes/_common.py").read_text(encoding="utf-8")
+    assert "GROUND_MATERIALS = {" in common and "CHOICES:" in server
+    assert "def set_ground(" in server and "def make_demo_building(" in server
+
+
+def test_good_first_labels_match_support():
+    ko = _contributing_section(*GOOD_FIRST_KO)
+    en = _contributing_section(*GOOD_FIRST_EN)
+    support = (ROOT / "SUPPORT.md").read_text(encoding="utf-8")
+    for label in ("good first issue", "needs-info"):
+        assert f"`{label}`" in ko and f"`{label}`" in en, label
+    assert "`needs-info`" in support and "30" in support
+    assert "30일" in ko and "30 days" in en
+    assert not HANGUL_RE.search(en), "영어 절에 한글이 섞임"
+    # 영어 첫 문단에서 이 절로 가는 링크
+    assert "(#good-first-contributions)" in (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8").split("\n## ")[0]
+

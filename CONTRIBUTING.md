@@ -1,6 +1,6 @@
 # 기여 안내 / Contributing
 
-**English:** Every effect is one recipe file in `src/blender_fx_mcp/recipes/` plus one tool in `server.py`. Recipes run inside Blender with `PARAMS` prepended by the server and must end with `run_guarded(main)`, printing one `FX_RESULT` JSON line. Lint with `uvx ruff check .`. Server-side coverage (recipes excluded): `uv run pytest -q --cov` on the CI test list (99% on 2026-10-08). Test headlessly with `uv run pytest -q` (needs Blender on this machine) and, with Blender open, `uv run python scripts/e2e_socket.py`. Keep error messages human-readable; the AI shows them to a non-technical user. Start with [docs/architecture.md](docs/architecture.md) for the call path and test paths.
+**English:** Every effect is one recipe file in `src/blender_fx_mcp/recipes/` plus one tool in `server.py`. Recipes run inside Blender with `PARAMS` prepended by the server and must end with `run_guarded(main)`, printing one `FX_RESULT` JSON line. Lint with `uvx ruff check .`. Server-side coverage (recipes excluded): `uv run pytest -q --cov` on the CI test list (99% on 2026-10-08). Test headlessly with `uv run pytest -q` (needs Blender on this machine) and, with Blender open, `uv run python scripts/e2e_socket.py`. Keep error messages human-readable; the AI shows them to a non-technical user. Start with [docs/architecture.md](docs/architecture.md) for the call path and test paths, or pick a small task from [Good first contributions](#good-first-contributions).
 
 ## 구조
 
@@ -43,6 +43,45 @@ src/blender_fx_mcp/
      bpy 모듈은 Mantaflow(연기·불·물)가 깨져 있어 `@pytest.mark.app_only` 시험은 건너뛴다.
      이런 기능을 쓰는 새 시험에는 `@pytest.mark.app_only` 를 붙인다.
      bpy 4.2·4.5 LTS 휠도 같은 결함이 있다(2026-10 확인). 이 시험은 Actions 의 **app-tests** 작업(손으로 실행, 공식 블렌더 Linux 빌드)으로 돌린다.
+
+## 처음 기여하기 좋은 일
+
+블렌더 코드를 몰라도 할 수 있는 작은 일입니다. 이슈에 `good first issue` 라벨이 붙은 것부터 고르면 됩니다.
+모두 블렌더 없이 아래 시험 명령으로 확인할 수 있습니다(새 바닥 재질만 블렌더로 한 번 더).
+
+| 할 일 | 고칠 파일 | 확인 명령 |
+|---|---|---|
+| 오류 문장의 영어·한국어 다듬기 | `src/blender_fx_mcp/recipes/_common.py` 같은 레시피의 `L()`, `src/blender_fx_mcp/server.py`·`src/blender_fx_mcp/bridge.py` 의 `t()`. 같은 문장이 `docs/troubleshooting.md` 에도 있으면 함께 | `uv run pytest -q tests/test_recipe_messages.py tests/test_server_messages.py tests/test_troubleshooting.py` |
+| 자연어 명령 예시 추가(한/영 같은 번호로) | `docs/recipes.md` | `uv run pytest -q tests/test_repo_files.py -k recipes` |
+| 오류별 해결법 절 추가 | `docs/troubleshooting.md` | `uv run pytest -q tests/test_troubleshooting.py` |
+| 새 바닥 재질 값(예: `gravel`) | `src/blender_fx_mcp/recipes/_common.py` 의 `GROUND_MATERIALS`, `src/blender_fx_mcp/server.py` 의 `CHOICES`, `set_ground`·`make_demo_building` 도구 설명 | `uv run pytest -q tests/test_server_choices.py tests/test_server_tools.py` (블렌더가 있으면 `uv run pytest -q tests/test_recipes_v05.py -k ground`) |
+
+라벨 뜻:
+
+- `good first issue` — 위 표 정도 크기의 일. 파일 한두 개, 시험 명령 하나로 끝난다.
+- `needs-info` — 재현 정보(doctor 출력·블렌더 판·불린 도구와 인자)를 기다리는 이슈. 30일 동안 답이 없으면 닫을 수 있다([SUPPORT.md](SUPPORT.md)).
+
+PR 전에는 늘 `uvx ruff check .` 와 위 확인 명령을 돌립니다.
+
+### Good first contributions
+
+Small tasks that need no Blender knowledge. Pick an issue labelled `good first issue`. All of them are checked without
+Blender by the command in the last column (a new ground material is worth one extra run in Blender).
+
+| Task | Files | Check |
+|---|---|---|
+| Polish an error message (English or Korean) | `L()` in recipes such as `src/blender_fx_mcp/recipes/_common.py`, `t()` in `src/blender_fx_mcp/server.py` and `src/blender_fx_mcp/bridge.py`; update `docs/troubleshooting.md` if it quotes the sentence | `uv run pytest -q tests/test_recipe_messages.py tests/test_server_messages.py tests/test_troubleshooting.py` |
+| Add a natural-language example (same number in both languages) | `docs/recipes.md` | `uv run pytest -q tests/test_repo_files.py -k recipes` |
+| Add a troubleshooting section for an error | `docs/troubleshooting.md` | `uv run pytest -q tests/test_troubleshooting.py` |
+| Add a ground material value (e.g. `gravel`) | `GROUND_MATERIALS` in `src/blender_fx_mcp/recipes/_common.py`, `CHOICES` in `src/blender_fx_mcp/server.py`, the `set_ground` and `make_demo_building` descriptions | `uv run pytest -q tests/test_server_choices.py tests/test_server_tools.py` (with Blender: `uv run pytest -q tests/test_recipes_v05.py -k ground`) |
+
+Labels:
+
+- `good first issue` — about the size of the rows above: one or two files and one test command.
+- `needs-info` — waiting for repro info (doctor output, Blender version, tool and arguments); may be closed after 30 days
+  without a reply ([SUPPORT.md](SUPPORT.md)).
+
+Always run `uvx ruff check .` and the check command before opening a PR.
 
 ## 규칙
 
