@@ -1,5 +1,20 @@
 # 클라우드 회차 기록
 
+## 2026-10-08
+
+- 한 일: `latest.md`(10/1) FAIL 2건(GIF 링크·버튼 이름)은 10/2 회차에 고쳐 main 에 있음을 다시 확인 → 백로그로 진행. main 은 앞서 있지 않았음(병합할 것 없음). PR #13 이 아직 열려 있어 이번 커밋도 그 PR 에 쌓임. 남은 백로그 3개 완료 → 0개가 되어 새 항목 5개 추가, 그중 1개까지 모두 4개.
+  1. **버그 신고 YAML 폼** `.github/ISSUE_TEMPLATE/bug_report.yml`(한/영) — 필수 칸 6개(doctor 출력·블렌더 판·OS·MCP 클라이언트·재현 명령·결과). `.md` 양식은 지움(둘 다 있으면 두 개 보임), troubleshooting.md 의 `template=bug_report.md` 링크 2곳 고침. 시험 6개(PyYAML 이 없어 정규식으로 읽음, 로컬에서 PyYAML 로 한 번 파싱 확인).
+  2. **`SUPPORT.md`(한/영)** — 신고 경로 표, 응답 목표(보안·버그 7일 = SECURITY.md, 질문·기능 14일), 지원 판 표(블렌더 5.2 LTS·bpy 5.0.1 CI 용·4.x 미확인, 파이썬 3.10~3.13, 0.6.x). README 한/영에서 링크. 시험 4개(분류자·CI 행렬·README·app-tests·bpy 판·SECURITY 와 일치).
+  3. **`docs/recipes.md` 영어 절** — 같은 5개 예시·수치. README 영어 절 링크를 `#english` 로. 시험 4개: 한/영 도구 호출 일치, 실제 도구·인자, 영어 절 한글 없음, **예시 인자가 서버 목록·범위 검사를 통과하는지**.
+  4. **CI 파이썬 행렬에 3.11** — 분류자 모든 판을 돌림. 시험을 "양 끝" → "모든 판"으로. SUPPORT·architecture·CHANGELOG·CONTRIBUTING(커버리지 95%) 갱신.
+- 돌린 시험: `uvx ruff@0.15.20 check .` 통과. `uv run pytest -q`(Python 3.11) → **478 통과, 34 건너뜀**(블렌더 없음). CI 서버 시험 목록을 3.10(473 통과, 5 건너뜀 — tomllib)·3.11·3.13(478 통과) + `--cov` → 95~96%. `uv lock --check` 통과. 못 돌린 것: 레시피 시험 34개(블렌더 필요 — 레시피 파일은 안 건드림). YAML 폼이 GitHub 이슈 화면에서 실제로 보이는지는 main 병합 뒤에만 확인 가능.
+- PR: 열려 있는 claude/cloud-work → main #13 에 이번 커밋이 함께 올라감(본문에 이번 회차 목록 추가).
+- 참고: SUPPORT.md 가 `needs-info` 라벨을 말하므로 저장소에 그 라벨이 없으면 만들어 두면 좋음(클라우드에서는 라벨을 만들지 않았음).
+- Mac에서 확인할 것:
+  1. `uv run pytest -q` (블렌더 앱으로 전체 통과)
+  2. 병합 뒤 GitHub 에서 New issue → "버그 / Bug report" 폼에 필수 칸(*)이 보이는지
+  3. 병합 뒤 Actions 의 server-tests 에 3.11 이 생겼고 초록인지
+
 ## 2026-10-07 (2회차)
 
 - 한 일: `latest.md`(10/1) FAIL 2건(README GIF 링크·버튼 이름)은 10/2 회차에 이미 고쳐 main 에 있음을 다시 확인 → 백로그로 진행. 시작 때 main(PR #10 병합분)을 받아 옴(빨리감기). 백로그 4개 완료, 남은 항목 3개라 새 항목은 추가하지 않음.
