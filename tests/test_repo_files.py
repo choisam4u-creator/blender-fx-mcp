@@ -330,3 +330,68 @@ def test_support_links_and_reply_target():
     assert "7일 안" in sec and "| 보안 신고 / Security report | 7일 안" in text, "보안 응답 목표가 SECURITY.md 와 다름"
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     assert readme.count("(SUPPORT.md)") >= 2, "README 한/영 절에서 SUPPORT.md 링크"
+
+
+def _recipe_sections():
+    text = (ROOT / "docs" / "recipes.md").read_text(encoding="utf-8")
+    ko, _, en = text.partition("\n## English\n")
+    assert en, "docs/recipes.md 에 '## English' 절이 없음"
+
+    def examples(part, level):
+        heads = re.split(rf"^{level} (\d+)\. ", part, flags=re.M)[1:]
+        return {int(n): re.findall(r"^\| \d+ \| `([^`]+)` \|$", body, re.M) for n, body in zip(heads[::2], heads[1::2])}
+
+    return ko, en, examples(ko, "##"), examples(en, "###")
+
+
+def test_recipes_english_section_mirrors_korean():
+    _, _, ko, en = _recipe_sections()
+    assert sorted(ko) == sorted(en) == list(range(1, len(ko) + 1)), (sorted(ko), sorted(en))
+    for n in ko:
+        assert ko[n] and ko[n] == en[n], f"예시 {n}: 한/영 도구 호출이 다름\n{ko[n]}\n{en[n]}"
+
+
+def test_recipes_calls_use_real_tools_and_args():
+    import ast
+    import inspect
+
+    from blender_fx_mcp import server
+    _, _, ko, _ = _recipe_sections()
+    for n, calls in ko.items():
+        for call in calls:
+            node = ast.parse(call.replace("…", "x"), mode="eval").body
+            fn = getattr(server, node.func.id, None)
+            assert callable(fn), f"예시 {n}: 없는 도구 {node.func.id}"
+            params = inspect.signature(fn).parameters
+            for kw in node.keywords:
+                assert kw.arg in params, f"예시 {n}: {node.func.id} 에 없는 인자 {kw.arg}"
+
+
+def test_recipes_english_has_no_hangul_and_is_linked():
+    _, en, _, _ = _recipe_sections()
+    assert not re.search(r"[가-힣]", en), "영어 절에 한글"
+    text = (ROOT / "docs" / "recipes.md").read_text(encoding="utf-8")
+    assert "](#english)" in text.split("\n## ", 1)[0], "맨 위에 영어 절 링크"
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    english = readme.split("\n## English", 1)[1]
+    assert "](docs/recipes.md#english)" in english
+
+
+def test_recipes_calls_pass_server_checks(monkeypatch, tmp_path):
+    # 문서의 인자가 서버의 목록·범위 검사를 통과해 실제로 블렌더까지 가는지(예시를 그대로 따라 하면 오류가 나지 않게)
+    from blender_fx_mcp import bridge, server
+    monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path))
+    monkeypatch.setenv("BLENDER_FX_LANG", "ko")
+    _, _, ko, _ = _recipe_sections()
+    for n, calls in ko.items():
+        for call in calls:
+            sent = []
+
+            def reached(code, timeout=None, sent=sent):
+                sent.append(code)
+                raise bridge.BlenderError("여기까지 오면 통과")  # 결과 처리는 test_server_tools 몫
+
+            monkeypatch.setattr(bridge, "run_python", reached)
+            out = eval(call.replace("…/model.glb", str(tmp_path / "model.glb")), vars(server))
+            out = out if isinstance(out, str) else out[0]
+            assert sent, f"예시 {n}: {call} 이 블렌더로 가기 전에 막힘: {out}"

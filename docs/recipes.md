@@ -1,5 +1,7 @@
 # 자연어 명령 예시 5개
 
+**[English](#english)** — the same five examples in English are at the bottom of this page.
+
 AI(Claude 등)에게 이렇게 말하면 어떤 도구가 어떤 인자로 불리고, 결과로 무엇이 나오는지 정리했다.
 숫자는 **2026-10-04 클라우드에서 `pip install bpy`(Blender 5.0.1 모듈)로 실제로 돌린 값**이다.
 유체(4·5번)는 bpy 모듈에서 Mantaflow 가 깨져 있어 클라우드에서 못 돌렸으므로 숫자 대신 확인할 칸을 적었다.
@@ -82,3 +84,87 @@ AI(Claude 등)에게 이렇게 말하면 어떤 도구가 어떤 인자로 불�
 
 마음에 안 들면 "아까로 되돌려" → `restore(name)`. 큰 작업 전에 "지금 상태 저장해 둬" → `snapshot(name)`.
 `restore` 는 직전 상태를 `before_restore` 로 자동 저장하므로 되돌리기를 다시 되돌릴 수 있다.
+
+---
+
+## English
+
+Five plain-language requests: which tool the AI calls with which arguments, and what comes back.
+Numbers were **measured on 2026-10-04 in the cloud with `pip install bpy` (Blender 5.0.1 as a module)**.
+Fluids (examples 4 and 5) could not run there because Mantaflow is broken in the bpy module, so those list what to check instead of numbers.
+Results in the Blender app can differ slightly (seed and version).
+
+> Before you start: in Blender press `N` → BlenderMCP → **Connect to MCP server**, then ask the AI to "run doctor" to check the connection.
+> Set `BLENDER_FX_LANG=en` to get tool messages in English.
+
+### 1. "Build a building with windows and ram it from the left until it collapses"
+
+| Step | Tool (arguments) |
+|---|---|
+| 1 | `make_demo_building(style="windows", ground="asphalt")` |
+| 2 | `destroy(target="Building", impact="left", pieces=120)` |
+
+Result (measured with `dust="none"`):
+
+- Building 4×4×9 m, 3 floors, 36 windows, closed mesh, volume 138.5 m³ (smaller than 144 m³ because the windows are really cut out)
+- 120 pieces, about 332 t, **100% of pieces moved**, max drop **7.62 m**, volume preserved **1.0**, 0 open pieces
+- 5 preview frames are saved to `~/blender-fx-output/<run folder>/` and attached to the chat as images
+
+Try next: "lots of dust" (`dust="high"`), "make it brick" (`material="brick"`), "smaller pieces only where it was hit" (`pattern="impact", focus=0.9`).
+
+### 2. "Shatter it like glass from the center, and slow-motion the moment it breaks"
+
+| Step | Tool (arguments) |
+|---|---|
+| 1 | `destroy(target="Building", material="glass", pattern="radial", impact="front", pieces=150)` |
+| 2 | `set_timing(slow_from=12, slow_to=40, slow_factor=0.25)` |
+
+Result (measured, plain 4×4×9 m building):
+
+- 150 pieces (radial), glass material, about 360 t, 100% moved, max drop **8.25 m**, volume preserved **1.0**
+- Only frames 12–40 play at 1/4 speed. The rigid-body physics is re-baked (`rebaked: true`)
+- To slow particles down too, say "everything at half speed" → `set_timing(global_slow=0.5)`
+
+### 3. "Import this model, check it, scale it to 6 m and break it"
+
+| Step | Tool (arguments) |
+|---|---|
+| 1 | `import_model(path="…/model.glb", size=6.0)` |
+| 2 | `inspect_mesh(target="model")` |
+| 3 | `destroy(target="model", pieces=80)` |
+
+Result (measured: the window building exported to glb and imported again):
+
+- Import: 2.67×2.67×6 m, 496 vertices, 988 faces; the **672 vertices glTF had split are welded back** into a closed mesh
+- Inspection: closed, 0 open edges, convexity 0.962, volume 41.0 m³, nothing to repair
+- Destruction: 80 pieces, about 98 t, 100% moved, max drop 5.2 m, volume preserved 1.0
+
+If the model is not closed, the `notes` from `inspect_mesh` suggest `shell_thickness` or `repair`.
+For a rigged character, look at the `parts` list in the result and pick one, e.g. "import only the body" (`parts=["Body"]`).
+
+### 4. "Blow up the building from inside, with fire"
+
+| Step | Tool (arguments) |
+|---|---|
+| 1 | `explode(target="Building", power=2.0, fire=True, resolution=48)` |
+
+- It first fractures the building from inside (`destroy(impact="none", hold_until=11)`), throws the pieces with a force field at frame 12, then adds smoke and fire
+- What to check: `moved_ratio` (0.5 or more means the pieces flew), `cache_files` (0 means the smoke was not baked)
+- The preview renders with EEVEE (`quality="smoke"`) so the smoke is visible
+- Not measured in the cloud (Mantaflow). The Mac test `test_explode_building` checks the same flow
+
+### 5. "Shoot honey from a hose at the side"
+
+| Step | Tool (arguments) |
+|---|---|
+| 1 | `water(mode="stream", at=[-6, 0, 5], direction_deg=90, pitch_deg=-10, speed=9, liquid="honey", duration=22)` |
+
+- `direction_deg=90` points toward +X, `pitch_deg=-10` aims slightly down
+- What to check: `drift`, the direction the liquid actually travelled (x, y, z in m). Here x must be positive
+- If the liquid is smaller than the simulation grid, the error tells you the `resolution` you need
+- Not measured in the cloud (Mantaflow). The Mac test `test_water_direction_and_viscosity` checks direction and viscosity
+
+### Undo
+
+Not happy? "Go back to before" → `restore(name)`. Before a big change, "save the current state" → `snapshot(name)`.
+`restore` automatically saves the state it replaces as `before_restore`, so you can undo the undo.

@@ -294,7 +294,7 @@ Then keep directing from the preview frames: "smaller pieces", "only break where
 When you like it: "render a video", "save the scene", "export as glb".
 
 Your own model works too: **"Import ~/Desktop/tower.glb, stand it up 12 m tall and break it from the left."**
-More examples with measured results: [docs/recipes.md](docs/recipes.md).
+More examples with measured results: [docs/recipes.md (English section)](docs/recipes.md#english).
 
 ### Tools
 
