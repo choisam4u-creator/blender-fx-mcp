@@ -18,7 +18,7 @@
 - All 32 tools carry MCP annotations; tools that overwrite or delete data are marked `destructiveHint`.
 
 *Tests and CI*
-- Server-side unit tests grew from 9 to over 470, running on Python 3.10–3.13 in CI with coverage in the job summary (about 95%).
+- Server-side unit tests grew from 9 to over 540, running on Python 3.10–3.13 in CI with coverage in the job summary (99%).
 - Most recipe tests run without the Blender app through `pip install bpy`; Mantaflow tests are marked `app_only`.
 - Static checks keep every message in Korean/English pairs and every tool description's value list equal to what the server accepts.
 - ruff lint, Dependabot, read-only workflow tokens and SHA-pinned actions.
@@ -74,7 +74,8 @@
 - `headless.py`·`doctor.py` 실패 갈래 시험(가짜 실행 파일로 즉시 종료·세그폴트·시간 초과·애드온 없음·출력 폴더 쓰기 실패·종료 코드). 서버 쪽 커버리지 84% → 94%
 - 워크플로의 외부 액션을 커밋 SHA + 판 주석으로 고정(OpenSSF Scorecard Pinned-Dependencies). 태그로 되돌아가면 시험이 실패한다
 - 고정 목록 인자·숫자 범위 검사 시험(`tests/test_server_choices.py`·`tests/test_server_ranges.py`, 도구 설명과 레시피 상수를 ast 로 비교)
-- 시험 42 → 512개(블렌더 없이 478개)
+- 도구 29개가 블렌더 연결 실패 때 예외 대신 "실패: …"/"Failed: …" 를 고른 언어로 돌려주는지, `ping_blender`·`doctor` 도구 시험. server.py 커버리지 94% → 99%
+- 시험 42 → 580개(블렌더 없이 546개)
 
 **문서**
 - PyPI 페이지용 `[project.urls]`(이슈·변경 기록·보안 정책)와 Python 3.10~3.13 분류자

@@ -207,3 +207,54 @@ def test_list_snapshots_lists_files(monkeypatch, tmp_path):
     (server.snapshot_dir() / "a.blend").write_bytes(b"x" * 2_000_000)
     text = server.list_snapshots()
     assert text.startswith("Snapshots:\n- a (2.0MB, ")
+
+
+# ---------- 실패 갈래: 블렌더가 꺼져 있거나 레시피가 오류를 내면 예외 대신 실패 문장 ----------
+
+@pytest.mark.parametrize("name", sorted(CALLS))
+@pytest.mark.parametrize("lang", ["ko", "en"])
+def test_tool_failure_message(monkeypatch, tmp_path, name, lang):
+    # 사용자가 가장 자주 보는 경로(블렌더 연결 실패). 어느 도구든 같은 모양으로, 고른 언어로 알려야 한다
+    monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path))
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+
+    def run(recipe, params, timeout=None):
+        raise BlenderError("connection refused")
+
+    monkeypatch.setattr(server, "run_recipe", run)
+    text = _text(CALLS[name]())
+    assert text == ("실패: connection refused" if lang == "ko" else "Failed: connection refused"), text
+
+
+@pytest.mark.parametrize("lang,ok,bad", [("ko", "연결됨 (", "실패: "), ("en", "Connected (", "Failed: ")])
+def test_ping_blender(monkeypatch, lang, ok, bad):
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    monkeypatch.setenv("BLENDER_FX_PORT", "9999")
+    monkeypatch.setattr(server.bridge, "ping", lambda: {"ok": True})
+    assert server.ping_blender() == f"{ok}{server.bridge.host()}:9999)"
+
+    def down():
+        raise BlenderError("no receiver")
+
+    monkeypatch.setattr(server.bridge, "ping", down)
+    assert server.ping_blender() == f"{bad}no receiver"
+
+
+def test_doctor_tool_returns_report(monkeypatch):
+    from blender_fx_mcp import doctor
+
+    monkeypatch.setattr(doctor, "run_checks", lambda: [("python", True, "3.11")])
+    monkeypatch.setattr(doctor, "format_report", lambda rows: f"report:{rows[0][0]}")
+    assert server.doctor() == "report:python"
+
+
+def test_preview_note_only_when_something_is_hidden(monkeypatch):
+    monkeypatch.setenv("BLENDER_FX_LANG", "en")
+    assert server._preview_note({"missing_in_preview": False}) == ""
+    assert "render_preview(quality=\"smoke\")" in server._preview_note({"missing_in_preview": True})
+
+
+def test_reset_destroy_passes_target(fake):
+    server.reset_destroy("Building")
+    server.reset_destroy()
+    assert [p for r, p in fake if r == "reset"] == [{"target": "Building"}, {"target": None}]
