@@ -1,0 +1,19 @@
+# GitHub 저장소 화면의 "Cite this repository" 가 이 파일을 읽는다. 형식: https://citation-file-format.github.io/
+# version 은 pyproject.toml 과 같게 둔다(출시 때 함께 올림 — scripts/release_check.py 와 tests/test_registry.py 가 확인).
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "blender-fx-mcp: Blender FX (destruction, explosion, water) MCP server for AI clients"
+authors:
+  - given-names: Sam
+    family-names: Choi
+version: "0.6.3"
+license: MIT
+repository-code: "https://github.com/choisam4u-creator/blender-fx-mcp"
+url: "https://github.com/choisam4u-creator/blender-fx-mcp"
+keywords:
+  - blender
+  - mcp
+  - model-context-protocol
+  - vfx
+  - simulation

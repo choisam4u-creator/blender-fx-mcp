@@ -29,7 +29,7 @@ uv run --with jsonschema python -c "import json,jsonschema; jsonschema.validate(
 
 ## 등록 순서 (샘님 Mac)
 
-1. 버전을 올린다: `pyproject.toml` 과 `server.json.example` 의 `version` 두 곳(`tests/test_registry.py` 가 어긋나면 실패).
+1. 버전을 올린다: `pyproject.toml`·`src/blender_fx_mcp/__init__.py`·`server.json.example`·`CITATION.cff` 의 `version` 네 곳(`tests/test_registry.py`·`scripts/release_check.py` 가 어긋나면 실패).
    `uv run python scripts/release_check.py --build` 로 버전·CHANGELOG 날짜·휠 METADATA 를 한 번에 확인한다.
 2. PyPI 에 그 버전을 올린다(`uv build` → `uv publish`). README 의 `mcp-name` 줄이 패키지 설명에 들어가야 레지스트리가 소유를 확인한다.
 3. 게시 도구 설치: `brew install mcp-publisher`

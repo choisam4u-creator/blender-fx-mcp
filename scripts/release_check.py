@@ -57,6 +57,12 @@ def check_files(root: Path) -> list[tuple[bool, str]]:
         out.append((ok, f"server.json.example packages[{i}].version = {pkg.get('version')}"
                     + ("" if ok else f" → {version} 로 고친다")))
 
+    cff = root / "CITATION.cff"
+    m = re.search(r'^version: "?([^"\n]+?)"?\s*$', cff.read_text(encoding="utf-8"), re.M) if cff.is_file() else None
+    got = m.group(1) if m else "(없음)"
+    out.append((got == version, f"CITATION.cff version = {got}"
+                + ("" if got == version else f" → {version} 로 고친다")))
+
     changelog = (root / "CHANGELOG.md").read_text(encoding="utf-8")
     m = HEADING.search(changelog)
     if not m:
@@ -64,7 +70,7 @@ def check_files(root: Path) -> list[tuple[bool, str]]:
     else:
         top, when = m.group(1), m.group(2).strip()
         out.append((top == version, f"CHANGELOG.md 맨 위 절 판 = {top}"
-                    + ("" if top == version else f" → pyproject 판({version})과 다름. 버전 세 곳을 {top} 로 올리거나 절 제목을 고친다")))
+                    + ("" if top == version else f" → pyproject 판({version})과 다름. 버전 네 곳을 {top} 로 올리거나 절 제목을 고친다")))
         dated = bool(DATE.fullmatch(when))
         out.append((dated, f"CHANGELOG.md 맨 위 절 날짜 = {when}"
                     + ("" if dated else " → 아직 미출시. 제목의 '미출시 …' 를 출시 날짜(YYYY-MM-DD)로 바꾼다")))

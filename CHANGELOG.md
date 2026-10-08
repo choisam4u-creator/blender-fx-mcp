@@ -2,8 +2,8 @@
 
 ## 0.7.0 — 미출시 (준비 중)
 
-출시 전까지 `pyproject.toml`·`src/blender_fx_mcp/__init__.py`·`server.json.example` 의 버전은 0.6.3 으로 둔다.
-아래 "출시 순서"에서 한꺼번에 올린다(`tests/test_registry.py` 가 셋이 어긋나면 실패한다).
+출시 전까지 `pyproject.toml`·`src/blender_fx_mcp/__init__.py`·`server.json.example`·`CITATION.cff` 의 버전은 0.6.3 으로 둔다.
+아래 "출시 순서"에서 한꺼번에 올린다(`tests/test_registry.py` 가 넷이 어긋나면 실패한다).
 
 **고침**
 - `import_model` 에 `size` 를 주면 결과의 `volume_m3` 가 크기를 바꾸기 **전** 부피로 나오던 문제.
@@ -74,6 +74,8 @@
   문서의 오류 문장이 소스와 어긋나거나 링크한 절이 없으면 시험이 실패한다
 - `docs/architecture.md`(한/영): 도구 호출 한 번이 서버 → 소켓 → 수신기 → 레시피 → `FX_RESULT` 로 지나가는 길, 파일별 역할, 시험 경로.
   README·CONTRIBUTING 에서 링크. CONTRIBUTING 구조 그림의 없는 파일(`splash.py`)을 `water.py` 로 고침
+- `CITATION.cff`: GitHub 저장소 화면에 "Cite this repository" 가 뜬다. 판·라이선스·저장소 주소·저자가
+  `pyproject.toml`·LICENSE·server.json 과 어긋나면 시험과 `scripts/release_check.py` 가 실패한다
 
 **배포 준비**
 - `server.json.example` 을 MCP 레지스트리 2025-12-11 스키마(camelCase 키)에 맞춤
@@ -84,8 +86,8 @@
 **출시 순서 (샘님 Mac)**
 1. Mac 에서 `uv run pytest -q` 전부 통과(블렌더 앱으로 71개)
 2. 데모 GIF 를 찍어 `docs/media/demo.gif` 로 넣고 README 주석을 푼다(선택)
-3. 버전 세 곳을 0.7.0 으로, 이 절의 제목을 날짜로 바꾼다
-4. `uv run python scripts/release_check.py --build` 가 모두 OK 인지 본다(버전 세 곳·CHANGELOG 날짜·휠 METADATA)
+3. 버전 네 곳(`pyproject.toml`·`__init__.py`·`server.json.example`·`CITATION.cff`)을 0.7.0 으로, 이 절의 제목을 날짜로 바꾼다
+4. `uv run python scripts/release_check.py --build` 가 모두 OK 인지 본다(버전 네 곳·CHANGELOG 날짜·휠 METADATA)
 5. 태그·PyPI·레지스트리 등록은 `docs/registry.md` 순서대로
 
 ## 0.6.3 — 2026-09-21

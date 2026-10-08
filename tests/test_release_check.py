@@ -15,16 +15,17 @@ _spec.loader.exec_module(rc)
 @pytest.fixture
 def repo(tmp_path):
     """점검에 쓰는 파일만 복사한 가짜 저장소."""
-    for f in ("pyproject.toml", "server.json.example", "CHANGELOG.md", "README.md", "src/blender_fx_mcp/__init__.py"):
+    for f in ("pyproject.toml", "server.json.example", "CHANGELOG.md", "README.md", "src/blender_fx_mcp/__init__.py",
+              "CITATION.cff"):
         (tmp_path / f).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(ROOT / f, tmp_path / f)
     return tmp_path
 
 
 def _release(root: Path, version: str = "9.9.9", date: str = "2026-12-01") -> None:
-    """출시 순서대로 버전 세 곳과 CHANGELOG 맨 위 절을 맞춘다."""
+    """출시 순서대로 버전 네 곳과 CHANGELOG 맨 위 절을 맞춘다."""
     old = rc.project_version(root)
-    for f in ("pyproject.toml", "server.json.example", "src/blender_fx_mcp/__init__.py"):
+    for f in ("pyproject.toml", "server.json.example", "src/blender_fx_mcp/__init__.py", "CITATION.cff"):
         p = root / f
         p.write_text(p.read_text(encoding="utf-8").replace(f'"{old}"', f'"{version}"'), encoding="utf-8")
     cl = root / "CHANGELOG.md"
@@ -61,6 +62,7 @@ def test_released_state_passes(repo, capsys):
 @pytest.mark.parametrize("path,label", [
     ("src/blender_fx_mcp/__init__.py", "__init__.py __version__ = 0.0.1 → 9.9.9 로 고친다"),
     ("server.json.example", "server.json.example version = 0.0.1 → 9.9.9 로 고친다"),
+    ("CITATION.cff", "CITATION.cff version = 0.0.1 → 9.9.9 로 고친다"),
 ])
 def test_version_mismatch_names_the_file(repo, path, label):
     _release(repo)
