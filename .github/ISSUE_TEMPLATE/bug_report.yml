@@ -1,0 +1,89 @@
+name: 버그 / Bug report
+description: 안 되는 것을 알려 주세요 / Something does not work
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        고맙습니다. 아래 필수 칸(*)을 채워야 올라갑니다. 막히는 오류 문장은 먼저 [docs/troubleshooting.md](https://github.com/choisam4u-creator/blender-fx-mcp/blob/main/docs/troubleshooting.md)에서 찾아 보세요.
+        Thanks. Required fields (*) must be filled in. Common error messages are explained in [docs/troubleshooting.md](https://github.com/choisam4u-creator/blender-fx-mcp/blob/main/docs/troubleshooting.md).
+        보안 문제는 여기에 쓰지 말고 SECURITY.md 대로 비공개로 알려 주세요. / Do not report security issues here; see SECURITY.md.
+  - type: textarea
+    id: doctor
+    attributes:
+      label: blender-fx-doctor 출력 / doctor output
+      description: |
+        `uv run blender-fx-doctor` 결과 전체 (첫 줄에 blender-fx-mcp 버전). uvx 로 설치했다면 `uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-doctor`.
+        Full output of `uv run blender-fx-doctor` (first line shows the blender-fx-mcp version).
+      render: text
+    validations:
+      required: true
+  - type: input
+    id: blender-version
+    attributes:
+      label: 블렌더 버전 / Blender version
+      placeholder: "5.2.0 LTS"
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: OS
+      options:
+        - macOS (Apple Silicon)
+        - macOS (Intel)
+        - Windows
+        - Linux
+        - 기타 / Other
+    validations:
+      required: true
+  - type: dropdown
+    id: client
+    attributes:
+      label: MCP 클라이언트 / MCP client
+      options:
+        - Claude Code
+        - Claude Desktop
+        - Codex
+        - Cursor
+        - 기타 / Other
+    validations:
+      required: true
+  - type: dropdown
+    id: lang
+    attributes:
+      label: 메시지 언어 (BLENDER_FX_LANG) / Message language
+      options:
+        - ko
+        - en
+    validations:
+      required: false
+  - type: input
+    id: receiver
+    attributes:
+      label: blender-mcp 수신기 애드온 버전 / Receiver add-on version
+      placeholder: "1.2"
+    validations:
+      required: false
+  - type: textarea
+    id: repro
+    attributes:
+      label: 재현 명령 / Steps to reproduce
+      description: |
+        AI 에게 시킨 말과 불린 도구·인자. 예: "연습용 건물 만들고 왼쪽에서 부숴" → `make_demo_building()`, `destroy("Building", impact="left")`
+        What you asked the AI, and which tool was called with which arguments.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 무엇이 나왔나 / What happened
+      description: 도구가 돌려준 메시지(오류 문장)나 이미지를 그대로 / The exact message or image the tool returned.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 기대한 것 / What you expected
+    validations:
+      required: false

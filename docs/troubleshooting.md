@@ -7,8 +7,8 @@ Search this page for the error sentence the AI showed you. Running `blender-fx-d
 uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-doctor
 ```
 
-여기 없는 문제는 [버그 신고](https://github.com/choisam4u-creator/blender-fx-mcp/issues/new?template=bug_report.md)에 doctor 출력과 함께 올려 주세요.
-If your problem is not here, open a [bug report](https://github.com/choisam4u-creator/blender-fx-mcp/issues/new?template=bug_report.md) with the doctor output.
+여기 없는 문제는 [버그 신고](https://github.com/choisam4u-creator/blender-fx-mcp/issues/new?template=bug_report.yml)에 doctor 출력과 함께 올려 주세요.
+If your problem is not here, open a [bug report](https://github.com/choisam4u-creator/blender-fx-mcp/issues/new?template=bug_report.yml) with the doctor output.
 
 ---
 

@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 TEMPLATES = ROOT / ".github" / "ISSUE_TEMPLATE"
 
 
-@pytest.mark.parametrize("name", ["bug_report.md", "feature_request.md"])
+@pytest.mark.parametrize("name", ["feature_request.md"])
 def test_issue_template_front_matter(name):
     text = (TEMPLATES / name).read_text(encoding="utf-8")
     m = re.match(r"---\n(.*?)\n---\n", text, re.S)
@@ -17,10 +17,63 @@ def test_issue_template_front_matter(name):
     assert {"name", "about"} <= keys
 
 
-def test_bug_template_asks_for_repro_info():
-    text = (TEMPLATES / "bug_report.md").read_text(encoding="utf-8")
-    for needed in ("blender-fx-doctor", "Blender version", "BLENDER_FX_LANG"):
+def _bug_form():
+    # PyYAML 없이 읽는다: 이 양식은 `  - type:` 로 칸을 나누는 고정 모양만 쓴다.
+    text = (TEMPLATES / "bug_report.yml").read_text(encoding="utf-8")
+    head, _, body = text.partition("\nbody:\n")
+    blocks = re.split(r"^  - type: ", body, flags=re.M)[1:]
+    fields = {}
+    for b in blocks:
+        kind = b.split("\n", 1)[0].strip()
+        m = re.search(r"^    id: ([\w-]+)$", b, re.M)
+        if kind == "markdown":
+            continue
+        assert m, f"{kind} 칸에 id 가 없음"
+        req = re.search(r"^      required: (true|false)$", b, re.M)
+        fields[m.group(1)] = (kind, req and req.group(1) == "true", b)
+    return text, head, fields
+
+
+def test_bug_form_is_the_only_bug_template():
+    # .md 와 .yml 이 같이 있으면 GitHub 가 두 양식을 다 보여 준다
+    assert (TEMPLATES / "bug_report.yml").is_file()
+    assert not (TEMPLATES / "bug_report.md").exists()
+
+
+def test_bug_form_header():
+    text, head, _ = _bug_form()
+    assert "\t" not in text, "YAML 에 탭 문자"
+    for key in ("name", "description", "labels"):
+        assert re.search(rf"^{key}: \S", head, re.M), key
+    assert re.search(r'^labels: \["bug"\]$', head, re.M)
+
+
+def test_bug_form_required_fields():
+    _, _, fields = _bug_form()
+    required = {k for k, (_, req, _) in fields.items() if req}
+    assert {"doctor", "blender-version", "os", "client", "repro", "actual"} <= required
+    assert len(fields) == len(set(fields)), "id 중복"
+    for k, (kind, _, b) in fields.items():
+        assert kind in {"input", "textarea", "dropdown", "checkboxes"}, (k, kind)
+        assert re.search(r"^      label: \S", b, re.M), f"{k}: label 없음"
+        if kind == "dropdown":
+            assert re.search(r"^      options:\n(        - .+\n)+", b, re.M), f"{k}: options 없음"
+
+
+def test_bug_form_asks_for_repro_info():
+    text, _, fields = _bug_form()
+    for needed in ("blender-fx-doctor", "Blender version", "BLENDER_FX_LANG", "SECURITY.md"):
         assert needed in text
+    langs = re.findall(r"^        - (\w+)$", fields["lang"][2], re.M)
+    assert langs == ["ko", "en"]  # i18n.t 가 고르는 두 언어
+
+
+def test_bug_form_labels_are_bilingual():
+    _, _, fields = _bug_form()
+    for k, (_, _, b) in fields.items():
+        label = re.search(r"^      label: (.+)$", b, re.M).group(1)
+        if k != "os":
+            assert " / " in label, f"{k}: 한/영 label 이 아님 ({label})"
 
 
 def test_issue_config_links():
@@ -217,3 +270,10 @@ def test_architecture_has_both_languages_and_is_linked():
     assert not re.search(r"[가-힣]", english), "영어 절에 한글"
     for doc in ("README.md", "CONTRIBUTING.md"):
         assert "docs/architecture.md" in (ROOT / doc).read_text(encoding="utf-8"), f"{doc} 에서 링크 없음"
+
+
+def test_issue_template_links_point_to_existing_forms():
+    # 문서의 `issues/new?template=...` 링크가 지운 양식(.md)을 가리키지 않게
+    for path in [ROOT / "README.md", ROOT / "CONTRIBUTING.md", *ROOT.glob("*.md"), *(ROOT / "docs").glob("*.md")]:
+        for name in re.findall(r"issues/new\?template=([\w.-]+)", path.read_text(encoding="utf-8")):
+            assert (TEMPLATES / name).is_file(), f"{path.name}: 없는 양식 {name}"

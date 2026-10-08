@@ -61,6 +61,8 @@
 - `docs/registry.md`: 공식 MCP 레지스트리 등록 절차
 - 버튼 이름을 "Connect to MCP server" 로 통일
 - `SECURITY.md`(9876 포트 무인증 수신기 위험·비공개 신고)·`CODE_OF_CONDUCT.md`·기능 요청 이슈 양식
+- 버그 신고 양식을 YAML 폼(`bug_report.yml`, 한/영)으로: doctor 출력·블렌더 판·OS·MCP 클라이언트·재현 명령·결과를 필수 칸으로.
+  지금까지 .md 양식은 칸을 비워도 올라갔다. 필수 칸·라벨이 빠지거나 문서가 없는 양식을 링크하면 시험이 실패한다
 - `examples/`: 클로드 데스크톱·커서·코덱스 연결 설정(코덱스는 굽기용 `tool_timeout_sec`)
 - README 맨 위 배지(CI·라이선스·Python 판). 실제 파일과 어긋나면 시험이 실패한다
 - PR 양식(한/영): ruff·pytest·한/영 문장·새 레시피 확인 칸
