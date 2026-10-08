@@ -5,6 +5,30 @@
 출시 전까지 `pyproject.toml`·`src/blender_fx_mcp/__init__.py`·`server.json.example`·`CITATION.cff` 의 버전은 0.6.3 으로 둔다.
 아래 "출시 순서"에서 한꺼번에 올린다(`tests/test_registry.py` 가 넷이 어긋나면 실패한다).
 
+**English summary**
+
+*Fixes*
+- `import_model` with `size` reported the volume from before resizing; fixed. Rigid-body `glue` no longer crashes headless `bpy`
+  or adds a stray constraint to the active piece.
+- All server, recipe and doctor messages, and the MCP server instructions, now follow `BLENDER_FX_LANG=en`.
+- Arguments with fixed choices (`material`, `pattern`, `quality`, ...) and numeric ranges (`pieces`, `resolution`, `frames`, ...)
+  are checked **before** anything is sent to Blender, with the allowed values and the closest match in the error.
+  Out-of-range values used to be clamped silently.
+- `BLENDER_FX_TIMEOUT` now also extends the bake and render tools, and the timeout error says how long it waited and how to raise it.
+- All 32 tools carry MCP annotations; tools that overwrite or delete data are marked `destructiveHint`.
+
+*Tests and CI*
+- Server-side unit tests grew from 9 to over 470, running on Python 3.10–3.13 in CI with coverage in the job summary (about 95%).
+- Most recipe tests run without the Blender app through `pip install bpy`; Mantaflow tests are marked `app_only`.
+- Static checks keep every message in Korean/English pairs and every tool description's value list equal to what the server accepts.
+- ruff lint, Dependabot, read-only workflow tokens and SHA-pinned actions.
+
+*Docs*
+- English sections in the README and `docs/recipes.md`; new `docs/troubleshooting.md`, `docs/architecture.md`, `SUPPORT.md`,
+  `SECURITY.md`, `CODE_OF_CONDUCT.md` and `CITATION.cff`.
+- Client configs for Claude Desktop, Cursor and Codex in `examples/`; YAML bug form, feature request form and PR template.
+- `server.json.example` matches the 2025-12-11 MCP registry schema, and `scripts/release_check.py` checks a release in one step.
+
 **고침**
 - `import_model` 에 `size` 를 주면 결과의 `volume_m3` 가 크기를 바꾸기 **전** 부피로 나오던 문제.
   4.5m 로 줄인 건물이 144㎥(실제 18㎥)로 보고됐다
@@ -74,6 +98,7 @@
   문서의 오류 문장이 소스와 어긋나거나 링크한 절이 없으면 시험이 실패한다
 - `docs/architecture.md`(한/영): 도구 호출 한 번이 서버 → 소켓 → 수신기 → 레시피 → `FX_RESULT` 로 지나가는 길, 파일별 역할, 시험 경로.
   README·CONTRIBUTING 에서 링크. CONTRIBUTING 구조 그림의 없는 파일(`splash.py`)을 `water.py` 로 고침
+- CHANGELOG 미출시 절 맨 위에 영어 요약(고침·시험·문서). 미출시 절에 영어 요약이 없거나 한글이 섞이면 시험이 실패한다
 - `CITATION.cff`: GitHub 저장소 화면에 "Cite this repository" 가 뜬다. 판·라이선스·저장소 주소·저자가
   `pyproject.toml`·LICENSE·server.json 과 어긋나면 시험과 `scripts/release_check.py` 가 실패한다
 

@@ -395,3 +395,38 @@ def test_recipes_calls_pass_server_checks(monkeypatch, tmp_path):
             out = eval(call.replace("…/model.glb", str(tmp_path / "model.glb")), vars(server))
             out = out if isinstance(out, str) else out[0]
             assert sent, f"예시 {n}: {call} 이 블렌더로 가기 전에 막힘: {out}"
+
+
+def _changelog_sections():
+    text = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+    parts = re.split(r"^## (\d+\.\d+\.\d+) — (.+)$", text, flags=re.M)
+    return [(parts[i], parts[i + 1].strip(), parts[i + 2]) for i in range(1, len(parts), 3)]
+
+
+def _english_summary(body):
+    m = re.search(r"^\*\*English summary\*\*\n(.*?)(?=^\*\*[^*\n]+\*\*$|\Z)", body, re.S | re.M)
+    return m and m.group(1)
+
+
+def test_changelog_unreleased_sections_have_english_summary():
+    """해외 사용자·심사자도 릴리스 노트를 읽을 수 있게: 0.7.0 부터(미출시 절은 반드시) 영어 요약이 있어야 한다."""
+    checked = 0
+    for version, when, body in _changelog_sections():
+        unreleased = not re.fullmatch(r"\d{4}-\d{2}-\d{2}", when)
+        if not unreleased and tuple(map(int, version.split("."))) < (0, 7, 0):
+            continue
+        summary = _english_summary(body)
+        assert summary, f"{version}: '**English summary**' 절이 없음"
+        assert not re.search(r"[가-힣]", summary), f"{version}: 영어 요약에 한글이 섞임"
+        for part in ("Fixes", "Tests and CI", "Docs"):
+            m = re.search(rf"^\*{part}\*\n((?:- .*\n(?:  .*\n)*)+)", summary, re.M)
+            assert m, f"{version}: 영어 요약에 *{part}* 목록이 없음"
+            assert 1 <= len(re.findall(r"^- ", m.group(1), re.M)) <= 6, f"{version} {part}: 1~6줄로 요약"
+        checked += 1
+    assert checked >= 1
+
+
+def test_changelog_english_summary_before_korean_details():
+    # 요약이 한국어 상세 목록보다 앞에 있어야 첫 화면에서 보인다
+    version, _, body = _changelog_sections()[0]
+    assert body.index("**English summary**") < body.index("**고침**"), version
