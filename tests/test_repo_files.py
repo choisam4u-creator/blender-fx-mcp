@@ -822,3 +822,23 @@ def test_one_line_examples_pass_server_checks(monkeypatch, tmp_path):
             assert out and not out.startswith("실패"), call
         else:
             assert out == "실패: 여기까지 오면 통과", f"{call} 이 블렌더로 가기 전에 막힘: {out}"
+
+
+def test_ci_runs_server_tests_on_every_classifier_os():
+    """분류자가 말하는 OS(macOS·Linux·Windows)마다 서버 시험이 돌고, OS 작업도 server-tests 와 같은 파일을 뺀다."""
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    job = ci.split("  server-tests-os:\n", 1)[1].split("\n\n", 1)[0]
+    oses = set(re.search(r"os: \[([^\]]+)\]", job).group(1).replace(" ", "").split(","))
+    pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    classifier_os = set(re.findall(r'"Operating System :: (?:Microsoft :: )?(\w+)', pyproject))
+    runner = {"MacOS": "macos-latest", "Windows": "windows-latest"}
+    assert classifier_os == {"MacOS", "POSIX", "Windows"}, classifier_os
+    assert oses == {runner["MacOS"], runner["Windows"]}  # Linux 는 server-tests 가 돈다
+    assert "fail-fast: false" in job
+    highest = re.findall(r"Programming Language :: Python :: (3\.\d+)\"", pyproject)[-1]
+    assert f"uv python install {highest}" in job, "OS 작업은 분류자의 최고 파이썬 판으로"
+    main_run = next(line for line in ci.splitlines() if "--cov " in line)
+    os_run = next(line for line in job.splitlines() if "pytest -q tests" in line)
+    assert _ignored(os_run) == _ignored(main_run)
+    support = (ROOT / "SUPPORT.md").read_text(encoding="utf-8")
+    assert "macOS·Linux·Windows" in support and "macOS, Linux, Windows" in support
