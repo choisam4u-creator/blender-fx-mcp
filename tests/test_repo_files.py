@@ -198,6 +198,39 @@ def test_ci_reports_server_coverage_without_recipes():
         assert (ROOT / "tests" / name).is_file(), name
 
 
+def _ignored(text):
+    return set(re.findall(r"--ignore=tests/(test_\w+\.py)", text))
+
+
+def test_ci_runs_every_test_file_except_blender_only_recipes():
+    """CI 서버 시험은 파일을 손으로 적지 않고, 블렌더가 있어야 하는 레시피 시험 파일만 뺀다(새 시험 파일이 CI 에서 빠지지 않게)."""
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    run = next(line for line in ci.splitlines() if "--cov " in line)
+    assert re.search(r"pytest -q tests --ignore=", run), "CI 는 tests/ 전체를 돌리고 --ignore 로만 빼야 함"
+    listed = set(re.findall(r"tests/(test_\w+\.py)", run)) - _ignored(run)
+    assert not listed, f"CI 가 시험 파일을 손으로 적음: {sorted(listed)}"
+    blender_only = {
+        p.name for p in (ROOT / "tests").glob("test_*.py")
+        if re.search(r"^pytestmark = pytest\.mark\.skipif\(BLENDER is None", p.read_text(encoding="utf-8"), re.M)
+    }
+    assert blender_only, "블렌더 전용 시험 파일을 찾지 못함"
+    assert _ignored(run) == blender_only, (
+        f"CI 가 빼는 파일 {sorted(_ignored(run))} 과 블렌더 전용 시험 파일 {sorted(blender_only)} 이 다름"
+    )
+
+
+def test_contributing_coverage_command_matches_ci():
+    """CONTRIBUTING 의 커버리지 명령(한/영)이 CI 와 같은 파일을 빼야 한다."""
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    run = next(line for line in ci.splitlines() if "--cov " in line)
+    text = (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
+    lines = [line for line in text.splitlines() if "--cov" in line and "pytest" in line]
+    assert len(lines) >= 2, "CONTRIBUTING 에 한/영 커버리지 명령이 모두 있어야 함"
+    for line in lines:
+        assert "pytest -q tests --ignore=" in line, line
+        assert _ignored(line) == _ignored(run), f"CONTRIBUTING 의 --ignore 목록이 ci.yml 과 다름: {line[:80]}"
+
+
 def test_coverage_artifacts_are_ignored():
     """`pytest --cov` 가 남기는 .coverage 는 기기마다 다른 SQLite 파일이라 저장소에 들어가면 안 된다."""
     ignored = (ROOT / ".gitignore").read_text(encoding="utf-8").splitlines()
