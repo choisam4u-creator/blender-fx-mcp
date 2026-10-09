@@ -577,3 +577,28 @@ def test_maintenance_matches_dependabot_and_python():
     pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
     lowest = re.findall(r"Programming Language :: Python :: (3\.\d+)\"", pyproject)[0]
     assert f"지금 가장 낮은 {lowest}" in text and f"The lowest version today, {lowest}" in text
+
+
+BPY_SCRIPT = ROOT / "scripts" / "bpy_tests.sh"
+
+
+def test_bpy_script_matches_ci_bpy_job():
+    # 클라우드에서 쓰는 bpy 시험 스크립트가 CI 의 recipe-tests-bpy 작업과 같은 판·패키지를 쓰는지.
+    script = BPY_SCRIPT.read_text(encoding="utf-8")
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    job = ci.split("recipe-tests-bpy:", 1)[1]
+    bpy = re.search(r'^BPY_VERSION="([\d.]+)"', script, re.M).group(1)
+    py = re.search(r'^PYTHON_VERSION="([\d.]+)"', script, re.M).group(1)
+    assert f"bpy=={bpy}" in job
+    assert f"uv python install {py}" in job
+    ci_pkgs = set(re.search(r"apt-get install -y ([^\n]+)", job).group(1).split())
+    script_pkgs = set(re.search(r"apt-get install -y ([^\"\n]+)", script).group(1).split())
+    assert script_pkgs == ci_pkgs
+
+
+def test_bpy_script_is_runnable_and_documented():
+    assert BPY_SCRIPT.stat().st_mode & 0o111, "실행 권한이 없음(chmod +x)"
+    assert BPY_SCRIPT.read_text(encoding="utf-8").startswith("#!/usr/bin/env bash\n")
+    ignored = (ROOT / ".gitignore").read_text(encoding="utf-8").split()
+    assert ".venv-bpy/" in ignored
+    assert "scripts/bpy_tests.sh" in (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
