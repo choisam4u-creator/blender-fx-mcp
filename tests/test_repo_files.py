@@ -922,3 +922,20 @@ def test_lowest_python_deprecation_is_announced():
     text = MAINT.read_text(encoding="utf-8")
     assert f"**{last} 이 {lowest} 을 지원하는 마지막 판**" in text and f"**{dropped} 에서 뺀다**" in text
     assert f"**{last} is the last release that supports {lowest}**" in text and f"**{dropped} drops it**" in text
+
+
+def test_gitattributes_keeps_lf_everywhere():
+    """모든 OS 에서 줄 끝이 LF 여야 한다(Windows 체크아웃의 CRLF 가 bash 스크립트·패키지 README 를 깨뜨림)."""
+    import shutil
+    import subprocess
+
+    attrs = (ROOT / ".gitattributes").read_text(encoding="utf-8").splitlines()
+    assert "* text=auto eol=lf" in attrs and "*.sh text eol=lf" in attrs
+    for ext in ("png", "gif", "blend", "mp4"):
+        assert f"*.{ext} binary" in attrs, ext
+    if not shutil.which("git") or not (ROOT / ".git").exists():
+        pytest.skip("git 저장소가 아님(sdist 등)")
+    files = subprocess.run(["git", "ls-files", "-z"], cwd=ROOT, capture_output=True, check=True).stdout.split(b"\0")
+    crlf = [f.decode() for f in files if f and (ROOT / f.decode()).is_file()
+            and b"\r\n" in (ROOT / f.decode()).read_bytes() and not f.endswith((b".png", b".gif", b".blend"))]
+    assert not crlf, f"CRLF 줄 끝: {crlf}"

@@ -144,6 +144,7 @@
   마크다운 README 본문·`mcp-name` 줄)를 본다. 판 번호·"미출시" 점검은 하지 않아 출시 전 PR 에서도 돈다
 - 같은 점검에 Metadata-Version(PyPI 가 받는 2.1~2.5) 칸을 더하고, CI 가 `uvx twine@7.0.0 check dist/*` 도 돈다.
   hatchling 이 2.5 를 써서 twine 6.x 는 거부하지만 PyPI·twine 7.0.0 은 받는다(그래서 hatchling 판은 묶지 않음)
+- `.gitattributes`: 모든 OS 에서 줄 끝 LF(`*.sh` 포함), 이미지·영상·`.blend` 는 바이너리. 저장소에 CRLF 파일이 생기면 시험이 실패한다
 - CI 서버 시험은 파일을 손으로 적지 않고 블렌더 전용 레시피 시험만 뺀다. 서버 쪽 커버리지가 95% 아래면 실패한다
 
 **출시 순서 (샘님 Mac)**

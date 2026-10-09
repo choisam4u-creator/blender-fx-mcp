@@ -102,7 +102,7 @@
 
 ### 2026-10-09 (3회차 끝) 추가
 
-- [ ] `.gitattributes`(`* text=auto eol=lf`, `*.sh text eol=lf`, 이미지·`.blend` 는 `binary`) + 시험(스크립트·워크플로가 LF 인지) (유지보수: Windows 체크아웃에서 README·PKG-INFO 가 CRLF 로 바뀌어 release_check 가 깨진 것을 이번 회차에 봄. `bpy_tests.sh` 가 CRLF 가 되면 bash 가 못 읽음)
+- [x] `.gitattributes`(`* text=auto eol=lf`, `*.sh text eol=lf`, 이미지·`.blend` 는 `binary`) + 시험(스크립트·워크플로가 LF 인지) (유지보수: Windows 체크아웃에서 README·PKG-INFO 가 CRLF 로 바뀌어 release_check 가 깨진 것을 이번 회차에 봄. `bpy_tests.sh` 가 CRLF 가 되면 bash 가 못 읽음) — `* text=auto eol=lf`·`*.sh text eol=lf`·바이너리 8종. 지금 추적 파일 110개 모두 LF(`git ls-files --eol`). 시험 1개(설정 줄·추적 파일에 CRLF 없음, git 없으면 건너뜀)
 - [ ] 소스·스크립트 파일 첫 줄 근처에 `# SPDX-License-Identifier: MIT` + 빠진 파일을 찾는 시험(레시피 파일은 블렌더로 보낼 때 앞에 붙는 코드와 충돌하지 않는지 확인) (라이선스: REUSE 식 파일 단위 라이선스 표기. 레시피가 따로 복사돼 쓰여도 라이선스가 따라감)
 - [ ] Windows 에서 건너뛰는 `posix_only` 시험(가짜 블렌더 `/bin/sh` 스크립트)을 `.cmd` 가짜로 Windows 에서도 돌게 하거나, 건너뛰는 이유·개수를 CONTRIBUTING 에 (시험: Windows CI 는 18개를 건너뜀. doctor·headless 의 실패 갈래가 Windows 에서 검증되지 않음)
 - [ ] 첫 기여자 인사 워크플로(`actions/first-interaction` SHA 고정, 한/영 인사 + CONTRIBUTING·good first issue 링크, 권한은 issues·pull-requests 쓰기만) + 권한 허용 목록 시험에 추가 (이슈 대응·커뮤니티: 첫 이슈·PR 에 응답 목표(SUPPORT)보다 먼저 길잡이가 닿게)
