@@ -15,6 +15,8 @@ body:
       description: |
         `uv run blender-fx-doctor` 결과 전체 (첫 줄에 blender-fx-mcp 버전). uvx 로 설치했다면 `uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-doctor`.
         Full output of `uv run blender-fx-doctor` (first line shows the blender-fx-mcp version).
+        `--json` 을 붙인 출력도 됩니다(항목 id 가 언어와 상관없이 같아 비교하기 쉬움). 개인 경로는 지워도 됩니다.
+        The `--json` output is welcome too (its check ids do not depend on the language). Feel free to remove personal paths.
       render: text
     validations:
       required: true

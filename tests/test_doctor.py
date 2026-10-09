@@ -1,11 +1,12 @@
 # doctor.py 의 실패 갈래 시험. 사용자가 가장 먼저 돌리는 명령이라 실패 안내가 깨지지 않게 한다. 블렌더 없이 돈다.
+import json
 import stat
 import sys
 from pathlib import Path
 
 import pytest
 
-from blender_fx_mcp import bridge, doctor
+from blender_fx_mcp import __version__, bridge, doctor
 
 posix_only = pytest.mark.skipif(sys.platform == "win32", reason="가짜 블렌더가 /bin/sh 스크립트")
 
@@ -145,17 +146,76 @@ def test_report_all_ok_and_attention_line(env, monkeypatch):
 
 @pytest.mark.parametrize("failing,code", [
     (None, 0),               # 모두 정상
-    ("수신기 연결", 0),        # 블렌더를 안 켠 것은 치명적이지 않다
-    ("블렌더 실행 파일", 0),
+    ("connection", 0),       # 블렌더를 안 켠 것은 치명적이지 않다
+    ("blender", 0),
     ("python", 1),
-    ("mcp 라이브러리", 1),
-    ("mcp library", 1),
+    ("mcp", 1),
 ])
-def test_main_exit_code(monkeypatch, capsys, failing, code):
-    names = ["python", "mcp 라이브러리", "수신기 연결", "블렌더 실행 파일", "mcp library"]
-    checks = [doctor._check(n, n != failing, "d") for n in names]
+@pytest.mark.parametrize("lang", ["ko", "en"])
+def test_main_exit_code(monkeypatch, capsys, failing, code, lang):
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    names = {"python": "python", "mcp": "mcp 라이브러리" if lang == "ko" else "mcp library",
+             "connection": "수신기 연결", "blender": "블렌더 실행 파일"}
+    checks = [doctor._check(n, key != failing, "d", key) for key, n in names.items()]
     monkeypatch.setattr(doctor, "run_checks", lambda: checks)
     with pytest.raises(SystemExit) as e:
-        doctor.main()
+        doctor.main([])
     assert e.value.code == code
     assert "[OK] python: d" in capsys.readouterr().out or failing == "python"
+
+
+# ---- --json ----
+
+def _fake_checks(monkeypatch, tmp_path, lang):
+    """실제 run_checks 를 블렌더·수신기 없이 돌린다(블렌더 못 찾음, 연결 실패)."""
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path))
+    monkeypatch.setattr(doctor, "find_blender", lambda: None)
+    monkeypatch.setattr(doctor, "ADDON_GLOBS", [])
+
+    def refused():
+        raise bridge.BlenderError("refused")
+
+    monkeypatch.setattr(bridge, "ping", refused)
+
+
+@pytest.mark.parametrize("lang", ["ko", "en"])
+def test_json_matches_text_report(monkeypatch, capsys, tmp_path, lang):
+    """--json 과 줄 출력이 같은 항목·같은 결과여야 하고, id 는 언어와 상관없이 같아야 한다."""
+    _fake_checks(monkeypatch, tmp_path, lang)
+    with pytest.raises(SystemExit) as e:
+        doctor.main([])
+    text_code, text = e.value.code, capsys.readouterr().out.splitlines()
+    with pytest.raises(SystemExit) as e:
+        doctor.main(["--json"])
+    assert e.value.code == text_code
+    data = json.loads(capsys.readouterr().out)
+    rows = text[:-1]
+    assert len(data["checks"]) == len(rows)
+    for c, row in zip(data["checks"], rows):
+        assert row == f"[{'OK' if c['ok'] else 'X '}] {c['name']}: {c['detail']}"
+    assert [c["id"] for c in data["checks"]] == [
+        "python", "blender-fx-mcp", "mcp", "uv", "blender", "addon", "connection", "output"]
+    assert data["failed"] == [c["id"] for c in data["checks"] if not c["ok"]]
+    assert {"blender", "addon", "connection"} <= set(data["failed"])
+    assert data["ok"] is False and data["help"] == bridge.TROUBLESHOOTING_URL and data["help"] in text[-1]
+    assert data["lang"] == lang and data["blender"] is None
+    assert data["blender_fx_mcp"] == __version__
+    assert (data["host"], data["port"]) == (bridge.host(), bridge.port())
+
+
+def test_json_all_ok_has_no_help(monkeypatch, capsys):
+    monkeypatch.setattr(doctor, "run_checks", lambda: [doctor._check("python", True, "3.11", "python")])
+    monkeypatch.setattr(doctor, "find_blender", lambda: "/opt/blender/blender")
+    with pytest.raises(SystemExit) as e:
+        doctor.main(["--json"])
+    data = json.loads(capsys.readouterr().out)
+    assert e.value.code == 0
+    assert data["ok"] is True and data["failed"] == [] and data["help"] is None
+    assert data["blender"] == "/opt/blender/blender"
+
+
+def test_unknown_option_is_rejected(capsys):
+    with pytest.raises(SystemExit) as e:
+        doctor.main(["--jsn"])
+    assert e.value.code == 2 and "--jsn" in capsys.readouterr().err

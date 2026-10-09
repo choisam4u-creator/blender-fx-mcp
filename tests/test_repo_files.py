@@ -82,6 +82,9 @@ def test_bug_form_asks_for_repro_info():
     text, _, fields = _bug_form()
     for needed in ("blender-fx-doctor", "Blender version", "BLENDER_FX_LANG", "SECURITY.md"):
         assert needed in text
+    # --json 안내는 doctor 칸 안에, 실제로 있는 옵션이어야 한다
+    assert "`--json`" in fields["doctor"][2]
+    assert '"--json"' in (ROOT / "src" / "blender_fx_mcp" / "doctor.py").read_text(encoding="utf-8")
     langs = re.findall(r"^        - (\w+)$", fields["lang"][2], re.M)
     assert langs == ["ko", "en"]  # i18n.t 가 고르는 두 언어
 

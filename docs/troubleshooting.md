@@ -9,6 +9,8 @@ uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-do
 
 여기 없는 문제는 [버그 신고](https://github.com/choisam4u-creator/blender-fx-mcp/issues/new?template=bug_report.yml)에 doctor 출력과 함께 올려 주세요.
 If your problem is not here, open a [bug report](https://github.com/choisam4u-creator/blender-fx-mcp/issues/new?template=bug_report.yml) with the doctor output.
+`blender-fx-doctor --json` 은 같은 결과를 JSON 으로 냅니다(항목 id: `python`·`blender-fx-mcp`·`mcp`·`uv`·`blender`·`addon`·`connection`·`output`).
+`blender-fx-doctor --json` prints the same result as JSON, with language-independent check ids.
 
 ---
 

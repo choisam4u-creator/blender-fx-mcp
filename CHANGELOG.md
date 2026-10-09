@@ -16,6 +16,7 @@
   Out-of-range values used to be clamped silently.
 - `BLENDER_FX_TIMEOUT` now also extends the bake and render tools, and the timeout error says how long it waited and how to raise it.
 - All 32 tools carry MCP annotations; tools that overwrite or delete data are marked `destructiveHint`.
+- `blender-fx-doctor --json` prints the same checks as JSON with language-independent ids, for bug reports.
 
 *Tests and CI*
 - Server-side unit tests grew from 9 to over 540, running on Python 3.10–3.14 in CI with coverage in the job summary (99%).
@@ -55,6 +56,8 @@
   `destroy` 의 `dust`, `render_video` 의 `quality` 는 설명에 값이 없었고, `interior` 는 "다른 material 이름"으로만 적혀 있었다.
   이제 모든 고정 목록 인자를 `이름: a / b / c` 한 줄로 적고, 시험이 서버 목록과 같은지 확인한다
 - `blender-fx-doctor` 가 `--version` 에 아무것도 출력하지 않는 블렌더를 "실행 실패: list index out of range" 대신 "버전 출력 없음"으로 보여 준다
+- `blender-fx-doctor --json`: 같은 점검을 JSON 으로(판·블렌더 경로·호스트·포트·항목별 `id`/결과/내용·실패 목록·해결법 주소).
+  항목 `id` 는 언어와 상관없이 같다. 버그 양식에 안내. 줄 출력과 항목·결과·종료 코드가 같은지 시험한다
 
 **시험·CI**
 - 블렌더 없이 도는 서버 단위 시험 추가(파라미터 변환·오류 메시지·가짜 소켓 수신기·레지스트리 형식). 9 → 37개
