@@ -24,6 +24,9 @@ ROOT = Path(__file__).resolve().parent.parent
 # CHANGELOG 의 판 절 제목: "## 0.7.0 — 2026-10-20" 또는 "## 0.7.0 — 미출시 (준비 중)"
 HEADING = re.compile(r"^## (\d+\.\d+\.\d+) — (.+)$", re.M)
 DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
+# PyPI 가 받는 Metadata-Version. hatchling 은 2026-10 기준 2.5 를 쓰며, 2.5 를 받는 twine 은 7.0.0 부터다(6.x check 는 거부).
+# 새 판이 나와 빌드가 그 판을 쓰면 PyPI·twine 지원을 확인한 뒤 여기 더한다.
+METADATA_VERSIONS = ("2.1", "2.2", "2.3", "2.4", "2.5")
 
 
 def project_version(root: Path) -> str:
@@ -120,8 +123,13 @@ def check_metadata(meta: str, label: str, version: str, urls: dict[str, str]) ->
 
 
 def check_package(meta: str, label: str, license: str, readme: str) -> list[tuple[bool, str]]:
-    """PyPI 화면에 필요한 것: License-Expression, 마크다운 README 본문, 레지스트리용 mcp-name 줄."""
+    """PyPI 가 받고 화면에 필요한 것: Metadata-Version, License-Expression, 마크다운 README 본문, 레지스트리용 mcp-name 줄."""
     out: list[tuple[bool, str]] = []
+    m = re.search(r"^Metadata-Version: (.+)$", meta, re.M)
+    mv = m.group(1).strip() if m else "(없음)"
+    ok = mv in METADATA_VERSIONS
+    out.append((ok, f"{label} Metadata-Version = {mv}" + ("" if ok else
+                f" → PyPI 가 받는지 모름(허용: {', '.join(METADATA_VERSIONS)}). [build-system] 의 hatchling 판을 확인")))
     m = re.search(r"^License-Expression: (.+)$", meta, re.M)
     got = m.group(1).strip() if m else "(없음)"
     out.append((got == license, f"{label} METADATA License-Expression = {got}"

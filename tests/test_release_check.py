@@ -1,5 +1,6 @@
 # scripts/release_check.py(출시 전 점검) 시험. 블렌더 없이 돈다.
 import importlib.util
+import re
 import shutil
 import tarfile
 import zipfile
@@ -142,13 +143,13 @@ def test_build_checks_wheel(repo, monkeypatch, tmp_path, capsys):
 def _meta(root: Path, **override) -> str:
     """pyproject·README 와 맞는 METADATA. override 로 한 줄씩 깨뜨린다."""
     fields = {
+        "Metadata-Version": "2.5",
         "Version": rc.project_version(root),
         "License-Expression": rc.project_license(root),
         "Description-Content-Type": "text/markdown",
     }
     fields.update(override)
-    head = "Metadata-Version: 2.4\nName: blender-fx-mcp\n"
-    head += "".join(f"{k}: {v}\n" for k, v in fields.items() if v is not None)
+    head = "".join(f"{k}: {v}\n" for k, v in fields.items() if v is not None)
     head += "".join(f"Project-URL: {k}, {v}\n" for k, v in rc.project_urls(root).items())
     return head + "\n" + (root / "README.md").read_text(encoding="utf-8")
 
@@ -178,6 +179,9 @@ def test_dist_passes_on_unreleased_repo(repo, tmp_path, capsys):
     ({"License-Expression": "GPL-3.0"}, "License-Expression = GPL-3.0"),
     ({"License-Expression": None}, "License-Expression = (없음)"),
     ({"Description-Content-Type": "text/x-rst"}, "README 형식 = text/x-rst"),
+    ({"Metadata-Version": "3.0"}, "Metadata-Version = 3.0"),
+    ({"Metadata-Version": "2.0"}, "Metadata-Version = 2.0"),
+    ({"Metadata-Version": None}, "Metadata-Version = (없음)"),
 ])
 def test_dist_metadata_errors_name_the_field(repo, tmp_path, override, expect):
     dist = tmp_path / "dist"
@@ -220,3 +224,12 @@ def test_ci_checks_built_packages():
     ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
     assert "uv build\n" in ci
     assert ci.index("uv build\n") < ci.index("release_check.py --dist dist")
+
+
+def test_metadata_versions_cover_current_build():
+    """허용 목록이 PyPI 가 받는 판(2.1~)이고, 지금 빌드 백엔드가 쓰는 2.5 를 포함한다.
+    2.5 를 받는 twine 이 7.0.0 부터라 CI·registry.md 가 그 판 이상의 twine 을 쓰는지도 본다."""
+    assert rc.METADATA_VERSIONS[0] == "2.1" and "2.5" in rc.METADATA_VERSIONS
+    for path in (ROOT / ".github" / "workflows" / "ci.yml", ROOT / "docs" / "registry.md"):
+        found = re.findall(r"twine@(\d+)\.\d+\.\d+ check", path.read_text(encoding="utf-8"))
+        assert found and all(int(major) >= 7 for major in found), path.name

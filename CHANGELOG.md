@@ -22,7 +22,7 @@
 - Most recipe tests run without the Blender app through `pip install bpy`; Mantaflow tests are marked `app_only`.
 - Static checks keep every message in Korean/English pairs and every tool description's value list equal to what the server accepts.
 - ruff lint, Dependabot, read-only workflow tokens and SHA-pinned actions.
-- CI runs every test file except the Blender-only recipe tests, fails below 95% server coverage, and checks the built wheel and sdist metadata (version, project URLs, license expression, README, `mcp-name`).
+- CI runs every test file except the Blender-only recipe tests, fails below 95% server coverage, and checks the built wheel and sdist metadata (metadata version, version, project URLs, license expression, README, `mcp-name`) and runs `twine check`.
 
 *Docs*
 - English sections in the README and `docs/recipes.md`; new `docs/troubleshooting.md`, `docs/architecture.md`, `docs/maintenance.md`, `SUPPORT.md`,
@@ -113,6 +113,8 @@
   실패 줄마다 고칠 곳을 적는다
 - CI 패키징 점검: `uv build` 뒤 `scripts/release_check.py --dist dist` 가 휠·sdist 의 METADATA(판·Project-URL·License-Expression·
   마크다운 README 본문·`mcp-name` 줄)를 본다. 판 번호·"미출시" 점검은 하지 않아 출시 전 PR 에서도 돈다
+- 같은 점검에 Metadata-Version(PyPI 가 받는 2.1~2.5) 칸을 더하고, CI 가 `uvx twine@7.0.0 check dist/*` 도 돈다.
+  hatchling 이 2.5 를 써서 twine 6.x 는 거부하지만 PyPI·twine 7.0.0 은 받는다(그래서 hatchling 판은 묶지 않음)
 - CI 서버 시험은 파일을 손으로 적지 않고 블렌더 전용 레시피 시험만 뺀다. 서버 쪽 커버리지가 95% 아래면 실패한다
 
 **출시 순서 (샘님 Mac)**

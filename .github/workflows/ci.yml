@@ -35,6 +35,8 @@ jobs:
       - run: uv build
       # PyPI 에 올리기 전에 휠·sdist 의 METADATA(판·Project-URL·License-Expression·README·mcp-name)를 PR 단계에서 본다.
       - run: uv run python scripts/release_check.py --dist dist
+      # PyPI 와 같은 검사기(packaging)로 휠·sdist 를 한 번 더 본다. hatchling 이 쓰는 Metadata-Version 2.5 는 twine 7.0.0 부터 받는다.
+      - run: uvx twine@7.0.0 check dist/*
 
   # `pip install bpy` 로 레시피 시험 대부분을 블렌더 앱 없이 돌린다.
   # 렌더에는 libEGL(소프트웨어 Mesa)이 필요하다. bpy 휠에서 깨지는 유체 시험(`app_only`)은 tests/conftest.py 가 건너뛴다.
