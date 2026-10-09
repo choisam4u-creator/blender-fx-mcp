@@ -70,8 +70,16 @@
 
 ### 2026-10-08 (2회차) 추가
 
-- [ ] CI 서버 시험 목록을 손으로 적지 않기: 블렌더가 필요한 레시피 시험 파일만 `--ignore` 로 빼고 나머지 `tests/` 를 모두 돌리게 + 시험(새 시험 파일이 CI 에서 빠지지 않는지), CONTRIBUTING 의 커버리지 명령도 같은 목록으로 (시험: 지금 CI 목록은 회차마다 손으로 늘리고, CONTRIBUTING 의 커버리지 명령은 이미 CI 목록과 다르다)
-- [ ] CI 커버리지 하한 `--cov-fail-under=95` + 시험(ci.yml 에 하한이 있고 CONTRIBUTING 수치와 맞는지) (시험: 99% 를 만든 뒤 PR 이 시험 없이 코드를 늘려도 지금은 초록이다)
-- [ ] CI 에 패키징 점검 작업: `uv build` 후 휠·sdist 의 METADATA(Version·Project-URL·License-Expression)와 README 렌더 가능 여부를 확인(`release_check.py` 의 휠 점검을 "미출시" 실패와 떼어 부르는 옵션) + 시험 (유지보수·배포: PyPI 에 올리기 전에 깨진 메타데이터를 PR 단계에서 잡음)
-- [ ] `docs/maintenance.md`(한/영): dependabot PR 처리 순서(액션 메이저 판은 변경 기록 확인 뒤, SHA·판 주석 함께), 출시 주기·판 번호 규칙, 지원 끝난 블렌더·파이썬 판 정리 기준, 이슈 분류 순서 + README·SUPPORT 에서 링크, 시험 (유지보수 정책 문서: 지원 프로그램 심사의 "활발한 유지보수" 근거. 지금 dependabot 이 checkout v4→v7·setup-uv v5→v10 메이저 PR 을 열어 둔 상태)
+- [x] CI 서버 시험 목록을 손으로 적지 않기: 블렌더가 필요한 레시피 시험 파일만 `--ignore` 로 빼고 나머지 `tests/` 를 모두 돌리게 + 시험(새 시험 파일이 CI 에서 빠지지 않는지), CONTRIBUTING 의 커버리지 명령도 같은 목록으로 (시험: 지금 CI 목록은 회차마다 손으로 늘리고, CONTRIBUTING 의 커버리지 명령은 이미 CI 목록과 다르다) — `pytest -q tests --ignore=…` 로 레시피 시험 5개 파일(`pytestmark = skipif(BLENDER is None)`)만 뺌. CONTRIBUTING 한/영 커버리지 명령도 같은 줄. 시험 2개: CI 가 파일을 손으로 적지 않고 빼는 목록 = 블렌더 전용 파일, CONTRIBUTING 목록 = CI 목록
+- [x] CI 커버리지 하한 `--cov-fail-under=95` + 시험(ci.yml 에 하한이 있고 CONTRIBUTING 수치와 맞는지) (시험: 99% 를 만든 뒤 PR 이 시험 없이 코드를 늘려도 지금은 초록이다) — ci.yml 에 `--cov-fail-under=95`, CONTRIBUTING 한/영에 수치. 3.10(시험 5개 건너뜀)에서도 99.35% 로 통과 확인. 시험 1개
+- [x] CI 에 패키징 점검 작업: `uv build` 후 휠·sdist 의 METADATA(Version·Project-URL·License-Expression)와 README 렌더 가능 여부를 확인(`release_check.py` 의 휠 점검을 "미출시" 실패와 떼어 부르는 옵션) + 시험 (유지보수·배포: PyPI 에 올리기 전에 깨진 메타데이터를 PR 단계에서 잡음) — `release_check.py --dist DIR`: 휠·sdist(PKG-INFO) 모두 Version·Project-URL 5개·License-Expression·`text/markdown`·README 본문·`mcp-name` 줄. 판·미출시 점검은 하지 않아 지금도 통과(20개 OK). ci.yml `uv build` 다음 줄에 추가, registry.md 순서·CHANGELOG 반영. 시험 8개. 참고: hatchling 이 Metadata-Version 2.5 를 써서 `twine check` 는 거부 → 새 백로그 항목
+- [x] `docs/maintenance.md`(한/영): dependabot PR 처리 순서(액션 메이저 판은 변경 기록 확인 뒤, SHA·판 주석 함께), 출시 주기·판 번호 규칙, 지원 끝난 블렌더·파이썬 판 정리 기준, 이슈 분류 순서 + README·SUPPORT 에서 링크, 시험 (유지보수 정책 문서: 지원 프로그램 심사의 "활발한 유지보수" 근거. 지금 dependabot 이 checkout v4→v7·setup-uv v5→v10 메이저 PR 을 열어 둔 상태) — 이슈 분류 5단계·dependabot(`deps`/`ci`, 메이저 판·SHA+주석)·판 번호(1.0 전 마이너=동작 변화)·출시 주기 목표·파이썬 EOL(3.10 은 2026-10)·블렌더 LTS 정리. README 한/영·SUPPORT 링크. 시험 4개(한/영 소절 수, 링크, SUPPORT 응답 일수·30일·라벨, dependabot 접두어·가장 낮은 파이썬 판)
 - [ ] 클라우드에서 bpy 5.0.1(Python 3.11)로 레시피 시험을 돌리는 `scripts/bpy_tests.sh`(가상환경·libEGL 확인·`BLENDER_FX_BLENDER` 설정) + 회차마다 결과를 CLOUD-NOTES 에 적기 (시험: 지금 클라우드 회차는 레시피 시험 34개를 "블렌더 필요"로 건너뛴다. CI 의 bpy 작업과 같은 방법을 손에 쥐면 레시피를 고치는 회차도 검증 가능)
+
+### 2026-10-09 추가
+
+- [ ] 빌드 메타데이터 판 점검: 지금 hatchling 이 `Metadata-Version: 2.5` 를 써서 `uvx twine@6.2.0 check` 가 "2.5 is not a valid metadata version" 으로 거부한다. PyPI·`uv publish` 가 2.5 를 받는지 확인하고, 안 받으면 `[build-system] requires` 에 hatchling 판 상한을 두거나 다른 방법을 찾음 + `release_check.py --dist` 에 Metadata-Version 허용 목록 칸·시험 (배포: 0.7.0 PyPI 업로드가 그 자리에서 막히지 않게)
+- [ ] 최소 파이썬 판이 적힌 곳을 한 시험으로 묶기: 분류자·`requires-python`·CI 행렬·SUPPORT 표·README 배지·ruff `target-version`(있으면)·maintenance.md 가 같은 최저 판을 말하는지 (유지보수: 3.10 이 2026-10 EOL 이라 다음 마이너에서 뺄 때 한 곳만 바꾸면 시험이 나머지를 짚게)
+- [ ] 기능 요청 양식을 YAML 폼으로: `.github/ISSUE_TEMPLATE/feature_request.yml`(한/영, 원하는 결과·예시 명령·대신 쓰는 방법 칸), `.md` 지우고 SUPPORT·CONTRIBUTING 링크 고침 + 시험(버그 폼 시험과 같은 방식) (이슈 대응: 버그 폼과 같은 구조로 필요한 정보를 처음부터 받음)
+- [ ] 라벨 정의 파일 `.github/labels.yml`(이름·색·한/영 설명: `bug`·`enhancement`·`needs-info`·`good first issue`·`question`·`security`·`dependencies`) + 문서·양식·dependabot 이 쓰는 라벨이 모두 정의돼 있는지 시험, Mac 에서 만들 `gh label create` 명령을 maintenance.md 에 (이슈 대응: SUPPORT·CONTRIBUTING 이 말하는 라벨이 저장소에 실제로 있게. 클라우드는 라벨을 만들지 않음)
+- [ ] `examples/list_tools.py`: 공식 `mcp` 파이썬 클라이언트로 서버를 stdio 로 띄워 도구 목록과 `ping_blender` 결과(블렌더가 없으면 연결 실패 문장)를 출력하는 예제 + examples/README 링크 + 블렌더 없이 도는 시험(도구 수가 서버와 같은지) (문서·예제: MCP 클라이언트를 직접 짜는 사용자가 복사해 쓸 출발점)
