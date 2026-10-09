@@ -1,5 +1,20 @@
 # 클라우드 회차 기록
 
+## 2026-10-09
+
+- 한 일: `latest.md`(10/1) FAIL 2건(GIF 링크·버튼 이름)은 10/2 회차에 고쳐 main 에 있음을 다시 확인 → 백로그로 진행. main 은 앞서 있지 않았음. 백로그 4개 완료 → 남은 항목이 1개라 새 항목 5개 추가.
+  1. **CI 시험 목록 자동화** — `pytest -q tests --ignore=…`(블렌더 전용 레시피 시험 5개 파일만 뺌). 새 시험 파일이 저절로 CI 에 들어감. CONTRIBUTING 한/영 커버리지 명령도 같은 줄로(전에는 CI 와 달랐음). 시험 2개.
+  2. **커버리지 하한 95%** — `--cov-fail-under=95`. CONTRIBUTING 한/영 수치와 일치 시험.
+  3. **CI 패키징 점검** — `release_check.py --dist dist`: 휠·sdist 의 판·Project-URL·License-Expression·마크다운 README·`mcp-name`. 판·"미출시" 점검은 빼서 출시 전 PR 에서도 통과. ci.yml 의 `uv build` 다음 줄. 시험 8개.
+  4. **`docs/maintenance.md`(한/영)** — 이슈 분류·dependabot 처리(메이저 판은 변경 기록 확인)·판 번호·출시 주기·파이썬 EOL(3.10 은 2026-10)·블렌더 LTS 정리. README·SUPPORT 링크. 시험 4개.
+- 돌린 시험: `uvx ruff@0.15.20 check .` 통과. `uv run pytest -q`(Python 3.11) → **564 통과, 34 건너뜀**(블렌더 없음). 새 CI 명령을 3.10(559 통과, 5 건너뜀 — tomllib)·3.13(564 통과) + 하한 → 99.35%. 실제 `uv build` 결과로 `--dist` 20개 OK. `uv lock --check` 통과. 못 돌린 것: 레시피 시험 34개(블렌더 필요 — 레시피 파일은 안 건드림).
+- 발견: hatchling 이 **Metadata-Version 2.5** 로 빌드해 `uvx twine@6.2.0 check` 가 거부함(그래서 CI 에 twine 은 넣지 않음). 출시 전에 PyPI·`uv publish` 가 받는지 확인 필요 → 새 백로그 첫 항목.
+- PR: 열려 있는 claude/cloud-work → main #13 에 이번 커밋이 함께 올라감(본문에 이번 회차 목록 추가).
+- Mac에서 확인할 것:
+  1. `uv run pytest -q` (블렌더 앱으로 전체 통과)
+  2. `uv build && uv run python scripts/release_check.py --dist dist` (20개 OK)
+  3. 병합 뒤 Actions 의 server-tests 에 "Required test coverage of 95% reached" 가 찍히는지
+
 ## 2026-10-08 (2회차)
 
 - 한 일: `latest.md`(10/1) FAIL 2건(GIF 링크·버튼 이름)은 10/2 회차에 고쳐 main 에 있음을 다시 확인 → 백로그로 진행. main 은 앞서 있지 않았음. 백로그 4개 완료 → 남은 항목이 1개 이하라 새 항목 5개 추가.
