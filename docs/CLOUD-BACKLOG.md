@@ -104,6 +104,14 @@
 
 - [x] `.gitattributes`(`* text=auto eol=lf`, `*.sh text eol=lf`, 이미지·`.blend` 는 `binary`) + 시험(스크립트·워크플로가 LF 인지) (유지보수: Windows 체크아웃에서 README·PKG-INFO 가 CRLF 로 바뀌어 release_check 가 깨진 것을 이번 회차에 봄. `bpy_tests.sh` 가 CRLF 가 되면 bash 가 못 읽음) — `* text=auto eol=lf`·`*.sh text eol=lf`·바이너리 8종. 지금 추적 파일 110개 모두 LF(`git ls-files --eol`). 시험 1개(설정 줄·추적 파일에 CRLF 없음, git 없으면 건너뜀)
 - [x] 소스·스크립트 파일 첫 줄 근처에 `# SPDX-License-Identifier: MIT` + 빠진 파일을 찾는 시험(레시피 파일은 블렌더로 보낼 때 앞에 붙는 코드와 충돌하지 않는지 확인) (라이선스: REUSE 식 파일 단위 라이선스 표기. 레시피가 따로 복사돼 쓰여도 라이선스가 따라감) — `src`·`scripts`(.py·.sh)·`examples` 41개. 레시피는 주석 한 줄이라 블렌더로 보내는 코드에 영향 없음(bpy 레시피 시험 전체 통과, 모듈 docstring 유지). 시험 1개(빠진 파일·license 일치·레시피 코드 compile)
-- [ ] Windows 에서 건너뛰는 `posix_only` 시험(가짜 블렌더 `/bin/sh` 스크립트)을 `.cmd` 가짜로 Windows 에서도 돌게 하거나, 건너뛰는 이유·개수를 CONTRIBUTING 에 (시험: Windows CI 는 18개를 건너뜀. doctor·headless 의 실패 갈래가 Windows 에서 검증되지 않음)
+- [x] Windows 에서 건너뛰는 `posix_only` 시험(가짜 블렌더 `/bin/sh` 스크립트)을 `.cmd` 가짜로 Windows 에서도 돌게 하거나, 건너뛰는 이유·개수를 CONTRIBUTING 에 (시험: Windows CI 는 18개를 건너뜀. doctor·headless 의 실패 갈래가 Windows 에서 검증되지 않음) — 문서로 처리: CONTRIBUTING 한/영에 건너뛰는 파일·개수(test_headless 15개 + doctor 3개)와 Linux·macOS 가 그 갈래를 검증한다는 설명, 개수가 바뀌면 실패하는 시험 1개. 가짜를 파이썬으로 바꿔 Windows 에서도 돌리는 일은 새 항목으로
 - [x] 첫 기여자 인사 워크플로(`actions/first-interaction` SHA 고정, 한/영 인사 + CONTRIBUTING·good first issue 링크, 권한은 issues·pull-requests 쓰기만) + 권한 허용 목록 시험에 추가 (이슈 대응·커뮤니티: 첫 이슈·PR 에 응답 목표(SUPPORT)보다 먼저 길잡이가 닿게) — v3.1.0(SHA), 이슈는 `issues: opened`, 포크 PR 도 받게 `pull_request_target`(체크아웃 없음). 권한 허용 목록에 추가, 시험 1개(체크아웃 없음·SUPPORT 일수·링크 파일 존재). 병합 뒤 첫 이슈에서만 실제 동작 확인 가능
 - [x] `SECURITY.md`(한/영)에 공급망 조치 요약: 액션 SHA 고정·읽기 전용 토큰·dependabot·Scorecard·의존성 라이선스 점검·`uv.lock` 해시, 각 항목이 실제 파일과 맞는지 시험 (보안·문서: 심사자가 한 곳에서 확인할 수 있게. 지금은 여러 파일에 흩어져 있음) — 8줄 표(조치·파일·지키는 시험/CI 작업). 쓰다가 CI 가 `uv sync` 에 `--locked` 를 안 쓰는 것을 발견 → ci.yml·app-tests.yml 모두 `--locked`. 시험 2개(--locked, 표의 파일·시험·작업이 실재)
+
+### 2026-10-09 (3회차 마감) 추가
+
+- [ ] 가짜 블렌더를 파이썬 스크립트(Windows 는 `.cmd` 감싸개)로 바꿔 `tests/test_headless.py`·doctor 의 `@posix_only` 시험 18개가 Windows CI 에서도 돌게 (시험: 지금 Windows 에서 실행 실패·시간 초과 갈래가 검증되지 않음. 세그폴트 흉내는 POSIX 전용으로 남김)
+- [ ] 모든 `.md` 의 상대 링크와 `#앵커`가 실제 파일·제목에 있는지 하나의 시험(GitHub 앵커 규칙: 소문자·공백→`-`·문장부호 제거, 한글 유지) (문서·시험: Mac 시험의 첫 FAIL 이 README 깨진 링크였음. 지금은 문서마다 따로 일부만 점검)
+- [ ] 주 1회 의존성 취약점 점검 작업(`uvx pip-audit` 또는 osv-scanner 로 `uv.lock`, SHA 고정, 읽기 권한만) + SECURITY 공급망 표에 한 줄 (보안·유지보수: dependabot 은 판 갱신만 하고 알려진 취약점이 있는 고정 판을 따로 알리지 않음)
+- [ ] 휠·sdist 에 `LICENSE` 가 들어가는지 `release_check.py --dist` 칸 + sdist 에 `docs/third-party-licenses.md` 포함 여부 확인 (라이선스: 배포물만 받은 사람도 라이선스 본문을 보게. 지금은 METADATA 의 License-Expression 만 봄)
+- [ ] 이슈 양식 3개의 공통 칸(MCP 클라이언트 선택지·블렌더 판 placeholder)이 examples/README 의 클라이언트 목록·SUPPORT 의 블렌더 지원 판과 같은지 시험 (이슈 대응: 클라이언트가 늘거나 지원 판이 바뀌면 양식 선택지가 조용히 뒤처짐)

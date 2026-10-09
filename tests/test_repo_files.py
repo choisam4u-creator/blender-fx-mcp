@@ -1005,3 +1005,17 @@ def test_security_supply_chain_table_matches_repo():
         for job in re.findall(r"CI `([\w-]+)` 작업", check):
             assert f"  {job}:" in ci, job
     assert "uv run python scripts/license_check.py" in ci and "release_check.py --dist" in ci and "twine" in ci
+
+
+def test_contributing_documents_windows_skips():
+    """Windows CI 에서 건너뛰는 시험(가짜 /bin/sh 블렌더)의 파일·개수가 CONTRIBUTING 한/영과 같아야 한다."""
+    doctor_src = (ROOT / "tests" / "test_doctor.py").read_text(encoding="utf-8")
+    headless_src = (ROOT / "tests" / "test_headless.py").read_text(encoding="utf-8")
+    assert 'pytestmark = pytest.mark.skipif(sys.platform == "win32"' in headless_src
+    posix = doctor_src.count("\n@posix_only\n")
+    headless = len(re.findall(r"^def test_\w+\(", headless_src, re.M))
+    params = re.findall(r"^@pytest\.mark\.parametrize\(", headless_src, re.M)
+    assert not params, "test_headless.py 에 parametrize 가 생기면 아래 개수 세는 법을 바꾼다"
+    text = (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
+    assert f"`tests/test_headless.py` 전체({headless}개)" in text and f"`@posix_only` {posix}개" in text
+    assert f"all {headless} in `tests/test_headless.py`" in text and f"{posix} `@posix_only` tests" in text

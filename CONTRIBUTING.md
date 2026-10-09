@@ -1,6 +1,6 @@
 # 기여 안내 / Contributing
 
-**English:** Every effect is one recipe file in `src/blender_fx_mcp/recipes/` plus one tool in `server.py`. Recipes run inside Blender with `PARAMS` prepended by the server and must end with `run_guarded(main)`, printing one `FX_RESULT` JSON line. Lint with `uvx ruff check .`. Server-side coverage (recipes excluded, same command as CI): `uv run pytest -q tests --ignore=tests/test_asset_robustness.py --ignore=tests/test_recipes_fx_extra.py --ignore=tests/test_recipes_headless.py --ignore=tests/test_recipes_v05.py --ignore=tests/test_recipes_v06.py --cov --cov-report=term` (99% on 2026-10-08; CI fails below the 95% floor, `--cov-fail-under=95`); only the Blender-only recipe test files are ignored, so new test files join CI automatically. Test headlessly with `uv run pytest -q` (needs Blender on this machine) and, with Blender open, `uv run python scripts/e2e_socket.py`. For a new tool, add a row to both README tool tables: `uv run python scripts/gen_tool_table.py --draft` prints draft rows from the docstrings, and running it without arguments lists rows or `a/b/c` value lists that disagree with the server. Keep error messages human-readable; the AI shows them to a non-technical user. Start with [docs/architecture.md](docs/architecture.md) for the call path and test paths, or pick a small task from [Good first contributions](#good-first-contributions).
+**English:** Every effect is one recipe file in `src/blender_fx_mcp/recipes/` plus one tool in `server.py`. Recipes run inside Blender with `PARAMS` prepended by the server and must end with `run_guarded(main)`, printing one `FX_RESULT` JSON line. Lint with `uvx ruff check .`. Server-side coverage (recipes excluded, same command as CI): `uv run pytest -q tests --ignore=tests/test_asset_robustness.py --ignore=tests/test_recipes_fx_extra.py --ignore=tests/test_recipes_headless.py --ignore=tests/test_recipes_v05.py --ignore=tests/test_recipes_v06.py --cov --cov-report=term` (99% on 2026-10-08; CI fails below the 95% floor, `--cov-fail-under=95`); only the Blender-only recipe test files are ignored, so new test files join CI automatically. On Windows, CI skips the tests whose fake Blender is a `/bin/sh` script (all 15 in `tests/test_headless.py` and 3 `@posix_only` tests in `tests/test_doctor.py`); Linux and macOS CI cover those branches. Test headlessly with `uv run pytest -q` (needs Blender on this machine) and, with Blender open, `uv run python scripts/e2e_socket.py`. For a new tool, add a row to both README tool tables: `uv run python scripts/gen_tool_table.py --draft` prints draft rows from the docstrings, and running it without arguments lists rows or `a/b/c` value lists that disagree with the server. Keep error messages human-readable; the AI shows them to a non-technical user. Start with [docs/architecture.md](docs/architecture.md) for the call path and test paths, or pick a small task from [Good first contributions](#good-first-contributions).
 
 ## 구조
 
@@ -46,6 +46,9 @@ src/blender_fx_mcp/
      bpy 모듈은 Mantaflow(연기·불·물)가 깨져 있어 `@pytest.mark.app_only` 시험은 건너뛴다.
      이런 기능을 쓰는 새 시험에는 `@pytest.mark.app_only` 를 붙인다.
      bpy 4.2·4.5 LTS 휠도 같은 결함이 있다(2026-10 확인). 이 시험은 Actions 의 **app-tests** 작업(손으로 실행, 공식 블렌더 Linux 빌드)으로 돌린다.
+   - Windows: CI `server-tests-os` 가 Windows 에서도 서버 시험을 돌린다. 가짜 블렌더를 `/bin/sh` 스크립트로 만드는 시험은 Windows 에서 건너뛴다 —
+     `tests/test_headless.py` 전체(15개)와 `tests/test_doctor.py` 의 `@posix_only` 3개. 이 갈래(실행 실패·세그폴트·시간 초과 처리)는 Linux·macOS CI 가 검증하고,
+     코드는 `subprocess` 만 써서 OS 에 따라 갈라지지 않는다.
 
 ## 처음 기여하기 좋은 일
 
