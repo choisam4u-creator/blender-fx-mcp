@@ -1,5 +1,36 @@
 # 클라우드 회차 기록
 
+## 맥에서 돌릴 명령 (블렌더 필요, 최신 회차 기준)
+
+```sh
+uv run pytest -q                                   # 블렌더 앱으로 레시피 시험까지 전체(유체 app_only 포함)
+uv run blender-fx-doctor --json                    # 새 JSON 출력: 항목 id 8개, 블렌더 경로·포트가 맞는지
+BLENDER_FX_LANG=en uv run python examples/list_tools.py   # 블렌더를 켜고 Connect 한 뒤: 도구 32개 + "Connected (localhost:9876)"
+```
+
+## 2026-10-09 (3회차)
+
+- 한 일: `latest.md`(10/1) FAIL 2건(GIF 링크·버튼 이름)은 10/2 회차에 고쳐 main 에 있음을 다시 확인 → 백로그로 진행. main 은 앞서 있지 않았음(cloud-work 가 main 을 포함). **백로그 12개 완료**(앞 회차가 남긴 7개 + 이번에 추가한 5개 중 5개). 남은 `[ ]` 0개.
+  1. **라벨 정의** `.github/labels.yml`(8개, 한/영 설명) + dependabot 라벨 고정 + maintenance.md `gh label create` 8줄. 양식·문서·dependabot·stale 이 쓰는 라벨이 모두 정의돼 있는지 시험.
+  2. **`examples/list_tools.py`** — 공식 `mcp` 클라이언트로 서버를 stdio 로 띄워 도구 목록·`ping_blender`. 닫힌 포트로 한/영 시험.
+  3. **파이썬 3.14** — 3.14.6 에서 서버 시험·커버리지 통과, 분류자·CI·SUPPORT·배지·architecture 갱신.
+  4. **`needs-info` 30일 자동 닫기** `stale.yml`(23일 뒤 `stale` 표시, 7일 뒤 닫음, PR 제외, `issues: write` 만).
+  5. **OpenSSF Scorecard** 작업·README 배지(병합 뒤 main 에서 처음 돌아야 점수가 뜸).
+  6. **recipes.md 한 줄 예시** — 예시 없던 도구 25개(한/영). 32개 도구 모두 예시가 있고 인자가 서버 검사를 통과하는지 시험.
+  7. **`blender-fx-doctor --json`** — 언어와 무관한 항목 id, 버그·질문 양식에 안내.
+  8. **의존성 라이선스 점검** `scripts/license_check.py` + `docs/third-party-licenses.md`(40개 모두 허용적 라이선스) + CI lint 단계.
+  9. **macOS·Windows CI** `server-tests-os`. 첫 실행에서 Windows 13개 실패 → **제품 버그 2개 고침**(doctor 애드온 경로 `/`·`\` 섞임, release_check 가 CRLF 메타데이터에서 README 를 못 찾음) + 시험 쪽 경로·인코딩·실행 권한 처리.
+  10. **질문 이슈 양식** `question.yml`(라벨 `question`), SUPPORT 링크.
+  11. **README 도구 표 점검** `scripts/gen_tool_table.py` — 통째 생성 대신(손으로 다듬은 설명이 더 자세함) 빠진 도구·`a/b/c` 값 목록이 서버 허용 값과 같은지 + `--draft` 초안 행.
+  12. **3.10 지원 종료 예고** — CHANGELOG 0.7.0(한/영)·maintenance.md(0.8.0 에서 뺌). 드라이런으로 고칠 곳 10곳을 시험이 모두 짚는 것 확인.
+- 돌린 시험: `uvx ruff@0.15.20 check .` 통과. `uv run pytest -q`(블렌더 없음, 3.11) → **610 통과, 34 건너뜀**. CI 서버 명령 3.10(601 통과, 9 건너뜀 — tomllib)·3.14(610 통과), 커버리지 99.04~99.36%(하한 95%). **`scripts/bpy_tests.sh` → 625 통과, 6 건너뜀**(유체 `app_only` 5개·실제 캐릭터 파일 1개). `uv build` → `release_check.py --dist` 22개 OK, `twine@7.0.0 check` PASSED 2개. `uv lock --check` 통과. `license_check.py` 40/40 OK. PR CI: macOS 통과, Windows 는 고친 뒤 결과를 PR 에서 확인.
+- 막힌 것: 없음. 라벨 만들기·Scorecard 첫 실행·stale 작업은 병합 뒤 GitHub 에서만 확인 가능(클라우드는 라벨·설정을 바꾸지 않음).
+- PR: 열려 있는 claude/cloud-work → main #13 에 이번 커밋이 함께 올라감(본문에 이번 회차 목록 추가).
+- Mac에서 확인할 것:
+  1. 맨 위 명령 3줄
+  2. 병합 뒤 `docs/maintenance.md` 의 `gh label create … --force` 8줄을 저장소 폴더에서 돌려 라벨 만들기
+  3. 병합 뒤 Actions 에서 scorecard 작업(main 푸시로 자동 실행)이 초록인지·README Scorecard 배지에 점수가 뜨는지, needs-info 작업을 Run workflow 로 한 번 돌려 초록인지
+
 ## 2026-10-09 (2회차)
 
 - 한 일: `latest.md`(10/1) FAIL 2건(GIF 링크·버튼 이름)은 10/2 회차에 고쳐 main 에 있음을 다시 확인 → 백로그로 진행. main 은 앞서 있지 않았음. 백로그 4개 완료 → 남은 항목이 2개라 새 항목 5개 추가(파이썬 3.14·needs-info 자동 닫기·Scorecard·도구 예시 빠짐없이·doctor `--json`).

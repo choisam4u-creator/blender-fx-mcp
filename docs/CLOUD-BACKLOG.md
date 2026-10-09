@@ -99,3 +99,11 @@
 - [x] 질문 이슈 양식 `.github/ISSUE_TEMPLATE/question.yml`(한/영, 라벨 `question`, 필수 칸: 하려는 일·해 본 것·doctor 출력 선택) + SUPPORT 표의 질문 줄을 이 양식으로 + 양식 시험에 포함 (이슈 대응: `question` 라벨이 labels.yml 에 있지만 쓰는 곳이 없음. 질문이 빈 이슈나 버그 양식으로 들어오는 것을 줄임) — 필수 칸 2개(하려는 일·해 본 것), doctor(`--json` 안내)·클라이언트는 선택. SUPPORT 의 `[질문]` 머리말 안내를 양식 링크로. 기존 양식 시험(머리말·한/영·라벨)에 포함 + 시험 1개
 - [x] README 도구 표(한/영)를 도구 설명(docstring) 첫 줄에서 만드는 `scripts/gen_tool_table.py` + 시험(생성 결과와 README 표가 같은지, 다르면 고칠 명령을 알려 줌) (문서·유지보수: 지금 시험은 표에 도구 이름이 있는지만 봄. 도구 설명을 바꾸면 README 설명이 조용히 뒤처진다) — **방향 바꿈**: README 표는 docstring 첫 줄보다 자세한 손글(인자 목록)이라 통째 생성하면 품질이 떨어짐. 대신 점검(빠진 도구·`a/b/c` 값 목록이 CHOICES 와 같은지, 지금 한/영 16곳)과 `--draft` 초안 행. 시험 3개(일치·어긋남 감지·초안)
 - [x] 파이썬 3.10 지원 종료 준비: 3.10 이 2026-10 EOL 이므로 CHANGELOG 0.7.0 에 "다음 마이너(0.8.0)에서 3.10 지원 종료" 예고(한/영) + maintenance.md 에 날짜를 박은 계획 + 분류자에서 3.10 을 빼 보는 드라이런으로 `test_python_version_range_is_the_same_everywhere` 가 고칠 곳을 모두 짚는지 확인(실제로 빼지는 않음) (유지보수: 지원 끝난 런타임을 미리 알리고 정해진 순서로 정리하는지가 "활발한 유지보수" 신호) — CHANGELOG 0.7.0 에 *Deprecation*/지원 종료 예고(한/영), maintenance.md 에 '0.7.0 이 마지막, 0.8.0 에서 뺌'·고칠 곳 10곳. 드라이런: 분류자에서 3.10 을 빼면 시험 6개가 실패하고 범위 시험이 10곳을 모두 짚음(빠진 곳 없음). 시험 1개(예고 판 번호가 CHANGELOG·maintenance 한/영에서 같은지)
+
+### 2026-10-09 (3회차 끝) 추가
+
+- [ ] `.gitattributes`(`* text=auto eol=lf`, `*.sh text eol=lf`, 이미지·`.blend` 는 `binary`) + 시험(스크립트·워크플로가 LF 인지) (유지보수: Windows 체크아웃에서 README·PKG-INFO 가 CRLF 로 바뀌어 release_check 가 깨진 것을 이번 회차에 봄. `bpy_tests.sh` 가 CRLF 가 되면 bash 가 못 읽음)
+- [ ] 소스·스크립트 파일 첫 줄 근처에 `# SPDX-License-Identifier: MIT` + 빠진 파일을 찾는 시험(레시피 파일은 블렌더로 보낼 때 앞에 붙는 코드와 충돌하지 않는지 확인) (라이선스: REUSE 식 파일 단위 라이선스 표기. 레시피가 따로 복사돼 쓰여도 라이선스가 따라감)
+- [ ] Windows 에서 건너뛰는 `posix_only` 시험(가짜 블렌더 `/bin/sh` 스크립트)을 `.cmd` 가짜로 Windows 에서도 돌게 하거나, 건너뛰는 이유·개수를 CONTRIBUTING 에 (시험: Windows CI 는 18개를 건너뜀. doctor·headless 의 실패 갈래가 Windows 에서 검증되지 않음)
+- [ ] 첫 기여자 인사 워크플로(`actions/first-interaction` SHA 고정, 한/영 인사 + CONTRIBUTING·good first issue 링크, 권한은 issues·pull-requests 쓰기만) + 권한 허용 목록 시험에 추가 (이슈 대응·커뮤니티: 첫 이슈·PR 에 응답 목표(SUPPORT)보다 먼저 길잡이가 닿게)
+- [ ] `SECURITY.md`(한/영)에 공급망 조치 요약: 액션 SHA 고정·읽기 전용 토큰·dependabot·Scorecard·의존성 라이선스 점검·`uv.lock` 해시, 각 항목이 실제 파일과 맞는지 시험 (보안·문서: 심사자가 한 곳에서 확인할 수 있게. 지금은 여러 파일에 흩어져 있음)
