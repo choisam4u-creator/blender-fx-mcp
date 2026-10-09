@@ -12,9 +12,23 @@
 4. **질문·기능 요청** — 첫 답 14일 안. 작고 범위가 분명한 일은 `good first issue` 를 붙인다([CONTRIBUTING.md](../CONTRIBUTING.md) 의 "처음 기여하기 좋은 일").
 5. 오류 문장 때문에 온 이슈는 해결법을 [docs/troubleshooting.md](troubleshooting.md) 에도 적는다.
 
+### 라벨
+
+라벨은 [`.github/labels.yml`](../.github/labels.yml) 에 정의한다. 이슈 양식·이 문서·CONTRIBUTING·SUPPORT·dependabot 이 쓰는 라벨이 모두 거기 있어야 한다(시험이 확인). 저장소에 라벨을 만들거나 고칠 때는 저장소 폴더에서 아래를 돌린다(`--force` 는 이미 있으면 색·설명만 고친다).
+
+```sh
+gh label create "bug" --color d73a4a --description "동작이 문서와 다름 / Something does not work as documented" --force
+gh label create "enhancement" --color a2eeef --description "새 기능·개선 요청 / New feature or improvement" --force
+gh label create "needs-info" --color fbca04 --description "재현 정보를 기다림, 30일 뒤 닫힐 수 있음 / Waiting for repro info, may close after 30 days" --force
+gh label create "good first issue" --color 7057ff --description "처음 기여하기 좋은 작은 일 / Small task for first-time contributors" --force
+gh label create "question" --color d876e3 --description "사용법 질문 / Usage question" --force
+gh label create "security" --color b60205 --description "보안 관련, 자세한 내용은 비공개로 / Security related, details go private" --force
+gh label create "dependencies" --color 0366d6 --description "의존성·액션 판 갱신 / Dependency or action version update" --force
+```
+
 ### 의존성 갱신 PR(dependabot) 처리 순서
 
-`.github/dependabot.yml` 이 매주 두 종류의 PR 을 연다.
+`.github/dependabot.yml` 이 매주 두 종류의 PR 을 연다. 둘 다 `dependencies` 라벨이 붙는다.
 
 1. **`deps`(uv)** — `uv.lock` 갱신. CI(server-tests·recipe-tests-bpy)가 초록이면 병합한다. `mcp` 의 메이저 판이 바뀌면 변경 기록을 먼저 읽는다.
 2. **`ci`(github-actions)** — 액션은 커밋 SHA + `# vX.Y.Z` 주석으로 고정돼 있고 dependabot 은 둘을 함께 올린다.
@@ -49,9 +63,13 @@ How this single-maintainer project is maintained. These are the rules the mainta
 4. **Questions and feature requests**: first reply within 14 days. Label small, well-scoped tasks `good first issue` (see "Good first contributions" in [CONTRIBUTING.md](../CONTRIBUTING.md)).
 5. When an issue was caused by an error message, add the fix to [docs/troubleshooting.md](troubleshooting.md) as well.
 
+### Labels
+
+Labels are defined in [`.github/labels.yml`](../.github/labels.yml). Every label used by the issue forms, this page, CONTRIBUTING, SUPPORT and Dependabot must be listed there (a test checks this). To create or update them in the repository, run the `gh label create` block in the Korean section above from the repository folder; the descriptions are bilingual, and `--force` only updates the color and description of a label that already exists.
+
 ### Dependency update PRs (Dependabot)
 
-`.github/dependabot.yml` opens two kinds of PRs every week.
+`.github/dependabot.yml` opens two kinds of PRs every week, both labelled `dependencies`.
 
 1. **`deps` (uv)**: `uv.lock` updates. Merge when CI (server-tests, recipe-tests-bpy) is green. Read the changelog first when `mcp` changes major version.
 2. **`ci` (github-actions)**: actions are pinned to a commit SHA plus a `# vX.Y.Z` comment, and Dependabot updates both together.

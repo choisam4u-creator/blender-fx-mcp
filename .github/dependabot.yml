@@ -6,6 +6,8 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+    # 라벨은 .github/labels.yml 에 정의된 것만 쓴다(기본값이면 생태계 라벨 `python` 등이 따로 붙는다).
+    labels: ["dependencies"]
     commit-message:
       prefix: "deps"
   # 워크플로의 액션은 커밋 SHA + `# vX.Y.Z` 주석으로 고정돼 있다. dependabot 은 SHA 와 주석을 함께 올린다.
@@ -13,5 +15,6 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    labels: ["dependencies"]
     commit-message:
       prefix: "ci"

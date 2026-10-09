@@ -647,3 +647,62 @@ def test_python_version_range_is_the_same_everywhere():
     assert not wrong, f"가장 낮은 판이 분류자(3.{low})와 다른 곳: {wrong}"
     assert matrix[-1] == high and _minor_list(support[1])[-1] == high and int(badge.group(2)) == high, \
         f"가장 높은 판(3.{high})이 CI 행렬·SUPPORT 표·README 배지 중 어딘가와 다름"
+
+
+LABELS = ROOT / ".github" / "labels.yml"
+LABEL_RE = re.compile(r'^- name: "([^"]+)"\n  color: "([0-9a-f]{6})"\n  description: "([^"]+)"$', re.M)
+
+
+def _labels():
+    text = LABELS.read_text(encoding="utf-8")
+    found = LABEL_RE.findall(text)
+    assert len(found) == text.count("- name:"), "labels.yml 의 항목 모양이 다름(name·color·description 순서)"
+    return {name: (color, desc) for name, color, desc in found}
+
+
+def test_labels_file_is_well_formed():
+    labels = _labels()
+    assert len(labels) == LABELS.read_text(encoding="utf-8").count("- name:"), "라벨 이름 중복"
+    for name, (_, desc) in labels.items():
+        assert len(desc) <= 100, f"{name}: GitHub 라벨 설명은 100자까지"
+        ko, sep, en = desc.partition(" / ")
+        assert sep and HANGUL_RE.search(ko) and en and not HANGUL_RE.search(en), f"{name}: 설명이 '한국어 / English' 가 아님"
+
+
+def _used_labels():
+    used = {}
+    for name in FORMS:
+        m = re.search(r"^labels: \[(.*)\]$", (TEMPLATES / name).read_text(encoding="utf-8"), re.M)
+        used.update({lab: name for lab in re.findall(r'"([^"]+)"', m.group(1))})
+    bot = (ROOT / ".github" / "dependabot.yml").read_text(encoding="utf-8")
+    for line in re.findall(r"^    labels: \[(.*)\]$", bot, re.M):
+        used.update({lab: "dependabot.yml" for lab in re.findall(r'"([^"]+)"', line)})
+    pattern = re.compile(
+        r"`([a-z][a-z -]+)` ?(?:라벨|label)|(?:labell?ed|[Ll]abel|as) `([a-z][a-z -]+)`|^- `([a-z][a-z -]+)` —", re.M
+    )
+    for doc in ("CONTRIBUTING.md", "SUPPORT.md", "docs/maintenance.md"):
+        for m in pattern.finditer((ROOT / doc).read_text(encoding="utf-8")):
+            used[next(g for g in m.groups() if g)] = doc
+    return used
+
+
+def test_every_used_label_is_defined():
+    """양식·dependabot·문서가 말하는 라벨이 모두 labels.yml 에 있어야 한다(저장소에 실제로 만들 목록)."""
+    labels = _labels()
+    used = _used_labels()
+    for need in ("bug", "enhancement", "needs-info", "good first issue", "dependencies"):
+        assert need in used, f"{need} 을 쓰는 곳을 찾지 못함(찾는 규칙이 깨졌는지 확인)"
+    missing = {lab: where for lab, where in used.items() if lab not in labels}
+    assert not missing, f"labels.yml 에 없는 라벨: {missing}"
+    # dependabot 은 labels 를 적지 않으면 기본 라벨(생태계 이름 등)을 붙인다
+    bot = (ROOT / ".github" / "dependabot.yml").read_text(encoding="utf-8")
+    assert bot.count("    labels: [") == bot.count("package-ecosystem:")
+
+
+def test_maintenance_label_commands_match_labels_file():
+    """maintenance.md 의 `gh label create` 명령이 labels.yml 과 같은 이름·색·설명이어야 한다."""
+    text = MAINT.read_text(encoding="utf-8")
+    cmds = re.findall(r'^gh label create "([^"]+)" --color (\w+) --description "([^"]+)" --force$', text, re.M)
+    assert {n: (c, d) for n, c, d in cmds} == _labels()
+    assert len(cmds) == text.count("gh label create \"")
+    assert ".github/labels.yml" in text.split("## English")[1]
