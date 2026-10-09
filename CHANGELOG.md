@@ -30,6 +30,7 @@
   `SECURITY.md`, `CODE_OF_CONDUCT.md` and `CITATION.cff`.
 - Client configs for Claude Desktop, Cursor and Codex in `examples/`; YAML bug and feature request forms and a PR template.
 - `server.json.example` matches the 2025-12-11 MCP registry schema, and `scripts/release_check.py` checks a release in one step.
+- `docs/third-party-licenses.md` lists the license of every installed dependency; CI checks them against a permissive allow list.
 
 **고침**
 - `import_model` 에 `size` 를 주면 결과의 `volume_m3` 가 크기를 바꾸기 **전** 부피로 나오던 문제.
@@ -119,6 +120,9 @@
   7일 더 조용하면 닫음. PR 은 건드리지 않음. 권한은 작업 단위 `issues: write` 만. 일수 합이 SUPPORT 의 30일과 다르면 시험이 실패한다
 - OpenSSF Scorecard 작업 `.github/workflows/scorecard.yml`(매주·main 푸시, SHA 고정, `publish_results`)과 README 배지.
   쓰기 권한은 작업 단위 `security-events`·`id-token` 만. 배지 주소·권한이 어긋나면 시험이 실패한다
+
+- 의존성 라이선스 점검 `scripts/license_check.py`: `uv.lock` 에서 `mcp[cli]` 아래 패키지 40개(플랫폼 조건 포함)를 모아 허용 목록(MIT·BSD·Apache-2.0·ISC·PSF·MPL 등)
+  안인지, `docs/third-party-licenses.md`(한/영 표)와 같은지 CI lint 작업에서 본다. README 한/영 라이선스 절에서 링크
 
 **배포 준비**
 - `server.json.example` 을 MCP 레지스트리 2025-12-11 스키마(camelCase 키)에 맞춤

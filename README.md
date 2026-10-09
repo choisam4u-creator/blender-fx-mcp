@@ -246,7 +246,7 @@ import_model(path="adventurer.glb", size=2.0, parts=["Adventurer", "Backpack"])
 
 ## 라이선스
 
-MIT (이 저장소). 블렌더 안 수신기 애드온은 blender-mcp 프로젝트 것이며 그쪽 라이선스를 따릅니다.
+MIT (이 저장소). 블렌더 안 수신기 애드온은 blender-mcp 프로젝트 것이며 그쪽 라이선스를 따릅니다. 함께 설치되는 파이썬 패키지의 라이선스는 [docs/third-party-licenses.md](docs/third-party-licenses.md)(모두 허용적 라이선스, CI 가 확인).
 
 ## English
 
@@ -342,4 +342,4 @@ Outputs go to per-run folders under `~/blender-fx-output/` (`BLENDER_FX_OUT`). S
 
 The receiver runs Python it receives on `localhost:9876` without authentication. Never expose that port.
 See [SECURITY.md](SECURITY.md) for the risks and private reporting. Contributions: [CONTRIBUTING.md](CONTRIBUTING.md)
-and the [Code of Conduct](CODE_OF_CONDUCT.md); how the code fits together: [docs/architecture.md](docs/architecture.md). License: MIT.
+and the [Code of Conduct](CODE_OF_CONDUCT.md); how the code fits together: [docs/architecture.md](docs/architecture.md). License: MIT; licenses of the installed dependencies are listed in [docs/third-party-licenses.md](docs/third-party-licenses.md).

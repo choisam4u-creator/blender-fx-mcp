@@ -11,13 +11,16 @@ permissions:
   contents: read
 
 jobs:
-  # 판을 고정해 규칙이 저절로 바뀌지 않게 한다. 설정은 pyproject.toml 의 [tool.ruff].
+  # ruff 판을 고정해 규칙이 저절로 바뀌지 않게 한다. 설정은 pyproject.toml 의 [tool.ruff]. 의존성 라이선스 점검도 여기서.
   lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5.4.2
       - run: uvx ruff@0.15.20 check .
+      # 끌어오는 패키지의 라이선스가 허용 목록 안이고 docs/third-party-licenses.md 표와 같은지(uv.lock 이 바뀌면 표도 고쳐야 함).
+      - run: uv sync --python 3.13
+      - run: uv run python scripts/license_check.py
 
   # 서버 쪽(레시피 제외) 커버리지를 로그와 작업 요약에 남기고, 95% 아래로 떨어지면 실패한다(시험 없이 코드만 늘린 PR 을 잡음). 설정은 pyproject.toml 의 [tool.coverage].
   server-tests:

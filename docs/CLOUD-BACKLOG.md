@@ -94,7 +94,7 @@
 
 ### 2026-10-09 (3회차) 추가
 
-- [ ] 의존성 라이선스 점검: `uv.lock` 의 런타임 의존성(`mcp` 와 그 아래) 라이선스를 모아 MIT 와 함께 배포해도 되는 허용 목록(MIT·BSD·Apache-2.0·ISC·PSF·MPL-2.0 등)인지 확인하는 `scripts/license_check.py` + CI 단계 + `docs/third-party-licenses.md`(한/영 표) + 시험 (라이선스: 지금은 이 저장소의 MIT 만 확인하고 끌어오는 패키지의 라이선스는 아무도 보지 않음. 지원 프로그램 심사의 "라이선스 준수" 근거)
+- [x] 의존성 라이선스 점검: `uv.lock` 의 런타임 의존성(`mcp` 와 그 아래) 라이선스를 모아 MIT 와 함께 배포해도 되는 허용 목록(MIT·BSD·Apache-2.0·ISC·PSF·MPL-2.0 등)인지 확인하는 `scripts/license_check.py` + CI 단계 + `docs/third-party-licenses.md`(한/영 표) + 시험 (라이선스: 지금은 이 저장소의 MIT 만 확인하고 끌어오는 패키지의 라이선스는 아무도 보지 않음. 지원 프로그램 심사의 "라이선스 준수" 근거) — 40개 모두 허용(MIT·MIT-0·BSD-2/3·Apache-2.0·ISC·PSF-2.0, cryptography 는 `Apache-2.0 OR BSD-3-Clause`). 이 환경에 없는 4개(colorama·exceptiongroup·httpx2-jsfetch·pywin32)는 PyPI 메타데이터로 표에 적음. CI lint 작업에 단계, maintenance.md 의 deps PR 순서에 한 줄. 시험 4개(3.10 에서는 tomllib 없어 건너뜀)
 - [ ] CI 서버 시험을 macOS·Windows 러너에서도(파이썬 최신 판 하나만, `fail-fast: false`) + 경로·줄바꿈·`/bin/sh` 가짜 블렌더 시험이 Windows 에서 건너뛰거나 통과하는지 정리 + SUPPORT 표에 OS 행 (시험: 분류자는 MacOS·Linux·Windows 를 말하지만 CI 는 Linux 뿐. 사용자 대부분이 Mac 인데 서버 쪽 시험이 Mac 에서 도는 증거가 없음)
 - [ ] 질문 이슈 양식 `.github/ISSUE_TEMPLATE/question.yml`(한/영, 라벨 `question`, 필수 칸: 하려는 일·해 본 것·doctor 출력 선택) + SUPPORT 표의 질문 줄을 이 양식으로 + 양식 시험에 포함 (이슈 대응: `question` 라벨이 labels.yml 에 있지만 쓰는 곳이 없음. 질문이 빈 이슈나 버그 양식으로 들어오는 것을 줄임)
 - [ ] README 도구 표(한/영)를 도구 설명(docstring) 첫 줄에서 만드는 `scripts/gen_tool_table.py` + 시험(생성 결과와 README 표가 같은지, 다르면 고칠 명령을 알려 줌) (문서·유지보수: 지금 시험은 표에 도구 이름이 있는지만 봄. 도구 설명을 바꾸면 README 설명이 조용히 뒤처진다)

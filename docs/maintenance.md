@@ -33,6 +33,7 @@ gh label create "stale" --color ededed --description "needs-info 마감 7일 전
 `.github/dependabot.yml` 이 매주 두 종류의 PR 을 연다. 둘 다 `dependencies` 라벨이 붙는다.
 
 1. **`deps`(uv)** — `uv.lock` 갱신. CI(server-tests·recipe-tests-bpy)가 초록이면 병합한다. `mcp` 의 메이저 판이 바뀌면 변경 기록을 먼저 읽는다.
+   새 패키지가 들어오면 CI lint 의 라이선스 점검이 실패한다. 라이선스를 확인해 [docs/third-party-licenses.md](third-party-licenses.md) 표에 한 줄 더한다(허용 목록 밖이면 병합하지 않는다).
 2. **`ci`(github-actions)** — 액션은 커밋 SHA + `# vX.Y.Z` 주석으로 고정돼 있고 dependabot 은 둘을 함께 올린다.
    - 패치·마이너 판: CI 가 초록이면 병합.
    - **메이저 판**(예: `actions/checkout` v4 → v7, `astral-sh/setup-uv` v5 → v10): 액션의 변경 기록에서 깨지는 변화(입력 이름·기본값·러너 요구)를 확인한 뒤 병합한다.
@@ -75,6 +76,7 @@ Labels are defined in [`.github/labels.yml`](../.github/labels.yml). Every label
 `.github/dependabot.yml` opens two kinds of PRs every week, both labelled `dependencies`.
 
 1. **`deps` (uv)**: `uv.lock` updates. Merge when CI (server-tests, recipe-tests-bpy) is green. Read the changelog first when `mcp` changes major version.
+   A new package makes the CI lint license check fail. Check its license and add a row to [docs/third-party-licenses.md](third-party-licenses.md) (do not merge if it is outside the allowed list).
 2. **`ci` (github-actions)**: actions are pinned to a commit SHA plus a `# vX.Y.Z` comment, and Dependabot updates both together.
    - Patch and minor versions: merge when CI is green.
    - **Major versions** (e.g. `actions/checkout` v4 to v7, `astral-sh/setup-uv` v5 to v10): check the action's changelog for breaking changes (input names, defaults, runner requirements) before merging.

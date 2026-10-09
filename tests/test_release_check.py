@@ -233,3 +233,62 @@ def test_metadata_versions_cover_current_build():
     for path in (ROOT / ".github" / "workflows" / "ci.yml", ROOT / "docs" / "registry.md"):
         found = re.findall(r"twine@(\d+)\.\d+\.\d+ check", path.read_text(encoding="utf-8"))
         assert found and all(int(major) >= 7 for major in found), path.name
+
+
+# ---------- scripts/license_check.py ----------
+
+def _license_check():
+    pytest.importorskip("tomllib")  # 3.11+
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("license_check", ROOT / "scripts" / "license_check.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_license_check_passes_on_this_lock():
+    lc = _license_check()
+    results = lc.check()
+    assert results and all(ok for ok, _ in results), [line for ok, line in results if not ok]
+    packages = lc.runtime_packages()
+    # extra(`mcp[cli]` → typer·rich)와 플랫폼 조건 패키지까지 따라가는지
+    assert {"mcp", "typer", "rich", "pywin32", "exceptiongroup"} <= set(packages)
+    assert "pytest" not in packages and "blender-fx-mcp" not in packages, "개발 의존성·자기 자신은 빼야 함"
+
+
+def test_license_expression_rules():
+    lc = _license_check()
+    assert lc.expression_allowed("MIT")
+    assert lc.expression_allowed("Apache-2.0 OR BSD-3-Clause")
+    assert lc.expression_allowed("GPL-3.0-only OR MIT")
+    assert not lc.expression_allowed("GPL-3.0-only")
+    assert not lc.expression_allowed("MIT AND LGPL-2.1-or-later")
+    assert not lc.expression_allowed("?")
+    assert not any(x in lc.ALLOWED for x in ("GPL-3.0-only", "LGPL-3.0-only", "AGPL-3.0-only"))
+
+
+def test_license_check_reports_table_drift(monkeypatch, tmp_path):
+    lc = _license_check()
+    table = (ROOT / "docs" / "third-party-licenses.md").read_text(encoding="utf-8")
+    broken = table.replace("| `rich` | `MIT` |", "| `rich` | `GPL-3.0-only` |").replace("| `typer` |", "| `typerx` |")
+    (tmp_path / "t.md").write_text(broken, encoding="utf-8")
+    monkeypatch.setattr(lc, "TABLE", tmp_path / "t.md")
+    bad = [line for ok, line in lc.check() if not ok]
+    assert any(line.startswith("rich: 설치본은 MIT, 표는 GPL-3.0-only") for line in bad), bad
+    assert any(line.startswith("typer: docs/third-party-licenses.md 표에 없음") for line in bad), bad
+    assert any(line.startswith("typerx: 표에 있지만") for line in bad), bad
+    assert lc.main() == 1
+
+
+def test_license_doc_is_linked_and_run_in_ci():
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    assert readme.count("(docs/third-party-licenses.md)") >= 2, "README 한/영 라이선스 절에서 링크"
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    assert "uv run python scripts/license_check.py" in ci.split("server-tests:")[0], "lint 작업에서 돌아야 함"
+    doc = (ROOT / "docs" / "third-party-licenses.md").read_text(encoding="utf-8")
+    english = doc.split("## English", 1)[1].split("## 표 / Table", 1)[0]
+    assert not re.search(r"[가-힣]", english)
+    lc = _license_check()
+    for spdx in sorted(lc.ALLOWED):  # 문서의 허용 목록 = 스크립트의 허용 목록
+        assert doc.count(f"`{spdx}`") >= 2, spdx
