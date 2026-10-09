@@ -1,6 +1,7 @@
 # scripts/release_check.py(출시 전 점검) 시험. 블렌더 없이 돈다.
 import importlib.util
 import shutil
+import tarfile
 import zipfile
 from pathlib import Path
 
@@ -136,3 +137,86 @@ def test_build_checks_wheel(repo, monkeypatch, tmp_path, capsys):
     monkeypatch.setattr(rc, "build_wheel", lambda root, dest: _wheel(tmp_path, meta))
     assert rc.main(["--build"], root=repo) == 0
     assert "OK   휠 METADATA Version = 9.9.9" in capsys.readouterr().out
+
+
+def _meta(root: Path, **override) -> str:
+    """pyproject·README 와 맞는 METADATA. override 로 한 줄씩 깨뜨린다."""
+    fields = {
+        "Version": rc.project_version(root),
+        "License-Expression": rc.project_license(root),
+        "Description-Content-Type": "text/markdown",
+    }
+    fields.update(override)
+    head = "Metadata-Version: 2.4\nName: blender-fx-mcp\n"
+    head += "".join(f"{k}: {v}\n" for k, v in fields.items() if v is not None)
+    head += "".join(f"Project-URL: {k}, {v}\n" for k, v in rc.project_urls(root).items())
+    return head + "\n" + (root / "README.md").read_text(encoding="utf-8")
+
+
+def _sdist(path: Path, meta: str) -> Path:
+    src = path.parent / "pkginfo"
+    src.write_text(meta, encoding="utf-8")
+    with tarfile.open(path, "w:gz") as t:
+        t.add(src, arcname="blender_fx_mcp-1.0/PKG-INFO")
+    return path
+
+
+def test_dist_passes_on_unreleased_repo(repo, tmp_path, capsys):
+    """--dist 는 '미출시' 판 점검을 하지 않아 지금 저장소에서도 통과해야 한다(CI 패키징 점검)."""
+    dist = tmp_path / "dist"
+    dist.mkdir()
+    meta = _meta(repo)
+    _wheel(dist, meta)
+    _sdist(dist / "x-1.0.tar.gz", meta)
+    assert rc.main(["--dist", str(dist)], root=repo) == 0
+    out = capsys.readouterr().out
+    assert "패키지 점검 통과" in out and "sdist x-1.0.tar.gz README 의 mcp-name 줄" in out
+
+
+@pytest.mark.parametrize("override, expect", [
+    ({"Version": "0.0.1"}, "Version = 0.0.1"),
+    ({"License-Expression": "GPL-3.0"}, "License-Expression = GPL-3.0"),
+    ({"License-Expression": None}, "License-Expression = (없음)"),
+    ({"Description-Content-Type": "text/x-rst"}, "README 형식 = text/x-rst"),
+])
+def test_dist_metadata_errors_name_the_field(repo, tmp_path, override, expect):
+    dist = tmp_path / "dist"
+    dist.mkdir()
+    _wheel(dist, _meta(repo, **override))
+    _sdist(dist / "x-1.0.tar.gz", _meta(repo))
+    fails = _fails(rc.check_dist(dist, repo))
+    assert len(fails) == 1 and expect in fails[0] and fails[0].startswith("휠 ")
+
+
+def test_dist_readme_missing_from_description(repo, tmp_path):
+    dist = tmp_path / "dist"
+    dist.mkdir()
+    meta = _meta(repo).split("\n\n", 1)[0] + "\n\nsomething else\n"
+    _sdist(dist / "x-1.0.tar.gz", meta)
+    _wheel(dist, _meta(repo))
+    fails = _fails(rc.check_dist(dist, repo))
+    assert any("README 본문" in f for f in fails) and any("mcp-name" in f for f in fails)
+    assert all(f.startswith("sdist ") for f in fails)
+
+
+def test_dist_missing_files_and_metadata(repo, tmp_path, capsys):
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    fails = _fails(rc.check_dist(empty, repo))
+    assert len(fails) == 2 and all("uv build" in f for f in fails)
+    broken = tmp_path / "broken"
+    broken.mkdir()
+    with zipfile.ZipFile(broken / "x-1.0-py3-none-any.whl", "w") as z:
+        z.writestr("x/__init__.py", "")
+    with tarfile.open(broken / "x-1.0.tar.gz", "w:gz"):
+        pass
+    fails = _fails(rc.check_dist(broken, repo))
+    assert len(fails) == 2 and all("METADATA 가 없음" in f for f in fails)
+    assert rc.main(["--dist"], root=repo) == 1
+    assert "--dist 뒤에" in capsys.readouterr().out
+
+
+def test_ci_checks_built_packages():
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    assert "uv build\n" in ci
+    assert ci.index("uv build\n") < ci.index("release_check.py --dist dist")

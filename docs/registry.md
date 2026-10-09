@@ -31,7 +31,7 @@ uv run --with jsonschema python -c "import json,jsonschema; jsonschema.validate(
 
 1. 버전을 올린다: `pyproject.toml`·`src/blender_fx_mcp/__init__.py`·`server.json.example`·`CITATION.cff` 의 `version` 네 곳(`tests/test_registry.py`·`scripts/release_check.py` 가 어긋나면 실패).
    `uv run python scripts/release_check.py --build` 로 버전·CHANGELOG 날짜·휠 METADATA 를 한 번에 확인한다.
-2. PyPI 에 그 버전을 올린다(`uv build` → `uv publish`). README 의 `mcp-name` 줄이 패키지 설명에 들어가야 레지스트리가 소유를 확인한다.
+2. PyPI 에 그 버전을 올린다(`uv build` → `uv run python scripts/release_check.py --dist dist` → `uv publish`). CI 도 PR 마다 같은 `--dist` 점검을 돈다. README 의 `mcp-name` 줄이 패키지 설명에 들어가야 레지스트리가 소유를 확인한다.
 3. 게시 도구 설치: `brew install mcp-publisher`
 4. `cp server.json.example server.json`
 5. `mcp-publisher login github` — 이름이 `io.github.choisam4u-creator/…` 이므로 GitHub 로그인으로 확인된다.
