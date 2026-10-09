@@ -266,6 +266,7 @@ def test_coverage_artifacts_are_ignored():
 JOB_WRITE_PERMISSIONS = {
     "stale.yml": {"issues: write"},
     "scorecard.yml": {"security-events: write", "id-token: write"},
+    "greet.yml": {"issues: write", "pull-requests: write"},
 }
 
 
@@ -960,3 +961,17 @@ def test_source_files_carry_spdx_header():
     assert server.__doc__ and doctor.__doc__
     code = server.build_code("list_objects", {})
     compile(code, "<recipe>", "exec")
+
+
+def test_greet_workflow_is_safe_and_links_exist():
+    """첫 기여자 인사: pull_request_target 이지만 PR 코드를 체크아웃하지 않고, 안내하는 일수·문서가 실제와 같아야 한다."""
+    text = (ROOT / ".github" / "workflows" / "greet.yml").read_text(encoding="utf-8")
+    assert "pull_request_target" in text
+    assert "checkout" not in text.split("jobs:", 1)[1], "pull_request_target 작업에서 PR 코드를 체크아웃하면 안 됨"
+    assert re.findall(r"uses: ([\w/-]+)@", text) == ["actions/first-interaction"]
+    support = (ROOT / "SUPPORT.md").read_text(encoding="utf-8")
+    for days in sorted(set(re.findall(r"(\d+)일 안", support))):
+        assert f"{days}일" in text and f"{days} days" in text, days
+    for url in re.findall(r"https://github\.com/choisam4u-creator/blender-fx-mcp/blob/main/([^)#\s]+)", text):
+        assert (ROOT / url).is_file(), url
+    assert "(#good-first-contributions)" in (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")

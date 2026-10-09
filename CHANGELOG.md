@@ -129,6 +129,8 @@
   양식·문서·dependabot 이 쓰는 라벨이 정의에 없거나 명령과 정의가 다르면 시험이 실패한다
 - `needs-info` 30일 마감 자동화 `.github/workflows/stale.yml`(actions/stale SHA 고정, 매일): 23일 조용하면 `stale` 라벨·한/영 안내,
   7일 더 조용하면 닫음. PR 은 건드리지 않음. 권한은 작업 단위 `issues: write` 만. 일수 합이 SUPPORT 의 30일과 다르면 시험이 실패한다
+- 첫 기여자 인사 `.github/workflows/greet.yml`(actions/first-interaction SHA 고정): 첫 이슈·PR 에 응답 목표·doctor·CONTRIBUTING 길잡이(한/영).
+  PR 코드를 체크아웃하지 않음, 쓰기 권한은 작업 단위 `issues`·`pull-requests` 만. 안내한 일수·문서가 실제와 다르면 시험이 실패한다
 - OpenSSF Scorecard 작업 `.github/workflows/scorecard.yml`(매주·main 푸시, SHA 고정, `publish_results`)과 README 배지.
   쓰기 권한은 작업 단위 `security-events`·`id-token` 만. 배지 주소·권한이 어긋나면 시험이 실패한다
 
