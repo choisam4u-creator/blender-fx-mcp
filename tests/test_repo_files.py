@@ -901,3 +901,24 @@ def test_readme_tool_table_draft_uses_docstrings(capsys):
     assert "| `ping_blender` | 블렌더 수신기와 연결되는지 확인한다. |" in out
     assert gen.main(["--bad"]) == 2
     assert "scripts/gen_tool_table.py" in (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
+
+
+def test_lowest_python_deprecation_is_announced():
+    """가장 낮은 파이썬 판의 지원 종료가 CHANGELOG 맨 위 절(한/영)과 maintenance.md(한/영)에 같은 판 번호로 적혀야 한다."""
+    pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    vers = re.findall(r"Programming Language :: Python :: (3\.\d+)\"", pyproject)
+    lowest, next_lowest = vers[0], vers[1]
+    _, _, body = _changelog_sections()[0]
+    m = re.search(rf"^- (\d+\.\d+\.\d+) is the last release that supports Python {re.escape(lowest)} .*"
+                  rf"(\d+\.\d+\.\d+) will require Python {re.escape(next_lowest)} or newer\.$", body, re.M)
+    eol_soon = {"3.10": "2026-10"}  # EOL 이 다가온 판. 다음 판(3.11, 2027-10)은 그 1년 전쯤 여기에 더한다
+    if not m:
+        assert lowest not in eol_soon, f"Python {lowest}({eol_soon.get(lowest)} EOL) 지원 종료 예고가 CHANGELOG 영어 요약에 없음"
+        return
+    assert f"(end of life {eol_soon[lowest]})" in body and f"({lowest} 은 {eol_soon[lowest]} EOL)" in body
+    last, dropped = m.groups()
+    assert f"{last} 이 Python {lowest} 을 지원하는 마지막 판" in body
+    assert f"{dropped} 부터 Python {next_lowest} 이상이 필요" in body
+    text = MAINT.read_text(encoding="utf-8")
+    assert f"**{last} 이 {lowest} 을 지원하는 마지막 판**" in text and f"**{dropped} 에서 뺀다**" in text
+    assert f"**{last} is the last release that supports {lowest}**" in text and f"**{dropped} drops it**" in text

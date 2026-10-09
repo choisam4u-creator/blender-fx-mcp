@@ -7,6 +7,9 @@
 
 **English summary**
 
+*Deprecation*
+- 0.7.0 is the last release that supports Python 3.10 (end of life 2026-10). 0.8.0 will require Python 3.11 or newer.
+
 *Fixes*
 - `import_model` with `size` reported the volume from before resizing; fixed. Rigid-body `glue` no longer crashes headless `bpy`
   or adds a stray constraint to the active piece.
@@ -31,6 +34,9 @@
 - Client configs for Claude Desktop, Cursor and Codex in `examples/`; YAML bug, feature request and question forms and a PR template.
 - `server.json.example` matches the 2025-12-11 MCP registry schema, and `scripts/release_check.py` checks a release in one step.
 - `docs/third-party-licenses.md` lists the license of every installed dependency; CI checks them against a permissive allow list.
+
+**지원 종료 예고**
+- 0.7.0 이 Python 3.10 을 지원하는 마지막 판입니다(3.10 은 2026-10 EOL). 0.8.0 부터 Python 3.11 이상이 필요합니다.
 
 **고침**
 - `import_model` 에 `size` 를 주면 결과의 `volume_m3` 가 크기를 바꾸기 **전** 부피로 나오던 문제.

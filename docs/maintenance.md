@@ -50,7 +50,9 @@ gh label create "stale" --color ededed --description "needs-info 마감 7일 전
 ### 지원 판 정리 기준
 
 - **파이썬**: 공식 지원이 끝난 판(EOL)은 그 뒤 첫 마이너 출시에서 뺀다. `pyproject.toml` 의 분류자·`requires-python`, ruff `target-version`, CI 행렬, SUPPORT.md 표, README 배지, architecture.md, 이 문서, `uv lock` 을 함께 고친다. 분류자만 바꾸고 `uv run pytest -q tests/test_repo_files.py -k python_version_range` 를 돌리면 어긋난 곳을 모두 알려 준다.
-  지금 가장 낮은 3.10 은 2026-10 에 EOL 이므로 다음 마이너 판 뒤에 빼는 것을 검토한다.
+  지금 가장 낮은 3.10 은 2026-10 에 EOL 이다. **0.7.0 이 3.10 을 지원하는 마지막 판**이고(CHANGELOG 에 예고), **0.8.0 에서 뺀다**.
+  분류자에서 3.10 을 빼 보면 위 시험이 고칠 곳 10곳(requires-python·ruff·uv.lock·CI 행렬·SUPPORT·README 배지·architecture 한/영·이 문서 한/영)을 모두 짚는다(2026-10-09 드라이런).
+  빼는 PR 에서는 `tomllib` 이 없어 건너뛰던 시험(`pytest.importorskip("tomllib")`)을 보통 import 로 바꿔도 된다.
 - **블렌더**: 지원 중인 LTS 판을 실제 앱으로 전부 시험한다. 새 LTS 가 나오면 그 판으로 시험을 돌려 SUPPORT.md 표에 올리고, 지원이 끝난 LTS 는 "확인 안 함" 으로 내린다.
 - **blender-fx-mcp**: 최신 마이너 판에만 버그·보안 수정을 낸다.
 
@@ -93,6 +95,8 @@ Labels are defined in [`.github/labels.yml`](../.github/labels.yml). Every label
 ### Dropping old versions
 
 - **Python**: a version that reached its end of life is dropped in the next minor release. Update the classifiers and `requires-python` in `pyproject.toml`, ruff `target-version`, the CI matrix, the SUPPORT.md table, the README badge, architecture.md, this page and `uv lock` together. Change the classifiers first and run `uv run pytest -q tests/test_repo_files.py -k python_version_range`: it lists every place that still disagrees.
-  The lowest version today, 3.10, reaches end of life in 2026-10, so dropping it after the next minor release is under review.
+  The lowest version today, 3.10, reaches end of life in 2026-10. **0.7.0 is the last release that supports 3.10** (announced in the CHANGELOG), and **0.8.0 drops it**.
+  Removing 3.10 from the classifiers makes the test above list all 10 places to change (requires-python, ruff, uv.lock, CI matrix, SUPPORT, README badge, architecture in both languages, this page in both languages; dry run on 2026-10-09).
+  In that PR the tests skipped for lack of `tomllib` (`pytest.importorskip("tomllib")`) can switch to a plain import.
 - **Blender**: the supported LTS release gets the full test suite on the real app. When a new LTS ships, run the tests on it and add it to the SUPPORT.md table; an LTS that is out of support moves to "untested".
 - **blender-fx-mcp**: bug and security fixes go to the latest minor release only.
