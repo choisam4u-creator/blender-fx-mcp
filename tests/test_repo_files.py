@@ -248,7 +248,10 @@ def test_coverage_artifacts_are_ignored():
 
 
 # 작업(job) 단위로만, 이 목록의 쓰기 권한만 허용한다. 나머지 워크플로는 write 가 한 글자도 없어야 한다.
-JOB_WRITE_PERMISSIONS = {"stale.yml": {"issues: write"}}
+JOB_WRITE_PERMISSIONS = {
+    "stale.yml": {"issues: write"},
+    "scorecard.yml": {"security-events: write", "id-token: write"},
+}
 
 
 @pytest.mark.parametrize("path", sorted((ROOT / ".github" / "workflows").glob("*.yml")), ids=lambda p: p.name)
@@ -738,3 +741,21 @@ def test_stale_workflow_matches_needs_info_deadline():
     assert maint.count(".github/workflows/stale.yml") >= 2
     assert f"{stale}일 조용하면" in maint and f"after {stale} quiet days" in maint
     assert re.search(r"^  schedule:\n    - cron: ", text, re.M)
+
+
+def test_scorecard_workflow_and_badge():
+    """Scorecard 작업이 기본 브랜치에서 결과를 공개하고, README 배지가 이 저장소의 점수를 가리켜야 한다."""
+    text = (ROOT / ".github" / "workflows" / "scorecard.yml").read_text(encoding="utf-8")
+    assert re.search(r"^  push:\n    branches: \[main\]$", text, re.M)
+    assert re.search(r"^  schedule:\n    - cron: ", text, re.M)
+    assert "pull_request" not in text, "Scorecard 는 PR 에서 결과를 공개할 수 없다"
+    assert "publish_results: true" in text and "persist-credentials: false" in text
+    assert "ossf/scorecard-action@" in text and "codeql-action/upload-sarif@" in text
+    job = re.search(r"^    permissions:\n((?:      .*\n)+)", text, re.M).group(1)
+    perms = set(re.findall(r"^      ([\w-]+: \w+)$", job, re.M))
+    assert perms == {"contents: read", "actions: read", "security-events: write", "id-token: write"}, perms
+    repo = "github.com/choisam4u-creator/blender-fx-mcp"
+    badges = {alt: (img, link) for alt, img, link in _badges()}
+    img, link = badges["OpenSSF Scorecard"]
+    assert img == f"https://api.scorecard.dev/projects/{repo}/badge"
+    assert link == f"https://scorecard.dev/viewer/?uri={repo}"

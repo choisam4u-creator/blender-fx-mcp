@@ -21,7 +21,7 @@
 - Server-side unit tests grew from 9 to over 540, running on Python 3.10–3.14 in CI with coverage in the job summary (99%).
 - Most recipe tests run without the Blender app through `pip install bpy`; Mantaflow tests are marked `app_only`.
 - Static checks keep every message in Korean/English pairs and every tool description's value list equal to what the server accepts.
-- ruff lint, Dependabot, read-only workflow tokens and SHA-pinned actions.
+- ruff lint, Dependabot, read-only workflow tokens and SHA-pinned actions, an OpenSSF Scorecard job and badge, and a daily job that closes `needs-info` issues after 30 quiet days.
 - CI runs every test file except the Blender-only recipe tests, fails below 95% server coverage, and checks the built wheel and sdist metadata (metadata version, version, project URLs, license expression, README, `mcp-name`) and runs `twine check`.
 
 *Docs*
@@ -112,6 +112,8 @@
   양식·문서·dependabot 이 쓰는 라벨이 정의에 없거나 명령과 정의가 다르면 시험이 실패한다
 - `needs-info` 30일 마감 자동화 `.github/workflows/stale.yml`(actions/stale SHA 고정, 매일): 23일 조용하면 `stale` 라벨·한/영 안내,
   7일 더 조용하면 닫음. PR 은 건드리지 않음. 권한은 작업 단위 `issues: write` 만. 일수 합이 SUPPORT 의 30일과 다르면 시험이 실패한다
+- OpenSSF Scorecard 작업 `.github/workflows/scorecard.yml`(매주·main 푸시, SHA 고정, `publish_results`)과 README 배지.
+  쓰기 권한은 작업 단위 `security-events`·`id-token` 만. 배지 주소·권한이 어긋나면 시험이 실패한다
 
 **배포 준비**
 - `server.json.example` 을 MCP 레지스트리 2025-12-11 스키마(camelCase 키)에 맞춤

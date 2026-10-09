@@ -3,6 +3,7 @@
 [![ci](https://github.com/choisam4u-creator/blender-fx-mcp/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/choisam4u-creator/blender-fx-mcp/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python 3.10–3.14](https://img.shields.io/badge/python-3.10%E2%80%933.14-blue.svg)](pyproject.toml)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/choisam4u-creator/blender-fx-mcp/badge)](https://scorecard.dev/viewer/?uri=github.com/choisam4u-creator/blender-fx-mcp)
 
 <!-- mcp-name: io.github.choisam4u-creator/blender-fx-mcp -->
 
