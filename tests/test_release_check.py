@@ -292,3 +292,17 @@ def test_license_doc_is_linked_and_run_in_ci():
     lc = _license_check()
     for spdx in sorted(lc.ALLOWED):  # 문서의 허용 목록 = 스크립트의 허용 목록
         assert doc.count(f"`{spdx}`") >= 2, spdx
+
+
+def test_dist_accepts_crlf_metadata(repo, tmp_path):
+    """Windows 체크아웃(CRLF README)에서 만든 sdist·휠도 README 본문·mcp-name 점검을 통과해야 한다."""
+    dist = tmp_path / "dist"
+    dist.mkdir()
+    meta = _meta(repo).replace("\n", "\r\n")
+    _wheel(dist, meta)
+    src = tmp_path / "pkginfo-crlf"
+    src.write_bytes(meta.encode("utf-8"))
+    with tarfile.open(dist / "x-1.0.tar.gz", "w:gz") as t:
+        t.add(src, arcname="blender_fx_mcp-1.0/PKG-INFO")
+    assert "\r\n" not in rc.read_metadata(dist / "x-1.0.tar.gz")
+    assert rc.main(["--dist", str(dist)], root=repo) == 0

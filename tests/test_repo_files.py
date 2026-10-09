@@ -1,5 +1,6 @@
 # 저장소 안내 파일(이슈 양식 등) 점검. 블렌더 없이 돈다.
 import re
+import sys
 from pathlib import Path
 
 import pytest
@@ -462,7 +463,7 @@ def test_recipes_calls_pass_server_checks(monkeypatch, tmp_path):
                 raise bridge.BlenderError("여기까지 오면 통과")  # 결과 처리는 test_server_tools 몫
 
             monkeypatch.setattr(bridge, "run_python", reached)
-            out = eval(call.replace("…/model.glb", str(tmp_path / "model.glb")), vars(server))
+            out = eval(call.replace("…/model.glb", (tmp_path / "model.glb").as_posix()), vars(server))
             out = out if isinstance(out, str) else out[0]
             assert sent, f"예시 {n}: {call} 이 블렌더로 가기 전에 막힘: {out}"
 
@@ -634,7 +635,8 @@ def test_bpy_script_matches_ci_bpy_job():
 
 
 def test_bpy_script_is_runnable_and_documented():
-    assert BPY_SCRIPT.stat().st_mode & 0o111, "실행 권한이 없음(chmod +x)"
+    if sys.platform != "win32":  # Windows 체크아웃에는 실행 권한 비트가 없다(Linux·Mac 에서만 확인)
+        assert BPY_SCRIPT.stat().st_mode & 0o111, "실행 권한이 없음(chmod +x)"
     assert BPY_SCRIPT.read_text(encoding="utf-8").startswith("#!/usr/bin/env bash\n")
     ignored = (ROOT / ".gitignore").read_text(encoding="utf-8").split()
     assert ".venv-bpy/" in ignored
@@ -827,7 +829,7 @@ def test_one_line_examples_pass_server_checks(monkeypatch, tmp_path):
     ko, _ = _one_line_calls()
     for call in ko:
         name = ast.parse(call.replace("…", "x"), mode="eval").body.func.id
-        out = eval(call.replace("…/", f"{tmp_path}/"), vars(server))
+        out = eval(call.replace("…/", f"{tmp_path.as_posix()}/"), vars(server))  # Windows 경로의 `\` 는 문자열 이스케이프가 됨
         out = out if isinstance(out, str) else out[0]
         if name in local:
             assert out and not out.startswith("실패"), call

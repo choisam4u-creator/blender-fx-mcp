@@ -65,7 +65,8 @@ def run_checks() -> list[dict]:
             "못 찾음. BLENDER_FX_BLENDER 환경변수로 경로를 알려주세요 (헤드리스 테스트에만 필요)",
             "not found. Set BLENDER_FX_BLENDER to its path (only needed for headless tests)"), "blender"))
 
-    found = [p for g in ADDON_GLOBS for p in glob.glob(os.path.expanduser(g))]
+    # normpath: Windows 에서 expanduser 가 붙인 `\` 와 패턴의 `/` 가 섞여 보이지 않게
+    found = [os.path.normpath(p) for g in ADDON_GLOBS for p in glob.glob(os.path.expanduser(g))]
     out.append(_check(t("수신기 애드온 파일(blender-mcp)", "receiver add-on file (blender-mcp)"), bool(found),
                       found[0] if found else t(
                           "블렌더 애드온 폴더에 blender_mcp.py 가 없음. https://github.com/ahujasid/blender-mcp 의 addon.py 를 설치하세요",

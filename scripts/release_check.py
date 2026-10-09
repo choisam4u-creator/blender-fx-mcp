@@ -97,14 +97,15 @@ def project_license(root: Path) -> str:
 
 def read_metadata(dist: Path) -> str | None:
     """휠의 .dist-info/METADATA 또는 sdist 의 PKG-INFO. 없으면 None."""
+    # Windows 체크아웃(core.autocrlf)에서 만든 패키지는 README 가 CRLF 로 들어간다. README.md 와 비교할 수 있게 LF 로 맞춘다.
     if dist.suffix == ".whl":
         with zipfile.ZipFile(dist) as z:
             name = next((n for n in z.namelist() if n.endswith(".dist-info/METADATA")), None)
-            return z.read(name).decode("utf-8") if name else None
+            return z.read(name).decode("utf-8").replace("\r\n", "\n") if name else None
     with tarfile.open(dist) as t:
         member = next((m for m in t.getmembers() if m.name.count("/") == 1 and m.name.endswith("/PKG-INFO")), None)
         f = t.extractfile(member) if member else None
-        return f.read().decode("utf-8") if f else None
+        return f.read().decode("utf-8").replace("\r\n", "\n") if f else None
 
 
 def check_metadata(meta: str, label: str, version: str, urls: dict[str, str]) -> list[tuple[bool, str]]:

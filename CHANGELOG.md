@@ -57,6 +57,8 @@
   `destroy` 의 `dust`, `render_video` 의 `quality` 는 설명에 값이 없었고, `interior` 는 "다른 material 이름"으로만 적혀 있었다.
   이제 모든 고정 목록 인자를 `이름: a / b / c` 한 줄로 적고, 시험이 서버 목록과 같은지 확인한다
 - `blender-fx-doctor` 가 `--version` 에 아무것도 출력하지 않는 블렌더를 "실행 실패: list index out of range" 대신 "버전 출력 없음"으로 보여 준다
+- Windows 에서 `blender-fx-doctor` 가 애드온 경로를 `/`·`\` 섞어 보여 주던 문제, `scripts/release_check.py --dist` 가 Windows 체크아웃(CRLF)으로
+  만든 sdist 의 README 본문·`mcp-name` 줄을 못 찾던 문제. CI 에 macOS·Windows 서버 시험을 넣다가 찾음
 - `blender-fx-doctor --json`: 같은 점검을 JSON 으로(판·블렌더 경로·호스트·포트·항목별 `id`/결과/내용·실패 목록·해결법 주소).
   항목 `id` 는 언어와 상관없이 같다. 버그 양식에 안내. 줄 출력과 항목·결과·종료 코드가 같은지 시험한다
 

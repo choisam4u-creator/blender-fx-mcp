@@ -108,7 +108,7 @@ def test_receiver_up(env, monkeypatch):
 
 def test_output_folder_not_writable(env, monkeypatch):
     blocker = env / "파일"
-    blocker.write_text("폴더가 아님")
+    blocker.write_text("폴더가 아님", encoding="utf-8")
     monkeypatch.setenv("BLENDER_FX_OUT", str(blocker / "out"))
     c = _by_name(doctor.run_checks())["출력 폴더"]
     assert not c["ok"] and c["detail"].startswith(f"{blocker / 'out'} 에 쓸 수 없음")
