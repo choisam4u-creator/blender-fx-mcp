@@ -9,6 +9,7 @@
 1. **보안 신고** — 공개 이슈로 오면 내용을 지우고 [SECURITY.md](../SECURITY.md) 의 비공개 경로로 옮긴다. 첫 답 7일 안.
 2. **재현 정보가 있는 버그** — `blender-fx-doctor` 출력·블렌더 판·도구와 인자가 있으면 바로 재현해 본다. 첫 답 7일 안.
 3. **재현 정보가 없는 버그** — `needs-info` 라벨을 붙이고 필요한 정보를 묻는다. 30일 동안 답이 없으면 닫고, 정보가 오면 다시 연다.
+   마감은 [`.github/workflows/stale.yml`](../.github/workflows/stale.yml) 이 매일 지킨다: 23일 조용하면 `stale` 라벨과 안내, 7일 더 조용하면 닫음. 누가 글을 쓰면 날짜가 다시 센다.
 4. **질문·기능 요청** — 첫 답 14일 안. 작고 범위가 분명한 일은 `good first issue` 를 붙인다([CONTRIBUTING.md](../CONTRIBUTING.md) 의 "처음 기여하기 좋은 일").
 5. 오류 문장 때문에 온 이슈는 해결법을 [docs/troubleshooting.md](troubleshooting.md) 에도 적는다.
 
@@ -24,6 +25,7 @@ gh label create "good first issue" --color 7057ff --description "처음 기여�
 gh label create "question" --color d876e3 --description "사용법 질문 / Usage question" --force
 gh label create "security" --color b60205 --description "보안 관련, 자세한 내용은 비공개로 / Security related, details go private" --force
 gh label create "dependencies" --color 0366d6 --description "의존성·액션 판 갱신 / Dependency or action version update" --force
+gh label create "stale" --color ededed --description "needs-info 마감 7일 전 자동 표시 / Marked 7 days before the needs-info deadline" --force
 ```
 
 ### 의존성 갱신 PR(dependabot) 처리 순서
@@ -60,6 +62,7 @@ How this single-maintainer project is maintained. These are the rules the mainta
 1. **Security reports**: if one arrives as a public issue, remove the details and move it to the private channel in [SECURITY.md](../SECURITY.md). First reply within 7 days.
 2. **Bugs with repro info**: with `blender-fx-doctor` output, the Blender version and the tool and arguments, reproduce right away. First reply within 7 days.
 3. **Bugs without repro info**: label `needs-info` and ask for what is missing. Close after 30 days without a reply; reopen when the info arrives.
+   [`.github/workflows/stale.yml`](../.github/workflows/stale.yml) enforces the deadline daily: after 23 quiet days it adds the `stale` label and a notice, and closes the issue after 7 more. Any new comment restarts the count.
 4. **Questions and feature requests**: first reply within 14 days. Label small, well-scoped tasks `good first issue` (see "Good first contributions" in [CONTRIBUTING.md](../CONTRIBUTING.md)).
 5. When an issue was caused by an error message, add the fix to [docs/troubleshooting.md](troubleshooting.md) as well.
 

@@ -247,6 +247,10 @@ def test_coverage_artifacts_are_ignored():
     assert ".coverage" in ignored and "htmlcov/" in ignored
 
 
+# 작업(job) 단위로만, 이 목록의 쓰기 권한만 허용한다. 나머지 워크플로는 write 가 한 글자도 없어야 한다.
+JOB_WRITE_PERMISSIONS = {"stale.yml": {"issues: write"}}
+
+
 @pytest.mark.parametrize("path", sorted((ROOT / ".github" / "workflows").glob("*.yml")), ids=lambda p: p.name)
 def test_workflow_top_level_permissions_read_only(path):
     text = path.read_text(encoding="utf-8")
@@ -254,8 +258,14 @@ def test_workflow_top_level_permissions_read_only(path):
     m = re.search(r"^permissions:\n((?:[ \t]+.*\n)+)", text, re.M)
     assert m, f"{path.name}: 최상위 permissions 가 없음"
     assert text.index("\npermissions:") < text.index("\njobs:")
-    assert "contents: read" in m.group(1)
-    assert "write" not in text, f"{path.name}: write 권한이 있음"
+    assert "contents: read" in m.group(1) and "write" not in m.group(1)
+    allowed = JOB_WRITE_PERMISSIONS.get(path.name, set())
+    writes = re.findall(r"^\s+([\w-]+: write)$", text, re.M)
+    assert set(writes) == allowed and len(writes) == len(allowed), f"{path.name}: 허용 밖 write 권한 {writes}"
+    assert text.count("write") == len(writes), f"{path.name}: permissions 밖에 write 가 있음"
+    for perm in writes:  # 쓰기 권한은 작업 안 permissions 블록에만
+        block = re.search(rf"^    permissions:\n((?:      .*\n)+)", text, re.M)
+        assert block and perm in block.group(1), f"{path.name}: {perm} 이 작업 단위 permissions 에 없음"
 
 
 @pytest.mark.parametrize("path", sorted((ROOT / ".github" / "workflows").glob("*.yml")), ids=lambda p: p.name)
@@ -677,6 +687,9 @@ def _used_labels():
     bot = (ROOT / ".github" / "dependabot.yml").read_text(encoding="utf-8")
     for line in re.findall(r"^    labels: \[(.*)\]$", bot, re.M):
         used.update({lab: "dependabot.yml" for lab in re.findall(r'"([^"]+)"', line)})
+    stale = (ROOT / ".github" / "workflows" / "stale.yml").read_text(encoding="utf-8")
+    for key in ("only-labels", "stale-issue-label"):
+        used[re.search(rf'^          {key}: "([^"]+)"$', stale, re.M).group(1)] = "stale.yml"
     pattern = re.compile(
         r"`([a-z][a-z -]+)` ?(?:라벨|label)|(?:labell?ed|[Ll]abel|as) `([a-z][a-z -]+)`|^- `([a-z][a-z -]+)` —", re.M
     )
@@ -706,3 +719,22 @@ def test_maintenance_label_commands_match_labels_file():
     assert {n: (c, d) for n, c, d in cmds} == _labels()
     assert len(cmds) == text.count("gh label create \"")
     assert ".github/labels.yml" in text.split("## English")[1]
+
+
+def test_stale_workflow_matches_needs_info_deadline():
+    """needs-info 자동 닫기의 일수 합이 SUPPORT·maintenance.md 의 마감과 같고, PR·다른 이슈는 건드리지 않아야 한다."""
+    text = (ROOT / ".github" / "workflows" / "stale.yml").read_text(encoding="utf-8")
+    opt = dict(re.findall(r"^          ([\w-]+): (-?\d+)$", text, re.M))
+    support = (ROOT / "SUPPORT.md").read_text(encoding="utf-8")
+    deadline = int(re.search(r"(\d+)일 동안 답이 없으면", support).group(1))
+    stale, close = int(opt["days-before-stale"]), int(opt["days-before-close"])
+    assert stale + close == deadline and close > 0
+    assert opt["days-before-pr-stale"] == opt["days-before-pr-close"] == "-1"
+    assert re.search(r'^          only-labels: "needs-info"$', text, re.M)
+    # 안내 문장의 일수가 설정과 같고 한/영 모두 있는지
+    assert f"{stale}일" in text and f"{close}일" in text and f"{deadline}일" in text
+    assert f"{stale} days" in text and f"{close} days" in text and f"{deadline} days" in text
+    maint = MAINT.read_text(encoding="utf-8")
+    assert maint.count(".github/workflows/stale.yml") >= 2
+    assert f"{stale}일 조용하면" in maint and f"after {stale} quiet days" in maint
+    assert re.search(r"^  schedule:\n    - cron: ", text, re.M)

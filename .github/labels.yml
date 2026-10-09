@@ -22,3 +22,6 @@
 - name: "dependencies"
   color: "0366d6"
   description: "의존성·액션 판 갱신 / Dependency or action version update"
+- name: "stale"
+  color: "ededed"
+  description: "needs-info 마감 7일 전 자동 표시 / Marked 7 days before the needs-info deadline"

@@ -108,8 +108,10 @@
   `pyproject.toml`·LICENSE·server.json 과 어긋나면 시험과 `scripts/release_check.py` 가 실패한다
 - `docs/maintenance.md`(한/영): 이슈 분류 순서, dependabot PR 처리(액션 메이저 판은 변경 기록 확인 뒤), 판 번호·출시 주기,
   지원 끝난 파이썬·블렌더 판 정리 기준. README·SUPPORT 에서 링크. 응답 일수·라벨·dependabot 설정과 어긋나면 시험이 실패한다
-- `.github/labels.yml`: 라벨 7개(이름·색·한/영 설명)와 maintenance.md 의 `gh label create` 명령. dependabot PR 에는 `dependencies` 라벨만 붙는다.
+- `.github/labels.yml`: 라벨 8개(이름·색·한/영 설명)와 maintenance.md 의 `gh label create` 명령. dependabot PR 에는 `dependencies` 라벨만 붙는다.
   양식·문서·dependabot 이 쓰는 라벨이 정의에 없거나 명령과 정의가 다르면 시험이 실패한다
+- `needs-info` 30일 마감 자동화 `.github/workflows/stale.yml`(actions/stale SHA 고정, 매일): 23일 조용하면 `stale` 라벨·한/영 안내,
+  7일 더 조용하면 닫음. PR 은 건드리지 않음. 권한은 작업 단위 `issues: write` 만. 일수 합이 SUPPORT 의 30일과 다르면 시험이 실패한다
 
 **배포 준비**
 - `server.json.example` 을 MCP 레지스트리 2025-12-11 스키마(camelCase 키)에 맞춤
