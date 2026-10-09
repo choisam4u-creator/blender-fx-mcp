@@ -853,3 +853,49 @@ def test_ci_runs_server_tests_on_every_classifier_os():
     assert _ignored(os_run) == _ignored(main_run)
     support = (ROOT / "SUPPORT.md").read_text(encoding="utf-8")
     assert "macOS·Linux·Windows" in support and "macOS, Linux, Windows" in support
+
+
+def _gen_tool_table():
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("gen_tool_table", ROOT / "scripts" / "gen_tool_table.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_readme_tool_tables_match_server_choices():
+    """README 표에 적은 `a/b/c` 값 목록이 서버의 허용 값과 같아야 한다(값이 늘거나 줄면 표도 고친다)."""
+    gen = _gen_tool_table()
+    assert gen.problems() == []
+    assert gen.main([]) == 0
+    # 검사가 실제로 값 목록을 보고 있는지(한국어 표의 destroy 행에서 5개)
+    assert len(gen.SLASH_LIST.findall(gen.readme_rows("## 도구 목록")["destroy"])) == 5
+    assert set(gen.TOOL_RECIPE.values()) <= set(gen.server.CHOICES)
+
+
+def test_readme_tool_table_check_catches_drift(monkeypatch):
+    gen = _gen_tool_table()
+    real = gen.readme_rows
+
+    def drifted(section):
+        rows = dict(real(section))
+        rows["camera"] = rows["camera"].replace("wide/medium", "wide/medium/fisheye")
+        rows.pop("wind")
+        return rows
+
+    monkeypatch.setattr(gen, "readme_rows", drifted)
+    found = gen.problems()
+    assert any("`camera` 의 값 목록 wide/medium/fisheye" in p for p in found), found
+    assert sum("`wind` 행이 없음" in p for p in found) == 2
+    assert gen.main([]) == 1
+
+
+def test_readme_tool_table_draft_uses_docstrings(capsys):
+    gen = _gen_tool_table()
+    assert gen.main(["--draft"]) == 0
+    out = capsys.readouterr().out
+    assert "| `ping_blender` | Check the socket connection to Blender. |" in out
+    assert "| `ping_blender` | 블렌더 수신기와 연결되는지 확인한다. |" in out
+    assert gen.main(["--bad"]) == 2
+    assert "scripts/gen_tool_table.py" in (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
