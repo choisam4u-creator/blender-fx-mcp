@@ -48,7 +48,7 @@ def test_has_english_example():
 
 def test_examples_readme_links_every_file_and_is_linked_from_readme():
     index = (EX / "README.md").read_text(encoding="utf-8")
-    files = sorted(p.name for p in EX.iterdir() if p.name != "README.md")
+    files = sorted(p.name for p in EX.iterdir() if p.is_file() and p.name != "README.md")  # __pycache__ 등 폴더는 뺌
     assert files, "examples/ 가 비었음"
     for name in files:
         assert f"]({name})" in index, f"examples/README.md 에 {name} 링크가 없음"
