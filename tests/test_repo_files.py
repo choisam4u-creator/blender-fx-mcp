@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 TEMPLATES = ROOT / ".github" / "ISSUE_TEMPLATE"
 
 
-FORMS = {"bug_report.yml": "bug", "feature_request.yml": "enhancement"}
+FORMS = {"bug_report.yml": "bug", "feature_request.yml": "enhancement", "question.yml": "question"}
 
 
 def _form(name):
@@ -67,6 +67,17 @@ def test_bug_form_required_fields():
     _, _, fields = _bug_form()
     required = {k for k, (_, req, _) in fields.items() if req}
     assert {"doctor", "blender-version", "os", "client", "repro", "actual"} <= required
+
+
+def test_question_form_required_fields():
+    text, _, fields = _form("question.yml")
+    required = {k for k, (_, req, _) in fields.items() if req}
+    assert required == {"goal", "tried"}
+    assert "docs/recipes.md" in text and "docs/troubleshooting.md" in text
+    assert "`--json`" in fields["doctor"][2]
+    support = (ROOT / "SUPPORT.md").read_text(encoding="utf-8")
+    assert "issues/new?template=question.yml" in support
+    assert "[질문]" not in support, "제목 머리말 안내 대신 양식으로"
 
 
 def test_feature_form_required_fields():

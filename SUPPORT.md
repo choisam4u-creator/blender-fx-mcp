@@ -8,7 +8,7 @@
 | 어떻게 시키나 / How do I ask for X | [docs/recipes.md](docs/recipes.md)(자연어 명령 예시와 결과 수치 / example prompts and results), README "도구" 절 / tool table |
 | 버그 / Bug | [버그 신고 양식 / Bug report form](https://github.com/choisam4u-creator/blender-fx-mcp/issues/new?template=bug_report.yml) — `blender-fx-doctor` 출력 필수 / doctor output required |
 | 새 효과·도구 제안 / Feature idea | [기능 요청 양식 / Feature request](https://github.com/choisam4u-creator/blender-fx-mcp/issues/new?template=feature_request.yml) |
-| 질문 / Question | 이슈를 열고 제목 앞에 `[질문]` / `[question]` 을 붙여 주세요 / open an issue with a `[question]` prefix |
+| 질문 / Question | [질문 양식 / Question form](https://github.com/choisam4u-creator/blender-fx-mcp/issues/new?template=question.yml) — 하려는 일·해 본 것 / what you want and what you tried |
 | 보안 문제 / Security issue | **공개 이슈 금지.** [SECURITY.md](SECURITY.md) 의 비공개 신고 / never in a public issue; report privately |
 | 수신기 애드온 자체의 문제 / Receiver add-on bug | [blender-mcp](https://github.com/ahujasid/blender-mcp) 저장소 / upstream project |
 
