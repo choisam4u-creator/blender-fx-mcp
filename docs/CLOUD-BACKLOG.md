@@ -91,3 +91,11 @@
 - [x] OpenSSF Scorecard 작업 `.github/workflows/scorecard.yml`(주 1회·main 푸시, SHA 고정, `publish_results`) + README 배지 + 시험(배지 주소가 저장소와 같은지, 작업 권한이 필요한 것만인지) (보안·유지보수: 이미 맞춘 Token-Permissions·Pinned-Dependencies 를 점수로 보여 줌. 지원 프로그램이 흔히 보는 지표) — scorecard-action v2.4.4·upload-artifact v7.0.2·codeql upload-sarif v4.38.3(모두 SHA), 배지 `api.scorecard.dev`. 권한 허용 목록 시험에 `security-events`·`id-token` 쓰기 추가. 배지는 병합 뒤 main 에서 처음 돌아야 점수가 뜸(클라우드에서 미검증)
 - [x] 모든 도구가 문서 예시에 한 번은 나오는지 시험: 32개 도구 중 `docs/recipes.md`·README 예시에 안 나오는 도구를 찾아 recipes 에 예시를 더함(한/영, 인자는 서버 범위 검사를 통과하게) (문서: 사용자가 도구 이름만 보고 쓰는 법을 모르는 경우를 없앰. 기존 recipes 인자 검사 시험 재사용) — 예시 없던 도구 25개(되돌리기 문단의 `snapshot`·`restore` 포함)를 한/영 표로. 시험 2개(32개 모두 예시 있음·한/영 같음·중복 없음, 표의 호출이 블렌더까지 감). 결과 칸은 도구 설명 기준(실측 아님)
 - [x] `blender-fx-doctor --json`: 점검 결과를 기계가 읽는 형식으로(판·블렌더 경로·포트·항목별 OK/X·고칠 방법) + 버그 폼 안내에 선택지로 + 시험(텍스트 출력과 항목 수·결과가 같은지) (이슈 대응·오류 메시지: 버그 신고에 붙인 출력을 그대로 비교·재현할 수 있게) — argparse(`--json`, 모르는 옵션은 종료 코드 2), 항목마다 언어와 무관한 `id`, 치명 판정도 id 로. 버그 양식·troubleshooting 에 안내. 시험 5개+종료 코드 시험 한/영으로
+
+### 2026-10-09 (3회차) 추가
+
+- [ ] 의존성 라이선스 점검: `uv.lock` 의 런타임 의존성(`mcp` 와 그 아래) 라이선스를 모아 MIT 와 함께 배포해도 되는 허용 목록(MIT·BSD·Apache-2.0·ISC·PSF·MPL-2.0 등)인지 확인하는 `scripts/license_check.py` + CI 단계 + `docs/third-party-licenses.md`(한/영 표) + 시험 (라이선스: 지금은 이 저장소의 MIT 만 확인하고 끌어오는 패키지의 라이선스는 아무도 보지 않음. 지원 프로그램 심사의 "라이선스 준수" 근거)
+- [ ] CI 서버 시험을 macOS·Windows 러너에서도(파이썬 최신 판 하나만, `fail-fast: false`) + 경로·줄바꿈·`/bin/sh` 가짜 블렌더 시험이 Windows 에서 건너뛰거나 통과하는지 정리 + SUPPORT 표에 OS 행 (시험: 분류자는 MacOS·Linux·Windows 를 말하지만 CI 는 Linux 뿐. 사용자 대부분이 Mac 인데 서버 쪽 시험이 Mac 에서 도는 증거가 없음)
+- [ ] 질문 이슈 양식 `.github/ISSUE_TEMPLATE/question.yml`(한/영, 라벨 `question`, 필수 칸: 하려는 일·해 본 것·doctor 출력 선택) + SUPPORT 표의 질문 줄을 이 양식으로 + 양식 시험에 포함 (이슈 대응: `question` 라벨이 labels.yml 에 있지만 쓰는 곳이 없음. 질문이 빈 이슈나 버그 양식으로 들어오는 것을 줄임)
+- [ ] README 도구 표(한/영)를 도구 설명(docstring) 첫 줄에서 만드는 `scripts/gen_tool_table.py` + 시험(생성 결과와 README 표가 같은지, 다르면 고칠 명령을 알려 줌) (문서·유지보수: 지금 시험은 표에 도구 이름이 있는지만 봄. 도구 설명을 바꾸면 README 설명이 조용히 뒤처진다)
+- [ ] 파이썬 3.10 지원 종료 준비: 3.10 이 2026-10 EOL 이므로 CHANGELOG 0.7.0 에 "다음 마이너(0.8.0)에서 3.10 지원 종료" 예고(한/영) + maintenance.md 에 날짜를 박은 계획 + 분류자에서 3.10 을 빼 보는 드라이런으로 `test_python_version_range_is_the_same_everywhere` 가 고칠 곳을 모두 짚는지 확인(실제로 빼지는 않음) (유지보수: 지원 끝난 런타임을 미리 알리고 정해진 순서로 정리하는지가 "활발한 유지보수" 신호)
