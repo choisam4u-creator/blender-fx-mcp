@@ -512,3 +512,16 @@ def test_good_first_labels_match_support():
     # 영어 첫 문단에서 이 절로 가는 링크
     assert "(#good-first-contributions)" in (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8").split("\n## ")[0]
 
+
+
+def test_ci_has_coverage_floor_matching_contributing():
+    """CI 커버리지 하한이 있고, CONTRIBUTING(한/영)이 같은 수치를 말해야 한다."""
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    m = re.search(r"--cov-fail-under=(\d+)", ci)
+    assert m, "ci.yml 에 --cov-fail-under 하한이 없음"
+    floor = int(m.group(1))
+    assert 90 <= floor <= 100, floor
+    text = (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
+    assert f"**{floor}% 아래면 실패**" in text, "CONTRIBUTING 한국어 절의 하한이 ci.yml 과 다름"
+    assert f"{floor}% floor" in text, "CONTRIBUTING 영어 절의 하한이 ci.yml 과 다름"
+    assert text.count(f"--cov-fail-under={floor}") >= 2

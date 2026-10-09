@@ -19,7 +19,7 @@ jobs:
       - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5.4.2
       - run: uvx ruff@0.15.20 check .
 
-  # 서버 쪽(레시피 제외) 커버리지를 로그와 작업 요약에 남긴다. 설정은 pyproject.toml 의 [tool.coverage].
+  # 서버 쪽(레시피 제외) 커버리지를 로그와 작업 요약에 남기고, 95% 아래로 떨어지면 실패한다(시험 없이 코드만 늘린 PR 을 잡음). 설정은 pyproject.toml 의 [tool.coverage].
   server-tests:
     runs-on: ubuntu-latest
     strategy:
@@ -31,7 +31,7 @@ jobs:
       - run: uv python install ${{ matrix.python }}
       - run: uv sync --group dev --python ${{ matrix.python }}
       # 시험 파일을 손으로 적지 않는다: 블렌더가 있어야 하는 레시피 시험만 빼고 tests/ 를 모두 돈다(새 시험 파일이 저절로 들어옴).
-      - run: uv run pytest -q tests --ignore=tests/test_asset_robustness.py --ignore=tests/test_recipes_fx_extra.py --ignore=tests/test_recipes_headless.py --ignore=tests/test_recipes_v05.py --ignore=tests/test_recipes_v06.py --cov --cov-report=term --cov-report=markdown-append:$GITHUB_STEP_SUMMARY
+      - run: uv run pytest -q tests --ignore=tests/test_asset_robustness.py --ignore=tests/test_recipes_fx_extra.py --ignore=tests/test_recipes_headless.py --ignore=tests/test_recipes_v05.py --ignore=tests/test_recipes_v06.py --cov --cov-fail-under=95 --cov-report=term --cov-report=markdown-append:$GITHUB_STEP_SUMMARY
       - run: uv build
 
   # `pip install bpy` 로 레시피 시험 대부분을 블렌더 앱 없이 돌린다.
