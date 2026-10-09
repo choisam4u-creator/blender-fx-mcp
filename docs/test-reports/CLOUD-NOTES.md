@@ -1,5 +1,19 @@
 # 클라우드 회차 기록
 
+## 2026-10-09 (2회차)
+
+- 한 일: `latest.md`(10/1) FAIL 2건(GIF 링크·버튼 이름)은 10/2 회차에 고쳐 main 에 있음을 다시 확인 → 백로그로 진행. main 은 앞서 있지 않았음. 백로그 4개 완료 → 남은 항목이 2개라 새 항목 5개 추가(파이썬 3.14·needs-info 자동 닫기·Scorecard·도구 예시 빠짐없이·doctor `--json`).
+  1. **`scripts/bpy_tests.sh`** — 블렌더 앱 없이 bpy 5.0.1(Python 3.11)로 레시피 시험. 개발용 `.venv` 와 따로 `.venv-bpy`, libEGL 이 없으면 CI 와 같은 apt 명령을 알려 줌. 판·apt 패키지가 ci.yml 과 같은지 시험 2개. **이번 회차부터 클라우드도 레시피 시험을 돌림.**
+  2. **Metadata-Version 2.5 확인** — twine 7.0.0(2026-07-27)부터 2.5 업로드 지원, PyPI 도 받음 → hatchling 판은 묶지 않음. `release_check.py --dist` 에 Metadata-Version(2.1~2.5) 칸, CI 에 `uvx twine@7.0.0 check dist/*`, registry.md 순서 갱신. 시험 4개.
+  3. **최저·최고 파이썬 판 한 시험** — 분류자 기준으로 requires-python·ruff target-version·uv.lock·CI 행렬·SUPPORT·README 배지·architecture·maintenance 한/영. 어긋난 곳을 모두 한 번에 알려 줌. maintenance.md 에 판 정리 순서.
+  4. **기능 요청 YAML 폼** — 필수 칸 3개(원하는 결과·예시 명령·대신 쓰는 방법), `.md` 지움, SUPPORT 링크 고침. 버그·기능 폼을 같은 시험으로.
+- 돌린 시험: `uvx ruff@0.15.20 check .` 통과. `uv run pytest -q`(블렌더 없음) → **573 통과, 34 건너뜀**. CI 서버 명령 3.10(568 통과, 5 건너뜀)·3.13(573 통과), 커버리지 99.35%(하한 95%). **`scripts/bpy_tests.sh` → 601 통과, 6 건너뜀**(유체 `app_only` 5개·실제 캐릭터 파일 1개 — 블렌더 앱·개인 파일 필요). `uv build` → `release_check.py --dist` 22개 OK, `twine@7.0.0 check` 휠·sdist PASSED. `uv lock --check` 통과.
+- PR: 열려 있는 claude/cloud-work → main #13 에 이번 커밋이 함께 올라감(본문에 이번 회차 목록 추가).
+- Mac에서 확인할 것:
+  1. `uv run pytest -q` (블렌더 앱으로 전체 통과)
+  2. `uv build && uvx twine@7.0.0 check dist/*` (둘 다 PASSED)
+  3. 병합 뒤 New issue 화면에 "기능 요청 / Feature request" 폼과 필수 칸(*)이 보이는지
+
 ## 2026-10-09
 
 - 한 일: `latest.md`(10/1) FAIL 2건(GIF 링크·버튼 이름)은 10/2 회차에 고쳐 main 에 있음을 다시 확인 → 백로그로 진행. main 은 앞서 있지 않았음. 백로그 4개 완료 → 남은 항목이 1개라 새 항목 5개 추가.

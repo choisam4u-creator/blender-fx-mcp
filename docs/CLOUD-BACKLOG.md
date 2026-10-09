@@ -83,3 +83,11 @@
 - [x] 기능 요청 양식을 YAML 폼으로: `.github/ISSUE_TEMPLATE/feature_request.yml`(한/영, 원하는 결과·예시 명령·대신 쓰는 방법 칸), `.md` 지우고 SUPPORT·CONTRIBUTING 링크 고침 + 시험(버그 폼 시험과 같은 방식) (이슈 대응: 버그 폼과 같은 구조로 필요한 정보를 처음부터 받음) — 필수 칸 3개(원하는 결과·예시 명령·지금 대신 쓰는 방법), 선택 칸 참고 자료·블렌더 판·MCP 클라이언트, 라벨 `enhancement`. `.md` 지움, SUPPORT 링크를 `.yml` 로(CONTRIBUTING 에는 링크 없었음). 버그 폼 시험을 `_form(name)` 으로 일반화해 두 양식 모두 머리말·한/영 label·dropdown options·id 중복 점검, `.md` 양식이 남지 않는지, 기능 폼 필수 칸·SUPPORT 링크. PyYAML 로 한 번 파싱 확인(칸 7개)
 - [ ] 라벨 정의 파일 `.github/labels.yml`(이름·색·한/영 설명: `bug`·`enhancement`·`needs-info`·`good first issue`·`question`·`security`·`dependencies`) + 문서·양식·dependabot 이 쓰는 라벨이 모두 정의돼 있는지 시험, Mac 에서 만들 `gh label create` 명령을 maintenance.md 에 (이슈 대응: SUPPORT·CONTRIBUTING 이 말하는 라벨이 저장소에 실제로 있게. 클라우드는 라벨을 만들지 않음)
 - [ ] `examples/list_tools.py`: 공식 `mcp` 파이썬 클라이언트로 서버를 stdio 로 띄워 도구 목록과 `ping_blender` 결과(블렌더가 없으면 연결 실패 문장)를 출력하는 예제 + examples/README 링크 + 블렌더 없이 도는 시험(도구 수가 서버와 같은지) (문서·예제: MCP 클라이언트를 직접 짜는 사용자가 복사해 쓸 출발점)
+
+### 2026-10-09 (2회차) 추가
+
+- [ ] 파이썬 3.14 지원 검토: `uv python install 3.14` 로 서버 시험을 돌려 보고, 통과하면 분류자·CI 행렬·SUPPORT 표·README 배지에 3.14 를 더함(새 `test_python_version_range_is_the_same_everywhere` 가 어긋난 곳을 짚음). `mcp`·`pydantic` 등 의존성이 3.14 휠을 내는지 `uv lock` 로 확인 (유지보수: 3.14 가 나온 지 1년이 됐는데 분류자는 3.13 까지. 지원 프로그램 심사의 "최신 런타임을 따라가는지" 신호)
+- [ ] `needs-info` 30일 정책을 자동화하는 `.github/workflows/stale.yml`(actions/stale SHA 고정, `only-labels: needs-info`, 한/영 안내 문장, 권한은 issues 쓰기만) + 시험(일수가 SUPPORT·maintenance.md 의 30일과 같은지, SHA 고정·최소 권한 시험에 들어가는지) (이슈 대응: 문서에 적은 마감을 사람이 기억하지 않아도 지켜지게)
+- [ ] OpenSSF Scorecard 작업 `.github/workflows/scorecard.yml`(주 1회·main 푸시, SHA 고정, `publish_results`) + README 배지 + 시험(배지 주소가 저장소와 같은지, 작업 권한이 필요한 것만인지) (보안·유지보수: 이미 맞춘 Token-Permissions·Pinned-Dependencies 를 점수로 보여 줌. 지원 프로그램이 흔히 보는 지표)
+- [ ] 모든 도구가 문서 예시에 한 번은 나오는지 시험: 32개 도구 중 `docs/recipes.md`·README 예시에 안 나오는 도구를 찾아 recipes 에 예시를 더함(한/영, 인자는 서버 범위 검사를 통과하게) (문서: 사용자가 도구 이름만 보고 쓰는 법을 모르는 경우를 없앰. 기존 recipes 인자 검사 시험 재사용)
+- [ ] `blender-fx-doctor --json`: 점검 결과를 기계가 읽는 형식으로(판·블렌더 경로·포트·항목별 OK/X·고칠 방법) + 버그 폼 안내에 선택지로 + 시험(텍스트 출력과 항목 수·결과가 같은지) (이슈 대응·오류 메시지: 버그 신고에 붙인 출력을 그대로 비교·재현할 수 있게)
