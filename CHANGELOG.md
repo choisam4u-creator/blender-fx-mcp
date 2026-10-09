@@ -150,6 +150,7 @@
   hatchling 이 2.5 를 써서 twine 6.x 는 거부하지만 PyPI·twine 7.0.0 은 받는다(그래서 hatchling 판은 묶지 않음)
 - 패키지·레시피·스크립트·예제 파일 41개 첫 줄에 `# SPDX-License-Identifier: MIT`(셔뱅이 있으면 그 다음 줄). 빠지면 시험이 실패한다
 - `.gitattributes`: 모든 OS 에서 줄 끝 LF(`*.sh` 포함), 이미지·영상·`.blend` 는 바이너리. 저장소에 CRLF 파일이 생기면 시험이 실패한다
+- 모든 마크다운 문서(19개)의 상대 링크와 `#앵커`가 실제 파일·제목을 가리키는지 한 시험으로(`tests/test_docs_links.py`, GitHub 앵커 규칙·한글 제목 포함)
 - `release_check.py --dist` 가 휠의 `.dist-info/licenses/LICENSE`, sdist 의 `LICENSE`·`docs/third-party-licenses.md` 포함도 본다(점검 25개)
 - CI 서버 시험은 파일을 손으로 적지 않고 블렌더 전용 레시피 시험만 뺀다. 서버 쪽 커버리지가 95% 아래면 실패한다
 
