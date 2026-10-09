@@ -96,10 +96,12 @@ def test_project_urls_read_without_tomllib():
     assert urls == tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]["urls"]
 
 
-def _wheel(tmp_path, meta: str) -> Path:
+def _wheel(tmp_path, meta: str, license_file: bool = True) -> Path:
     w = tmp_path / "x-1.0-py3-none-any.whl"
     with zipfile.ZipFile(w, "w") as z:
         z.writestr("x-1.0.dist-info/METADATA", meta)
+        if license_file:
+            z.writestr("x-1.0.dist-info/licenses/LICENSE", "MIT License")
     return w
 
 
@@ -154,11 +156,13 @@ def _meta(root: Path, **override) -> str:
     return head + "\n" + (root / "README.md").read_text(encoding="utf-8")
 
 
-def _sdist(path: Path, meta: str) -> Path:
+def _sdist(path: Path, meta: str, extra=("LICENSE", "docs/third-party-licenses.md")) -> Path:
     src = path.parent / "pkginfo"
     src.write_text(meta, encoding="utf-8")
     with tarfile.open(path, "w:gz") as t:
         t.add(src, arcname="blender_fx_mcp-1.0/PKG-INFO")
+        for name in extra:
+            t.add(src, arcname=f"blender_fx_mcp-1.0/{name}")
     return path
 
 
@@ -303,6 +307,19 @@ def test_dist_accepts_crlf_metadata(repo, tmp_path):
     src = tmp_path / "pkginfo-crlf"
     src.write_bytes(meta.encode("utf-8"))
     with tarfile.open(dist / "x-1.0.tar.gz", "w:gz") as t:
-        t.add(src, arcname="blender_fx_mcp-1.0/PKG-INFO")
+        for name in ("PKG-INFO", "LICENSE", "docs/third-party-licenses.md"):
+            t.add(src, arcname=f"blender_fx_mcp-1.0/{name}")
     assert "\r\n" not in rc.read_metadata(dist / "x-1.0.tar.gz")
     assert rc.main(["--dist", str(dist)], root=repo) == 0
+
+
+def test_dist_requires_license_files(repo, tmp_path):
+    """휠에 LICENSE, sdist 에 LICENSE·제3자 라이선스 표가 없으면 실패하고 무엇이 빠졌는지 말해야 한다."""
+    dist = tmp_path / "dist"
+    dist.mkdir()
+    meta = _meta(repo)
+    _wheel(dist, meta, license_file=False)
+    _sdist(dist / "x-1.0.tar.gz", meta, extra=("LICENSE",))
+    fails = [line for ok, line in rc.check_dist(dist, repo) if not ok]
+    assert fails == ["휠 x-1.0-py3-none-any.whl 에 LICENSE 포함 → pyproject 의 license-files·sdist 포함 목록 확인",
+                     "sdist x-1.0.tar.gz 에 docs/third-party-licenses.md 포함 → pyproject 의 license-files·sdist 포함 목록 확인"]

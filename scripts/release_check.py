@@ -149,6 +149,20 @@ def check_package(meta: str, label: str, license: str, readme: str) -> list[tupl
     return out
 
 
+def check_license_files(dist: Path, label: str) -> list[tuple[bool, str]]:
+    """배포물만 받은 사람도 라이선스 본문을 보게: 휠은 .dist-info/licenses/LICENSE, sdist 는 LICENSE 와 제3자 라이선스 표."""
+    if dist.suffix == ".whl":
+        with zipfile.ZipFile(dist) as z:
+            names = z.namelist()
+        need = {"LICENSE": any(n.endswith(".dist-info/licenses/LICENSE") for n in names)}
+    else:
+        with tarfile.open(dist) as t:
+            names = ["/".join(n.split("/")[1:]) for n in t.getnames()]
+        need = {"LICENSE": "LICENSE" in names, "docs/third-party-licenses.md": "docs/third-party-licenses.md" in names}
+    return [(ok, f"{label} 에 {name} 포함" + ("" if ok else " → pyproject 의 license-files·sdist 포함 목록 확인"))
+            for name, ok in need.items()]
+
+
 def check_wheel(wheel: Path, version: str, urls: dict[str, str]) -> list[tuple[bool, str]]:
     """휠 METADATA 의 판과 Project-URL 이 pyproject 와 같은지."""
     meta = read_metadata(wheel)
@@ -158,7 +172,7 @@ def check_wheel(wheel: Path, version: str, urls: dict[str, str]) -> list[tuple[b
 
 
 def check_dist(dist_dir: Path, root: Path) -> list[tuple[bool, str]]:
-    """이미 만든 휠·sdist 를 모두 점검한다(판·Project-URL·라이선스·README)."""
+    """이미 만든 휠·sdist 를 모두 점검한다(판·Project-URL·라이선스·README·라이선스 파일)."""
     version, urls = project_version(root), project_urls(root)
     license = project_license(root)
     readme = (root / "README.md").read_text(encoding="utf-8")
@@ -175,6 +189,7 @@ def check_dist(dist_dir: Path, root: Path) -> list[tuple[bool, str]]:
                 out.append((False, f"{label} 안에 METADATA 가 없음 → 빌드 설정([build-system]) 확인"))
                 continue
             out += check_metadata(meta, label, version, urls) + check_package(meta, label, license, readme)
+            out += check_license_files(dist, label)
     return out
 
 
