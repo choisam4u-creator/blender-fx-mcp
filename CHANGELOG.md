@@ -27,7 +27,7 @@
 *Docs*
 - English sections in the README and `docs/recipes.md`; new `docs/troubleshooting.md`, `docs/architecture.md`, `docs/maintenance.md`, `SUPPORT.md`,
   `SECURITY.md`, `CODE_OF_CONDUCT.md` and `CITATION.cff`.
-- Client configs for Claude Desktop, Cursor and Codex in `examples/`; YAML bug form, feature request form and PR template.
+- Client configs for Claude Desktop, Cursor and Codex in `examples/`; YAML bug and feature request forms and a PR template.
 - `server.json.example` matches the 2025-12-11 MCP registry schema, and `scripts/release_check.py` checks a release in one step.
 
 **고침**
@@ -87,7 +87,7 @@
 - `docs/demo-script.md`: 데모 GIF 촬영 대본
 - `docs/registry.md`: 공식 MCP 레지스트리 등록 절차
 - 버튼 이름을 "Connect to MCP server" 로 통일
-- `SECURITY.md`(9876 포트 무인증 수신기 위험·비공개 신고)·`CODE_OF_CONDUCT.md`·기능 요청 이슈 양식
+- `SECURITY.md`(9876 포트 무인증 수신기 위험·비공개 신고)·`CODE_OF_CONDUCT.md`·기능 요청 이슈 양식(YAML 폼: 원하는 결과·예시 명령·대신 쓰는 방법이 필수 칸)
 - 버그 신고 양식을 YAML 폼(`bug_report.yml`, 한/영)으로: doctor 출력·블렌더 판·OS·MCP 클라이언트·재현 명령·결과를 필수 칸으로.
   지금까지 .md 양식은 칸을 비워도 올라갔다. 필수 칸·라벨이 빠지거나 문서가 없는 양식을 링크하면 시험이 실패한다
 - `SUPPORT.md`(한/영): 질문·버그·보안 신고를 어디로 보내는지, 응답 목표(보안·버그 7일, 질문·기능 14일), 지원하는 블렌더·파이썬 판 표.

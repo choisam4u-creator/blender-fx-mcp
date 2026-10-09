@@ -8,18 +8,12 @@ ROOT = Path(__file__).resolve().parents[1]
 TEMPLATES = ROOT / ".github" / "ISSUE_TEMPLATE"
 
 
-@pytest.mark.parametrize("name", ["feature_request.md"])
-def test_issue_template_front_matter(name):
+FORMS = {"bug_report.yml": "bug", "feature_request.yml": "enhancement"}
+
+
+def _form(name):
+    # PyYAML 없이 읽는다: 이 양식들은 `  - type:` 로 칸을 나누는 고정 모양만 쓴다.
     text = (TEMPLATES / name).read_text(encoding="utf-8")
-    m = re.match(r"---\n(.*?)\n---\n", text, re.S)
-    assert m, f"{name}: 맨 위 --- 머리말이 없음"
-    keys = {line.split(":", 1)[0] for line in m.group(1).splitlines() if ":" in line}
-    assert {"name", "about"} <= keys
-
-
-def _bug_form():
-    # PyYAML 없이 읽는다: 이 양식은 `  - type:` 로 칸을 나누는 고정 모양만 쓴다.
-    text = (TEMPLATES / "bug_report.yml").read_text(encoding="utf-8")
     head, _, body = text.partition("\nbody:\n")
     blocks = re.split(r"^  - type: ", body, flags=re.M)[1:]
     fields = {}
@@ -28,36 +22,60 @@ def _bug_form():
         m = re.search(r"^    id: ([\w-]+)$", b, re.M)
         if kind == "markdown":
             continue
-        assert m, f"{kind} 칸에 id 가 없음"
+        assert m, f"{name}: {kind} 칸에 id 가 없음"
+        assert m.group(1) not in fields, f"{name}: id 중복 {m.group(1)}"
         req = re.search(r"^      required: (true|false)$", b, re.M)
         fields[m.group(1)] = (kind, req and req.group(1) == "true", b)
     return text, head, fields
 
 
-def test_bug_form_is_the_only_bug_template():
-    # .md 와 .yml 이 같이 있으면 GitHub 가 두 양식을 다 보여 준다
-    assert (TEMPLATES / "bug_report.yml").is_file()
-    assert not (TEMPLATES / "bug_report.md").exists()
+def _bug_form():
+    return _form("bug_report.yml")
 
 
-def test_bug_form_header():
-    text, head, _ = _bug_form()
+def test_issue_templates_are_forms_only():
+    # .md 와 .yml 이 같이 있으면 GitHub 가 두 양식을 다 보여 준다. 양식은 모두 YAML 폼으로 받는다.
+    assert sorted(p.name for p in TEMPLATES.glob("*.md")) == []
+    assert sorted(p.name for p in TEMPLATES.glob("*.yml") if p.name != "config.yml") == sorted(FORMS)
+
+
+@pytest.mark.parametrize("name", sorted(FORMS))
+def test_form_header(name):
+    text, head, _ = _form(name)
     assert "\t" not in text, "YAML 에 탭 문자"
     for key in ("name", "description", "labels"):
         assert re.search(rf"^{key}: \S", head, re.M), key
-    assert re.search(r'^labels: \["bug"\]$', head, re.M)
+    assert re.search(rf'^labels: \["{FORMS[name]}"\]$', head, re.M)
+    assert " / " in re.search(r"^name: (.+)$", head, re.M).group(1), "한/영 이름이 아님"
+
+
+@pytest.mark.parametrize("name", sorted(FORMS))
+def test_form_fields_are_well_formed_and_bilingual(name):
+    _, _, fields = _form(name)
+    assert any(req for _, req, _ in fields.values()), "필수 칸이 하나도 없음"
+    for k, (kind, _, b) in fields.items():
+        assert kind in {"input", "textarea", "dropdown", "checkboxes"}, (k, kind)
+        label = re.search(r"^      label: (.+)$", b, re.M)
+        assert label, f"{k}: label 없음"
+        if k != "os":
+            assert " / " in label.group(1), f"{k}: 한/영 label 이 아님 ({label.group(1)})"
+        if kind == "dropdown":
+            assert re.search(r"^      options:\n(        - .+\n)+", b, re.M), f"{k}: options 없음"
 
 
 def test_bug_form_required_fields():
     _, _, fields = _bug_form()
     required = {k for k, (_, req, _) in fields.items() if req}
     assert {"doctor", "blender-version", "os", "client", "repro", "actual"} <= required
-    assert len(fields) == len(set(fields)), "id 중복"
-    for k, (kind, _, b) in fields.items():
-        assert kind in {"input", "textarea", "dropdown", "checkboxes"}, (k, kind)
-        assert re.search(r"^      label: \S", b, re.M), f"{k}: label 없음"
-        if kind == "dropdown":
-            assert re.search(r"^      options:\n(        - .+\n)+", b, re.M), f"{k}: options 없음"
+
+
+def test_feature_form_required_fields():
+    text, _, fields = _form("feature_request.yml")
+    required = {k for k, (_, req, _) in fields.items() if req}
+    assert {"goal", "prompt", "workaround"} <= required
+    assert "docs/recipes.md" in text
+    support = (ROOT / "SUPPORT.md").read_text(encoding="utf-8")
+    assert "issues/new?template=feature_request.yml" in support
 
 
 def test_bug_form_asks_for_repro_info():
@@ -66,14 +84,6 @@ def test_bug_form_asks_for_repro_info():
         assert needed in text
     langs = re.findall(r"^        - (\w+)$", fields["lang"][2], re.M)
     assert langs == ["ko", "en"]  # i18n.t 가 고르는 두 언어
-
-
-def test_bug_form_labels_are_bilingual():
-    _, _, fields = _bug_form()
-    for k, (_, _, b) in fields.items():
-        label = re.search(r"^      label: (.+)$", b, re.M).group(1)
-        if k != "os":
-            assert " / " in label, f"{k}: 한/영 label 이 아님 ({label})"
 
 
 def test_issue_config_links():
