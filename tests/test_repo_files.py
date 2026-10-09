@@ -525,3 +525,55 @@ def test_ci_has_coverage_floor_matching_contributing():
     assert f"**{floor}% 아래면 실패**" in text, "CONTRIBUTING 한국어 절의 하한이 ci.yml 과 다름"
     assert f"{floor}% floor" in text, "CONTRIBUTING 영어 절의 하한이 ci.yml 과 다름"
     assert text.count(f"--cov-fail-under={floor}") >= 2
+
+
+MAINT = ROOT / "docs" / "maintenance.md"
+
+
+def test_maintenance_has_both_languages_and_is_linked():
+    text = MAINT.read_text(encoding="utf-8")
+    assert "## 한국어" in text and "## English" in text
+    korean, english = text.split("## English")
+    assert not re.search(r"[가-힣]", english), "maintenance.md 영어 절에 한글"
+    assert korean.count("### ") == english.count("### "), "한/영 소절 수가 다름"
+    for doc in ("README.md", "SUPPORT.md"):
+        assert "docs/maintenance.md" in (ROOT / doc).read_text(encoding="utf-8"), f"{doc} 에서 링크 없음"
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    assert readme.count("docs/maintenance.md") >= 2, "README 한/영 절 모두에서 링크"
+
+
+def test_maintenance_links_exist():
+    text = MAINT.read_text(encoding="utf-8")
+    links = re.findall(r"\]\(([^)#]+)\)", text)
+    assert links
+    for link in links:
+        assert (MAINT.parent / link).resolve().is_file(), link
+
+
+def test_maintenance_matches_support_and_labels():
+    """응답 일수·라벨·needs-info 마감이 SUPPORT.md·CONTRIBUTING 과 같아야 한다."""
+    text = MAINT.read_text(encoding="utf-8")
+    support = (ROOT / "SUPPORT.md").read_text(encoding="utf-8")
+    for days in re.findall(r"(\d+)일 안", support):
+        assert f"{days}일 안" in text and f"within {days} days" in text, days
+    m = re.search(r"(\d+)일 동안 답이 없으면", support)
+    assert m and f"{m.group(1)}일 동안 답이 없으면" in text and f"{m.group(1)} days without a reply" in text
+    contributing = (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
+    for label in ("needs-info", "good first issue"):
+        assert text.count(f"`{label}`") >= 2, label
+        assert label in support or label in contributing, label
+
+
+def test_maintenance_matches_dependabot_and_python():
+    """dependabot 의 커밋 접두어·생태계, 가장 낮은 파이썬 판이 문서와 같아야 한다."""
+    text = MAINT.read_text(encoding="utf-8")
+    bot = (ROOT / ".github" / "dependabot.yml").read_text(encoding="utf-8")
+    for eco, prefix in re.findall(r'package-ecosystem: "([\w-]+)".*?prefix: "(\w+)"', bot, re.S):
+        assert f"**`{prefix}`(" in text and f"**`{prefix}` (" in text, prefix
+        assert eco in text, eco
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    for job in ("server-tests", "recipe-tests-bpy"):
+        assert f"{job}:" in ci, job
+    pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    lowest = re.findall(r"Programming Language :: Python :: (3\.\d+)\"", pyproject)[0]
+    assert f"지금 가장 낮은 {lowest}" in text and f"The lowest version today, {lowest}" in text

@@ -72,6 +72,8 @@ uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-do
 
 질문·버그·보안 신고를 어디로 보내는지, 응답 목표, 지원하는 블렌더·파이썬 판: [SUPPORT.md](SUPPORT.md)
 
+이슈 분류·의존성 갱신·출시·지원 판 정리 규칙: [docs/maintenance.md](docs/maintenance.md)
+
 ## 설치 (한 줄)
 
 클로드 코드:
@@ -263,6 +265,8 @@ uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-do
 Fixes for each error message (connection refused, timeout, port in use, fluid bake failed, black preview): [docs/troubleshooting.md](docs/troubleshooting.md)
 
 Where to ask questions or report bugs, reply targets and supported Blender/Python versions: [SUPPORT.md](SUPPORT.md)
+
+How issues, dependency updates, releases and old versions are handled: [docs/maintenance.md](docs/maintenance.md)
 
 ### Install
 

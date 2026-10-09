@@ -25,7 +25,7 @@
 - CI runs every test file except the Blender-only recipe tests, fails below 95% server coverage, and checks the built wheel and sdist metadata (version, project URLs, license expression, README, `mcp-name`).
 
 *Docs*
-- English sections in the README and `docs/recipes.md`; new `docs/troubleshooting.md`, `docs/architecture.md`, `SUPPORT.md`,
+- English sections in the README and `docs/recipes.md`; new `docs/troubleshooting.md`, `docs/architecture.md`, `docs/maintenance.md`, `SUPPORT.md`,
   `SECURITY.md`, `CODE_OF_CONDUCT.md` and `CITATION.cff`.
 - Client configs for Claude Desktop, Cursor and Codex in `examples/`; YAML bug form, feature request form and PR template.
 - `server.json.example` matches the 2025-12-11 MCP registry schema, and `scripts/release_check.py` checks a release in one step.
@@ -103,6 +103,8 @@
 - CHANGELOG 미출시 절 맨 위에 영어 요약(고침·시험·문서). 미출시 절에 영어 요약이 없거나 한글이 섞이면 시험이 실패한다
 - `CITATION.cff`: GitHub 저장소 화면에 "Cite this repository" 가 뜬다. 판·라이선스·저장소 주소·저자가
   `pyproject.toml`·LICENSE·server.json 과 어긋나면 시험과 `scripts/release_check.py` 가 실패한다
+- `docs/maintenance.md`(한/영): 이슈 분류 순서, dependabot PR 처리(액션 메이저 판은 변경 기록 확인 뒤), 판 번호·출시 주기,
+  지원 끝난 파이썬·블렌더 판 정리 기준. README·SUPPORT 에서 링크. 응답 일수·라벨·dependabot 설정과 어긋나면 시험이 실패한다
 
 **배포 준비**
 - `server.json.example` 을 MCP 레지스트리 2025-12-11 스키마(camelCase 키)에 맞춤

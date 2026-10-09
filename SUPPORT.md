@@ -37,3 +37,5 @@ Bugs without repro info (doctor output, Blender version, tool and arguments) wai
 
 판 정책은 [SECURITY.md](SECURITY.md) 와 같습니다. 이 표가 `pyproject.toml`·CI·README 와 어긋나면 시험이 실패합니다.
 Kept in sync with SECURITY.md; tests fail if this table drifts from `pyproject.toml`, CI or the README.
+
+이슈 분류 순서·판 정리 기준은 [docs/maintenance.md](docs/maintenance.md). / Triage order and version-dropping rules: [docs/maintenance.md](docs/maintenance.md).
