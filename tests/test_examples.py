@@ -54,3 +54,39 @@ def test_examples_readme_links_every_file_and_is_linked_from_readme():
         assert f"]({name})" in index, f"examples/README.md 에 {name} 링크가 없음"
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     assert readme.count("](examples/)") >= 2, "README 한국어·영어 설치 절 모두 examples/ 로 이어져야 함"
+
+
+def _load_list_tools():
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("list_tools_example", EX / "list_tools.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+@pytest.mark.parametrize("lang, prefix", [("ko", "실패: "), ("en", "Failed: ")])
+def test_list_tools_example_runs_without_blender(monkeypatch, lang, prefix):
+    """예제가 서버를 stdio 로 띄워 서버와 같은 도구 목록을 받고, 블렌더가 없으면 ping 이 실패 문장을 돌려주는지."""
+    import asyncio
+    import socket
+
+    from blender_fx_mcp import server
+
+    with socket.socket() as s:  # 아무도 듣지 않는 포트
+        s.bind(("localhost", 0))
+        port = s.getsockname()[1]
+    monkeypatch.setenv("BLENDER_FX_PORT", str(port))
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    example = _load_list_tools()
+    names, ping = asyncio.run(example.run(example.server_params([])))
+    assert names == [t.name for t in asyncio.run(server.mcp.list_tools())]
+    assert "ping_blender" in names
+    assert ping.startswith(prefix) and f"localhost:{port}" in ping
+
+
+def test_list_tools_example_is_documented():
+    readme = (EX / "README.md").read_text(encoding="utf-8")
+    assert "[`list_tools.py`](list_tools.py)" in readme
+    assert "uv run python examples/list_tools.py" in readme
+    assert "uv run python examples/list_tools.py" in (EX / "list_tools.py").read_text(encoding="utf-8")

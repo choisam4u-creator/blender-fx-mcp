@@ -93,6 +93,8 @@
 - `SUPPORT.md`(한/영): 질문·버그·보안 신고를 어디로 보내는지, 응답 목표(보안·버그 7일, 질문·기능 14일), 지원하는 블렌더·파이썬 판 표.
   README 한/영에서 링크. 표의 판이 `pyproject.toml` 분류자·CI 행렬·`bpy` 판·README·SECURITY.md 와 어긋나면 시험이 실패한다
 - `examples/`: 클로드 데스크톱·커서·코덱스 연결 설정(코덱스는 굽기용 `tool_timeout_sec`)
+- `examples/list_tools.py`: 공식 `mcp` 파이썬 클라이언트로 서버를 stdio 로 띄워 도구 목록·`ping_blender` 결과를 출력하는 예제.
+  블렌더 없이 한/영으로 돌려 도구 목록이 서버와 같은지 시험한다
 - README 맨 위 배지(CI·라이선스·Python 판). 실제 파일과 어긋나면 시험이 실패한다
 - PR 양식(한/영): ruff·pytest·한/영 문장·새 레시피 확인 칸
 - `docs/troubleshooting.md`(한/영): 연결 거부·시간 초과·빈 응답·포트 충돌·유체 굽기 실패·검은 미리보기·부수기/가져오기·영상 실패의

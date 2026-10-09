@@ -18,3 +18,16 @@ If other servers are already configured, add only the `"blender-fx": {...}` entr
 
 로컬 폴더에서 개발 중이면 `command` 를 `uv`, `args` 를 `["--directory", "<저장소 절대 경로>", "run", "blender-fx-mcp"]` 로 바꿉니다.
 For a local checkout use `uv` with `["--directory", "<absolute path to the repo>", "run", "blender-fx-mcp"]`.
+
+## 직접 짜는 클라이언트 / Writing your own client
+
+[`list_tools.py`](list_tools.py) 는 공식 `mcp` 파이썬 클라이언트로 서버를 stdio 로 띄워 도구 목록을 받고 `ping_blender` 를 부릅니다.
+블렌더가 꺼져 있어도 돌며, 그때는 연결 실패 문장이 나옵니다. 자기 클라이언트·자동화 스크립트의 출발점으로 복사해 쓰세요.
+
+[`list_tools.py`](list_tools.py) starts the server over stdio with the official `mcp` Python client, lists the tools and
+calls `ping_blender`. It runs without Blender (you then get the connection failure message). Copy it as a starting point.
+
+```sh
+uv run python examples/list_tools.py
+BLENDER_FX_LANG=en uv run python examples/list_tools.py uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-mcp
+```
