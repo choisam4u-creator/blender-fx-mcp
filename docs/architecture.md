@@ -55,7 +55,7 @@ AI 는 블렌더 코드를 짜지 않습니다. 검증된 레시피와 값만 �
 ### 시험 경로
 
 ```
-블렌더 없이 (CI server-tests, 3.10·3.11·3.12·3.13)
+블렌더 없이 (CI server-tests, 3.10·3.11·3.12·3.13·3.14)
   tests/test_server*.py · test_doctor.py · test_headless.py · …
   가짜 소켓·가짜 레시피 결과·가짜 실행 파일로 server/bridge/doctor/headless 를 시험
 
@@ -123,7 +123,7 @@ The AI never writes Blender code. It only picks a tested recipe and its values.
 ### Test paths
 
 ```
-Without Blender (CI server-tests, Python 3.10, 3.11, 3.12, 3.13)
+Without Blender (CI server-tests, Python 3.10, 3.11, 3.12, 3.13, 3.14)
   tests/test_server*.py, test_doctor.py, test_headless.py, ...
   fake socket, fake recipe results and fake executables test server/bridge/doctor/headless
 

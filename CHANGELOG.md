@@ -18,7 +18,7 @@
 - All 32 tools carry MCP annotations; tools that overwrite or delete data are marked `destructiveHint`.
 
 *Tests and CI*
-- Server-side unit tests grew from 9 to over 540, running on Python 3.10–3.13 in CI with coverage in the job summary (99%).
+- Server-side unit tests grew from 9 to over 540, running on Python 3.10–3.14 in CI with coverage in the job summary (99%).
 - Most recipe tests run without the Blender app through `pip install bpy`; Mantaflow tests are marked `app_only`.
 - Static checks keep every message in Korean/English pairs and every tool description's value list equal to what the server accepts.
 - ruff lint, Dependabot, read-only workflow tokens and SHA-pinned actions.
@@ -66,7 +66,8 @@
 - 레시피 오류 메시지가 모두 `L(한국어, 영어)` 쌍인지 정적으로 검사하는 시험
 - 서버·연결·점검 메시지가 모두 `t(한국어, 영어)` 쌍인지, 도구 설명 첫 줄이 영어인지 정적으로 검사하는 시험
 - 공식 블렌더 Linux 빌드로 `app_only` 시험을 돌리는 손 실행 작업 `app-tests`(bpy 4.2·4.5·5.0 휠은 모두 유체가 깨져 있음)
-- CI 파이썬 행렬을 분류자의 모든 판(3.10·3.11·3.12·3.13)으로. 분류자에 있는 판이 행렬에 빠지면 시험이 실패한다
+- CI 파이썬 행렬을 분류자의 모든 판(3.10·3.11·3.12·3.13·3.14)으로. 분류자에 있는 판이 행렬에 빠지면 시험이 실패한다
+- Python 3.14 지원 추가: 서버 시험 579개가 3.14.6 에서 통과(커버리지 99.35%), `uv.lock` 의 의존성이 모두 cp314 휠을 냄
 - ruff lint 작업(판 고정 0.15.20, 설정은 `pyproject.toml`)
 - dependabot: uv 의존성·GitHub Actions 판을 주 1회 갱신 PR 로
 - CI 서버 시험이 커버리지(레시피 제외)를 작업 요약에 남긴다. 59% → 84%
@@ -79,7 +80,7 @@
 - 시험 42 → 580개(블렌더 없이 546개)
 
 **문서**
-- PyPI 페이지용 `[project.urls]`(이슈·변경 기록·보안 정책)와 Python 3.10~3.13 분류자
+- PyPI 페이지용 `[project.urls]`(이슈·변경 기록·보안 정책)와 Python 3.10~3.14 분류자
 - README 첫 화면: 한 줄 소개, Claude 연결 3줄, 첫 명령 예시, 데모 GIF 자리
 - `docs/recipes.md`: 자연어 명령 5개와 실제 결과 수치. 같은 5개를 영어 절(`#english`)로도 적고 README 영어 절에서 링크.
   한/영 예시의 도구 호출이 다르거나, 없는 도구·인자를 쓰거나, 서버 검사(목록·범위)에 걸리면 시험이 실패한다
