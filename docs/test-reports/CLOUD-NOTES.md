@@ -10,7 +10,7 @@ BLENDER_FX_LANG=en uv run python examples/list_tools.py   # 블렌더를 켜고 
 
 ## 2026-10-09 (3회차)
 
-- 한 일: `latest.md`(10/1) FAIL 2건(GIF 링크·버튼 이름)은 10/2 회차에 고쳐 main 에 있음을 다시 확인 → 백로그로 진행. main 은 앞서 있지 않았음(cloud-work 가 main 을 포함). **백로그 12개 완료**(앞 회차가 남긴 7개 + 이번에 추가한 5개 중 5개). 남은 `[ ]` 0개.
+- 한 일: `latest.md`(10/1) FAIL 2건(GIF 링크·버튼 이름)은 10/2 회차에 고쳐 main 에 있음을 다시 확인 → 백로그로 진행. main 은 앞서 있지 않았음(cloud-work 가 main 을 포함). **백로그 21개 완료**(앞 회차가 남긴 7개 + 이번 회차에 세 번 나눠 추가한 15개 중 14개. 아래 19줄은 관련 항목을 묶어 적음). 남은 `[ ]` 3개.
   1. **라벨 정의** `.github/labels.yml`(8개, 한/영 설명) + dependabot 라벨 고정 + maintenance.md `gh label create` 8줄. 양식·문서·dependabot·stale 이 쓰는 라벨이 모두 정의돼 있는지 시험.
   2. **`examples/list_tools.py`** — 공식 `mcp` 클라이언트로 서버를 stdio 로 띄워 도구 목록·`ping_blender`. 닫힌 포트로 한/영 시험.
   3. **파이썬 3.14** — 3.14.6 에서 서버 시험·커버리지 통과, 분류자·CI·SUPPORT·배지·architecture 갱신.
@@ -23,7 +23,14 @@ BLENDER_FX_LANG=en uv run python examples/list_tools.py   # 블렌더를 켜고 
   10. **질문 이슈 양식** `question.yml`(라벨 `question`), SUPPORT 링크.
   11. **README 도구 표 점검** `scripts/gen_tool_table.py` — 통째 생성 대신(손으로 다듬은 설명이 더 자세함) 빠진 도구·`a/b/c` 값 목록이 서버 허용 값과 같은지 + `--draft` 초안 행.
   12. **3.10 지원 종료 예고** — CHANGELOG 0.7.0(한/영)·maintenance.md(0.8.0 에서 뺌). 드라이런으로 고칠 곳 10곳을 시험이 모두 짚는 것 확인.
-- 돌린 시험: `uvx ruff@0.15.20 check .` 통과. `uv run pytest -q`(블렌더 없음, 3.11) → **610 통과, 34 건너뜀**. CI 서버 명령 3.10(601 통과, 9 건너뜀 — tomllib)·3.14(610 통과), 커버리지 99.04~99.36%(하한 95%). **`scripts/bpy_tests.sh` → 638 통과, 6 건너뜀**(회차 끝 기준)(유체 `app_only` 5개·실제 캐릭터 파일 1개). `uv build` → `release_check.py --dist` 22개 OK, `twine@7.0.0 check` PASSED 2개. `uv lock --check` 통과. `license_check.py` 40/40 OK. PR CI(run 58, Windows 고친 커밋): lint·server-tests 3.10~3.14·macOS·**Windows**·recipe-tests-bpy 모두 초록.
+  13. **`.gitattributes`** — 모든 OS 에서 LF, 바이너리 지정, CRLF 파일이 생기면 시험 실패.
+  14. **SPDX 표기** — 패키지·레시피·스크립트·예제 41개 첫 줄 `# SPDX-License-Identifier: MIT`.
+  15. **첫 기여자 인사** `greet.yml`(한/영, PR 코드 체크아웃 없음).
+  16. **SECURITY.md 공급망 표**(한/영 8줄) — 쓰다가 CI 의 `uv sync` 에 `--locked` 가 없던 것을 발견해 모두 고침.
+  17. **Windows 건너뛰는 시험 문서화** — CONTRIBUTING 에 18개(가짜 `/bin/sh` 블렌더)와 이유, 개수 시험.
+  18. **배포물 라이선스 파일 점검** — `release_check.py --dist` 가 휠·sdist 의 LICENSE·제3자 라이선스 표를 봄(25개 OK).
+  19. **문서 링크 점검** `tests/test_docs_links.py` — .md 19개의 상대 링크·앵커(한글 제목 포함), 지금 깨진 링크 0개.
+- 돌린 시험: `uvx ruff@0.15.20 check .` 통과. `uv run pytest -q`(블렌더 없음, 3.11) → **638 통과, 34 건너뜀**. CI 서버 명령 3.10(629 통과, 9 건너뜀 — tomllib)·3.14(638 통과), 커버리지 99.04%(하한 95%). **`scripts/bpy_tests.sh` → 666 통과, 6 건너뜀**(회차 끝 기준)(유체 `app_only` 5개·실제 캐릭터 파일 1개). `uv build` → `release_check.py --dist` 25개 OK, `twine@7.0.0 check` PASSED 2개. `uv lock --check` 통과. `license_check.py` 40/40 OK. PR CI(run 58, Windows 고친 커밋): lint·server-tests 3.10~3.14·macOS·**Windows**·recipe-tests-bpy 모두 초록.
 - 막힌 것: 없음. 라벨 만들기·Scorecard 첫 실행·stale 작업은 병합 뒤 GitHub 에서만 확인 가능(클라우드는 라벨·설정을 바꾸지 않음).
 - PR: 열려 있는 claude/cloud-work → main #13 에 이번 커밋이 함께 올라감(본문에 이번 회차 목록 추가).
 - Mac에서 확인할 것:
