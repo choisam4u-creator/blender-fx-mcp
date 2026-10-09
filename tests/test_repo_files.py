@@ -602,3 +602,38 @@ def test_bpy_script_is_runnable_and_documented():
     ignored = (ROOT / ".gitignore").read_text(encoding="utf-8").split()
     assert ".venv-bpy/" in ignored
     assert "scripts/bpy_tests.sh" in (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
+
+
+def _minor_list(text):
+    return sorted({int(m) for m in re.findall(r"3\.(\d+)", text)})
+
+
+def test_python_version_range_is_the_same_everywhere():
+    """지원 파이썬 판(가장 낮은 판·가장 높은 판)이 적힌 곳을 한 번에 본다.
+    3.10 을 뺄 때 분류자만 고치면 나머지 어긋난 곳을 모두 짚는다(maintenance.md 의 EOL 정리 기준)."""
+    proj = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    classifiers = sorted(int(m) for m in re.findall(r'"Programming Language :: Python :: 3\.(\d+)"', proj))
+    low, high = classifiers[0], classifiers[-1]
+    assert classifiers == list(range(low, high + 1)), f"분류자에 빠진 판: {classifiers}"
+    found = {}
+    found["pyproject requires-python"] = int(re.search(r'^requires-python = ">=3\.(\d+)"', proj, re.M).group(1))
+    found["pyproject ruff target-version"] = int(re.search(r'^target-version = "py3(\d+)"', proj, re.M).group(1))
+    lock = (ROOT / "uv.lock").read_text(encoding="utf-8")
+    found["uv.lock requires-python"] = int(re.search(r'^requires-python = ">=3\.(\d+)"', lock, re.M).group(1))
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    matrix = _minor_list(re.search(r"^\s+python: \[(.*?)\]$", ci, re.M).group(1))
+    found["ci.yml 행렬 최저"] = matrix[0]
+    support = next(r for r in _support_rows()[1] if r[0].startswith("파이썬"))
+    found["SUPPORT.md 표 최저"] = _minor_list(support[1])[0]
+    badge = re.search(r"badge/python-3\.(\d+)%E2%80%933\.(\d+)-", (ROOT / "README.md").read_text(encoding="utf-8"))
+    found["README 배지 최저"] = int(badge.group(1))
+    arch = ARCH.read_text(encoding="utf-8")
+    for line in re.findall(r"^.*CI server-tests.*$", arch, re.M):
+        found[f"architecture.md: {line.strip()[:30]}"] = _minor_list(line)[0]
+    maint = (ROOT / "docs" / "maintenance.md").read_text(encoding="utf-8")
+    found["maintenance.md 한국어"] = int(re.search(r"지금 가장 낮은 3\.(\d+)", maint).group(1))
+    found["maintenance.md 영어"] = int(re.search(r"The lowest version today, 3\.(\d+)", maint).group(1))
+    wrong = {k: f"3.{v}" for k, v in found.items() if v != low}
+    assert not wrong, f"가장 낮은 판이 분류자(3.{low})와 다른 곳: {wrong}"
+    assert matrix[-1] == high and _minor_list(support[1])[-1] == high and int(badge.group(2)) == high, \
+        f"가장 높은 판(3.{high})이 CI 행렬·SUPPORT 표·README 배지 중 어딘가와 다름"

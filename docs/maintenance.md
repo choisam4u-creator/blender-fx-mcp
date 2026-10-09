@@ -32,7 +32,7 @@
 
 ### 지원 판 정리 기준
 
-- **파이썬**: 공식 지원이 끝난 판(EOL)은 그 뒤 첫 마이너 출시에서 뺀다. `pyproject.toml` 의 분류자·`requires-python`, CI 행렬, SUPPORT.md 표, README 배지를 함께 고친다(어긋나면 시험이 실패한다).
+- **파이썬**: 공식 지원이 끝난 판(EOL)은 그 뒤 첫 마이너 출시에서 뺀다. `pyproject.toml` 의 분류자·`requires-python`, ruff `target-version`, CI 행렬, SUPPORT.md 표, README 배지, architecture.md, 이 문서, `uv lock` 을 함께 고친다. 분류자만 바꾸고 `uv run pytest -q tests/test_repo_files.py -k python_version_range` 를 돌리면 어긋난 곳을 모두 알려 준다.
   지금 가장 낮은 3.10 은 2026-10 에 EOL 이므로 다음 마이너 판 뒤에 빼는 것을 검토한다.
 - **블렌더**: 지원 중인 LTS 판을 실제 앱으로 전부 시험한다. 새 LTS 가 나오면 그 판으로 시험을 돌려 SUPPORT.md 표에 올리고, 지원이 끝난 LTS 는 "확인 안 함" 으로 내린다.
 - **blender-fx-mcp**: 최신 마이너 판에만 버그·보안 수정을 낸다.
@@ -69,7 +69,7 @@ How this single-maintainer project is maintained. These are the rules the mainta
 
 ### Dropping old versions
 
-- **Python**: a version that reached its end of life is dropped in the next minor release. Update the classifiers and `requires-python` in `pyproject.toml`, the CI matrix, the SUPPORT.md table and the README badge together (tests fail if they drift apart).
+- **Python**: a version that reached its end of life is dropped in the next minor release. Update the classifiers and `requires-python` in `pyproject.toml`, ruff `target-version`, the CI matrix, the SUPPORT.md table, the README badge, architecture.md, this page and `uv lock` together. Change the classifiers first and run `uv run pytest -q tests/test_repo_files.py -k python_version_range`: it lists every place that still disagrees.
   The lowest version today, 3.10, reaches end of life in 2026-10, so dropping it after the next minor release is under review.
 - **Blender**: the supported LTS release gets the full test suite on the real app. When a new LTS ships, run the tests on it and add it to the SUPPORT.md table; an LTS that is out of support moves to "untested".
 - **blender-fx-mcp**: bug and security fixes go to the latest minor release only.
