@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 # 물: 방향·속도·모양·점성을 정해서 떨어뜨리거나 쏘거나 채운다 (Mantaflow 액체).
 # PARAMS: mode(drop|stream|pool|object), source_object, at, size, shape(sphere|box|column),
 #         direction_deg, pitch_deg, speed, start_frame, duration, liquid, viscosity, surface_tension,

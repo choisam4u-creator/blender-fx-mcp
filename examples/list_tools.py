@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """blender-fx-mcp 서버를 공식 `mcp` 파이썬 클라이언트로 띄워 도구 목록과 ping_blender 결과를 출력한다.
 Launch the blender-fx-mcp server over stdio with the official `mcp` Python client, list its tools and call ping_blender.
 

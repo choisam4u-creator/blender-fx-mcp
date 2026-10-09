@@ -939,3 +939,24 @@ def test_gitattributes_keeps_lf_everywhere():
     crlf = [f.decode() for f in files if f and (ROOT / f.decode()).is_file()
             and b"\r\n" in (ROOT / f.decode()).read_bytes() and not f.endswith((b".png", b".gif", b".blend"))]
     assert not crlf, f"CRLF 줄 끝: {crlf}"
+
+
+def test_source_files_carry_spdx_header():
+    """배포·복사되는 코드(패키지·레시피·스크립트·예제)는 파일마다 라이선스를 적는다(REUSE 식 SPDX 한 줄)."""
+    spdx = "# SPDX-License-Identifier: MIT"
+    lic = re.search(r'^license = "([^"]+)"$', (ROOT / "pyproject.toml").read_text(encoding="utf-8"), re.M).group(1)
+    assert spdx.endswith(lic), "SPDX 표기가 pyproject 의 license 와 다름"
+    files = [*(ROOT / "src").rglob("*.py"), *(ROOT / "scripts").glob("*.py"), *(ROOT / "scripts").glob("*.sh"),
+             *(ROOT / "examples").glob("*.py")]
+    missing = []
+    for f in files:
+        lines = f.read_text(encoding="utf-8").splitlines()
+        head = lines[1:2] if lines and lines[0].startswith("#!") else lines[:1]
+        if head != [spdx]:
+            missing.append(str(f.relative_to(ROOT)))
+    assert not missing, f"첫 줄(셔뱅 다음 줄)에 '{spdx}' 가 없음: {missing}"
+    # 레시피에 붙어도 블렌더로 보내는 코드가 그대로 돌고 모듈 설명(docstring)도 살아 있는지
+    from blender_fx_mcp import doctor, server
+    assert server.__doc__ and doctor.__doc__
+    code = server.build_code("list_objects", {})
+    compile(code, "<recipe>", "exec")

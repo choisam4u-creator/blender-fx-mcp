@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """런타임 의존성 라이선스 점검. `uv.lock` 에서 blender-fx-mcp 가 끌어오는 패키지를 모두 모아(추가 기능·플랫폼 조건 포함)
 MIT 프로젝트와 함께 배포해도 되는 허용 목록 안인지, `docs/third-party-licenses.md` 표와 같은지 본다.
 

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 # 공용 도우미. 서버가 모든 레시피 앞에 `PARAMS = {...}` 한 줄과 이 파일을 붙여 블렌더로 보낸다.
 # 블렌더 안에서 실행되므로 bpy 를 바로 쓴다. 외부 패키지는 쓰지 않는다.
 import bpy

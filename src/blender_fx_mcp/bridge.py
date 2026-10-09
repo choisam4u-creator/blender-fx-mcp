@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """블렌더 안 수신기(blender-mcp 애드온)와 소켓으로 대화하는 부분.
 
 수신기는 JSON 한 덩어리 {"type": ..., "params": {...}} 를 받아 블렌더 메인 스레드에서 실행하고

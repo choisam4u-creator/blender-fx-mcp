@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 # 장면(또는 지정 오브젝트)을 glb/fbx/obj 로 내보낸다. bake_physics 면 조각의 물리 움직임을 키프레임으로 구워 애니메이션째 내보낸다.
 # PARAMS: path, names(목록, 비우면 보이는 것 전부), bake_physics
 

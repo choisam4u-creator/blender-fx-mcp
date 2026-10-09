@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 # 바닥 재질·크기. PARAMS: material(asphalt|concrete|grass|sand|dirt|snow), size(m), z
 
 

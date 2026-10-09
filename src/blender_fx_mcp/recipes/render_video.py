@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 # 최종 영상 렌더: 프레임 범위를 mp4(H.264)로 뽑는다.
 # PARAMS: out_path, quality(smoke|final|preview), width, height, fps, frame_start, frame_end
 

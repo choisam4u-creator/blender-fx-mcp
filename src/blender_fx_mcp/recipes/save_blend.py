@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 # 현재 장면을 .blend 파일로 저장한다(복사본 저장이라 열려 있는 파일은 그대로). PARAMS: path
 
 

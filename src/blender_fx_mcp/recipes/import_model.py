@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 # 외부 모델(glb/gltf/fbx/obj/stl/usd/blend)을 가져와 하나의 메시로 합치고, 크기를 맞추고, 바닥에 세운다.
 # PARAMS: path, name, size(가장 긴 변 m, 0이면 원본), on_ground, center, parts(남길 부품 이름 목록)
 

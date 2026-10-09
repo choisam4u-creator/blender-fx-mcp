@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """출시 전 점검. 버전·CHANGELOG·server.json·빌드 결과가 서로 맞는지 한 번에 본다.
 
   uv run python scripts/release_check.py           # 파일만 점검 (몇 초)

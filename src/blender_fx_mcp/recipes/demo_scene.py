@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 # 연습용 건물 하나와 바닥·카메라·조명을 만든다. 대상 오브젝트가 없을 때 쓴다.
 # PARAMS: name, floors, width, depth, floor_height, style(plain|windows), windows_per_side, ground
 

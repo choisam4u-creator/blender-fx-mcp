@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
 # 블렌더 앱 없이 `pip install bpy` 로 레시피 시험을 돌린다(Linux 클라우드 회차·CI 의 recipe-tests-bpy 작업과 같은 방법).
 # 개발용 .venv 를 건드리지 않게 따로 가상환경(.venv-bpy)을 만든다. 유체(`app_only`) 시험은 tests/conftest.py 가 건너뛴다.
 #

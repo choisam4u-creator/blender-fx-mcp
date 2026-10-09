@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 # 프레임 범위·fps·슬로모션. 슬로모션은 리지드바디와 연기·물 도메인의 시간 배속을 구간만 낮춘다.
 # PARAMS: frame_start, frame_end, fps, slow_from, slow_to, slow_factor, rebake
 

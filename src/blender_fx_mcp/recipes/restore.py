@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 # 스냅샷으로 되돌리기. 블렌더가 그 .blend 파일을 연다(지금 장면은 버려진다). PARAMS: path
 
 

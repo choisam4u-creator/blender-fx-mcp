@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 # 파괴 레시피: 메시를 수리하고 보로노이로 조각내어 물리로 무너뜨린다.
 # PARAMS: target, impact, material, pieces, pattern, focus, time_scale, frames, impact_height, impact_power,
 #         dust, glue, glue_neighbors, glue_max, seed, collision, interior, repair, shell_thickness,

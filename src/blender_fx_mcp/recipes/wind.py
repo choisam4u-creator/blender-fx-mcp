@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 # 바람: 파티클·천·연기를 미는 힘장. PARAMS: direction_deg(0=+Y 쪽으로, 90=+X 쪽으로), strength, turbulence, at
 
 

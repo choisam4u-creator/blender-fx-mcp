@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """blender-fx MCP 서버. AI 가 말로 시키면 블렌더 FX 를 만든다.
 
 도구는 검증된 레시피(recipes/*.py)를 블렌더 안 수신기로 보내 실행한다.

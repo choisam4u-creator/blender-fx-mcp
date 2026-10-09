@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 # 바다 표면(Ocean 모디파이어). 파도가 시간에 따라 움직인다. PARAMS: size(m), wave_scale, choppiness, wind_velocity, frames, z, resolution
 
 

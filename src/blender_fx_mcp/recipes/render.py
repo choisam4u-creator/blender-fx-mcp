@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 # 미리보기·최종 렌더 레시피. 프레임 몇 장을 PNG 로 저장하고 경로를 돌려준다.
 # PARAMS: out_dir, frame_count 또는 frames(목록), width, height, quality(preview|final)
 

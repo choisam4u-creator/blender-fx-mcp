@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 # 조명·하늘 분위기 프리셋. PARAMS: preset, sun_strength(배수), sky(flat|procedural), hdri(파일 경로)
 
 # (태양 세기, 고도 deg, 방위 deg, 태양 색, 태양 퍼짐 rad, 하늘 색, 하늘 세기, 노출, 하늘 텍스처용 고도)

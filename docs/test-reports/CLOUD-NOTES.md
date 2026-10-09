@@ -23,7 +23,7 @@ BLENDER_FX_LANG=en uv run python examples/list_tools.py   # 블렌더를 켜고 
   10. **질문 이슈 양식** `question.yml`(라벨 `question`), SUPPORT 링크.
   11. **README 도구 표 점검** `scripts/gen_tool_table.py` — 통째 생성 대신(손으로 다듬은 설명이 더 자세함) 빠진 도구·`a/b/c` 값 목록이 서버 허용 값과 같은지 + `--draft` 초안 행.
   12. **3.10 지원 종료 예고** — CHANGELOG 0.7.0(한/영)·maintenance.md(0.8.0 에서 뺌). 드라이런으로 고칠 곳 10곳을 시험이 모두 짚는 것 확인.
-- 돌린 시험: `uvx ruff@0.15.20 check .` 통과. `uv run pytest -q`(블렌더 없음, 3.11) → **610 통과, 34 건너뜀**. CI 서버 명령 3.10(601 통과, 9 건너뜀 — tomllib)·3.14(610 통과), 커버리지 99.04~99.36%(하한 95%). **`scripts/bpy_tests.sh` → 625 통과, 6 건너뜀**(유체 `app_only` 5개·실제 캐릭터 파일 1개). `uv build` → `release_check.py --dist` 22개 OK, `twine@7.0.0 check` PASSED 2개. `uv lock --check` 통과. `license_check.py` 40/40 OK. PR CI: macOS 통과, Windows 는 고친 뒤 결과를 PR 에서 확인.
+- 돌린 시험: `uvx ruff@0.15.20 check .` 통과. `uv run pytest -q`(블렌더 없음, 3.11) → **610 통과, 34 건너뜀**. CI 서버 명령 3.10(601 통과, 9 건너뜀 — tomllib)·3.14(610 통과), 커버리지 99.04~99.36%(하한 95%). **`scripts/bpy_tests.sh` → 638 통과, 6 건너뜀**(회차 끝 기준)(유체 `app_only` 5개·실제 캐릭터 파일 1개). `uv build` → `release_check.py --dist` 22개 OK, `twine@7.0.0 check` PASSED 2개. `uv lock --check` 통과. `license_check.py` 40/40 OK. PR CI(run 58, Windows 고친 커밋): lint·server-tests 3.10~3.14·macOS·**Windows**·recipe-tests-bpy 모두 초록.
 - 막힌 것: 없음. 라벨 만들기·Scorecard 첫 실행·stale 작업은 병합 뒤 GitHub 에서만 확인 가능(클라우드는 라벨·설정을 바꾸지 않음).
 - PR: 열려 있는 claude/cloud-work → main #13 에 이번 커밋이 함께 올라감(본문에 이번 회차 목록 추가).
 - Mac에서 확인할 것:

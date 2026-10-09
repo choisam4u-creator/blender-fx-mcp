@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """README 도구 표 점검·초안. 블렌더 없이 돈다.
 
   uv run python scripts/gen_tool_table.py           # README 표와 서버가 어긋난 곳(빠진 도구·틀린 값 목록)을 알려 줌

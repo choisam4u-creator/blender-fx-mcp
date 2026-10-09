@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """메시지 언어. 환경변수 BLENDER_FX_LANG 이 en 으로 시작하면 영어, 아니면 한국어."""
 
 from __future__ import annotations

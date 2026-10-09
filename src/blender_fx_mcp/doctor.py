@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """자가 진단: 준비물이 갖춰졌는지 한 번에 확인한다. 이슈 올리기 전에 먼저 돌려 본다.
 
   uv run blender-fx-doctor          # 사람이 읽는 줄

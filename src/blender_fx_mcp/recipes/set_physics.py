@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 # 물리 전역 설정: 중력, 계산 정밀도, 속도. PARAMS: gravity, gravity_deg, substeps, solver_iterations, speed, fps, rebake
 
 
