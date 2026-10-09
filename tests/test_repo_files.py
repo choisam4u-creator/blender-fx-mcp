@@ -975,3 +975,33 @@ def test_greet_workflow_is_safe_and_links_exist():
     for url in re.findall(r"https://github\.com/choisam4u-creator/blender-fx-mcp/blob/main/([^)#\s]+)", text):
         assert (ROOT / url).is_file(), url
     assert "(#good-first-contributions)" in (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
+
+
+def test_ci_installs_from_the_lock_file():
+    """CI 의 모든 `uv sync` 는 --locked 로 uv.lock(해시 포함)과 다르면 멈춰야 한다. 조용히 다른 판을 받지 않게."""
+    lock = (ROOT / "uv.lock").read_text(encoding="utf-8")
+    assert lock.count('hash = "sha256:') > 100
+    for wf in sorted((ROOT / ".github" / "workflows").glob("*.yml")):
+        for line in re.findall(r"^\s+- run: (uv sync.*)$", wf.read_text(encoding="utf-8"), re.M):
+            assert "--locked" in line, f"{wf.name}: {line}"
+
+
+def test_security_supply_chain_table_matches_repo():
+    """SECURITY.md 공급망 표의 파일·시험·CI 작업이 실제로 있어야 한다."""
+    text = (ROOT / "SECURITY.md").read_text(encoding="utf-8")
+    table = text.split("## 공급망 조치 / Supply-chain measures", 1)[1].split("\n## ", 1)[0]
+    rows = re.findall(r"^\| (.+) \| (.+) \| (.+) \|$", table, re.M)[1:]  # 머리줄 빼고
+    assert len(rows) >= 8
+    tests = "".join(p.read_text(encoding="utf-8") for p in (ROOT / "tests").glob("test_*.py"))
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    for measure, where, check in rows:
+        assert " / " in measure, f"한/영이 아님: {measure}"
+        for path in re.findall(r"`([^`]+)`", where):
+            path = path.split(" ")[0]
+            if "/" in path or path.endswith((".lock", ".md", ".py", ".yml")):
+                assert list(ROOT.glob(path)), path
+        for name in re.findall(r"`(test_\w+)`", check):
+            assert f"def {name}(" in tests, name
+        for job in re.findall(r"CI `([\w-]+)` 작업", check):
+            assert f"  {job}:" in ci, job
+    assert "uv run python scripts/license_check.py" in ci and "release_check.py --dist" in ci and "twine" in ci

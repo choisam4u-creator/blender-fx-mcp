@@ -35,7 +35,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/blender"
           tar -xJf blender.tar.xz -C "$RUNNER_TEMP/blender" --strip-components=1
           "$RUNNER_TEMP/blender/blender" --version | head -1
-      - run: uv sync --group dev
+      - run: uv sync --locked --group dev
       - name: 레시피 시험
         env:
           BLENDER_FX_BLENDER: ${{ runner.temp }}/blender/blender

@@ -21,6 +21,22 @@
 
 **English summary.** blender-fx-mcp sends Python recipes to the blender-mcp receiver add-on on `localhost:9876`, which runs them inside Blender with your user's permissions and **without authentication**. Keep `BLENDER_FX_HOST=localhost`, never expose port 9876 beyond your machine (use an SSH tunnel for remote Blender), and turn the receiver off when not in use. Tool arguments are passed as a `repr`'d `PARAMS` dict, never as code; any input that escapes that boundary is a security bug. File tools (`import_model`, `export_model`, `save_blend`, renders) read/write paths chosen by the AI, so keep tool-call approval on in your client if that matters to you.
 
+## 공급망 조치 / Supply-chain measures
+
+저장소와 CI 가 의존성·워크플로를 어떻게 지키는지 한곳에 모았습니다. 표의 시험이 실패하면 CI 가 빨개집니다.
+How the repository and CI protect dependencies and workflows. Each row is enforced by the listed test or job.
+
+| 조치 / Measure | 어디 / Where | 확인 / Enforced by |
+|---|---|---|
+| 외부 액션을 커밋 SHA + 판 주석으로 고정 / Actions pinned to a commit SHA with a version comment | `.github/workflows/*.yml` | `test_workflow_actions_pinned_to_sha` |
+| 기본 토큰 읽기 전용, 쓰기 권한은 작업 단위 허용 목록만 / Read-only default token; write scopes only per job, from an allow list | `.github/workflows/*.yml` | `test_workflow_top_level_permissions_read_only` |
+| `pull_request_target` 작업은 PR 코드를 체크아웃하지 않음 / `pull_request_target` jobs never check out PR code | `.github/workflows/greet.yml` | `test_greet_workflow_is_safe_and_links_exist` |
+| 의존성은 해시가 적힌 잠금 파일로만 설치 / Dependencies installed only from the hash-pinned lock file | `uv.lock`, `uv sync --locked` | `test_ci_installs_from_the_lock_file` |
+| 의존성·액션 판을 주 1회 갱신 PR 로 / Weekly update PRs for dependencies and actions | `.github/dependabot.yml` | `test_dependabot_watches_uv_and_actions` |
+| 의존성 라이선스가 허용 목록 안 / Dependency licenses within a permissive allow list | `scripts/license_check.py`, `docs/third-party-licenses.md` | CI `lint` 작업 / job |
+| OpenSSF Scorecard 점수 공개 / OpenSSF Scorecard results published | `.github/workflows/scorecard.yml` | `test_scorecard_workflow_and_badge` |
+| 휠·sdist 메타데이터 점검 / Wheel and sdist metadata checked before release | `scripts/release_check.py --dist`, `twine check` | CI `server-tests` 작업 / job |
+
 ## 신고하는 법 / Reporting a vulnerability
 
 **공개 이슈에 쓰지 마세요.** GitHub 의 비공개 신고 양식을 써 주세요:
