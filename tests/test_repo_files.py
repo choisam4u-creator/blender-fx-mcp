@@ -267,7 +267,7 @@ def test_workflow_top_level_permissions_read_only(path):
     assert set(writes) == allowed and len(writes) == len(allowed), f"{path.name}: 허용 밖 write 권한 {writes}"
     assert text.count("write") == len(writes), f"{path.name}: permissions 밖에 write 가 있음"
     for perm in writes:  # 쓰기 권한은 작업 안 permissions 블록에만
-        block = re.search(rf"^    permissions:\n((?:      .*\n)+)", text, re.M)
+        block = re.search(r"^    permissions:\n((?:      .*\n)+)", text, re.M)
         assert block and perm in block.group(1), f"{path.name}: {perm} 이 작업 단위 permissions 에 없음"
 
 
@@ -759,3 +759,63 @@ def test_scorecard_workflow_and_badge():
     img, link = badges["OpenSSF Scorecard"]
     assert img == f"https://api.scorecard.dev/projects/{repo}/badge"
     assert link == f"https://scorecard.dev/viewer/?uri={repo}"
+
+
+ONE_LINE_KO = "## 나머지 도구 한 줄 예시"
+ONE_LINE_EN = "### Every other tool in one line"
+ONE_LINE_ROW = re.compile(r'^\| "[^"]+" \| `([^`]+)` \| .+ \|$', re.M)
+
+
+def _one_line_calls():
+    text = (ROOT / "docs" / "recipes.md").read_text(encoding="utf-8")
+    ko = text.split(ONE_LINE_KO, 1)[1].split("\n## ", 1)[0]
+    en = text.split(ONE_LINE_EN, 1)[1].split("\n### ", 1)[0]
+    return ONE_LINE_ROW.findall(ko), ONE_LINE_ROW.findall(en)
+
+
+def test_every_tool_has_a_recipes_example():
+    """32개 도구가 docs/recipes.md 의 예시(번호 예시 또는 한 줄 예시)에 한 번은 나와야 한다. 한/영 표는 같은 호출."""
+    import ast
+    import asyncio
+
+    from blender_fx_mcp import server
+    ko, en = _one_line_calls()
+    assert ko and ko == en, "한 줄 예시의 한/영 호출이 다름"
+    _, _, numbered, _ = _recipe_sections()
+    calls = [c for cs in numbered.values() for c in cs] + ko
+    used = {ast.parse(c.replace("…", "x"), mode="eval").body.func.id for c in calls}
+    tools = {tool.name for tool in asyncio.run(server.mcp.list_tools())}
+    assert tools - used == set(), f"예시가 없는 도구: {sorted(tools - used)}"
+    assert used <= tools, f"없는 도구: {sorted(used - tools)}"
+    one_line = [ast.parse(c.replace("…", "x"), mode="eval").body.func.id for c in ko]
+    assert len(one_line) == len(set(one_line)), "한 줄 예시에 같은 도구가 두 번"
+    # 위 번호 예시에 이미 나온 도구는 한 줄 예시에 다시 적지 않는다
+    assert not set(one_line) & {ast.parse(c.replace("…", "x"), mode="eval").body.func.id
+                                for cs in numbered.values() for c in cs}
+    text = (ROOT / "docs" / "recipes.md").read_text(encoding="utf-8")
+    assert f"{len(tools)}개 도구" in text and f"{len(tools)} tools" in text
+
+
+def test_one_line_examples_pass_server_checks(monkeypatch, tmp_path):
+    """한 줄 예시를 그대로 불러도 서버의 목록·범위·경로 검사에 막히지 않고 블렌더까지 가야 한다."""
+    import ast
+
+    from blender_fx_mcp import bridge, server
+    monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path))
+    monkeypatch.setenv("BLENDER_FX_LANG", "ko")
+
+    def reached(*args, **kwargs):
+        raise bridge.BlenderError("여기까지 오면 통과")
+
+    monkeypatch.setattr(bridge, "run_python", reached)
+    monkeypatch.setattr(bridge, "ping", reached)
+    local = {"doctor", "list_snapshots"}  # 블렌더에 묻지 않고 이 컴퓨터에서 답하는 도구
+    ko, _ = _one_line_calls()
+    for call in ko:
+        name = ast.parse(call.replace("…", "x"), mode="eval").body.func.id
+        out = eval(call.replace("…/", f"{tmp_path}/"), vars(server))
+        out = out if isinstance(out, str) else out[0]
+        if name in local:
+            assert out and not out.startswith("실패"), call
+        else:
+            assert out == "실패: 여기까지 오면 통과", f"{call} 이 블렌더로 가기 전에 막힘: {out}"
