@@ -64,6 +64,42 @@ def test_form_fields_are_well_formed_and_bilingual(name):
             assert re.search(r"^      options:\n(        - .+\n)+", b, re.M), f"{k}: options 없음"
 
 
+def _options(block):
+    return re.findall(r"^        - (.+)$", block, re.M)
+
+
+def test_form_common_fields_match_docs():
+    """양식들의 공통 칸이 문서와 같아야 한다: 클라이언트 선택지 = examples/README 표(+ 기타),
+    블렌더 판 placeholder = SUPPORT 의 지원 판, OS 선택지 = SUPPORT·CI 가 지원하는 OS. 하나가 바뀌면 같이 바꾼다."""
+    ex = (ROOT / "examples" / "README.md").read_text(encoding="utf-8")
+    clients = re.findall(r"^\| ([^|`]+?) \| [^|]+ \| [^|]+ \|$", ex, re.M)
+    clients = [c for c in clients if c not in ("클라이언트 / Client",) and not c.startswith("---")]
+    assert len(clients) >= 4 and "Claude Code" in clients, clients
+    support = (ROOT / "SUPPORT.md").read_text(encoding="utf-8")
+    supported = re.search(r"^\| 블렌더 / Blender \| ([\d.]+) LTS \| 지원", support, re.M).group(1)
+    seen = {"client": 0, "blender-version": 0}
+    for name in FORMS:
+        _, _, fields = _form(name)
+        if "client" in fields:
+            seen["client"] += 1
+            opts = _options(fields["client"][2])
+            assert opts[-1] == "기타 / Other", (name, opts)
+            assert sorted(opts[:-1]) == sorted(clients), f"{name}: 클라이언트 선택지 {opts[:-1]} ≠ examples/README {clients}"
+        if "blender-version" in fields:
+            seen["blender-version"] += 1
+            ph = re.search(r'^      placeholder: "(.+)"$', fields["blender-version"][2], re.M).group(1)
+            assert ph.startswith(supported + ".") and ph.endswith("LTS"), f"{name}: placeholder {ph} ≠ 지원 판 {supported} LTS"
+    assert seen == {"client": 3, "blender-version": 2}, seen
+    _, _, bug = _bug_form()
+    oses = _options(bug["os"][2])
+    assert oses[-1] == "기타 / Other"
+    os_row = re.search(r"^\| 운영체제 / OS \| (.+?) \|", support, re.M).group(1)
+    for family in os_row.split("·"):
+        assert any(o.startswith(family) for o in oses), f"버그 양식 OS 선택지에 {family} 없음"
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    assert "macos-latest" in ci and "windows-latest" in ci and "ubuntu-latest" in ci
+
+
 def test_bug_form_required_fields():
     _, _, fields = _bug_form()
     required = {k for k, (_, req, _) in fields.items() if req}
