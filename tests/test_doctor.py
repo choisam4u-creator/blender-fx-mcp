@@ -206,6 +206,8 @@ def test_client_missing_is_optional_with_register_command(env):
 ])
 def test_client_found_in_each_config(env, monkeypatch, plat, client, rel, text):
     """examples/ 의 설정을 그대로 붙여 넣은 파일을 각 클라이언트 자리에서 찾는다."""
+    # sys.platform 을 바꾸면 Python 3.14 의 shutil.which 가 Linux 에서도 Windows 갈래(_winapi)로 가 터진다
+    monkeypatch.setattr(doctor.shutil, "which", lambda _: None)
     monkeypatch.setattr(doctor.sys, "platform", plat)
     home = env / "home"
     desktop = {"darwin": home / "Library" / "Application Support" / "Claude",
