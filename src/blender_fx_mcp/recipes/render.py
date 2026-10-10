@@ -23,8 +23,8 @@ def main():
     if sc.camera is None:
         objs = [o for o in mesh_objects() if o.get(FX_TAG) != "ground"]
         if not objs:
-            raise FxError(L("카메라도 오브젝트도 없어 렌더할 수 없습니다.",
-                            "There is no camera and no object, so nothing can be rendered."))
+            raise FxError(L("카메라도 오브젝트도 없어 렌더할 수 없습니다. make_demo_building·import_model 로 장면을 먼저 만드세요.",
+                            "There is no camera and no object, so nothing can be rendered. Build a scene first with make_demo_building or import_model."))
         lo, hi = world_bbox(objs[0])
         for o in objs[1:]:
             a, b = world_bbox(o)

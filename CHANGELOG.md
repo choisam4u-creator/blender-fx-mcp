@@ -23,6 +23,7 @@
   shows the Blender executable as optional `[- ]` (only headless tests need it), and `--json` prints the same checks with language-independent ids.
   Headless runs and doctor read Blender output as UTF-8, so non-UTF-8 bytes on Windows no longer raise `UnicodeDecodeError`.
   The connection-refused error now names one next step: install the add-on (none found), click Connect, or match a changed port.
+  Missing model, HDRI and snapshot paths list similar files or existing snapshots, and every recipe error says what to do next.
 
 *Tests and CI*
 - Server-side unit tests grew from 9 to over 540, running on Python 3.10–3.14 in CI with coverage in the job summary (99%).
@@ -38,6 +39,7 @@
 - Client configs for Claude Desktop, Cursor and Codex in `examples/`; YAML bug, feature request and question forms and a PR template.
 - `server.json.example` matches the 2025-12-11 MCP registry schema, and `scripts/release_check.py` checks a release in one step.
 - `docs/third-party-licenses.md` lists the license of every installed dependency; CI checks them against a permissive allow list.
+- The README first screen is four numbered setup steps in doctor's order (uv → add-on → Connect → register), each with the doctor line that confirms it.
 
 **지원 종료 예고**
 - 0.7.0 이 Python 3.10 을 지원하는 마지막 판입니다(3.10 은 2026-10 EOL). 0.8.0 부터 Python 3.11 이상이 필요합니다.
@@ -56,6 +58,8 @@
 - `blender-fx-doctor` 마지막에 **다음 할 일**을 설치 순서대로 번호를 매겨 보여 준다(uv 는 OS 별 설치 명령, 애드온 설치 메뉴 경로, Connect, 포트를 바꿨으면 포트 맞추기).
 - 연결 거부 오류("블렌더에 연결할 수 없습니다")가 원인을 좁혀 다음 한 단계를 말한다: 이 컴퓨터에 수신기 애드온 파일이 없으면 설치 메뉴 경로부터,
   있으면 Connect, `BLENDER_FX_PORT` 를 바꿨으면 BlenderMCP 탭의 Port 도 같은 값으로. 다른 컴퓨터의 블렌더(`BLENDER_FX_HOST`)면 애드온 폴더는 보지 않는다.
+- 파일·스냅샷 경로 오류에 다음 할 일: `import_model`·HDRI 파일이 없으면 같은 폴더의 비슷한 이름(없으면 가져올 수 있는 파일, 폴더도 없으면 그 사실)을,
+  `restore` 스냅샷이 없으면 있는 스냅샷 이름(없으면 snapshot 으로 먼저 저장)을 알려 준다. 내보내기 실패·면 없음·값 순서 오류 등 레시피 오류 문장마다 다음 할 일을 붙였다.
   MCP 사용에 필요 없는 "블렌더 실행 파일"(헤드리스 시험용)은 못 찾아도 `[X ]` 가 아니라 `[- ]` 선택 항목으로 표시
 - 헤드리스 실행·doctor 가 블렌더 출력을 UTF-8 로 읽는다. Windows 기본 코드 페이지로 읽다가 `UnicodeDecodeError` 가 날 수 있던 문제
 - 보안: 간접 의존성 `pyjwt` 를 2.15.1 로 올림(PYSEC-2026-4141·4183). 매주 `pip-audit` 로 `uv.lock` 을 점검하는 작업 추가
@@ -103,7 +107,7 @@
 
 **문서**
 - PyPI 페이지용 `[project.urls]`(이슈·변경 기록·보안 정책)와 Python 3.10~3.14 분류자
-- README 첫 화면: 한 줄 소개, Claude 연결 3줄, 첫 명령 예시, 데모 GIF 자리
+- README 첫 화면: 한 줄 소개, 처음 한 번 4단계(uv → 애드온 설치 → Connect → 클로드 등록, doctor "다음 할 일"과 같은 순서, 단계마다 확인할 doctor `[OK]` 줄), 첫 명령 예시, 데모 GIF 자리. "준비물 3가지"도 같은 순서로
 - `docs/recipes.md`: 자연어 명령 5개와 실제 결과 수치. 같은 5개를 영어 절(`#english`)로도 적고 README 영어 절에서 링크.
   한/영 예시의 도구 호출이 다르거나, 없는 도구·인자를 쓰거나, 서버 검사(목록·범위)에 걸리면 시험이 실패한다
 - `docs/recipes.md` 에 "나머지 도구 한 줄 예시"(한/영): 위 5개 예시에 안 나온 도구 25개를 말 한 마디·호출·결과로.

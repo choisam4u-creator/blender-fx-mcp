@@ -3,6 +3,7 @@
 # 블렌더 안에서 실행되므로 bpy 를 바로 쓴다. 외부 패키지는 쓰지 않는다.
 import bpy
 import bmesh
+import difflib
 import json
 import math
 import os
@@ -43,6 +44,32 @@ def run_guarded(fn):
 
 def scene():
     return bpy.context.scene
+
+
+def missing_file_hint(path, exts):
+    """경로 오타가 가장 흔한 실패라, 파일이 없을 때 같은 폴더에서 고를 만한 파일을 알려 준다(다음 할 일 한 문장)."""
+    d = os.path.dirname(path) or "."
+    kinds = "/".join(e.lstrip(".") for e in exts)
+    if not os.path.isdir(d):
+        return L(f"폴더도 없습니다: {d}. 전체 경로를 확인하세요(파일을 터미널 창에 끌어다 놓으면 전체 경로가 나옵니다).",
+                 f"The folder does not exist either: {d}. Check the full path (drag the file onto a terminal window to see it).")
+    files = sorted(f for f in os.listdir(d)
+                   if os.path.splitext(f)[1].lower() in exts and os.path.isfile(os.path.join(d, f)))
+    if not files:
+        return L(f"이 폴더에는 {kinds} 파일이 없습니다. 파일이 들어 있는 폴더의 경로로 다시 시키세요.",
+                 f"This folder has no {kinds} file. Ask again with the path of the folder that holds the file.")
+    # 확장자는 빼고 이름만 견준다(같은 .glb 라는 이유로 다 비슷해 보이지 않게)
+    stems = {}
+    for f in files:
+        stems.setdefault(os.path.splitext(f)[0].lower(), []).append(f)
+    want = os.path.splitext(os.path.basename(path))[0].lower()
+    close = [f for c in difflib.get_close_matches(want, list(stems), n=5, cutoff=0.5) for f in stems[c]][:5]
+    shown = ", ".join(close or files[:5]) + ("" if close or len(files) <= 5 else f" (+{len(files) - 5})")
+    if close:
+        return L(f"같은 폴더의 비슷한 파일: {shown}. 이 중 하나라면 그 이름으로 다시 시키세요.",
+                 f"Similar files in the same folder: {shown}. If it is one of these, ask again with that name.")
+    return L(f"이 폴더에 있는 {kinds} 파일: {shown}. 이 중 하나라면 그 이름으로 다시 시키세요.",
+             f"{kinds} files in this folder: {shown}. If it is one of these, ask again with that name.")
 
 
 def view_layer_update():
@@ -1105,7 +1132,8 @@ def apply_world(sky_mode, sky_color, strength, elev_deg, azim_deg, hdri_path=Non
     if hdri_path:
         path = os.path.expanduser(hdri_path)
         if not os.path.exists(path):
-            raise FxError(L(f"HDRI 파일이 없습니다: {path}", f"HDRI file not found: {path}"))
+            hint = missing_file_hint(path, (".hdr", ".exr"))
+            raise FxError(L(f"HDRI 파일이 없습니다: {path}. {hint}", f"HDRI file not found: {path}. {hint}"))
         env = nt.nodes.new("ShaderNodeTexEnvironment")
         env.image = bpy.data.images.load(path, check_existing=True)
         mapping = nt.nodes.new("ShaderNodeMapping")

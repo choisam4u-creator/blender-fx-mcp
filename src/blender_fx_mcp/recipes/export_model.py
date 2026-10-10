@@ -19,7 +19,10 @@ def main():
         if ext == ".abc":  # 알렘빅은 물 표면(도메인)도 함께 내보낸다
             objs += [o for o in bpy.data.objects if o.get(FX_TAG) == "liquid_domain" and o not in objs]
     if not objs:
-        raise FxError(L("내보낼 오브젝트가 없습니다.", "There is nothing to export."))
+        raise FxError(L("내보낼 오브젝트가 없습니다. 렌더에서 숨긴 것과 효과 보조 오브젝트는 빠집니다. "
+                        "list_objects 로 장면을 확인하고, 내보낼 이름을 names 로 직접 주세요.",
+                        "There is nothing to export. Objects hidden from render and effect helpers are left out. "
+                        "Check the scene with list_objects and pass the names to export in names."))
 
     # 내보내기 도구들은 컨텍스트가 아니라 실제 선택 상태를 본다
     for o in bpy.data.objects:
@@ -62,7 +65,10 @@ def main():
             raise FxError(L(f"지원하지 않는 형식: {ext}. glb/gltf/fbx/obj/abc 만 됩니다.",
                             f"Unsupported format: {ext}. Only glb/gltf/fbx/obj/abc are supported."))
     if not os.path.exists(path):
-        raise FxError(L("내보낸 파일이 만들어지지 않았습니다.", "The export file was not created."))
+        raise FxError(L(f"내보낸 파일이 만들어지지 않았습니다: {path}. 그 폴더에 쓸 수 있는지 확인하고, 안 되면 glb 로 다시 내보내 보세요"
+                        "(블렌더 창 아래 상태 줄·Info 창에 내보내기 오류가 나옵니다).",
+                        f"The export file was not created: {path}. Check that the folder is writable, or try again as glb "
+                        "(Blender shows the export error in the status bar and the Info editor)."))
     return dict(path=path, size_bytes=os.path.getsize(path), objects=len(objs), baked_chunks=baked)
 
 

@@ -39,8 +39,8 @@ def main():
     keyed = []
     if slow_from and slow_to:
         if slow_to <= slow_from:
-            raise FxError(L(f"slow_to({slow_to}) 는 slow_from({slow_from}) 보다 커야 합니다.",
-                            f"slow_to({slow_to}) must be greater than slow_from({slow_from})."))
+            raise FxError(L(f"slow_to({slow_to}) 는 slow_from({slow_from}) 보다 커야 합니다. 두 값을 바꿔 다시 시키세요.",
+                            f"slow_to({slow_to}) must be greater than slow_from({slow_from}). Swap the two values and ask again."))
         targets = []
         if sc.rigidbody_world is not None:
             targets.append(("rigidbody_world", sc.rigidbody_world))

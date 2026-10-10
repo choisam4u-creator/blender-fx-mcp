@@ -94,8 +94,8 @@ def main():
     source_name = p.get("source_object")
     if mode == "object":
         if not source_name:
-            raise FxError(L("mode='object' 에는 source_object 이름이 필요합니다.",
-                            "mode='object' needs a source_object name."))
+            raise FxError(L("mode='object' 에는 source_object 이름이 필요합니다. list_objects 로 이름을 확인해 source_object 로 주세요.",
+                            "mode='object' needs a source_object name. Look up the name with list_objects and pass it as source_object."))
         flow = get_target(source_name)
         flo, fhi = world_bbox(flow)
         at = (flo + fhi) / 2

@@ -228,8 +228,8 @@ def main():
         bm.free()
         if solidified is not None:
             remove_object(solidified)
-        raise FxError(L(f"'{target.name}' 에 면이 없어 조각낼 수 없습니다.",
-                        f"'{target.name}' has no faces, so it cannot be fractured."))
+        raise FxError(L(f"'{target.name}' 에 면이 없어 조각낼 수 없습니다. inspect_mesh 로 면 수를 확인하고, 면이 있는 오브젝트를 고르세요.",
+                        f"'{target.name}' has no faces, so it cannot be fractured. Check its face count with inspect_mesh and pick an object that has faces."))
 
     # 2) 재질 슬롯: 겉면 + 속면
     mats = [mm for mm in target.data.materials if mm is not None]
