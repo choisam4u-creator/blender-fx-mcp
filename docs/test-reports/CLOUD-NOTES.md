@@ -3,10 +3,29 @@
 ## 맥에서 돌릴 명령 (블렌더 필요, 최신 회차 기준)
 
 ```sh
-uv run pytest -q                                   # 블렌더 앱으로 레시피 시험까지 전체(유체 app_only 포함)
-uv run blender-fx-doctor --json                    # 새 JSON 출력: 항목 id 8개, 블렌더 경로·포트가 맞는지
-BLENDER_FX_LANG=en uv run python examples/list_tools.py   # 블렌더를 켜고 Connect 한 뒤: 도구 32개 + "Connected (localhost:9876)"
+BLENDER_FX_LANG=en uv run pytest -q                # 10/10 실패 10개가 0개인지(셸 언어·한글 홈 경로와 무관해야 함)
+BLENDER_FX_PORT=1 uv run blender-fx-doctor         # 블렌더 실행 파일 [- ], 끝에 "다음 할 일" 번호 줄
+uvx pip-audit@2.9.0 -r <(uv export --locked --all-groups --no-emit-project --format requirements-txt) --disable-pip   # 취약점 0개
 ```
+
+## 2026-10-10 (4회차)
+
+- 한 일: **10/10 Mac 실측 실패 10개 먼저** → 그다음 백로그. main 이 앞서 있어(#10 병합) 병합 확인(내용 변화 없음).
+  1. **시험 결함 10개 고침.** 여기서 그대로 재현: `BLENDER_FX_LANG=en` + 한글 `--basetemp` 로 고치기 전 10 실패 → 고친 뒤 0.
+     ① 언어: `tests/conftest.py` autouse 픽스처가 매 시험 `BLENDER_FX_LANG` 을 지우고 시작, 한국어 기대 시험 3개는 `ko` 직접 지정.
+     ② 한글 경로: 영어 메시지 한글 검사에서 출력 폴더 경로를 빼고 검사. 회귀 시험 3개(출력 폴더가 `사용자/출력` 일 때 영어 문장·경로가 온전한지).
+  2. **Windows 에서도 가짜 블렌더 시험**(백로그) — `fake_blender`(파이썬 본문 + `/bin/sh exec`·`.cmd` 감싸개). 건너뜀 18 → 1(세그폴트).
+     덤으로 **제품 문제** 고침: headless·doctor 가 블렌더 출력을 OS 기본 인코딩으로 읽어 Windows 에서 `UnicodeDecodeError` 위험 → UTF-8(errors=replace).
+  3. **주 1회 취약점 점검**(백로그) `audit.yml`(pip-audit 2.9.0, `uv.lock` 그대로). **처음 돌리자 실제 취약점 2건**: 간접 의존성 `pyjwt 2.14.0` → 2.15.1 로 올려 0건.
+  4. **이슈 양식 공통 칸 시험**(백로그) — 클라이언트 선택지·블렌더 판 placeholder·OS 가 examples/SUPPORT 와 같은지. 어긋난 곳은 없었음.
+  5. **doctor "다음 할 일"**(새 항목) — 실패 항목마다 다음 한 단계를 설치 순서대로 번호로. uv 설치 명령을 OS 별로(지금까지 Windows·Linux 에도 `brew`),
+     애드온 Install from Disk 경로, 포트를 바꿨으면 포트 맞추기. MCP `doctor` 도구도 같은 보고서.
+  6. **doctor 블렌더 실행 파일 = 선택 항목**(새 항목) — MCP 사용에 필요 없는데 `[X ]` 로 떠 첫 사용자를 막던 것 → `[- ]`, 확인 필요·JSON `failed` 에서 뺌.
+- 돌린 시험: `uv run pytest -q` **661 통과·34 건너뜀**(Python 3.11, Linux). `BLENDER_FX_LANG=en`·`ko`·없음 × 한글 `--basetemp` 로도 모두 통과.
+  `uvx ruff@0.15.20 check .` 통과. 서버 쪽 커버리지 99%. `scripts/license_check.py` 40/40.
+  건너뛴 34개는 블렌더(앱·bpy)가 없어서 — 레시피 시험(CI `recipe-tests-bpy`·Mac 앱 몫). Windows CI 결과는 PR #13 에서 확인.
+- 완료 수·추가 수: **완료 5**(백로그 기존 3 + 새 2) + Mac 실패 수정 / **추가 5**(새 항목 중 하나는 이미 있던 `CITATION.cff` 라 README 단계 정렬로 바꿈). 남은 `[ ]` 3개.
+- 하다가 실수: CHANGELOG 영어 요약 6줄 제한을 넘긴 채 한 번 푸시 → 바로 다음 커밋에서 고침.
 
 ## 2026-10-09 (3회차)
 
