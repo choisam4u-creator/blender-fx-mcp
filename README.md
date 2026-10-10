@@ -117,7 +117,7 @@ claude mcp add -s user blender-fx -- uv --directory /절대/경로/blender-fx-mc
 | 도구 | 하는 일 |
 |---|---|
 | `doctor` | 준비물 점검(파이썬·mcp·uv·블렌더·수신기·출력 폴더). 안 될 때 먼저 부른다 |
-| `ping_blender` | 수신기와 연결되는지 확인 |
+| `ping_blender` | 수신기와 연결되는지, 블렌더 판이 시험한 판인지 확인 |
 | `list_objects` | 장면의 메시 이름·크기 목록 (부술 대상 고르기) |
 | `inspect_mesh` | 부수기 전 모델 진단: 닫혀 있나, 부피, 오목한 정도, 면 수, 수리하면 얼마나 나아지나 |
 | `make_demo_building` | 연습용 건물 + 바닥 + 카메라 + 조명 생성. `style`(plain/windows 창문 건물), `ground`(바닥 재질) |
@@ -318,7 +318,7 @@ More examples with measured results: [docs/recipes.md (English section)](docs/re
 | Tool | What it does |
 |---|---|
 | `doctor` | Checks prerequisites (Python, mcp, uv, Blender, receiver, output folder). Call it first when something fails |
-| `ping_blender` | Checks the connection to the receiver |
+| `ping_blender` | Checks the connection to the receiver and whether the Blender version is a tested one |
 | `list_objects` | Lists mesh names and sizes in the scene (to pick a target) |
 | `inspect_mesh` | Diagnoses a model before breaking it: closed or not, volume, concavity, face count, whether repair helps |
 | `make_demo_building` | Practice building + ground + camera + lights. `style` (plain/windows), `ground` material |

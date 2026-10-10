@@ -144,6 +144,27 @@ def ping() -> bool:
     return bool(result.get("pong"))
 
 
+SUPPORTED_BLENDER = "5.2"  # SUPPORT.md 의 지원 LTS 판. 바꾸면 SUPPORT 표도(tests/test_server.py 가 비교한다)
+
+
+def blender_version() -> str:
+    """수신기에 물어 연결된 블렌더의 판 문자열(예: '5.2.0 LTS'). 못 알아내면 빈 문자열."""
+    try:
+        lines = run_python("import bpy\nprint(bpy.app.version_string)", timeout=10.0).strip().splitlines()
+    except BlenderError:
+        return ""
+    return lines[-1].strip() if lines else ""
+
+
+def version_warning(version: str) -> str:
+    """지원 판이 아니면 한 줄 경고, 맞거나 모르면 빈 문자열."""
+    if not version or version == SUPPORTED_BLENDER or version.startswith(SUPPORTED_BLENDER + "."):
+        return ""
+    return t(f"블렌더 {version} 은 시험한 판이 아닙니다(지원: {SUPPORTED_BLENDER} LTS). 효과가 실패하면 {SUPPORTED_BLENDER} LTS 로 다시 해 보세요.",
+             f"Blender {version} is not a tested version (supported: {SUPPORTED_BLENDER} LTS). "
+             f"If an effect fails, try again with {SUPPORTED_BLENDER} LTS.")
+
+
 def run_python(code: str, timeout: float | None = None) -> str:
     """파이썬 코드를 블렌더에서 실행하고 표준 출력을 돌려준다."""
     result = send_command("execute_code", {"code": code}, timeout=timeout)

@@ -102,8 +102,13 @@ def run_checks() -> list[dict]:
     name_conn = t("수신기 연결", "receiver connection")
     try:
         bridge.ping()
-        out.append(_check(name_conn, True, t(f"{bridge.host()}:{bridge.port()} 응답함", f"{bridge.host()}:{bridge.port()} responded"),
-                          "connection"))
+        version = bridge.blender_version()
+        detail = t(f"{bridge.host()}:{bridge.port()} 응답함", f"{bridge.host()}:{bridge.port()} responded")
+        if version:
+            detail += f" — Blender {version}"
+        if bridge.version_warning(version):
+            detail += f". {bridge.version_warning(version)}"
+        out.append(_check(name_conn, True, detail, "connection"))
     except bridge.BlenderError as e:
         out.append(_check(name_conn, False, str(e), "connection", _connect_fix()))
 

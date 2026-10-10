@@ -3,7 +3,7 @@ import asyncio
 
 import pytest
 
-from blender_fx_mcp import __version__, bridge
+from blender_fx_mcp import __version__, bridge, server
 from blender_fx_mcp.bridge import BlenderError
 from blender_fx_mcp.server import build_code, mcp, parse_result
 
@@ -116,3 +116,45 @@ def test_bridge_connection_refused(monkeypatch):
     monkeypatch.setenv("BLENDER_FX_PORT", "1")
     with pytest.raises(BlenderError, match="연결할 수 없습니다"):
         bridge.run_python("print(1)", timeout=2)
+
+
+# ---- 블렌더 판 ----
+
+@pytest.mark.parametrize("lang", ["ko", "en"])
+@pytest.mark.parametrize("version,warns", [("5.2.0 LTS", False), ("5.2", False), ("4.2.3 LTS", True), ("5.3.0 Alpha", True)])
+def test_ping_blender_shows_version_and_warns_off_support(monkeypatch, lang, version, warns):
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    monkeypatch.setattr(bridge, "ping", lambda: True)
+    monkeypatch.setattr(bridge, "run_python", lambda code, timeout=None: f"noise\n{version}\n")
+    out = server.ping_blender()
+    assert out.startswith("연결됨 (" if lang == "ko" else "Connected (") and f"Blender {version})" in out, out
+    assert (bridge.SUPPORTED_BLENDER + " LTS" in out) is warns, out
+
+
+def test_ping_blender_without_version_still_connected(monkeypatch):
+    monkeypatch.setenv("BLENDER_FX_LANG", "en")
+    monkeypatch.setattr(bridge, "ping", lambda: True)
+
+    def no(code, timeout=None):
+        raise BlenderError("Blender error: execute_code is off")
+
+    monkeypatch.setattr(bridge, "run_python", no)
+    assert server.ping_blender() == f"Connected ({bridge.host()}:{bridge.port()})"
+
+
+def test_doctor_connection_line_has_version(monkeypatch, tmp_path):
+    from blender_fx_mcp import doctor
+    monkeypatch.setenv("BLENDER_FX_LANG", "en")
+    monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path))
+    monkeypatch.setattr(bridge, "ping", lambda: True)
+    monkeypatch.setattr(bridge, "run_python", lambda code, timeout=None: "4.2.3 LTS\n")
+    conn = next(c for c in doctor.run_checks() if c["id"] == "connection")
+    assert conn["ok"] and "Blender 4.2.3 LTS" in conn["detail"] and "not a tested version" in conn["detail"]
+
+
+def test_supported_blender_matches_support_md():
+    import re
+    from pathlib import Path
+    support = (Path(__file__).resolve().parents[1] / "SUPPORT.md").read_text(encoding="utf-8")
+    supported = re.search(r"^\| 블렌더 / Blender \| ([\d.]+) LTS \| 지원", support, re.M).group(1)
+    assert bridge.SUPPORTED_BLENDER == supported

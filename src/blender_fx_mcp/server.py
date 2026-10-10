@@ -276,13 +276,17 @@ def doctor() -> str:
 
 @mcp.tool(annotations=READ_ONLY)
 def ping_blender() -> str:
-    """Check the socket connection to Blender.
-    블렌더 수신기와 연결되는지 확인한다."""
+    """Check the socket connection to Blender and show its version.
+    블렌더 수신기와 연결되는지 확인하고 블렌더 판을 보여 준다(시험한 판이 아니면 경고)."""
     try:
         bridge.ping()
-        return t(f"연결됨 ({bridge.host()}:{bridge.port()})", f"Connected ({bridge.host()}:{bridge.port()})")
     except BlenderError as e:
         return _fail(e)
+    version = bridge.blender_version()
+    text = t(f"연결됨 ({bridge.host()}:{bridge.port()}", f"Connected ({bridge.host()}:{bridge.port()}")
+    text += f", Blender {version})" if version else ")"
+    warning = bridge.version_warning(version)
+    return f"{text} {warning}" if warning else text
 
 
 @mcp.tool(annotations=READ_ONLY)

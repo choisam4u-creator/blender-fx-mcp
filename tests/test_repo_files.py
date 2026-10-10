@@ -936,8 +936,8 @@ def test_readme_tool_table_draft_uses_docstrings(capsys):
     gen = _gen_tool_table()
     assert gen.main(["--draft"]) == 0
     out = capsys.readouterr().out
-    assert "| `ping_blender` | Check the socket connection to Blender. |" in out
-    assert "| `ping_blender` | 블렌더 수신기와 연결되는지 확인한다. |" in out
+    assert "| `ping_blender` | Check the socket connection to Blender and show its version. |" in out
+    assert "| `ping_blender` | 블렌더 수신기와 연결되는지 확인하고 블렌더 판을 보여 준다(시험한 판이 아니면 경고). |" in out
     assert gen.main(["--bad"]) == 2
     assert "scripts/gen_tool_table.py" in (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
 
