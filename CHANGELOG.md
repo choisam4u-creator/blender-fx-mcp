@@ -24,6 +24,7 @@
   Headless runs and doctor read Blender output as UTF-8, so non-UTF-8 bytes on Windows no longer raise `UnicodeDecodeError`.
   The connection-refused error now names one next step: install the add-on (none found), click Connect, or match a changed port.
   Missing model, HDRI and snapshot paths list similar files or existing snapshots, and every recipe error says what to do next.
+  `restore` with an unknown name stops before touching Blender, so it no longer overwrites the previous `before_restore`.
 
 *Tests and CI*
 - Server-side unit tests grew from 9 to over 540, running on Python 3.10–3.14 in CI with coverage in the job summary (99%).
@@ -60,6 +61,7 @@
   있으면 Connect, `BLENDER_FX_PORT` 를 바꿨으면 BlenderMCP 탭의 Port 도 같은 값으로. 다른 컴퓨터의 블렌더(`BLENDER_FX_HOST`)면 애드온 폴더는 보지 않는다.
 - 파일·스냅샷 경로 오류에 다음 할 일: `import_model`·HDRI 파일이 없으면 같은 폴더의 비슷한 이름(없으면 가져올 수 있는 파일, 폴더도 없으면 그 사실)을,
   `restore` 스냅샷이 없으면 있는 스냅샷 이름(없으면 snapshot 으로 먼저 저장)을 알려 준다. 내보내기 실패·면 없음·값 순서 오류 등 레시피 오류 문장마다 다음 할 일을 붙였다.
+- `restore` 에 없는 이름을 주면 블렌더에 보내기 전에 멈춘다. 지금까지는 자동 저장부터 해서 지난 `before_restore`(진짜 되돌릴 곳)를 덮어썼다.
   MCP 사용에 필요 없는 "블렌더 실행 파일"(헤드리스 시험용)은 못 찾아도 `[X ]` 가 아니라 `[- ]` 선택 항목으로 표시
 - 헤드리스 실행·doctor 가 블렌더 출력을 UTF-8 로 읽는다. Windows 기본 코드 페이지로 읽다가 `UnicodeDecodeError` 가 날 수 있던 문제
 - 보안: 간접 의존성 `pyjwt` 를 2.15.1 로 올림(PYSEC-2026-4141·4183). 매주 `pip-audit` 로 `uv.lock` 을 점검하는 작업 추가

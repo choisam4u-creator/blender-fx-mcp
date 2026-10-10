@@ -53,10 +53,17 @@ RESULTS = {
 }
 
 
+def _snapshots(root, *names):
+    (root / "snapshots").mkdir(parents=True, exist_ok=True)
+    for n in names:
+        (root / "snapshots" / f"{n}.blend").write_bytes(b"x")
+
+
 @pytest.fixture
 def fake(monkeypatch, tmp_path):
     """run_recipe 를 가로채 (레시피, 파라미터)를 기록하고 RESULTS 를 돌려준다. render 는 실제 png 하나를 만든다."""
     monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path))
+    _snapshots(tmp_path, "before", "_before")  # restore 가 되돌릴 스냅샷(없으면 블렌더에 보내기 전에 막는다)
     seen = []
 
     def fake_run_recipe(recipe, params, timeout=None):
@@ -240,6 +247,7 @@ def test_tool_failure_message(monkeypatch, tmp_path, name, lang):
     # 사용자가 가장 자주 보는 경로(블렌더 연결 실패). 어느 도구든 같은 모양으로, 고른 언어로 알려야 한다
     monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path))
     monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    _snapshots(tmp_path, "before")
 
     def run(recipe, params, timeout=None):
         raise BlenderError("connection refused")
@@ -281,3 +289,28 @@ def test_reset_destroy_passes_target(fake):
     server.reset_destroy("Building")
     server.reset_destroy()
     assert [p for r, p in fake if r == "reset"] == [{"target": "Building"}, {"target": None}]
+
+
+@pytest.mark.parametrize("lang", ["ko", "en"])
+def test_restore_unknown_name_keeps_before_restore(fake, monkeypatch, tmp_path, lang):
+    """이름이 틀리면 블렌더에 아무것도 보내지 않는다: 자동 저장이 지난 before_restore 를 덮어쓰지 않게. 비슷한 이름을 알려 준다."""
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    _snapshots(tmp_path, "before_fire", "before_restore")
+    text = server.restore("before_fier")
+    assert fake == [], fake
+    assert text.startswith("실패: " if lang == "ko" else "Failed: "), text
+    assert "before_fire" in text and "list_snapshots" in text, text
+
+
+def test_restore_without_snapshots_says_save_first(monkeypatch, tmp_path):
+    monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path))
+    monkeypatch.setenv("BLENDER_FX_LANG", "en")
+    monkeypatch.setattr(server, "run_recipe", lambda *a, **k: pytest.fail("블렌더로 보내면 안 됨"))
+    assert "no snapshots yet" in server.restore("x") and "snapshot first" in server.restore("x")
+
+
+def test_restore_remote_blender_skips_local_check(fake, monkeypatch, tmp_path):
+    """다른 컴퓨터의 블렌더면 스냅샷이 그쪽 디스크에 있으니 이 컴퓨터에서 막지 않는다."""
+    monkeypatch.setenv("BLENDER_FX_HOST", "studio-mac.local")
+    server.restore("only_on_the_other_machine")
+    assert [r for r, _ in fake] == ["snapshot", "restore"]

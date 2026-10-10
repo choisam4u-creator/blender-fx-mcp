@@ -863,6 +863,8 @@ def test_one_line_examples_pass_server_checks(monkeypatch, tmp_path):
     monkeypatch.setattr(bridge, "run_python", reached)
     monkeypatch.setattr(bridge, "ping", reached)
     local = {"doctor", "list_snapshots"}  # 블렌더에 묻지 않고 이 컴퓨터에서 답하는 도구
+    (tmp_path / "snapshots").mkdir()
+    (tmp_path / "snapshots" / "before_fire.blend").write_bytes(b"x")  # restore 예시의 스냅샷(없으면 서버가 먼저 막는다)
     ko, _ = _one_line_calls()
     for call in ko:
         name = ast.parse(call.replace("…", "x"), mode="eval").body.func.id

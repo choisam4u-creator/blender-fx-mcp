@@ -881,11 +881,25 @@ def list_snapshots() -> str:
     return t("스냅샷 목록:\n", "Snapshots:\n") + "\n".join(f"- {n} ({mb}MB, {when})" for n, mb, when in items)
 
 
+def _missing_snapshot(label: str) -> str:
+    names = sorted(p.stem for p in snapshot_dir().glob("*.blend"))
+    if not names:
+        return t(f"스냅샷이 없습니다: {label}. 저장된 스냅샷이 하나도 없습니다. 되돌리고 싶은 상태에서 snapshot 으로 먼저 저장하세요.",
+                 f"Snapshot not found: {label}. There are no snapshots yet. Save one with snapshot first, at the state you want to return to.")
+    shown = ", ".join(difflib.get_close_matches(label, names, n=3, cutoff=0.5) or names[:10])
+    return t(f"스냅샷이 없습니다: {label}. 있는 스냅샷: {shown}. 이 중 하나의 이름으로 restore 를 다시 시키세요(전체 목록은 list_snapshots).",
+             f"Snapshot not found: {label}. Existing snapshots: {shown}. Ask restore again with one of these names (full list: list_snapshots).")
+
+
 @mcp.tool(annotations=DESTRUCTIVE)
 def restore(name: str) -> str:
     """Go back to a snapshot. The current scene is auto-saved as "before_restore" first, so this is undoable.
     스냅샷으로 되돌린다. 되돌리기 직전 상태가 before_restore 로 자동 저장되므로 되돌리기도 되돌릴 수 있다."""
     label = re.sub(r"[^\w\-]+", "_", name)[:40]
+    target = snapshot_dir() / f"{label}.blend"
+    if bridge.is_local() and not target.exists():
+        # 이름이 틀렸는데 자동 저장부터 하면 지난 before_restore 를 덮어써 진짜 되돌릴 곳을 잃는다. 블렌더에 보내기 전에 막는다
+        return _fail(BlenderError(_missing_snapshot(label)))
     auto = True
     try:
         run_recipe("snapshot", dict(path=str(snapshot_dir() / "before_restore.blend")), timeout=long_timeout())
