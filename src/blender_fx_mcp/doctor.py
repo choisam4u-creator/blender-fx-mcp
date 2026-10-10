@@ -240,6 +240,8 @@ def format_json(checks: list[dict]) -> str:
         "blender": find_blender(),
         "host": bridge.host(),
         "port": bridge.port(),
+        # 등록이 보인 클라이언트(버그 양식의 클라이언트 선택지와 같은 이름). 신고마다 "어떤 클라이언트?"를 되묻지 않게
+        "clients": registered_clients(),
         "checks": [{"id": c["id"], "name": c["name"], "ok": c["ok"], "optional": c.get("optional", False),
                     "detail": c["detail"], "fix": c.get("fix", "")} for c in checks],
         "failed": bad,

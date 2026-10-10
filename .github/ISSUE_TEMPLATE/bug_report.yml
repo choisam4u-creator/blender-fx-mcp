@@ -43,6 +43,9 @@ body:
     id: client
     attributes:
       label: MCP 클라이언트 / MCP client
+      description: |
+        doctor `--json` 의 `clients` 에 나온 이름을 고르세요(여럿이면 지금 쓰는 것). 비어 있으면 등록부터: docs/troubleshooting.md 의 "Tools not visible in the client".
+        Pick the name shown in `clients` of doctor `--json` (the one you use now). If it is empty, register first: see "Tools not visible in the client" in docs/troubleshooting.md.
       options:
         - Claude Code
         - Claude Desktop

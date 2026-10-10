@@ -1070,3 +1070,13 @@ def test_contributing_documents_windows_skips():
     text = (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
     assert f"`@posix_only` {posix}개" in text and f"only {posix} `@posix_only` test" in text
     assert "fake_blender" in text
+
+
+def test_bug_form_clients_match_doctor_json():
+    """버그 양식의 클라이언트 선택지가 doctor --json 의 clients 이름과 같아야 그대로 골라 옮길 수 있다."""
+    from blender_fx_mcp import doctor
+    _, _, fields = _bug_form()
+    block = fields["client"][2]
+    opts = _options(block)[:-1]
+    assert sorted(opts) == sorted({c for c, _ in doctor.client_configs()})
+    assert "`clients`" in block and "Tools not visible in the client" in block

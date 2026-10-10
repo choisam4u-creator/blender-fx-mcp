@@ -326,6 +326,7 @@ def test_json_matches_text_report(monkeypatch, capsys, tmp_path, lang):
     assert data["lang"] == lang and data["blender"] is None
     assert data["blender_fx_mcp"] == __version__
     assert (data["host"], data["port"]) == (bridge.host(), bridge.port())
+    assert data["clients"] == []
 
 
 def test_json_all_ok_has_no_help(monkeypatch, capsys):
@@ -373,3 +374,16 @@ def test_readme_setup_steps_follow_doctor_order(env, monkeypatch, lang):
     # 마지막 등록 단계(client)는 선택 항목이라 필수 번호 뒤에 "(선택)" 으로 붙는다
     order = [c["id"] for c in doctor.failed([dict(c, ok=False) for c in checks])]
     assert [i for i in order if i in ids] == [i for i in ids if i != "client"]
+
+
+def test_json_lists_registered_clients(monkeypatch, capsys, tmp_path):
+    """--json 의 clients 는 등록이 보인 클라이언트 이름(줄 출력의 client 항목과 같은 값)."""
+    _fake_checks(monkeypatch, tmp_path, "en")
+    cfg = tmp_path / "mcp.json"
+    cfg.write_text(json.dumps({"mcpServers": {"blender-fx": {"command": "uvx"}}}), encoding="utf-8")
+    monkeypatch.setattr(doctor, "client_configs", lambda: [("Cursor", str(cfg)), ("Codex", str(tmp_path / "x.toml"))])
+    with pytest.raises(SystemExit):
+        doctor.main(["--json"])
+    data = json.loads(capsys.readouterr().out)
+    assert data["clients"] == ["Cursor"]
+    assert next(c for c in data["checks"] if c["id"] == "client")["detail"] == "Cursor"
