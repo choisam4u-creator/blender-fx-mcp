@@ -3,10 +3,26 @@
 ## 맥에서 돌릴 명령 (블렌더 필요, 최신 회차 기준)
 
 ```sh
-BLENDER_FX_LANG=en uv run pytest -q                # 실패 0개인지(10/10 실패 10개는 4회차에 고침, 7회차에 en + 한글 HOME·TMPDIR 로 다시 확인)
-uv run blender-fx-doctor                           # uv 줄(uvx 가 다른 폴더면 경로), "MCP 클라이언트 등록" 줄. 등록을 지운 상태면 끝 할 일에 해결법 #tools-not-visible-in-the-client 링크
-uv run python examples/first_render.py             # 블렌더에서 Connect 뒤: [1/5]…[5/5] 진행 줄과 걸린 초, PNG 3개 경로, 끝 줄 "restore first_render_before"
+LANG=en_US.UTF-8 uv run blender-fx-doctor --issue    # 영어로 나오는지(로캘 자동), 표의 경로가 ~ 로 가려졌는지, "output folder free space" 줄
+uv run pytest -q                                      # 블렌더 앱으로 전체 통과(새 시험: 대상 이름 오타 제안 test_target_typo_suggests_close_name)
+uv run python examples/first_render.py                # 블렌더에서 Connect 뒤: 끝까지 PNG 3개. Claude Code 에서 같은 굽기를 시키면 "블렌더에서 작업 중 — N초" 진행 표시가 뜨는지
 ```
+
+## 2026-10-10 (8회차)
+
+- 한 일: 사용자 요청 "새 항목 5개 추가하고 이어서 처리". main 은 앞서 있지 않음, `latest.md`(10/1)의 FAIL 2건은 main 에 고쳐져 있음(재확인).
+  백로그에 사용자 체감 우선 5개를 추가하고 **5개 모두 완료**:
+  1. **언어 자동 선택** — `BLENDER_FX_LANG` 이 없으면 로캘(`LC_ALL`→`LC_MESSAGES`→`LANG`): 한국어면 ko, 다른 언어면 en, 없거나 `C`/`POSIX` 면 ko(지금과 같음). doctor `--json` 에 `lang_source`. ⚠️ 동작 변화(영어 로캘 터미널).
+  2. **대상 이름 오타 제안** — `destroy(target="building")` → "Did you mean 'Building'? Names are case-sensitive." 메시가 아닌 오브젝트는 종류를, 빈 장면이면 만드는 도구를. bpy 시험.
+  3. **디스크 여유** — doctor "출력 폴더 여유 공간" 선택 줄(5GB 아래 `[- ]`), 물·연기·폭발 굽기는 1GB 아래면 블렌더에 보내기 전에 멈춤(폭발은 조각내기 전에). 해결법 문서 문장.
+  4. **긴 도구 진행 알림** — 굽기·렌더·저장 중 5초마다 MCP `report_progress`("블렌더에서 작업 중 — 45초"). 클라이언트가 progressToken 을 줄 때만. 도구 서명은 그대로(`FxServer` + contextvar).
+  5. **`blender-fx-doctor --issue`** — 이슈용 마크다운(판·OS·파이썬·블렌더·클라이언트·언어 표 + 점검 전체), 집 폴더는 `~` 로 가림. 버그·질문 양식이 권함.
+  - 남은 `[ ]` 0개가 되어 원래 규칙(3개 미만이면 5개 추가)대로 다음 회차용 5개를 근거와 함께 추가(clear_caches 확보 용량·스냅샷 정리·굽기 시간 어림·상대 경로·`--issue` 붙일 양식 칸).
+- 돌린 시험: `uv run pytest -q` **855 통과·35 건너뜀**(3.11). CI 서버 명령 3.10(846 통과, 9 건너뜀)·3.14(855 통과), 커버리지 98.4~98.7%(하한 95%). **`scripts/bpy_tests.sh` → 884 통과, 6 건너뜀**(유체 `app_only` 5개·실제 캐릭터 파일 1개). `uvx ruff@0.15.20 check .` 통과.
+  하다가 시험이 잡은 것 2개: CHANGELOG 영어 요약 6줄 한도(언어 줄에 합침), "오류마다 다음 할 일" 시험(메시가 아닌 대상 문장에 다시 시킬 말 추가).
+- 막힌 것: 없음. 진행 알림이 실제 클라이언트(Claude Code·Desktop) 화면에 보이는지는 Mac 몫.
+- 완료 수·추가 수: **완료 5** / **추가 10**(요청 5 + 규칙 5). 남은 `[ ]` 5개.
+- Mac에서 확인할 것: 맨 위 명령 3줄.
 
 ## 2026-10-10 (7회차)
 
