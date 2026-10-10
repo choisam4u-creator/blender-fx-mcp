@@ -19,11 +19,9 @@
   Out-of-range values used to be clamped silently.
 - `BLENDER_FX_TIMEOUT` now also extends the bake and render tools, and the timeout error says how long it waited and how to raise it.
 - All 32 tools carry MCP annotations; tools that overwrite or delete data are marked `destructiveHint`.
-- `blender-fx-doctor --json` prints the same checks as JSON with language-independent ids, for bug reports.
 - `blender-fx-doctor` ends with numbered next steps in install order (uv with the command for this OS, add-on install path, Connect, port),
-  and a missing Blender executable is shown as optional `[- ]` (only headless tests need it) instead of a failure.
-- Headless runs and doctor read Blender output as UTF-8, so non-UTF-8 bytes on Windows no longer raise `UnicodeDecodeError`.
-- Security: the indirect dependency `pyjwt` is raised to 2.15.1 (PYSEC-2026-4141, PYSEC-2026-4183); a weekly `pip-audit` job checks `uv.lock`.
+  shows the Blender executable as optional `[- ]` (only headless tests need it), and `--json` prints the same checks with language-independent ids.
+  Headless runs and doctor read Blender output as UTF-8, so non-UTF-8 bytes on Windows no longer raise `UnicodeDecodeError`.
 
 *Tests and CI*
 - Server-side unit tests grew from 9 to over 540, running on Python 3.10–3.14 in CI with coverage in the job summary (99%).
@@ -31,6 +29,7 @@
 - Static checks keep every message in Korean/English pairs and every tool description's value list equal to what the server accepts.
 - ruff lint, Dependabot, read-only workflow tokens and SHA-pinned actions, an OpenSSF Scorecard job and badge, and a daily job that closes `needs-info` issues after 30 quiet days.
 - CI runs every test file except the Blender-only recipe tests, fails below 95% server coverage, and checks the built wheel and sdist metadata (metadata version, version, project URLs, license expression, README, `mcp-name`) and runs `twine check`.
+- Security: the indirect dependency `pyjwt` is raised to 2.15.1 (PYSEC-2026-4141, PYSEC-2026-4183); a weekly `pip-audit` job checks `uv.lock`.
 
 *Docs*
 - English sections in the README and `docs/recipes.md`; new `docs/troubleshooting.md`, `docs/architecture.md`, `docs/maintenance.md`, `SUPPORT.md`,
