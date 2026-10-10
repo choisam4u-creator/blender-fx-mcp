@@ -14,9 +14,11 @@ import os
 import re
 import time
 from pathlib import Path
+from typing import Annotated
 
 from mcp.server.mcpserver import Image, MCPServer
 from mcp.types import ToolAnnotations
+from pydantic import Field
 
 from . import bridge
 from .bridge import BlenderError
@@ -1004,6 +1006,58 @@ def reset_destroy(target: str = "") -> str:
         return _fail(e)
     return t(f"정리 완료: 오브젝트 {res['removed']}개 제거, 원본 복구.",
              f"Cleanup done: removed {res['removed']} objects, originals restored.")
+
+
+# ---- MCP 프롬프트: 클라이언트의 `/` 메뉴에서 바로 고르는 문장. README 예시 문장을 복사해 붙이지 않아도 된다 ----
+
+# 제목·설명은 INSTRUCTIONS 처럼 서버를 띄울 때의 언어로 고른다
+@mcp.prompt(title=t("첫 데모: 건물 무너뜨리기", "First demo: collapse a building"),
+            description=t("연습 건물을 만들어 한쪽에서 충격을 줘 무너뜨리고 미리보기를 본다.",
+                          "Practice building → concrete collapse from one side → preview frames."))
+def first_demo(
+    impact: Annotated[str, Field(description="left / right / front / back / top / none")] = "left",
+    material: Annotated[str, Field(description=" / ".join(_DESTROY_MATERIALS))] = "concrete",
+) -> str:
+    try:
+        check_choices("destroy", dict(impact=impact, material=material))
+    except BlenderError as e:
+        # 예외로 내면 클라이언트에는 'Error rendering prompt' 만 보여 가능한 값이 사라진다. 문장으로 돌려준다
+        return t(f"/first_demo 인자가 틀렸어: {e} 아무 도구도 부르지 말고 이 문장을 나에게 그대로 보여 줘.",
+                 f"Wrong /first_demo argument: {e} Do not call any tool; show me this message as it is.")
+    return t(
+        "블렌더 FX 첫 데모를 차례로 해 줘. 단계마다 무엇을 했는지 한 줄로 알려 줘.\n"
+        "1. ping_blender 로 연결을 확인해. 실패하면 doctor 를 부르고 그 '다음 할 일'을 그대로 알려 준 뒤 멈춰.\n"
+        "2. make_demo_building 으로 연습 건물을 만들어(이름 Building).\n"
+        "3. snapshot 을 name=before_demo 로 불러 지금 상태를 저장해.\n"
+        f"4. destroy 를 target=Building, impact={impact}, material={material} 로 불러 무너뜨려.\n"
+        "5. render_preview 로 미리보기를 보여 주고, 무엇이 보이는지 쉬운 말로 설명해.\n"
+        "끝나면 바꿔 볼 만한 지시 두 가지(예: '더 잘게', '느리게')를 제안하고, 마음에 안 들면 restore before_demo 로 돌아갈 수 있다고 알려 줘.",
+        "Run the Blender FX first demo step by step. After each step, say in one line what you did.\n"
+        "1. Check the connection with ping_blender. If it fails, call doctor, pass on its next steps as they are, and stop.\n"
+        "2. Create the practice building with make_demo_building (name Building).\n"
+        "3. Call snapshot with name=before_demo to save the current state.\n"
+        f"4. Call destroy with target=Building, impact={impact}, material={material} to collapse it.\n"
+        "5. Show the preview with render_preview and describe what you see in plain words.\n"
+        "Then suggest two directions to try (e.g. 'smaller pieces', 'slower'), and mention that restore before_demo goes back.",
+    )
+
+
+@mcp.prompt(title=t("마지막 작업 되돌리기", "Undo the last step"),
+            description=t("스냅샷 목록을 보고 확인을 받은 뒤 가장 최근 것으로 되돌린다.",
+                          "List snapshots and go back to the most recent one after confirming."))
+def undo_last() -> str:
+    return t(
+        "방금 한 작업을 되돌리고 싶어.\n"
+        "1. list_snapshots 로 스냅샷 목록을 보여 줘. 하나도 없으면 되돌릴 곳이 없다고 말하고, 다음부터는 작업 전에 snapshot 으로 저장하자고 제안한 뒤 멈춰.\n"
+        "2. before_restore 를 뺀 가장 최근 스냅샷을 골라 이름과 저장 시각을 말하고, 그걸로 되돌릴지 나에게 한 번 물어봐.\n"
+        "3. 좋다고 하면 restore 를 그 이름으로 불러. 지금 상태는 before_restore 로 자동 저장되니, 되돌린 것도 restore before_restore 로 취소할 수 있다고 알려 줘.",
+        "I want to undo what was just done.\n"
+        "1. Show the snapshot list with list_snapshots. If there are none, say there is nothing to go back to, "
+        "suggest saving with snapshot before the next risky step, and stop.\n"
+        "2. Pick the most recent snapshot other than before_restore, tell me its name and time, and ask me once whether to go back to it.\n"
+        "3. If I agree, call restore with that name. Mention that the current state is auto-saved as before_restore, "
+        "so restore before_restore undoes the undo.",
+    )
 
 
 def main() -> None:

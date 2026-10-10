@@ -19,6 +19,7 @@
   Out-of-range values used to be clamped silently.
 - `BLENDER_FX_TIMEOUT` now also extends the bake and render tools, and the timeout error says how long it waited and how to raise it.
 - All 32 tools carry MCP annotations; tools that overwrite or delete data are marked `destructiveHint`.
+  Two MCP prompts, `/first_demo` (building → collapse → preview) and `/undo_last` (snapshot list → confirm → restore), appear in the client's `/` menu.
 - `blender-fx-doctor` ends with numbered next steps in install order (uv with the command for this OS, add-on install path, Connect, port),
   shows the Blender executable as optional `[- ]` (only headless tests need it), and `--json` prints the same checks with language-independent ids.
   Headless runs and doctor read Blender output as UTF-8, so non-UTF-8 bytes on Windows no longer raise `UnicodeDecodeError`.
@@ -63,6 +64,8 @@
   있으면 Connect, `BLENDER_FX_PORT` 를 바꿨으면 BlenderMCP 탭의 Port 도 같은 값으로. 다른 컴퓨터의 블렌더(`BLENDER_FX_HOST`)면 애드온 폴더는 보지 않는다.
 - 파일·스냅샷 경로 오류에 다음 할 일: `import_model`·HDRI 파일이 없으면 같은 폴더의 비슷한 이름(없으면 가져올 수 있는 파일, 폴더도 없으면 그 사실)을,
   `restore` 스냅샷이 없으면 있는 스냅샷 이름(없으면 snapshot 으로 먼저 저장)을 알려 준다. 내보내기 실패·면 없음·값 순서 오류 등 레시피 오류 문장마다 다음 할 일을 붙였다.
+- MCP 프롬프트 2개: `/first_demo`(연결 확인 → 연습 건물 → 스냅샷 → 붕괴 → 미리보기, `impact`·`material` 선택)와 `/undo_last`(스냅샷 목록 → 확인 → restore).
+  클라이언트의 `/` 메뉴에서 바로 골라 README 의 예시 문장을 복사해 붙이지 않아도 된다. 인자가 틀리면 가능한 값을 문장으로 돌려준다.
 - doctor 에 **MCP 클라이언트 등록** 선택 항목: Claude Code(`~/.claude.json`·폴더의 `.mcp.json`)·Claude Desktop·Cursor·Codex 설정에서 `blender-fx` 를 찾고,
   없으면 README 4단계 등록 명령을 "(선택)" 할 일로 보여 준다(필수 항목이 모두 OK 면 '모두 정상입니다' 아래 '더 할 수 있는 일').
 - `ping_blender`·doctor 연결 줄에 연결된 블렌더 판을 보여 주고, 시험한 판(5.2 LTS)이 아니면 한 줄 경고(효과가 실패하면 5.2 LTS 로 다시).

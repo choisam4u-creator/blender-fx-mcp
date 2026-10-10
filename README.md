@@ -31,6 +31,9 @@ uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-do
 
 > 연습용 건물 하나 만들고, 왼쪽에서 충격 줘서 콘크리트처럼 무너뜨려. 끝나면 미리보기 보여 줘.
 
+붙여 넣기 대신 클라이언트의 `/` 메뉴에서 **`/first_demo`**(같은 순서: 연결 확인 → 건물 → 스냅샷 → 붕괴 → 미리보기, `impact`·`material` 을 고를 수 있음)를,
+되돌릴 때는 **`/undo_last`**(스냅샷 목록 → 확인 → restore)를 골라도 됩니다(Claude Code 에서는 `/blender-fx:first_demo` 처럼 보일 수 있음).
+
 더 많은 예시(유리 슬로모션·모델 가져와 부수기·폭발·물 쏘기)와 실제 결과 수치는 [docs/recipes.md](docs/recipes.md).
 
 ---
@@ -305,6 +308,9 @@ Ready-to-paste configs for Claude Desktop, Cursor and Codex are in [examples/](e
 Open Blender, connect the receiver, then tell your AI:
 
 > Make a practice building, hit it from the left and collapse it like concrete. Show me a preview when it's done.
+
+Or pick **`/first_demo`** from your client's `/` menu instead of pasting (same steps: check connection → building → snapshot → collapse → preview;
+optional `impact` and `material`), and **`/undo_last`** to go back (snapshot list → confirm → restore). Claude Code may show them as `/blender-fx:first_demo`.
 
 Then keep directing from the preview frames: "smaller pieces", "only break where it was hit", "like glass", "shoot water sideways from the left",
 "thick like honey", "half gravity", "slow motion", "set it on fire", "make it snow", "low angle", "sunset".
