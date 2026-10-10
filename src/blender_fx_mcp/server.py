@@ -268,7 +268,7 @@ def _cache_dirs() -> dict:
 
 @mcp.tool(annotations=READ_ONLY)
 def doctor() -> str:
-    """Check prerequisites (python, mcp, uv, Blender, receiver add-on, connection, output folder).
+    """Check prerequisites (python, mcp, uv, Blender, receiver add-on, connection, MCP client registration, output folder).
     준비물 점검. 뭔가 안 될 때 먼저 부른다."""
     from .doctor import format_report, run_checks
     return format_report(run_checks())

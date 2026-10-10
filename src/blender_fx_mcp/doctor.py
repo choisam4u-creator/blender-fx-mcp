@@ -20,6 +20,7 @@ from . import __version__, bridge
 from .headless import find_blender
 from .i18n import is_en, t
 
+SERVER_CMD = "uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-mcp"
 
 
 def _check(name: str, ok: bool, detail: str, key: str = "", fix: str = "", optional: bool = False) -> dict:
@@ -45,6 +46,57 @@ def _connect_fix() -> str:
         step += t(f" (BlenderMCP 탭의 Port 를 BLENDER_FX_PORT 와 같은 {bridge.port()} 로)",
                   f" (set Port in the BlenderMCP tab to {bridge.port()}, the same as BLENDER_FX_PORT)")
     return step
+
+
+def client_configs() -> list[tuple[str, str]]:
+    """(클라이언트 이름, 설정 파일) 목록. examples/README.md 의 표와 같은 곳을 본다."""
+    home = os.path.expanduser("~")
+    desktop = {"darwin": os.path.join(home, "Library", "Application Support", "Claude"),
+               "win32": os.path.join(os.environ.get("APPDATA", os.path.join(home, "AppData", "Roaming")), "Claude")}
+    return [
+        ("Claude Code", os.path.join(home, ".claude.json")),
+        ("Claude Code", os.path.join(os.getcwd(), ".mcp.json")),  # 프로젝트 범위(-s project)
+        ("Claude Desktop", os.path.join(desktop.get(sys.platform, os.path.join(home, ".config", "Claude")),
+                                        "claude_desktop_config.json")),
+        ("Cursor", os.path.join(home, ".cursor", "mcp.json")),
+        ("Codex", os.path.join(home, ".codex", "config.toml")),
+    ]
+
+
+def _is_ours(name: str, entry) -> bool:
+    return name.replace("_", "-") == "blender-fx" or "blender-fx-mcp" in json.dumps(entry, ensure_ascii=False)
+
+
+def _has_server(data) -> bool:
+    """JSON 어디든 mcpServers 안에 이 서버가 있는지. Claude Code 는 projects.<폴더>.mcpServers 에도 둔다."""
+    if isinstance(data, dict):
+        servers = data.get("mcpServers")
+        if isinstance(servers, dict) and any(_is_ours(k, v) for k, v in servers.items()):
+            return True
+        return any(_has_server(v) for v in data.values())
+    return isinstance(data, list) and any(_has_server(v) for v in data)
+
+
+def registered_clients() -> list[str]:
+    """blender-fx 가 등록된 MCP 클라이언트 이름들(중복 없이, 찾은 순서)."""
+    found: list[str] = []
+    for client, path in client_configs():
+        try:
+            with open(path, encoding="utf-8") as f:
+                text = f.read()
+        except OSError:
+            continue
+        if path.endswith(".toml"):
+            # 파이썬 3.10 에는 tomllib 가 없어 표 이름·명령만 본다
+            hit = "[mcp_servers.blender_fx]" in text or "[mcp_servers.blender-fx]" in text or "blender-fx-mcp" in text
+        else:
+            try:
+                hit = _has_server(json.loads(text))
+            except ValueError:
+                hit = False
+        if hit and client not in found:
+            found.append(client)
+    return found
 
 
 def run_checks() -> list[dict]:
@@ -112,6 +164,20 @@ def run_checks() -> list[dict]:
     except bridge.BlenderError as e:
         out.append(_check(name_conn, False, str(e), "connection", _connect_fix()))
 
+    # 다른 클라이언트(VS Code 등)에만 등록했을 수도 있어 선택 항목이다. 못 찾으면 README 4단계 명령을 다음 할 일로
+    clients = registered_clients()
+    out.append(_check(t("MCP 클라이언트 등록", "MCP client registration"), bool(clients),
+                      ", ".join(clients) if clients else t(
+                          "Claude Code·Claude Desktop·Cursor·Codex 설정에서 blender-fx 를 못 찾음(다른 클라이언트에 등록했다면 무시)",
+                          "blender-fx not found in Claude Code, Claude Desktop, Cursor or Codex settings "
+                          "(ignore if you registered it in another client)"),
+                      "client", t(
+                          f"클로드에 등록: claude mcp add -s user blender-fx -- {SERVER_CMD} "
+                          "(다른 클라이언트는 examples/README.md, 등록 뒤 앱을 껐다 켜기)",
+                          f"Register with Claude: claude mcp add -s user blender-fx -e BLENDER_FX_LANG=en -- {SERVER_CMD} "
+                          "(other clients: examples/README.md; restart the app afterwards)"),
+                      optional=True))
+
     name_out = t("출력 폴더", "output folder")
     root = os.path.expanduser(os.environ.get("BLENDER_FX_OUT", "~/blender-fx-output"))
     try:
@@ -140,12 +206,18 @@ def failed(checks: list[dict]) -> list[dict]:
 def format_report(checks: list[dict]) -> str:
     lines = [f"[{mark(c)}] {c['name']}: {c['detail']}" for c in checks]
     bad = failed(checks)
+    # 선택 항목 중 할 일이 있는 것(클라이언트 등록)은 필수 항목 뒤에 "(선택)" 을 붙여 이어서 번호를 매긴다
+    extra = [c for c in checks if not c["ok"] and c.get("optional") and c.get("fix")]
+    steps = [c.get("fix") or c["detail"] for c in bad] + [t("(선택) ", "(optional) ") + c["fix"] for c in extra]
     if not bad:
         lines.append(t("모두 정상입니다.", "Everything looks good."))
+        if extra:
+            lines.append(t("더 할 수 있는 일:", "You may also:"))
+            lines += [f"  {i}. {s}" for i, s in enumerate(steps, 1)]
         return "\n".join(lines)
     lines.append(t(f"확인 필요: {', '.join(c['name'] for c in bad)}. 다음 할 일:",
                    f"Needs attention: {', '.join(c['name'] for c in bad)}. Next steps:"))
-    lines += [f"  {i}. {c.get('fix') or c['detail']}" for i, c in enumerate(bad, 1)]
+    lines += [f"  {i}. {s}" for i, s in enumerate(steps, 1)]
     lines.append(t(f"해결법: {bridge.TROUBLESHOOTING_URL}", f"Help: {bridge.TROUBLESHOOTING_URL}"))
     return "\n".join(lines)
 

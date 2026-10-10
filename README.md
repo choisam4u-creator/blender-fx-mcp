@@ -15,12 +15,12 @@
 
 **처음 한 번 (4단계)** — 단계마다 `blender-fx-doctor` 의 그 줄이 `[OK]` 면 된 것입니다(순서도 doctor 의 "다음 할 일"과 같습니다).
 
-<!-- setup-steps: uv, addon, connection -->
+<!-- setup-steps: uv, addon, connection, client -->
 1. **uv 설치** — macOS `brew install uv` (Windows·Linux 명령은 doctor 가 알려 줍니다) → `[OK] uv`
 2. **블렌더 5.2 + 수신기 애드온** — [blender-mcp](https://github.com/ahujasid/blender-mcp) 의 `addon.py` 를 받아
    블렌더 Edit → Preferences → Add-ons → 오른쪽 위 ▾ → **Install from Disk** 로 설치하고 체크 → `[OK] 수신기 애드온 파일(blender-mcp)`
 3. **블렌더에서 Connect** — 3D 화면에서 `N` 키 → **BlenderMCP** 탭 → **Connect to MCP server** → `[OK] 수신기 연결`
-4. **클로드에 등록**(다른 클라이언트는 [examples/](examples/)):
+4. **클로드에 등록**(다른 클라이언트는 [examples/](examples/)) → `[OK] MCP 클라이언트 등록`:
 
 ```bash
 claude mcp add -s user blender-fx -- uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-mcp
@@ -116,7 +116,7 @@ claude mcp add -s user blender-fx -- uv --directory /절대/경로/blender-fx-mc
 
 | 도구 | 하는 일 |
 |---|---|
-| `doctor` | 준비물 점검(파이썬·mcp·uv·블렌더·수신기·출력 폴더). 안 될 때 먼저 부른다 |
+| `doctor` | 준비물 점검(파이썬·mcp·uv·블렌더·수신기·클라이언트 등록·출력 폴더). 안 될 때 먼저 부른다 |
 | `ping_blender` | 수신기와 연결되는지, 블렌더 판이 시험한 판인지 확인 |
 | `list_objects` | 장면의 메시 이름·크기 목록 (부술 대상 고르기) |
 | `inspect_mesh` | 부수기 전 모델 진단: 닫혀 있나, 부피, 오목한 정도, 면 수, 수리하면 얼마나 나아지나 |
@@ -262,14 +262,14 @@ MIT (이 저장소). 블렌더 안 수신기 애드온은 blender-mcp 프로젝�
 
 Four steps, once. Each step is done when its `blender-fx-doctor` line shows `[OK]` (same order as doctor's "Next steps").
 
-<!-- setup-steps: uv, addon, connection -->
+<!-- setup-steps: uv, addon, connection, client -->
 1. **Install uv** (Python runner) — macOS `brew install uv` (doctor prints the Windows/Linux command) → `[OK] uv`
 2. **Blender 5.2 + the receiver add-on** — download `addon.py` from [blender-mcp](https://github.com/ahujasid/blender-mcp), then in Blender
    Edit → Preferences → Add-ons → top-right ▾ → **Install from Disk**, and tick it → `[OK] receiver add-on file (blender-mcp)`
 3. **Connect in Blender** — in the 3D view press `N` → **BlenderMCP** tab → **Connect to MCP server**. It listens on `localhost:9876` → `[OK] receiver connection`
-4. **Register with your AI client** — see [Install](#install) below.
+4. **Register with your AI client** — see [Install](#install) below → `[OK] MCP client registration`
 
-Check everything at once (Python, mcp, uv, Blender, receiver, output folder):
+Check everything at once (Python, mcp, uv, Blender, receiver, client registration, output folder):
 
 ```bash
 uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-doctor
@@ -317,7 +317,7 @@ More examples with measured results: [docs/recipes.md (English section)](docs/re
 
 | Tool | What it does |
 |---|---|
-| `doctor` | Checks prerequisites (Python, mcp, uv, Blender, receiver, output folder). Call it first when something fails |
+| `doctor` | Checks prerequisites (Python, mcp, uv, Blender, receiver, client registration, output folder). Call it first when something fails |
 | `ping_blender` | Checks the connection to the receiver and whether the Blender version is a tested one |
 | `list_objects` | Lists mesh names and sizes in the scene (to pick a target) |
 | `inspect_mesh` | Diagnoses a model before breaking it: closed or not, volume, concavity, face count, whether repair helps |
