@@ -263,3 +263,32 @@ def test_unknown_option_is_rejected(capsys):
     with pytest.raises(SystemExit) as e:
         doctor.main(["--jsn"])
     assert e.value.code == 2 and "--jsn" in capsys.readouterr().err
+
+
+# ---- README 준비 단계 = doctor 순서 ----
+
+def _setup_steps(section: str):
+    """README 절에서 `<!-- setup-steps: … -->` 표지 뒤 번호 목록의 `[OK] 이름` 들을 차례로 모은다."""
+    import re
+    m = re.search(r"<!-- setup-steps: ([\w, ]+) -->\n(.*?)\n\n", section, re.S)
+    assert m, "README 준비 단계 표지(<!-- setup-steps: … -->)가 없음"
+    ids = [x.strip() for x in m.group(1).split(",")]
+    oks = re.findall(r"→ `\[OK\] ([^`]+)`", m.group(2))
+    return ids, oks
+
+
+@pytest.mark.parametrize("lang", ["ko", "en"])
+def test_readme_setup_steps_follow_doctor_order(env, monkeypatch, lang):
+    """첫 화면의 준비 단계가 doctor 필수 항목(uv → 애드온 → 연결) 순서와 같고, 단계마다 doctor 의 줄 이름을 그대로 쓴다."""
+    readme = (Path(__file__).resolve().parents[1] / "README.md").read_text(encoding="utf-8")
+    ko, en = readme.split("\n## English\n", 1)
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    checks = doctor.run_checks()
+    ids, oks = _setup_steps(ko if lang == "ko" else en)
+    required = [c["id"] for c in checks if not c["optional"] and c["id"] in ids]
+    assert ids == required, f"README 단계 {ids} ≠ doctor 순서 {required}"
+    names = {c["id"]: c["name"] for c in checks}
+    assert oks == [names[i] for i in ids], f"{lang}: README 의 [OK] 이름 {oks} ≠ doctor {[names[i] for i in ids]}"
+    # 순서 시험이 doctor 의 '다음 할 일' 번호와도 맞는지: 모두 실패하면 이 순서로 번호가 매겨진다
+    order = [c["id"] for c in doctor.failed([dict(c, ok=False) for c in checks])]
+    assert [i for i in order if i in ids] == ids

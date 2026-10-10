@@ -13,12 +13,18 @@
 ![결과 GIF 자리 — docs/demo-script.md 대본으로 촬영 후 docs/media/demo.gif 로 교체](docs/media/demo.gif)
 -->
 
-**Claude에 연결 (3줄)** — 블렌더 5.2 + [blender-mcp](https://github.com/ahujasid/blender-mcp) 수신기 애드온 켜기 + `uv` 설치 후:
+**처음 한 번 (4단계)** — 단계마다 `blender-fx-doctor` 의 그 줄이 `[OK]` 면 된 것입니다(순서도 doctor 의 "다음 할 일"과 같습니다).
+
+<!-- setup-steps: uv, addon, connection -->
+1. **uv 설치** — macOS `brew install uv` (Windows·Linux 명령은 doctor 가 알려 줍니다) → `[OK] uv`
+2. **블렌더 5.2 + 수신기 애드온** — [blender-mcp](https://github.com/ahujasid/blender-mcp) 의 `addon.py` 를 받아
+   블렌더 Edit → Preferences → Add-ons → 오른쪽 위 ▾ → **Install from Disk** 로 설치하고 체크 → `[OK] 수신기 애드온 파일(blender-mcp)`
+3. **블렌더에서 Connect** — 3D 화면에서 `N` 키 → **BlenderMCP** 탭 → **Connect to MCP server** → `[OK] 수신기 연결`
+4. **클로드에 등록**(다른 클라이언트는 [examples/](examples/)):
 
 ```bash
 claude mcp add -s user blender-fx -- uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-mcp
-uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-doctor   # 준비물 점검
-# 블렌더에서 N 키 → BlenderMCP 탭 → Connect to MCP server
+uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-doctor   # 점검: 끝에 "모두 정상입니다."
 ```
 
 **첫 명령 예시** — AI에게 이렇게 말합니다:
@@ -58,10 +64,12 @@ AI는 코드를 짜지 않습니다. 도구와 값만 고릅니다. 그래서 �
 
 ## 준비물 3가지
 
-1. **블렌더 5.2** (5.x LTS 기준으로 만들었습니다)
-2. **블렌더 안 수신기 애드온**: [blender-mcp](https://github.com/ahujasid/blender-mcp)의 `addon.py`를 블렌더에 설치하고 켭니다.
-   설치 후 3D 화면에서 `N` 키 → **BlenderMCP** 탭 → **Connect to MCP server** 를 누르면 수신기가 켜집니다.
-3. **uv** (파이썬 실행기): `brew install uv`
+순서는 첫 화면의 4단계·doctor 의 "다음 할 일"과 같습니다.
+
+1. **uv** (파이썬 실행기): macOS `brew install uv`. Windows·Linux 는 [docs.astral.sh/uv](https://docs.astral.sh/uv/) 또는 doctor 가 알려 주는 명령
+2. **블렌더 5.2** (5.x LTS 기준으로 만들었습니다) 와 **블렌더 안 수신기 애드온**: [blender-mcp](https://github.com/ahujasid/blender-mcp)의 `addon.py`를
+   Edit → Preferences → Add-ons → 오른쪽 위 ▾ → Install from Disk 로 설치하고 켭니다.
+3. **수신기 켜기**: 3D 화면에서 `N` 키 → **BlenderMCP** 탭 → **Connect to MCP server** 를 누르면 수신기가 켜집니다(블렌더를 켤 때마다).
 
 준비물이 갖춰졌는지 한 번에 확인:
 
@@ -252,10 +260,14 @@ MIT (이 저장소). 블렌더 안 수신기 애드온은 blender-mcp 프로젝�
 
 ### What you need
 
-1. **Blender 5.2** (built against the 5.x LTS line).
-2. **The receiver add-on inside Blender**: install `addon.py` from [blender-mcp](https://github.com/ahujasid/blender-mcp) and enable it.
-   In the 3D view press `N` → **BlenderMCP** tab → **Connect to MCP server**. It listens on `localhost:9876`.
-3. **uv** (Python runner): `brew install uv`, or see [docs.astral.sh/uv](https://docs.astral.sh/uv/).
+Four steps, once. Each step is done when its `blender-fx-doctor` line shows `[OK]` (same order as doctor's "Next steps").
+
+<!-- setup-steps: uv, addon, connection -->
+1. **Install uv** (Python runner) — macOS `brew install uv` (doctor prints the Windows/Linux command) → `[OK] uv`
+2. **Blender 5.2 + the receiver add-on** — download `addon.py` from [blender-mcp](https://github.com/ahujasid/blender-mcp), then in Blender
+   Edit → Preferences → Add-ons → top-right ▾ → **Install from Disk**, and tick it → `[OK] receiver add-on file (blender-mcp)`
+3. **Connect in Blender** — in the 3D view press `N` → **BlenderMCP** tab → **Connect to MCP server**. It listens on `localhost:9876` → `[OK] receiver connection`
+4. **Register with your AI client** — see [Install](#install) below.
 
 Check everything at once (Python, mcp, uv, Blender, receiver, output folder):
 
