@@ -115,3 +115,11 @@
 - [x] 주 1회 의존성 취약점 점검 작업(`uvx pip-audit` 또는 osv-scanner 로 `uv.lock`, SHA 고정, 읽기 권한만) + SECURITY 공급망 표에 한 줄 (보안·유지보수: dependabot 은 판 갱신만 하고 알려진 취약점이 있는 고정 판을 따로 알리지 않음) — `.github/workflows/audit.yml`(매주 화·잠금 파일 PR·main 푸시, `uv export --locked --all-groups` → `uvx pip-audit@2.9.0 --disable-pip`, 읽기 권한, SHA 고정). **처음 돌리자 실제 취약점 2건 발견**: 간접 의존성 `pyjwt 2.14.0`(PYSEC-2026-4141·4183) → 2.15.1 로 올려 0건. SECURITY 공급망 표 한 줄, 시험 `test_audit_workflow_checks_the_lock_file`
 - [x] 휠·sdist 에 `LICENSE` 가 들어가는지 `release_check.py --dist` 칸 + sdist 에 `docs/third-party-licenses.md` 포함 여부 확인 (라이선스: 배포물만 받은 사람도 라이선스 본문을 보게. 지금은 METADATA 의 License-Expression 만 봄) — `check_license_files`: 지금 빌드는 휠 `licenses/LICENSE`, sdist `LICENSE`·`docs/third-party-licenses.md` 모두 들어 있음(25개 OK). 시험 1개 + 가짜 휠·sdist 도우미에 라이선스 파일
 - [x] 이슈 양식 3개의 공통 칸(MCP 클라이언트 선택지·블렌더 판 placeholder)이 examples/README 의 클라이언트 목록·SUPPORT 의 블렌더 지원 판과 같은지 시험 (이슈 대응: 클라이언트가 늘거나 지원 판이 바뀌면 양식 선택지가 조용히 뒤처짐) — 시험 `test_form_common_fields_match_docs`: 클라이언트 선택지(양식 3개) = examples/README 표 + `기타 / Other`, 블렌더 판 placeholder(양식 2개) = SUPPORT 의 지원 LTS 판, 버그 양식 OS 선택지 ⊇ SUPPORT 의 OS 줄. 선택지를 바꿔 실패하는 것 확인(Windsurf·5.1.0). 지금은 어긋난 곳 없음
+
+### 2026-10-10 (4회차) 추가 — 사용자 체감 우선
+
+- [ ] doctor 의 "블렌더 실행 파일" 항목을 선택 항목으로: 못 찾아도 `[X ]` 대신 `[- ]`(헤드리스 시험에만 필요), "확인 필요" 목록·종료 코드에서 빼기 + 시험 (오류 메시지·첫 설치: 10/10 에 doctor 를 돌려 보면 MCP 사용에 필요 없는 항목이 X 로 떠 첫 사용자가 블렌더 경로를 찾느라 멈춘다)
+- [ ] doctor 마지막 줄을 "다음 할 일"로: 실패 항목을 설치 순서(uv → 애드온 설치 → 블렌더에서 Connect)대로 번호를 매겨 명령·클릭 경로를 한 줄씩, uv 설치 명령은 OS 별(지금은 모든 OS 에 `brew install uv`) + 한/영 시험 (첫 설치 단계 수: 지금 마지막 줄은 실패 이름과 문서 링크뿐이라 사용자가 문서를 한 번 더 열어야 한다)
+- [ ] 연결 거부 오류에 원인 좁히기: 수신기 애드온 파일이 없으면 "설치부터", 있으면 "블렌더에서 Connect", 포트를 바꿨으면 "BLENDER_FX_PORT 와 애드온 포트가 같은지"를 골라 말하기 + 시험 (오류 메시지: 첫 도구 호출이 실패할 때 AI 가 사용자에게 정확한 다음 한 단계를 말하게. 지금은 세 경우가 같은 문장)
+- [ ] 파일·스냅샷 경로 오류에 다음 할 일: `import_model` 파일 없음 → 같은 폴더의 비슷한 이름·지원 형식 파일 제안, `restore` 스냅샷 없음 → 있는 스냅샷 이름, 내보낼 것 없음·파일 안 만들어짐 → 할 일 + 정적 시험(레시피 오류 한국어 문장마다 다음 할 일 표지가 있는지, 예외 목록 명시) (오류 메시지: 경로 오타는 가장 흔한 실패인데 지금은 "파일이 없습니다: 경로" 뿐)
+- [ ] `CITATION.cff`(한 판, MIT, 저장소 주소) + 판·주소가 pyproject·server.json 과 같은지 시험 (문서·라이선스: GitHub 가 "Cite this repository" 를 띄우고, 오픈소스 지원 프로그램·연구 사용자가 인용 정보를 찾는 곳)
