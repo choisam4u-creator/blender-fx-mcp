@@ -3,10 +3,31 @@
 ## 맥에서 돌릴 명령 (블렌더 필요, 최신 회차 기준)
 
 ```sh
-BLENDER_FX_LANG=en uv run pytest -q                # 실패 0개인지(10/10 실패 10개는 4회차에 고침, 셸 언어·한글 홈 경로와 무관)
-BLENDER_FX_PORT=1 uv run blender-fx-doctor         # 연결 줄 X, 끝 "다음 할 일" 번호 줄. 블렌더 창에서 Connect 뒤 BLENDER_FX_PORT 없이 다시 → 연결 줄에 "Blender 5.2.x"
-uv run python -c "from blender_fx_mcp import server; print(server.ping_blender()); print(server.restore('없는이름'))"   # 블렌더 판 표시, restore 는 있는 스냅샷 이름 제안
+BLENDER_FX_LANG=en uv run pytest -q                # 실패 0개인지(10/10 실패 10개는 4회차에 고침, 6회차에 한글 HOME 으로 다시 확인)
+uv run blender-fx-doctor                           # "MCP 클라이언트 등록" 줄이 [OK] Claude Code (없으면 [- ] 와 끝에 "(선택) claude mcp add …")
+uv run python examples/first_render.py             # 블렌더에서 Connect 뒤: PNG 3개 경로 + 끝 줄 "restore first_render_before". 그다음 Claude Code 에서 / 를 눌러 first_demo·my_model·undo_last 가 보이는지
 ```
+
+## 2026-10-10 (6회차)
+
+- 한 일: 맨 앞 지시(10/10 Mac 실패 10개)는 **4회차에 이미 고쳐 main 대상 PR #13 에 있음**을 다시 확인 —
+  `HOME`·`--basetemp` 를 한글 폴더로 + `BLENDER_FX_LANG=en` 으로 전체 시험 709 통과·0 실패(고치기 전 재현은 4회차 기록).
+  `latest.md`(10/1)의 FAIL 2건은 10/2 에 고쳐 main 에 있음. main 은 앞서 있지 않음. 그다음 백로그(사용자 체감 우선):
+  1. **doctor "MCP 클라이언트 등록" 선택 항목**(백로그) — Claude Code(`~/.claude.json` 사용자·폴더 범위, `.mcp.json`)·Claude Desktop·Cursor·Codex 설정에서 찾고,
+     없으면 README 4단계 등록 명령을 "(선택)" 할 일로. README 4단계에 `→ [OK] MCP 클라이언트 등록`. 이제 첫 화면 4단계가 모두 doctor 로 확인된다.
+  2. **MCP 프롬프트 `/first_demo`·`/undo_last`**(백로그) — 클라이언트 `/` 메뉴에서 첫 데모(연결 → 건물 → 스냅샷 → 붕괴 → 미리보기)와 되돌리기(확인 후 restore).
+  3. **`examples/first_render.py`**(백로그) — 터미널에서 첫 렌더 PNG 경로까지. 연결 안 되면 다음 할 일 + 종료 코드 2.
+     시험을 짜다 **예제 결함** 발견: `result.isError` 는 지금 SDK 에 없는 이름(`is_error`) → 성공 갈래에서 바로 죽었을 것. 고침.
+  4. **MCP `doctor` 도구에서는 클라이언트 등록 항목 뺌**(새 항목, 1번이 만든 문제) — 이미 연결된 AI 에게 등록 명령을 권하지 않게.
+  5. **`first_render.py` 가 시작 전에 `first_render_before` 스냅샷**(새 항목) — 사용자 장면에 Building 을 더해 부숴도 돌아갈 수 있게, 끝에 되돌리는 방법.
+  6. **MCP 프롬프트 `/my_model`**(새 항목) — 내 모델 가져오기 → `inspect_mesh` 점검(문제면 확인) → 붕괴 → 미리보기.
+  - 같은 브랜치에서 다른 세션이 1번 시험의 Python 3.14 CI 실패(`sys.platform` 을 바꾸면 `shutil.which` 가 `_winapi` 로 감)를 먼저 고쳐 푸시해 있어, 그 위에 이어 올림.
+- 돌린 시험: `uv run pytest -q` **777 통과·34 건너뜀**(3.11, Linux). 한글 HOME·basetemp + `en` 으로도 통과.
+  새·바뀐 시험 파일(doctor·프롬프트·예제·메시지)은 **Python 3.10·3.14** 로도 통과. `uvx ruff@0.15.20 check .` 통과.
+  건너뛴 34개는 블렌더(앱·bpy)가 없어서 — 레시피 시험(CI `recipe-tests-bpy`·Mac 앱 몫). 이번 회차는 레시피를 안 바꿔 `bpy_tests.sh` 는 안 돌림.
+  `first_render.py` 가 **실제 블렌더로** PNG 를 내는지, 프롬프트가 Claude Code `/` 메뉴에 뜨는지는 블렌더 앱·클라이언트가 필요해 Mac 몫(맨 위 3번째 줄).
+- 완료 수·추가 수: **완료 6**(백로그 기존 3 + 새 3) / **추가 5**. 남은 `[ ]` 2개(troubleshooting "도구가 안 보임" 절·doctor `--json` 의 clients).
+- Mac에서 확인할 것: 맨 위 명령 3줄.
 
 ## 2026-10-10 (5회차)
 
