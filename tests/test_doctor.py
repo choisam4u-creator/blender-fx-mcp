@@ -214,7 +214,7 @@ def _fake_checks(monkeypatch, tmp_path, lang):
     monkeypatch.setenv("BLENDER_FX_LANG", lang)
     monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path))
     monkeypatch.setattr(doctor, "find_blender", lambda: None)
-    monkeypatch.setattr(doctor, "ADDON_GLOBS", [])
+    monkeypatch.setattr(bridge, "ADDON_GLOBS", [])
 
     def refused():
         raise bridge.BlenderError("refused")

@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+import glob
 import json
 import os
 import socket
@@ -33,6 +34,54 @@ DEFAULT_PORT = 9876  # blender-mcp 수신기 애드온의 기본 포트
 
 def port() -> int:
     return int(os.environ.get("BLENDER_FX_PORT", str(DEFAULT_PORT)))
+
+
+# 수신기 애드온(blender-mcp)이 설치되는 곳. doctor 의 "수신기 애드온 파일" 줄과 연결 거부 안내가 같이 쓴다
+ADDON_GLOBS = [
+    "~/Library/Application Support/Blender/*/scripts/addons/blender_mcp.py",  # macOS
+    "~/.config/blender/*/scripts/addons/blender_mcp.py",  # Linux
+    "~/AppData/Roaming/Blender Foundation/Blender/*/scripts/addons/blender_mcp.py",  # Windows
+    "~/Library/Application Support/Blender/*/extensions/*/*blender_mcp*/__init__.py",
+]
+
+ADDON_URL = "https://github.com/ahujasid/blender-mcp"
+
+
+def addon_files() -> list[str]:
+    # normpath: Windows 에서 expanduser 가 붙인 `\` 와 패턴의 `/` 가 섞여 보이지 않게
+    return [os.path.normpath(p) for g in ADDON_GLOBS for p in glob.glob(os.path.expanduser(g))]
+
+
+def is_local() -> bool:
+    return host() in ("localhost", "127.0.0.1", "::1")
+
+
+def connect_steps() -> str:
+    """연결이 거부됐을 때 사용자가 할 다음 단계. 원인을 좁혀 하나만 고른다.
+
+    - 이 컴퓨터에 애드온 파일이 없음 → 설치부터(이미 깔았는데 못 찾는 경우를 위해 Connect 도 이어서 말한다)
+    - 애드온은 있음 → 블렌더를 켜고 Connect
+    - BLENDER_FX_PORT 를 바꿨음 → 애드온 패널의 Port 도 같은 값으로(위 둘에 덧붙인다)
+    다른 컴퓨터의 블렌더(BLENDER_FX_HOST)면 이 컴퓨터의 애드온 폴더는 볼 이유가 없어 Connect 만 말한다.
+    """
+    connect = t("블렌더를 켜고, 3D 화면에서 N 키 → BlenderMCP 탭 → Connect to MCP server 를 누르세요.",
+                "Open Blender, press N in the 3D view, go to the BlenderMCP tab and click Connect to MCP server.")
+    if is_local() and not addon_files():
+        step = t(
+            f"수신기 애드온(blender-mcp)을 찾지 못했습니다. 아직 설치하지 않았다면 {ADDON_URL} 에서 addon.py 를 받아 "
+            "블렌더 Edit → Preferences → Add-ons → 오른쪽 위 ▾ → Install from Disk 로 설치하고 체크한 뒤, "
+            "3D 화면에서 N 키 → BlenderMCP 탭 → Connect to MCP server 를 누르세요.",
+            f"The receiver add-on (blender-mcp) was not found. If you have not installed it, download addon.py from {ADDON_URL}, "
+            "then in Blender Edit → Preferences → Add-ons → top-right ▾ → Install from Disk, tick it, and "
+            "press N in the 3D view → BlenderMCP tab → Connect to MCP server.")
+    else:
+        step = connect
+    if port() != DEFAULT_PORT:
+        step += t(f" BLENDER_FX_PORT 가 {port()} 이므로 BlenderMCP 탭의 Port 도 {port()} 인지 확인하세요"
+                  f"(애드온 기본값은 {DEFAULT_PORT}).",
+                  f" BLENDER_FX_PORT is {port()}, so make sure Port in the BlenderMCP tab is also {port()}"
+                  f" (the add-on default is {DEFAULT_PORT}).")
+    return step
 
 
 def default_timeout() -> float:
@@ -75,11 +124,9 @@ def send_command(cmd_type: str, params: dict | None = None, timeout: float | Non
                 f"Help: {TROUBLESHOOTING_URL}#timeout",
             )) from e
         raise BlenderError(t(
-            f"블렌더에 연결할 수 없습니다({host()}:{port()}). "
-            "블렌더를 켜고, 3D 화면에서 N 키 → BlenderMCP 탭 → Connect to MCP server 를 눌렀는지 확인하세요. "
+            f"블렌더에 연결할 수 없습니다({host()}:{port()}). {connect_steps()} "
             f"해결법: {TROUBLESHOOTING_URL}#connection-refused",
-            f"Cannot connect to Blender ({host()}:{port()}). "
-            "Open Blender, press N in the 3D view, go to the BlenderMCP tab and click Connect to MCP server. "
+            f"Cannot connect to Blender ({host()}:{port()}). {connect_steps()} "
             f"Help: {TROUBLESHOOTING_URL}#connection-refused",
         )) from e
 

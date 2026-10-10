@@ -22,13 +22,16 @@ If your problem is not here, open a [bug report](https://github.com/choisam4u-cr
 > Cannot connect to Blender (localhost:9876).
 
 원인: 블렌더가 꺼져 있거나, 수신기 애드온(blender-mcp)이 아직 연결을 기다리지 않습니다.
+오류 문장 뒤에는 원인을 좁힌 다음 한 단계가 붙습니다: 이 컴퓨터에서 애드온 파일을 못 찾으면 **설치부터**, 찾으면 **Connect**,
+`BLENDER_FX_PORT` 를 바꿨으면 **포트 맞추기**(doctor 의 "수신기 애드온 파일" 줄과 같은 폴더를 봅니다).
 
 1. 블렌더를 켭니다.
 2. 3D 화면에서 `N` 키 → **BlenderMCP** 탭 → **Connect to MCP server** 를 누릅니다.
 3. 탭이 안 보이면 Edit → Preferences → Add-ons 에서 blender-mcp 애드온을 켭니다(doctor 의 "수신기 애드온 파일" 줄 참고).
 4. `BLENDER_FX_HOST`·`BLENDER_FX_PORT` 를 바꿨다면 애드온 패널의 포트와 같은지 확인합니다.
 
-Cause: Blender is closed, or the receiver add-on is not listening. Open Blender, press `N` in the 3D view, open the
+Cause: Blender is closed, or the receiver add-on is not listening. The error ends with one narrowed-down next step: install the
+add-on if no add-on file is found on this computer, otherwise click Connect, and match the port if you changed `BLENDER_FX_PORT`. Open Blender, press `N` in the 3D view, open the
 **BlenderMCP** tab and click **Connect to MCP server**. If the tab is missing, enable the blender-mcp add-on in
 Edit → Preferences → Add-ons. If you changed `BLENDER_FX_HOST`/`BLENDER_FX_PORT`, match the port shown in the add-on panel.
 

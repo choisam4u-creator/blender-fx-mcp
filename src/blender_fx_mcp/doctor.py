@@ -8,7 +8,6 @@
 from __future__ import annotations
 
 import argparse
-import glob
 import json
 import os
 import platform
@@ -21,12 +20,6 @@ from . import __version__, bridge
 from .headless import find_blender
 from .i18n import is_en, t
 
-ADDON_GLOBS = [
-    "~/Library/Application Support/Blender/*/scripts/addons/blender_mcp.py",  # macOS
-    "~/.config/blender/*/scripts/addons/blender_mcp.py",  # Linux
-    "~/AppData/Roaming/Blender Foundation/Blender/*/scripts/addons/blender_mcp.py",  # Windows
-    "~/Library/Application Support/Blender/*/extensions/*/*blender_mcp*/__init__.py",
-]
 
 
 def _check(name: str, ok: bool, detail: str, key: str = "", fix: str = "", optional: bool = False) -> dict:
@@ -95,8 +88,7 @@ def run_checks() -> list[dict]:
             "not found — not needed to use the MCP server. Only for headless tests: set BLENDER_FX_BLENDER to its path"),
             "blender", optional=True))
 
-    # normpath: Windows 에서 expanduser 가 붙인 `\` 와 패턴의 `/` 가 섞여 보이지 않게
-    found = [os.path.normpath(p) for g in ADDON_GLOBS for p in glob.glob(os.path.expanduser(g))]
+    found = bridge.addon_files()
     out.append(_check(t("수신기 애드온 파일(blender-mcp)", "receiver add-on file (blender-mcp)"), bool(found),
                       found[0] if found else t(
                           "블렌더 애드온 폴더에 blender_mcp.py 가 없음. https://github.com/ahujasid/blender-mcp 의 addon.py 를 설치하세요",
