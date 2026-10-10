@@ -76,11 +76,13 @@ Edit → Preferences → Add-ons. If you changed `BLENDER_FX_HOST`/`BLENDER_FX_P
 - 일부러 무거운 장면이면: MCP 설정의 환경변수 `BLENDER_FX_TIMEOUT`(초)을 크게(예: `3600`) 주고 MCP 서버를 다시 시작합니다.
   굽기·렌더 도구는 최소 1800초(`render_video` 3600초)를 기다리고, 이 값이 더 크면 따라 늘어납니다.
 - 블렌더 창이 응답 없음이면 블렌더를 다시 켜고 `restore` 로 직전 스냅샷을 불러옵니다.
+- 굽기·렌더 도구는 5초마다 MCP 진행 알림("블렌더에서 작업 중 — 45초")을 보냅니다. 이를 보여 주는 클라이언트라면 숫자가 늘고 있는 동안은 멈춘 것이 아닙니다.
 
 Cause: a bake or render took longer than the wait, or Blender froze. Lower `pieces`, `frames` or `resolution`;
 for an intentionally heavy scene set `BLENDER_FX_TIMEOUT` (seconds, e.g. `3600`) in your MCP config and restart the server.
 Bake and render tools wait at least 1800 s (`render_video` 3600 s) and grow with this value.
-If Blender is frozen, restart it and `restore` the last snapshot.
+If Blender is frozen, restart it and `restore` the last snapshot. Bake and render tools send an MCP progress notification every 5 s
+("working in Blender — 45s"); in clients that show it, a growing number means the tool is still working.
 
 ## Empty response, Blender error
 

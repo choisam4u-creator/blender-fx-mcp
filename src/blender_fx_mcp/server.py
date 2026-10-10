@@ -8,14 +8,19 @@ AI 는 코드를 짜지 않고 도구와 값만 고른다.
 
 from __future__ import annotations
 
+import contextlib
+import contextvars
 import difflib
 import json
 import os
 import re
+import threading
 import time
 from pathlib import Path
 from typing import Annotated
 
+import anyio.from_thread
+import anyio.lowlevel
 from mcp.server.mcpserver import Image, MCPServer
 from mcp.types import ToolAnnotations
 from pydantic import Field
@@ -77,7 +82,23 @@ ADDITIVE = ToolAnnotations(read_only_hint=False, destructive_hint=False, idempot
 # 되돌리기 어려움: 장면을 통째로 바꾸거나, 오브젝트·캐시를 지우거나, 같은 이름의 파일을 덮어쓴다
 DESTRUCTIVE = ToolAnnotations(read_only_hint=False, destructive_hint=True, idempotent_hint=False, open_world_hint=False)
 
-mcp = MCPServer("blender-fx", instructions=INSTRUCTIONS)
+# 지금 처리 중인 도구 호출의 (MCP Context, 이벤트 루프 토큰). 동기 도구는 작업 스레드에서 돌지만 contextvar 는 따라간다.
+_CALL: contextvars.ContextVar[tuple | None] = contextvars.ContextVar("blender_fx_call", default=None)
+PROGRESS_EVERY = 5.0  # 긴 작업 중 진행 알림 간격(초)
+
+
+class FxServer(MCPServer):
+    """도구 호출마다 Context 를 기억해, 긴 굽기·렌더 동안 작업 스레드에서 진행 알림을 보낼 수 있게 한다."""
+
+    async def call_tool(self, name, arguments, context=None):
+        token = _CALL.set((context, anyio.lowlevel.current_token()) if context is not None else None)
+        try:
+            return await super().call_tool(name, arguments, context)
+        finally:
+            _CALL.reset(token)
+
+
+mcp = FxServer("blender-fx", instructions=INSTRUCTIONS)
 
 
 # ---------- 내부 도우미 ----------
@@ -218,6 +239,36 @@ def check_ranges(recipe: str, params: dict) -> None:
         raise BlenderError(msg + (" " + hint if hint else ""))
 
 
+@contextlib.contextmanager
+def _progress(label: str):
+    """블렌더가 일하는 동안 PROGRESS_EVERY 초마다 MCP 진행 알림(걸린 초)을 보낸다.
+    클라이언트가 progressToken 을 주지 않았거나 MCP 호출 밖(시험·스크립트)이면 아무것도 하지 않는다."""
+    call = _CALL.get()
+    if call is None:
+        yield
+        return
+    ctx, loop = call
+    stop = threading.Event()
+    start = time.monotonic()
+
+    def beat():
+        while not stop.wait(PROGRESS_EVERY):
+            secs = int(time.monotonic() - start)
+            msg = t(f"{label}: 블렌더에서 작업 중 — {secs}초", f"{label}: working in Blender — {secs}s")
+            try:
+                anyio.from_thread.run(ctx.report_progress, secs, None, msg, token=loop)
+            except Exception:  # 알림이 실패해도 도구는 계속한다(연결이 끊겼거나 요청 문맥이 없음)
+                return
+
+    th = threading.Thread(target=beat, name="blender-fx-progress", daemon=True)
+    th.start()
+    try:
+        yield
+    finally:
+        stop.set()
+        th.join(timeout=2)
+
+
 def _check_bake_space() -> None:
     """굽기(캐시를 쓰는 레시피) 전에 디스크 여유를 본다. 부족하면 블렌더에 보내기 전에 해결법과 함께 멈춘다."""
     root = out_root()
@@ -238,7 +289,8 @@ def run_recipe(recipe: str, params: dict, timeout: float | None = None) -> dict:
     params.setdefault("_lang", "en" if is_en() else "ko")
     if params.get("cache_dir"):
         _check_bake_space()
-    stdout = bridge.run_python(build_code(recipe, params), timeout=timeout)
+    with _progress(recipe) if timeout else contextlib.nullcontext():  # 긴 작업(굽기·렌더)만 진행 알림
+        stdout = bridge.run_python(build_code(recipe, params), timeout=timeout)
     res = parse_result(stdout)
     if not res.get("ok"):
         msg = res.get("error", t("(원인 없음)", "(no reason given)"))

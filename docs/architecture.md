@@ -35,7 +35,7 @@ AI 는 블렌더 코드를 짜지 않습니다. 검증된 레시피와 값만 �
 
 | 파일 | 하는 일 |
 |---|---|
-| `src/blender_fx_mcp/server.py` | MCP 도구 정의, 인자 미리 검사(`CHOICES`·`RANGES`), 레시피 조립(`build_code`), 결과 문장 |
+| `src/blender_fx_mcp/server.py` | MCP 도구 정의, 인자 미리 검사(`CHOICES`·`RANGES`), 레시피 조립(`build_code`), 결과 문장, 긴 작업 진행 알림(`FxServer`·`_progress`) |
 | `src/blender_fx_mcp/bridge.py` | 수신기와 소켓 통신, 연결 거부·시간 초과 오류 문장 |
 | `src/blender_fx_mcp/disk.py` | 출력 폴더 디스크 여유(doctor 선택 항목, 굽기 전 1GB 아래면 멈춤) |
 | `src/blender_fx_mcp/i18n.py` | `t(한국어, 영어)` — `BLENDER_FX_LANG`, 없으면 로캘로 언어 고르기 |
@@ -104,7 +104,7 @@ The AI never writes Blender code. It only picks a tested recipe and its values.
 
 | File | Role |
 |---|---|
-| `src/blender_fx_mcp/server.py` | MCP tools, argument checks (`CHOICES`, `RANGES`), recipe assembly (`build_code`), result sentences |
+| `src/blender_fx_mcp/server.py` | MCP tools, argument checks (`CHOICES`, `RANGES`), recipe assembly (`build_code`), result sentences, progress notifications for long work (`FxServer`, `_progress`) |
 | `src/blender_fx_mcp/bridge.py` | Socket talk with the receiver; connection-refused and timeout messages |
 | `src/blender_fx_mcp/disk.py` | Output folder free space (optional doctor check; bakes stop below 1GB before reaching Blender) |
 | `src/blender_fx_mcp/i18n.py` | `t(korean, english)`, picks the language from `BLENDER_FX_LANG`, else the locale |
