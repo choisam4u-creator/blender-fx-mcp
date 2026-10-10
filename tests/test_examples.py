@@ -140,9 +140,12 @@ def test_first_render_steps_are_valid_server_calls():
         recipe = {"make_demo_building": "demo_scene", "render_preview": "render"}.get(name, name)
         server.check_choices(recipe, args)
         server.check_ranges(recipe, args)
-    assert [n for n, _ in example.STEPS] == ["make_demo_building", "destroy", "render_preview"]
+    assert [n for n, _ in example.STEPS] == ["snapshot", "make_demo_building", "destroy", "render_preview"]
+    # 스냅샷 이름이 서버에서 바뀌지 않아야 안내한 restore 이름이 맞다
+    import re
+    assert re.sub(r"[^\w\-]+", "_", example.BEFORE)[:40] == example.BEFORE
     # destroy 대상 = make_demo_building 이 만드는 기본 이름
-    assert example.STEPS[1][1]["target"] == inspect.signature(server.make_demo_building).parameters["name"].default
+    assert example.STEPS[2][1]["target"] == inspect.signature(server.make_demo_building).parameters["name"].default
 
 
 FAKE_SERVER = '''
@@ -155,6 +158,10 @@ calls = []
 @mcp.tool()
 def ping_blender() -> str:
     return "Connected (localhost:9876, Blender 5.2.0 LTS)"
+
+@mcp.tool()
+def snapshot(name: str) -> str:
+    return "Failed: disk full. Free some space." if FAIL == "snapshot" else f"Snapshot saved: {name}"
 
 @mcp.tool()
 def make_demo_building() -> str:
@@ -172,7 +179,7 @@ mcp.run()
 '''
 
 
-@pytest.mark.parametrize("fail, code", [("", 0), ("destroy", 1)])
+@pytest.mark.parametrize("fail, code", [("", 0), ("destroy", 1), ("snapshot", 1)])
 def test_first_render_success_and_tool_failure(monkeypatch, capsys, tmp_path, fail, code):
     """가짜 서버로 성공 갈래(PNG 경로 출력)와 도구 실패 갈래(오류 문장 출력, 종료 코드 1, 렌더 안 부름)를 확인한다."""
     import asyncio
@@ -189,10 +196,16 @@ def test_first_render_success_and_tool_failure(monkeypatch, capsys, tmp_path, fa
     got = asyncio.run(example.run(example.server_params([sys.executable, str(script), str(folder), fail])))
     out = capsys.readouterr().out.splitlines()
     assert got == code
-    if fail:
-        assert out[-1].startswith("destroy: Failed: ") and not any(x.startswith("render_preview") for x in out)
+    undo = "To go back: ask your AI to 'restore first_render_before' or pick /undo_last."
+    assert out[1] == "snapshot: Snapshot saved: first_render_before" or fail == "snapshot"
+    if fail == "snapshot":
+        # 저장에 실패하면 장면을 건드리기 전에 멈춘다(되돌릴 곳이 없으니 되돌리기 안내도 없다)
+        assert out[-1].startswith("snapshot: Failed: ") and len(out) == 2
+    elif fail:
+        assert out[-2:] == ["destroy: Failed: pieces is too big. Try 50-400.", undo]
+        assert not any(x.startswith("render_preview") for x in out)
     else:
-        assert out[-3:] == ["2 PNG files:", f"  {folder / 'frame_0001.png'}", f"  {folder / 'frame_0072.png'}"]
+        assert out[-4:] == ["2 PNG files:", f"  {folder / 'frame_0001.png'}", f"  {folder / 'frame_0072.png'}", undo]
 
 
 def test_first_render_is_documented():

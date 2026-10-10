@@ -139,6 +139,7 @@
 - `examples/list_tools.py`: 공식 `mcp` 파이썬 클라이언트로 서버를 stdio 로 띄워 도구 목록·`ping_blender` 결과를 출력하는 예제.
 - `examples/first_render.py`: 같은 방식으로 `ping_blender` → `make_demo_building` → `destroy` → `render_preview` 를 차례로 불러 미리보기 PNG 경로를 출력.
   연결이 안 되면 다음 할 일을 출력하고 종료 코드 2, 도구가 실패하면 오류 문장과 종료 코드 1. MCP 클라이언트 없이 첫 렌더까지 확인한다.
+  시작 전에 지금 장면을 스냅샷 `first_render_before` 로 저장하고 되돌리는 방법을 출력한다.
   블렌더 없이 한/영으로 돌려 도구 목록이 서버와 같은지 시험한다
 - README 맨 위 배지(CI·라이선스·Python 판). 실제 파일과 어긋나면 시험이 실패한다
 - PR 양식(한/영): ruff·pytest·한/영 문장·새 레시피 확인 칸

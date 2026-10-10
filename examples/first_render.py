@@ -11,6 +11,8 @@ ping_blender → make_demo_building → destroy → render_preview in order and 
 Open Blender and click Connect in the BlenderMCP tab first. If it cannot connect, it prints the next steps and exits with code 2.
 도구가 실패하면 그 오류 문장(무엇을 바꾸면 되는지 들어 있음)을 출력하고 종료 코드 1. 장면에 'Building' 이 하나 더해진다.
 If a tool fails it prints the error (which says what to change) and exits with code 1. It adds a 'Building' to the scene.
+시작 전에 지금 장면을 스냅샷 first_render_before 로 저장하고, 끝에 되돌리는 방법을 출력한다.
+The current scene is saved first as snapshot first_render_before, and the way back is printed at the end.
 """
 
 import asyncio
@@ -22,7 +24,9 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
 FAILED = ("실패: ", "Failed: ")  # 서버 도구가 실패하면 돌려주는 문장 머리
+BEFORE = "first_render_before"
 STEPS = [
+    ("snapshot", {"name": BEFORE}),  # 사용자가 하던 장면을 먼저 저장(실패하면 아무것도 바꾸지 않고 멈춘다)
     ("make_demo_building", {}),
     ("destroy", {"target": "Building", "impact": "left", "material": "concrete", "pieces": 80}),
     ("render_preview", {"frame_count": 3}),
@@ -41,6 +45,11 @@ def server_params(argv: list[str]) -> StdioServerParameters:
 
 def text_of(result) -> str:
     return "".join(c.text for c in result.content if c.type == "text")
+
+
+def undo_line() -> str:
+    return (f"원래 장면으로: AI 에게 'restore {BEFORE}' 라고 하거나 /undo_last 를 고르세요." if not en() else
+            f"To go back: ask your AI to 'restore {BEFORE}' or pick /undo_last.")
 
 
 def png_paths(render_text: str) -> list[str]:
@@ -63,16 +72,19 @@ async def run(params: StdioServerParameters) -> int:
                       "Next: follow the step above and run this again. Full check: uv run blender-fx-doctor")
                 return 2
             text = ""
-            for name, args in STEPS:
+            for i, (name, args) in enumerate(STEPS):
                 result = await session.call_tool(name, args)
                 text = text_of(result)
                 print(f"{name}: {text}")
                 if result.is_error or text.startswith(FAILED):
+                    if i:  # 스냅샷 뒤에 실패했으면 장면이 바뀌었을 수 있다
+                        print(undo_line())
                     return 1
             paths = png_paths(text)
             print(("PNG {n}개:" if not en() else "{n} PNG files:").format(n=len(paths)))
             for p in paths:
                 print(f"  {p}")
+            print(undo_line())
             return 0
 
 
