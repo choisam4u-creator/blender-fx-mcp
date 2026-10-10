@@ -31,8 +31,8 @@ body:
     attributes:
       label: blender-fx-doctor 출력 / doctor output
       description: |
-        연결·설치 질문이면 `uv run blender-fx-doctor`(또는 `--json`) 결과를 붙여 주세요. 개인 경로는 지워도 됩니다.
-        For setup or connection questions, paste the output of `uv run blender-fx-doctor` (or `--json`). Feel free to remove personal paths.
+        연결·설치 질문이면 `uv run blender-fx-doctor --issue` 결과를 붙여 주세요(집 폴더는 `~` 로 가려짐. `--json` 도 됩니다).
+        For setup or connection questions, paste the output of `uv run blender-fx-doctor --issue` (home folder masked as `~`; `--json` works too).
       render: text
     validations:
       required: false

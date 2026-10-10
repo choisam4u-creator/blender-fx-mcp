@@ -445,3 +445,43 @@ def test_client_examples_exist_and_cover_non_cli_clients():
         assert (root / f).is_file(), f
         assert f"]({f.split('/', 1)[1]})" in readme, f
     assert "which uvx" in readme  # 창 앱의 command 를 전체 경로로 바꾸는 안내
+
+
+# ---- --issue ----
+
+@pytest.mark.parametrize("home", ["/home/sam", "C:\\Users\\sam"])
+def test_mask_home_only_at_path_boundary(monkeypatch, home):
+    monkeypatch.setattr(doctor.os.path, "expanduser", lambda p: home if p == "~" else p)
+    sep = "\\" if "\\" in home else "/"
+    assert doctor.mask_home(f"{home}{sep}blender-fx-output") == f"~{sep}blender-fx-output"
+    assert doctor.mask_home(f"[OK] uv: {home}") == "[OK] uv: ~"
+    assert doctor.mask_home(f"{home}uel{sep}x") == f"{home}uel{sep}x"  # 다른 사용자 폴더는 그대로
+    assert doctor.mask_home(f"'{home}/a' and {home.replace(chr(92), '/')}/b") .count("~") == 2
+
+
+@pytest.mark.parametrize("lang", ["ko", "en"])
+def test_issue_markdown_masks_home_and_matches_report(monkeypatch, capsys, tmp_path, lang):
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    home = str(tmp_path / "home" / "sam")
+    monkeypatch.setattr(doctor.os.path, "expanduser", lambda p: home if p == "~" else p)
+    monkeypatch.setattr(doctor, "find_blender", lambda: home + "/apps/blender")
+    monkeypatch.setattr(doctor, "registered_clients", lambda: ["Claude Code"])
+    checks = [doctor._check("python", True, "3.11", "python"),
+              doctor._check("output", True, home + "/blender-fx-output", "output")]
+    monkeypatch.setattr(doctor, "run_checks", lambda: checks)
+    with pytest.raises(SystemExit) as e:
+        doctor.main(["--issue"])
+    out = capsys.readouterr().out
+    assert e.value.code == 0
+    assert home not in out and "sam" not in out, "집 폴더(사용자 이름)가 가려지지 않음"
+    assert "| blender-fx-mcp | " + __version__ + " |" in out and "~/apps/blender" in out
+    assert "| Claude Code |" in out or "Claude Code |" in out
+    assert "[OK] output: ~/blender-fx-output" in out
+    assert out.count("```text") == 1 and "<details>" in out and "</details>" in out
+    assert f"| {lang} (BLENDER_FX_LANG) |" in out  # 언어와 그 근거(lang_source)
+
+
+def test_issue_and_json_are_exclusive(capsys):
+    with pytest.raises(SystemExit) as e:
+        doctor.main(["--json", "--issue"])
+    assert e.value.code == 2 and "--issue" in capsys.readouterr().err

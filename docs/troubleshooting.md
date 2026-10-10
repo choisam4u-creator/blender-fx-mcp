@@ -9,7 +9,9 @@ uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-do
 
 여기 없는 문제는 [버그 신고](https://github.com/choisam4u-creator/blender-fx-mcp/issues/new?template=bug_report.yml)에 doctor 출력과 함께 올려 주세요.
 If your problem is not here, open a [bug report](https://github.com/choisam4u-creator/blender-fx-mcp/issues/new?template=bug_report.yml) with the doctor output.
-`blender-fx-doctor --json` 은 같은 결과를 JSON 으로 냅니다(항목 id: `python`·`blender-fx-mcp`·`mcp`·`uv`·`blender`·`addon`·`connection`·`client`·`output`), `clients` 에는 등록이 보인 MCP 클라이언트가 들어갑니다.
+이슈에는 `blender-fx-doctor --issue` 를 붙이면 됩니다(판·OS·블렌더·클라이언트·언어 표와 점검 전체, 집 폴더는 `~` 로 가림).
+`blender-fx-doctor --json` 은 같은 결과를 JSON 으로 냅니다(항목 id: `python`·`blender-fx-mcp`·`mcp`·`uv`·`blender`·`addon`·`connection`·`client`·`output`·`space`), `clients` 에는 등록이 보인 MCP 클라이언트가 들어갑니다.
+For an issue, paste `blender-fx-doctor --issue` (version, OS, Blender, clients and language table plus all checks, home folder masked as `~`).
 `blender-fx-doctor --json` prints the same result as JSON, with language-independent check ids; `clients` lists the MCP clients where it is registered.
 
 ---

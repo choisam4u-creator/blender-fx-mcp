@@ -30,6 +30,7 @@
   `restore` with an unknown name stops before touching Blender, so it no longer overwrites the previous `before_restore`.
   Water, smoke and explosion bakes stop before touching Blender when less than 1GB is free; doctor shows free space.
   Long bake, render and save tools send an MCP progress notification every 5 s while Blender works.
+  `blender-fx-doctor --issue` prints Markdown for bug reports with the home folder masked as `~`.
   `ping_blender` and doctor show the connected Blender version and warn when it is not the tested LTS.
   doctor also looks for `blender-fx` in Claude Code, Claude Desktop, Cursor and Codex settings and, if missing, prints the register command (optional step; not in the MCP `doctor` tool, whose caller is already connected).
   When only Claude Desktop, Cursor or Codex is installed it names that client's config file and example instead, with the full `uvx` path
@@ -56,6 +57,8 @@
 - 0.7.0 이 Python 3.10 을 지원하는 마지막 판입니다(3.10 은 2026-10 EOL). 0.8.0 부터 Python 3.11 이상이 필요합니다.
 
 **고침**
+- `blender-fx-doctor --issue`: 이슈에 붙일 마크다운(판·OS·파이썬·블렌더·클라이언트·언어 표 + 점검 전체), 집 폴더(사용자 이름)는 `~` 로 가림.
+  버그·질문 양식이 이것을 권한다. `--json` 에 `lang_source`
 - 긴 도구(굽기·렌더·저장) 동안 5초마다 MCP 진행 알림("save_blend: 블렌더에서 작업 중 — 45초"). 클라이언트가 progressToken 을 줄 때만 보내고,
   진행 알림을 받으면 시간 제한을 늘려 주는 클라이언트에서는 긴 굽기가 끊기지 않는다
 - 디스크 여유 점검: doctor 에 "출력 폴더 여유 공간" 선택 줄(5GB 아래면 `[- ]`, 이 폴더가 쓰는 크기·`clear_caches` 안내). 물·연기·폭발 굽기는 여유가 1GB 아래면

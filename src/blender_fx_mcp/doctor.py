@@ -11,6 +11,7 @@ import argparse
 import json
 import os
 import platform
+import re
 import shutil
 import subprocess
 import sys
@@ -309,14 +310,49 @@ def format_json(checks: list[dict]) -> str:
     return json.dumps(report, ensure_ascii=False, indent=2)
 
 
+def mask_home(text: str) -> str:
+    """집 폴더 경로(사용자 이름이 들어 있음)를 `~` 로 가린다. 역슬래시·슬래시 두 표기 모두."""
+    home = os.path.expanduser("~").rstrip("/\\")
+    if len(home) <= 1:
+        return text
+    for form in sorted({home, home.replace("\\", "/"), home.replace("/", "\\")}, key=len, reverse=True):
+        # 경로 경계에서만(/home/sam 이 /home/samuel 의 앞부분을 먹지 않게)
+        text = re.sub(re.escape(form) + r"(?=[/\\\s'\")\]]|$)", "~", text)
+    return text
+
+
+def format_issue(checks: list[dict]) -> str:
+    """이슈에 그대로 붙일 마크다운. 집 폴더는 ~ 로 가린다. 항목·결과는 format_report 와 같다."""
+    clients = ", ".join(registered_clients()) or "-"
+    v = sys.version_info
+    rows = [
+        ("blender-fx-mcp", __version__),
+        ("OS", f"{platform.system()} {platform.release()} ({platform.machine()})"),
+        ("Python", f"{v.major}.{v.minor}.{v.micro}"),
+        (t("블렌더 실행 파일", "Blender executable"), find_blender() or "-"),
+        (t("MCP 클라이언트", "MCP clients"), clients),
+        (t("언어", "Language"), f"{'en' if is_en() else 'ko'} ({lang_source()})"),
+        (t("수신기", "Receiver"), f"{bridge.host()}:{bridge.port()}"),
+    ]
+    table = "\n".join(f"| {k} | {val} |" for k, val in rows)
+    head = t("blender-fx-doctor 결과", "blender-fx-doctor result")
+    block = (f"### {head}\n\n| | |\n|---|---|\n{table}\n\n"
+             f"<details><summary>{t('점검 전체', 'All checks')}</summary>\n\n```text\n{format_report(checks)}\n```\n\n</details>\n")
+    return mask_home(block)
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="blender-fx-doctor",
                                      description=t("blender-fx-mcp 준비물 점검", "blender-fx-mcp prerequisite check"))
     parser.add_argument("--json", action="store_true",
                         help=t("결과를 JSON 으로 출력(버그 신고에 붙이기)", "print the result as JSON (for bug reports)"))
+    parser.add_argument("--issue", action="store_true",
+                        help=t("이슈에 붙일 마크다운(집 폴더는 ~ 로 가림)", "print Markdown to paste into an issue (home folder masked as ~)"))
     args = parser.parse_args(argv)
+    if args.json and args.issue:
+        parser.error(t("--json 과 --issue 는 함께 쓸 수 없습니다", "--json and --issue cannot be used together"))
     checks = run_checks()
-    print(format_json(checks) if args.json else format_report(checks))
+    print(format_json(checks) if args.json else format_issue(checks) if args.issue else format_report(checks))
     critical = {"python", "mcp"}
     sys.exit(1 if any(not c["ok"] and c["id"] in critical for c in checks) else 0)
 
