@@ -3,10 +3,27 @@
 ## 맥에서 돌릴 명령 (블렌더 필요, 최신 회차 기준)
 
 ```sh
-BLENDER_FX_LANG=en uv run pytest -q                # 10/10 실패 10개가 0개인지(셸 언어·한글 홈 경로와 무관해야 함)
-BLENDER_FX_PORT=1 uv run blender-fx-doctor         # 블렌더 실행 파일 [- ], 끝에 "다음 할 일" 번호 줄
-uvx pip-audit@2.9.0 -r <(uv export --locked --all-groups --no-emit-project --format requirements-txt) --disable-pip   # 취약점 0개
+BLENDER_FX_LANG=en uv run pytest -q                # 실패 0개인지(10/10 실패 10개는 4회차에 고침, 셸 언어·한글 홈 경로와 무관)
+BLENDER_FX_PORT=1 uv run blender-fx-doctor         # 연결 줄 X, 끝 "다음 할 일" 번호 줄. 블렌더 창에서 Connect 뒤 BLENDER_FX_PORT 없이 다시 → 연결 줄에 "Blender 5.2.x"
+uv run python -c "from blender_fx_mcp import server; print(server.ping_blender()); print(server.restore('없는이름'))"   # 블렌더 판 표시, restore 는 있는 스냅샷 이름 제안
 ```
+
+## 2026-10-10 (5회차)
+
+- 한 일: 맨 앞 지시(10/10 Mac 실패 10개)는 **4회차(오늘 이른 시각)에 이미 고쳐져 있음**을 확인 — `HOME`·`--basetemp` 를 한글 폴더로, `BLENDER_FX_LANG=en` 으로 전체 시험 661 통과·0 실패.
+  `latest.md`(10/1)의 FAIL 2건은 10/2 에 고쳐 main 에 있음. main 은 앞서 있지 않음. 그다음 백로그(사용자 체감 우선):
+  1. **연결 거부 오류가 원인을 좁혀 다음 한 단계**(백로그) — 이 컴퓨터에 애드온 파일이 없으면 설치 메뉴 경로부터, 있으면 Connect, 포트를 바꿨으면 Port 맞추기.
+     애드온 폴더 목록을 doctor 에서 bridge 로 옮겨 둘이 같은 곳을 봄. 원격 `BLENDER_FX_HOST` 면 설치 안내 안 함.
+  2. **파일·스냅샷 경로 오류에 다음 할 일**(백로그) — `import_model`·HDRI 파일이 없으면 같은 폴더의 비슷한 이름, `restore` 는 있는 스냅샷 이름.
+     레시피 오류 문장 44개 전부 다음 할 일 표지(…세요·고를 값)가 있는지 정적 시험(블렌더 내부 실패 3곳만 이유와 함께 예외).
+  3. **README 첫 화면 = doctor 순서의 4단계**(백로그) — uv → 블렌더+애드온 → Connect → 클로드 등록, 단계마다 확인할 `[OK]` 줄. 순서·이름이 doctor 와 같은지 시험.
+  4. **`restore` 이름 오타가 지난 `before_restore` 를 덮어쓰던 문제**(새 항목, 2번 하다 발견) — 블렌더에 보내기 전에 멈추고 이름 제안.
+  5. **`ping_blender`·doctor 에 블렌더 판 + 시험한 판이 아니면 경고**(새 항목).
+- 돌린 시험: `uv run pytest -q` **709 통과·34 건너뜀**(3.11, Linux). 한글 HOME·basetemp + `en` 으로도 통과. CI 서버 명령 커버리지 99.42%(하한 95%).
+  새 시험 파일은 Python 3.10 으로도 통과. `uvx ruff@0.15.20 check .` 통과. **`scripts/bpy_tests.sh`(bpy 5.0.1) 717 통과·6 건너뜀·0 실패**(레시피 문장 수정 뒤).
+  건너뛴 34개(서버 시험)·6개(bpy)는 블렌더 앱이 필요해서 — 유체 `app_only` 5개·실제 캐릭터 파일 1개, 나머지는 bpy 가 없는 기본 환경의 레시피 시험.
+- 완료 수·추가 수: **완료 5**(백로그 기존 3 + 새 2) / **추가 5**. 남은 `[ ]` 3개(doctor 클라이언트 등록 줄·MCP 프롬프트·examples/first_render.py).
+- Mac에서 확인할 것: 맨 위 명령 3줄.
 
 ## 2026-10-10 (4회차)
 
