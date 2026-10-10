@@ -1099,7 +1099,30 @@ def undo_last() -> str:
     )
 
 
+def terminal_hint() -> str:
+    """사람이 터미널에서 서버 명령을 직접 쳤을 때 보일 안내. 서버는 클라이언트의 JSON 을 기다리느라 아무것도 출력하지 않는다."""
+    from .doctor import SERVER_CMD
+    return t(
+        "blender-fx-mcp 는 MCP 클라이언트(클로드·커서 등)가 띄우는 서버라 여기서는 입력을 기다리기만 합니다. 멈춘 것이 아닙니다.\n"
+        f"  등록: claude mcp add -s user blender-fx -- {SERVER_CMD}\n"
+        "  점검: uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-doctor\n"
+        "  끝내기: Ctrl+C",
+        "blender-fx-mcp is a server that an MCP client (Claude, Cursor, ...) starts; here it only waits for input. It is not frozen.\n"
+        f"  Register: claude mcp add -s user blender-fx -e BLENDER_FX_LANG=en -- {SERVER_CMD}\n"
+        "  Check: uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-doctor\n"
+        "  Quit: Ctrl+C",
+    )
+
+
 def main() -> None:
+    import sys
+    # 클라이언트가 띄우면 표준 입력은 파이프다. 터미널이면 사람이 직접 친 것이라 stderr 로 한 번 안내한다(stdout 은 MCP 전용)
+    try:
+        tty = sys.stdin.isatty()
+    except (AttributeError, ValueError):
+        tty = False
+    if tty:
+        print(terminal_hint(), file=sys.stderr, flush=True)
     mcp.run()
 
 

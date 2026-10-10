@@ -142,7 +142,7 @@
 
 ### 2026-10-10 (7회차) 추가 — 사용자 체감 우선(오픈소스 지원 기준: 문서·시험·이슈 대응)
 
-- [ ] 서버 명령(`blender-fx-mcp`)을 터미널에서 직접 치면 아무 출력 없이 멈춘 것처럼 보임 → 표준 입력이 터미널이면 stderr 로 한/영 안내 한 번("MCP 클라이언트가 띄우는 서버입니다. 등록: … / 점검: blender-fx-doctor / 끝내기: Ctrl+C") + 시험 (첫 설치 단계 수·이슈 대응: README 의 uvx 명령을 그대로 쳐 보고 "멈췄다"고 묻는 흔한 첫 질문)
+- [x] 서버 명령(`blender-fx-mcp`)을 터미널에서 직접 치면 아무 출력 없이 멈춘 것처럼 보임 → 표준 입력이 터미널이면 stderr 로 한/영 안내 한 번("MCP 클라이언트가 띄우는 서버입니다. 등록: … / 점검: blender-fx-doctor / 끝내기: Ctrl+C") + 시험 (첫 설치 단계 수·이슈 대응: README 의 uvx 명령을 그대로 쳐 보고 "멈췄다"고 묻는 흔한 첫 질문) — `server.terminal_hint()`, `main()` 이 `sys.stdin.isatty()` 면 stderr 로 한 번(stdout 은 MCP 전용이라 건드리지 않음). 시험 4개(한/영 안내·등록 명령 = doctor `SERVER_CMD`, 파이프면 조용, 실제 프로세스를 파이프로 띄워 stdout 비고 안내 없음)
 - [ ] doctor 클라이언트 할 일을 깔린 클라이언트에 맞게: Claude Code 가 없고 Claude Desktop·Cursor 설정 폴더만 있으면 그 설정 파일 경로와 `examples/` 의 해당 예제 파일을 안내 + 시험 (첫 설치 단계 수: 지금은 누구에게나 `claude mcp add` 를 권해 Cursor 사용자는 명령이 없어 막힘)
 - [ ] macOS GUI 앱(Claude Desktop·Cursor)은 셸 PATH 를 못 봐 `uvx` 를 못 찾음 → doctor uv 줄에 `uvx` 전체 경로를 보이고, GUI 클라이언트 할 일·`examples/README.md` 에 "command 를 그 전체 경로로" + 시험 (오류 메시지: 클라이언트 쪽에서 "spawn uvx ENOENT" 만 보여 사용자가 원인을 모름)
 - [ ] README 한/영 "매일 쓰는 순서" 앞에 `examples/first_render.py` 한 줄(터미널에서 연결 확인 → 첫 렌더 PNG 경로) + README 명령이 예제 docstring 명령과 같은지 시험 (예제가 그대로 도는지: 예제가 있는데 README 에서 찾을 수 없음)

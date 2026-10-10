@@ -158,3 +158,44 @@ def test_supported_blender_matches_support_md():
     support = (Path(__file__).resolve().parents[1] / "SUPPORT.md").read_text(encoding="utf-8")
     supported = re.search(r"^\| 블렌더 / Blender \| ([\d.]+) LTS \| 지원", support, re.M).group(1)
     assert bridge.SUPPORTED_BLENDER == supported
+
+
+class _Stdin:
+    def __init__(self, tty):
+        self.tty = tty
+
+    def isatty(self):
+        return self.tty
+
+
+@pytest.mark.parametrize("lang,head", [("ko", "멈춘 것이 아닙니다"), ("en", "It is not frozen")])
+def test_terminal_launch_prints_hint_to_stderr(monkeypatch, capsys, lang, head):
+    # 터미널에서 서버 명령을 직접 치면 아무 출력 없이 멈춘 듯 보인다 → stderr 로 등록·점검·끝내기 안내(stdout 은 MCP 전용)
+    import sys
+    from blender_fx_mcp.doctor import SERVER_CMD
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    monkeypatch.setattr(sys, "stdin", _Stdin(True))
+    ran = []
+    monkeypatch.setattr(server.mcp, "run", lambda *a, **k: ran.append(1))
+    server.main()
+    out, err = capsys.readouterr()
+    assert ran == [1] and out == ""
+    assert head in err and "claude mcp add -s user blender-fx" in err and SERVER_CMD in err
+    assert "blender-fx-doctor" in err and "Ctrl+C" in err
+
+
+def test_client_launch_prints_nothing(monkeypatch, capsys):
+    import sys
+    monkeypatch.setattr(sys, "stdin", _Stdin(False))
+    monkeypatch.setattr(server.mcp, "run", lambda *a, **k: None)
+    server.main()
+    assert capsys.readouterr() == ("", "")
+
+
+def test_piped_server_stays_quiet():
+    # 실제 프로세스: 클라이언트처럼 파이프로 띄우면(입력 즉시 끝) 안내 없이 끝나야 한다
+    import subprocess
+    import sys
+    p = subprocess.run([sys.executable, "-m", "blender_fx_mcp.server"], input=b"", capture_output=True, timeout=60)
+    assert "Ctrl+C" not in p.stderr.decode("utf-8", "replace")
+    assert p.stdout == b""
