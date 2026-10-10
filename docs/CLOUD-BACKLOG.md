@@ -139,3 +139,11 @@
 - [x] `examples/first_render.py` 가 시작 전에 `snapshot first_render_before` 로 지금 장면을 저장하고 끝에 되돌리는 명령을 출력 + 시험 (데이터 안전·예제가 그대로 도는지: 지금은 사용자의 작업 장면에 Building 을 더하고 부숴 버림) — `STEPS` 맨 앞에 `snapshot first_render_before`. 저장이 실패하면 장면을 건드리기 전에 멈춤(종료 코드 1), 그 뒤 단계가 실패하거나 성공하면 마지막 줄에 "restore first_render_before 또는 /undo_last". 시험: 가짜 서버로 저장 실패 갈래 추가, 안내 줄, 스냅샷 이름이 서버의 이름 정리에서 바뀌지 않는지
 - [x] `docs/troubleshooting.md` 에 "도구가 클라이언트에 안 보임" 절(등록 확인 `claude mcp list`, 앱 완전 재시작, 설정 파일 위치, doctor 클라이언트 줄) 한/영 + doctor 클라이언트 할 일에 그 앵커 링크 + 앵커 시험 (이슈 대응: 등록 문제는 연결 거부 다음으로 흔한 첫 설치 질문인데 해결법 문서에 절이 없음)
 - [x] doctor `--json` 에 `clients`(등록이 보인 클라이언트 목록)를 넣고 버그 양식 안내에 반영 + 시험 (이슈 대응: 신고마다 "어떤 클라이언트인가요?"를 되묻지 않게, 양식 선택지와 doctor 결과가 어긋나는지도 바로 보임)
+
+### 2026-10-10 (7회차) 추가 — 사용자 체감 우선(오픈소스 지원 기준: 문서·시험·이슈 대응)
+
+- [ ] 서버 명령(`blender-fx-mcp`)을 터미널에서 직접 치면 아무 출력 없이 멈춘 것처럼 보임 → 표준 입력이 터미널이면 stderr 로 한/영 안내 한 번("MCP 클라이언트가 띄우는 서버입니다. 등록: … / 점검: blender-fx-doctor / 끝내기: Ctrl+C") + 시험 (첫 설치 단계 수·이슈 대응: README 의 uvx 명령을 그대로 쳐 보고 "멈췄다"고 묻는 흔한 첫 질문)
+- [ ] doctor 클라이언트 할 일을 깔린 클라이언트에 맞게: Claude Code 가 없고 Claude Desktop·Cursor 설정 폴더만 있으면 그 설정 파일 경로와 `examples/` 의 해당 예제 파일을 안내 + 시험 (첫 설치 단계 수: 지금은 누구에게나 `claude mcp add` 를 권해 Cursor 사용자는 명령이 없어 막힘)
+- [ ] macOS GUI 앱(Claude Desktop·Cursor)은 셸 PATH 를 못 봐 `uvx` 를 못 찾음 → doctor uv 줄에 `uvx` 전체 경로를 보이고, GUI 클라이언트 할 일·`examples/README.md` 에 "command 를 그 전체 경로로" + 시험 (오류 메시지: 클라이언트 쪽에서 "spawn uvx ENOENT" 만 보여 사용자가 원인을 모름)
+- [ ] README 한/영 "매일 쓰는 순서" 앞에 `examples/first_render.py` 한 줄(터미널에서 연결 확인 → 첫 렌더 PNG 경로) + README 명령이 예제 docstring 명령과 같은지 시험 (예제가 그대로 도는지: 예제가 있는데 README 에서 찾을 수 없음)
+- [ ] `examples/first_render.py` 가 단계마다 `[2/5] make_demo_building …` 진행 줄과 걸린 초를 출력 + 시험 (사용자 체감: 붕괴·렌더가 수십 초 걸리는 동안 아무 출력이 없어 멈춘 줄 앎)
