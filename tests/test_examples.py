@@ -241,3 +241,21 @@ def test_first_render_progress_line_is_bilingual(monkeypatch):
     assert example.progress(3, "destroy") == "[3/5] destroy … (기다리는 중)"
     monkeypatch.setenv("BLENDER_FX_LANG", "en")
     assert example.progress(3, "destroy") == "[3/5] destroy … (waiting)"
+
+
+def test_readme_points_to_first_render_in_both_languages():
+    """README 한/영 설치 절에서 first_render.py 를 찾을 수 있고, 명령이 예제 docstring 의 명령과 같다."""
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    doc = (EX / "first_render.py").read_text(encoding="utf-8")
+    cmd = "uv run python examples/first_render.py"
+    assert cmd in doc
+    ko, en = readme.split("\n## English", 1)
+    assert f"\n{cmd}   #" in ko.split("## 매일 쓰는 순서")[0]
+    assert f"\nBLENDER_FX_LANG=en {cmd}   #" in en.split("### First command")[0]
+    assert sum(cmd in x for x in readme.splitlines()) == 2
+    # README 가 거는 examples/README.md 앵커가 실제 제목에서 나온다(GitHub 규칙: 소문자, 문장부호 빼기, 빈칸 → -)
+    import re
+    titles = re.findall(r"^#{1,6} (.+)$", (EX / "README.md").read_text(encoding="utf-8"), re.M)
+    anchors = {re.sub(r"[^\w\- ]", "", x.strip().lower()).replace(" ", "-") for x in titles}
+    linked = set(re.findall(r"\(examples/README\.md#([^)]+)\)", readme))
+    assert linked and linked <= anchors, linked - anchors

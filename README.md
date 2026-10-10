@@ -103,7 +103,15 @@ claude mcp add -s user blender-fx -- uv --directory /절대/경로/blender-fx-mc
 클로드 데스크톱 앱은 `~/Library/Application Support/Claude/claude_desktop_config.json`의 `mcpServers`에,
 코덱스는 `~/.codex/config.toml`의 `[mcp_servers.blender_fx]`에 같은 명령을 적습니다.
 바로 붙여 넣을 수 있는 설정(클로드 데스크톱·커서·코덱스)은 [examples/](examples/)에 있습니다.
-등록 후 앱을 완전히 껐다 켜야 도구가 보입니다.
+등록 후 앱을 완전히 껐다 켜야 도구가 보입니다. 안 보이면 [해결법](docs/troubleshooting.md#tools-not-visible-in-the-client).
+
+**AI 없이 블렌더 쪽만 먼저 확인**(첫 렌더까지): 이 저장소를 받은 폴더에서 블렌더를 켜고 Connect 를 누른 뒤
+
+```bash
+uv run python examples/first_render.py   # [1/5] 연결 확인 → 스냅샷 → 건물 → 붕괴 → 미리보기, 끝에 PNG 경로
+```
+
+연결이 안 되면 다음 할 일을 출력하고 종료 코드 2 입니다. 자세한 설명은 [examples/README.md](examples/README.md#터미널에서-첫-렌더까지--first-render-from-the-terminal).
 
 ## 매일 쓰는 순서
 
@@ -295,6 +303,15 @@ claude mcp add -s user blender-fx -e BLENDER_FX_LANG=en -- uvx --from git+https:
 Claude Desktop, Codex, Cursor and other MCP clients: add the same command (`uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-mcp`)
 to the client's MCP server config with the environment variable `BLENDER_FX_LANG=en`, then fully restart the app.
 Ready-to-paste configs for Claude Desktop, Cursor and Codex are in [examples/](examples/).
+If the tools do not show up, see [troubleshooting](docs/troubleshooting.md#tools-not-visible-in-the-client).
+
+**Check the Blender side first, without an AI** (up to a first render): in a checkout of this repository, open Blender, click Connect, then
+
+```bash
+BLENDER_FX_LANG=en uv run python examples/first_render.py   # [1/5] connection → snapshot → building → collapse → preview, then PNG paths
+```
+
+Without a connection it prints the next step and exits with 2. Details: [examples/README.md](examples/README.md) ("First render from the terminal").
 
 | Variable | Default | Meaning |
 |---|---|---|
