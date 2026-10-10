@@ -29,7 +29,7 @@ def _by_name(checks):
 def test_order_and_version_first(env):
     names = [c["name"] for c in doctor.run_checks()]
     assert names[:2] == ["python", "blender-fx-mcp"]
-    assert names[-1] == "출력 폴더"
+    assert names[-2:] == ["출력 폴더", "출력 폴더 여유 공간"]
 
 
 def test_blender_version_line(env, monkeypatch, fake_blender):
@@ -317,7 +317,7 @@ def test_json_matches_text_report(monkeypatch, capsys, tmp_path, lang):
     for c, row in zip(data["checks"], rows):
         assert row == f"[{doctor.mark(c)}] {c['name']}: {c['detail']}"
     assert [c["id"] for c in data["checks"]] == [
-        "python", "blender-fx-mcp", "mcp", "uv", "blender", "addon", "connection", "client", "output"]
+        "python", "blender-fx-mcp", "mcp", "uv", "blender", "addon", "connection", "client", "output", "space"]
     assert data["failed"] == [c["id"] for c in data["checks"] if not c["ok"] and not c["optional"]]
     assert {"addon", "connection"} <= set(data["failed"]) and "blender" not in data["failed"]
     assert next(c for c in data["checks"] if c["id"] == "blender")["optional"] is True

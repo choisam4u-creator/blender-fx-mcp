@@ -37,6 +37,7 @@ AI 는 블렌더 코드를 짜지 않습니다. 검증된 레시피와 값만 �
 |---|---|
 | `src/blender_fx_mcp/server.py` | MCP 도구 정의, 인자 미리 검사(`CHOICES`·`RANGES`), 레시피 조립(`build_code`), 결과 문장 |
 | `src/blender_fx_mcp/bridge.py` | 수신기와 소켓 통신, 연결 거부·시간 초과 오류 문장 |
+| `src/blender_fx_mcp/disk.py` | 출력 폴더 디스크 여유(doctor 선택 항목, 굽기 전 1GB 아래면 멈춤) |
 | `src/blender_fx_mcp/i18n.py` | `t(한국어, 영어)` — `BLENDER_FX_LANG`, 없으면 로캘로 언어 고르기 |
 | `src/blender_fx_mcp/doctor.py` | `blender-fx-doctor` 준비물 점검 |
 | `src/blender_fx_mcp/headless.py` | `blender-fx-headless` — 소켓 없이 블렌더를 백그라운드로 띄워 레시피 실행(개발·시험용) |
@@ -105,6 +106,7 @@ The AI never writes Blender code. It only picks a tested recipe and its values.
 |---|---|
 | `src/blender_fx_mcp/server.py` | MCP tools, argument checks (`CHOICES`, `RANGES`), recipe assembly (`build_code`), result sentences |
 | `src/blender_fx_mcp/bridge.py` | Socket talk with the receiver; connection-refused and timeout messages |
+| `src/blender_fx_mcp/disk.py` | Output folder free space (optional doctor check; bakes stop below 1GB before reaching Blender) |
 | `src/blender_fx_mcp/i18n.py` | `t(korean, english)`, picks the language from `BLENDER_FX_LANG`, else the locale |
 | `src/blender_fx_mcp/doctor.py` | `blender-fx-doctor` setup check |
 | `src/blender_fx_mcp/headless.py` | `blender-fx-headless`: runs recipes in background Blender without the socket (development, tests) |

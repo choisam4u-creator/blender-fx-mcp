@@ -37,6 +37,10 @@ PHRASES = [
     ("recipes/import_model.py", "File not found: "),
     ("recipes/render_video.py", "영상 파일이 만들어지지 않았습니다."),
     ("recipes/render_video.py", "No video file was produced."),
+    ("server.py", "뿐이라 굽기를 시작하지 않았습니다(물·연기 캐시는 수 GB)."),
+    ("server.py", "of disk space is left, so the bake was not started (water and smoke caches take several GB)."),
+    ("doctor.py", "출력 폴더 여유 공간"),
+    ("doctor.py", "output folder free space"),
 ]
 
 

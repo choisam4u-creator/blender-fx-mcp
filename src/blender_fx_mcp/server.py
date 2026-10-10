@@ -20,7 +20,7 @@ from mcp.server.mcpserver import Image, MCPServer
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from . import bridge
+from . import bridge, disk
 from .bridge import BlenderError
 from .i18n import is_en, t
 
@@ -218,11 +218,26 @@ def check_ranges(recipe: str, params: dict) -> None:
         raise BlenderError(msg + (" " + hint if hint else ""))
 
 
+def _check_bake_space() -> None:
+    """굽기(캐시를 쓰는 레시피) 전에 디스크 여유를 본다. 부족하면 블렌더에 보내기 전에 해결법과 함께 멈춘다."""
+    root = out_root()
+    free = disk.free_bytes(root)
+    if free is None or free >= disk.BAKE_MIN_BYTES:
+        return
+    raise BlenderError(t(
+        f"디스크 여유가 {disk.gb(free)} 뿐이라 굽기를 시작하지 않았습니다(물·연기 캐시는 수 GB). "
+        f"clear_caches 로 구운 캐시를 지우거나, BLENDER_FX_OUT 을 여유 있는 디스크의 폴더로 바꾼 뒤 다시 시키세요. (폴더: {root})",
+        f"Only {disk.gb(free)} of disk space is left, so the bake was not started (water and smoke caches take several GB). "
+        f"Run clear_caches to delete baked caches, or point BLENDER_FX_OUT to a folder on a disk with more space, then ask again. (folder: {root})"))
+
+
 def run_recipe(recipe: str, params: dict, timeout: float | None = None) -> dict:
     params = {k: v for k, v in params.items() if v is not None}
     check_choices(recipe, params)
     check_ranges(recipe, params)
     params.setdefault("_lang", "en" if is_en() else "ko")
+    if params.get("cache_dir"):
+        _check_bake_space()
     stdout = bridge.run_python(build_code(recipe, params), timeout=timeout)
     res = parse_result(stdout)
     if not res.get("ok"):
@@ -490,6 +505,7 @@ def explode(
     dust: none / low / high
     glue: none / weak / medium / strong"""
     try:
+        _check_bake_space()  # 조각내기 전에 본다(조각만 내고 굽기에서 멈추면 장면이 반쯤 바뀐 채 남음)
         if target:
             run_recipe("destroy", dict(
                 target=target, impact="none", hold_until=max(1, burst_frame - 1), material=material,

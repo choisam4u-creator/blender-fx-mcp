@@ -16,7 +16,7 @@ import subprocess
 import sys
 from importlib import metadata
 
-from . import __version__, bridge
+from . import __version__, bridge, disk
 from .headless import find_blender
 from .i18n import is_en, lang_source, t
 
@@ -234,6 +234,7 @@ def run_checks(clients: bool = True) -> list[dict]:
             f.write("ok")
         os.remove(test)
         out.append(_check(name_out, True, root, "output"))
+        out.append(_space_check(root))
     except Exception as e:
         out.append(_check(name_out, False, t(f"{root} 에 쓸 수 없음: {e}", f"cannot write to {root}: {e}"), "output",
                           t("MCP 설정의 BLENDER_FX_OUT 을 쓸 수 있는 폴더로 지정", "Point BLENDER_FX_OUT in your MCP config to a writable folder")))
@@ -248,6 +249,24 @@ def mark(c: dict) -> str:
 def failed(checks: list[dict]) -> list[dict]:
     """고쳐야 하는 항목(선택 항목 제외). 순서는 설치 순서(파이썬 → uv → 애드온 → 연결 → 출력 폴더)."""
     return [c for c in checks if not c["ok"] and not c.get("optional")]
+
+
+def _space_check(root: str) -> dict:
+    """출력 폴더 디스크 여유(선택 항목). 물·연기 캐시가 수 GB 라 부족하면 굽다가 실패한다."""
+    name = t("출력 폴더 여유 공간", "output folder free space")
+    free = disk.free_bytes(root)
+    if free is None:
+        return _check(name, True, t("알 수 없음", "unknown"), "space", optional=True)
+    used = disk.folder_bytes(root)
+    detail = t(f"남은 {disk.gb(free)}, 이 폴더가 쓰는 {disk.gb(used)}", f"{disk.gb(free)} free, this folder uses {disk.gb(used)}")
+    ok = free >= disk.DOCTOR_WARN_BYTES
+    if not ok:
+        detail += t(f" — 물·연기 굽기에는 {disk.gb(disk.DOCTOR_WARN_BYTES)} 이상 권장",
+                    f" — {disk.gb(disk.DOCTOR_WARN_BYTES)} or more recommended for water and smoke bakes")
+    return _check(name, ok, detail, "space",
+                  t("AI 에게 clear_caches 를 시켜 구운 캐시를 지우거나, BLENDER_FX_OUT 을 여유 있는 디스크의 폴더로 지정",
+                    "Ask the AI to run clear_caches (deletes baked caches), or point BLENDER_FX_OUT to a folder on a disk with more space"),
+                  optional=True)
 
 
 def format_report(checks: list[dict]) -> str:
