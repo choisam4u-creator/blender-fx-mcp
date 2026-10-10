@@ -31,3 +31,18 @@ calls `ping_blender`. It runs without Blender (you then get the connection failu
 uv run python examples/list_tools.py
 BLENDER_FX_LANG=en uv run python examples/list_tools.py uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-mcp
 ```
+
+## 터미널에서 첫 렌더까지 / First render from the terminal
+
+[`first_render.py`](first_render.py) 는 같은 방식으로 서버를 띄워 `ping_blender` → `make_demo_building` → `destroy` → `render_preview` 를
+차례로 부르고 미리보기 PNG 경로를 출력합니다. MCP 클라이언트를 붙이기 전에 블렌더 쪽이 첫 렌더까지 되는지 확인할 때 씁니다.
+블렌더를 켜고 BlenderMCP 탭에서 Connect 를 누른 뒤 돌리세요. 연결이 안 되면 원인별 다음 할 일을 출력하고 종료 코드 2,
+도구가 실패하면 그 오류 문장을 출력하고 종료 코드 1 입니다. 장면에 `Building` 이 하나 더해집니다.
+
+[`first_render.py`](first_render.py) starts the server the same way, calls `ping_blender` → `make_demo_building` → `destroy` →
+`render_preview` and prints the preview PNG paths, so you can check Blender renders before attaching an MCP client.
+Open Blender and click Connect first. Without a connection it prints the next step and exits with 2; a failing tool exits with 1.
+
+```sh
+uv run python examples/first_render.py
+```

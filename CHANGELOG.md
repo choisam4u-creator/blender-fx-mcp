@@ -40,7 +40,7 @@
 *Docs*
 - English sections in the README and `docs/recipes.md`; new `docs/troubleshooting.md`, `docs/architecture.md`, `docs/maintenance.md`, `SUPPORT.md`,
   `SECURITY.md`, `CODE_OF_CONDUCT.md` and `CITATION.cff`.
-- Client configs for Claude Desktop, Cursor and Codex in `examples/`; YAML bug, feature request and question forms and a PR template.
+- Client configs for Claude Desktop, Cursor and Codex in `examples/`, plus `first_render.py` (terminal to first preview PNG, exit 2 with next steps if not connected); YAML bug, feature request and question forms and a PR template.
 - `server.json.example` matches the 2025-12-11 MCP registry schema, and `scripts/release_check.py` checks a release in one step.
 - `docs/third-party-licenses.md` lists the license of every installed dependency; CI checks them against a permissive allow list.
 - The README first screen is four numbered setup steps in doctor's order (uv → add-on → Connect → register), each with the doctor line that confirms it.
@@ -136,6 +136,8 @@
   README 한/영에서 링크. 표의 판이 `pyproject.toml` 분류자·CI 행렬·`bpy` 판·README·SECURITY.md 와 어긋나면 시험이 실패한다
 - `examples/`: 클로드 데스크톱·커서·코덱스 연결 설정(코덱스는 굽기용 `tool_timeout_sec`)
 - `examples/list_tools.py`: 공식 `mcp` 파이썬 클라이언트로 서버를 stdio 로 띄워 도구 목록·`ping_blender` 결과를 출력하는 예제.
+- `examples/first_render.py`: 같은 방식으로 `ping_blender` → `make_demo_building` → `destroy` → `render_preview` 를 차례로 불러 미리보기 PNG 경로를 출력.
+  연결이 안 되면 다음 할 일을 출력하고 종료 코드 2, 도구가 실패하면 오류 문장과 종료 코드 1. MCP 클라이언트 없이 첫 렌더까지 확인한다.
   블렌더 없이 한/영으로 돌려 도구 목록이 서버와 같은지 시험한다
 - README 맨 위 배지(CI·라이선스·Python 판). 실제 파일과 어긋나면 시험이 실패한다
 - PR 양식(한/영): ruff·pytest·한/영 문장·새 레시피 확인 칸
