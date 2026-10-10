@@ -33,6 +33,7 @@ How the repository and CI protect dependencies and workflows. Each row is enforc
 | `pull_request_target` 작업은 PR 코드를 체크아웃하지 않음 / `pull_request_target` jobs never check out PR code | `.github/workflows/greet.yml` | `test_greet_workflow_is_safe_and_links_exist` |
 | 의존성은 해시가 적힌 잠금 파일로만 설치 / Dependencies installed only from the hash-pinned lock file | `uv.lock`, `uv sync --locked` | `test_ci_installs_from_the_lock_file` |
 | 의존성·액션 판을 주 1회 갱신 PR 로 / Weekly update PRs for dependencies and actions | `.github/dependabot.yml` | `test_dependabot_watches_uv_and_actions` |
+| 잠금 파일의 모든 판을 주 1회·잠금 파일 변경마다 알려진 취약점과 대조 / Every locked version checked against known vulnerabilities weekly and on lock changes | `.github/workflows/audit.yml` (pip-audit) | `test_audit_workflow_checks_the_lock_file` |
 | 의존성 라이선스가 허용 목록 안 / Dependency licenses within a permissive allow list | `scripts/license_check.py`, `docs/third-party-licenses.md` | CI `lint` 작업 / job |
 | OpenSSF Scorecard 점수 공개 / OpenSSF Scorecard results published | `.github/workflows/scorecard.yml` | `test_scorecard_workflow_and_badge` |
 | 휠·sdist 메타데이터 점검 / Wheel and sdist metadata checked before release | `scripts/release_check.py --dist`, `twine check` | CI `server-tests` 작업 / job |

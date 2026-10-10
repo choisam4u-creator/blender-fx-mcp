@@ -986,6 +986,18 @@ def test_ci_installs_from_the_lock_file():
             assert "--locked" in line, f"{wf.name}: {line}"
 
 
+def test_audit_workflow_checks_the_lock_file():
+    """취약점 점검은 uv.lock 그대로(--locked, 개발 의존성까지)를 판 고정된 pip-audit 로, 매주와 잠금 파일이 바뀔 때 돌아야 한다."""
+    text = (ROOT / ".github" / "workflows" / "audit.yml").read_text(encoding="utf-8")
+    assert re.search(r"^  schedule:\n    - cron: ", text, re.M)
+    assert re.search(r"^  pull_request:\n    paths: \[.*\"uv\.lock\"", text, re.M)
+    export = re.search(r"- run: (uv export .*)$", text, re.M).group(1)
+    for flag in ("--locked", "--all-groups", "--no-emit-project"):
+        assert flag in export, flag
+    assert re.search(r"uvx pip-audit@\d+\.\d+\.\d+ -r requirements-audit\.txt --disable-pip", text)
+    assert "persist-credentials: false" in text
+
+
 def test_security_supply_chain_table_matches_repo():
     """SECURITY.md 공급망 표의 파일·시험·CI 작업이 실제로 있어야 한다."""
     text = (ROOT / "SECURITY.md").read_text(encoding="utf-8")
