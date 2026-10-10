@@ -1,10 +1,10 @@
 # 클라이언트별 연결 설정 / Client config examples
 
 모두 같은 명령(`uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-mcp`)을 띄웁니다.
-`BLENDER_FX_LANG` 은 `ko`(기본) 또는 `en`. 다른 환경변수는 저장소 README 의 표를 보세요.
+`BLENDER_FX_LANG` 은 `ko` 또는 `en`(없으면 로캘을 따르고, 로캘도 없으면 `ko`. 창 앱 설정에는 직접 적으세요). 다른 환경변수는 저장소 README 의 표를 보세요.
 등록 뒤 앱을 완전히 껐다 켜야 도구가 보입니다.
 
-All examples launch the same command. Set `BLENDER_FX_LANG` to `en` for English messages. Fully restart the app after editing.
+All examples launch the same command. Set `BLENDER_FX_LANG` to `en` for English messages (without it the locale decides, and desktop apps often pass no locale). Fully restart the app after editing.
 
 | 클라이언트 / Client | 파일 / File | 붙여 넣을 곳 / Where it goes |
 |---|---|---|

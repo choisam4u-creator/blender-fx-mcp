@@ -11,6 +11,7 @@
 - 0.7.0 is the last release that supports Python 3.10 (end of life 2026-10). 0.8.0 will require Python 3.11 or newer.
 
 *Fixes*
+- Without `BLENDER_FX_LANG`, the language now follows the locale: English unless it is Korean (Korean when no locale is set).
 - `import_model` with `size` reported the volume from before resizing; fixed. Rigid-body `glue` no longer crashes headless `bpy`
   or adds a stray constraint to the active piece.
 - All server, recipe and doctor messages, and the MCP server instructions, now follow `BLENDER_FX_LANG=en`.
@@ -52,6 +53,8 @@
 - 0.7.0 이 Python 3.10 을 지원하는 마지막 판입니다(3.10 은 2026-10 EOL). 0.8.0 부터 Python 3.11 이상이 필요합니다.
 
 **고침**
+- 언어 자동 선택: `BLENDER_FX_LANG` 이 없으면 로캘(`LC_ALL`→`LC_MESSAGES`→`LANG`)이 한국어면 한국어, 다른 언어면 영어. 로캘이 없거나 `C`/`POSIX` 면 지금처럼 한국어.
+  doctor `--json` 에 `lang_source`(무엇으로 정했는지). ⚠️ 동작 변화: 영어 로캘 터미널에서 환경변수 없이 쓰면 이제 영어
 - `import_model` 에 `size` 를 주면 결과의 `volume_m3` 가 크기를 바꾸기 **전** 부피로 나오던 문제.
   4.5m 로 줄인 건물이 144㎥(실제 18㎥)로 보고됐다
 - 힘장을 못 만들었을 때의 오류 2곳이 `BLENDER_FX_LANG=en` 에서도 한국어로만 나오던 문제

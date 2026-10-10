@@ -237,7 +237,7 @@ import_model(path="adventurer.glb", size=2.0, parts=["Adventurer", "Backpack"])
 - `export_model` 의 `.abc` 는 물 표면과 조각 움직임을 담지만, 연기(볼륨)는 어떤 형식으로도 나가지 않습니다.
 - 창문은 벽을 실제로 파낸 것이지만 실내는 없습니다.
 - 블렌더 5.2에서만 확인했습니다.
-- 메시지는 한국어가 기본입니다. 영어는 `BLENDER_FX_LANG=en`.
+- 메시지 언어는 `BLENDER_FX_LANG`(`ko`/`en`)로 정합니다. 없으면 로캘(`LANG` 등)이 한국어면 한국어, 다른 언어면 영어이고, 로캘이 없으면(창 앱이 띄운 서버에서 흔함) 한국어입니다.
 - 수신기 애드온은 blender-mcp 것을 빌려 씁니다. 그쪽 포트·명령이 바뀌면 같이 고쳐야 합니다.
 - blender-mcp 서버와 이 서버를 같이 켜 두면 수신기가 하나라 끊길 수 있습니다. 문제가 나면 하나만 켜세요.
 
@@ -315,7 +315,7 @@ Without a connection it prints the next step and exits with 2. Details: [example
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `BLENDER_FX_LANG` | `ko` | `en` for English tool messages and errors |
+| `BLENDER_FX_LANG` | from the locale | `en` or `ko`. Unset: English unless the locale (`LC_ALL`, `LC_MESSAGES`, `LANG`) is Korean; Korean when no locale is set (common for desktop apps), so set it explicitly in GUI client configs |
 | `BLENDER_FX_OUT` | `~/blender-fx-output` | where previews, videos, `.blend` files and caches go |
 | `BLENDER_FX_HOST` / `BLENDER_FX_PORT` | `localhost` / `9876` | where the receiver listens. Keep it on localhost |
 | `BLENDER_FX_TIMEOUT` | `600` | seconds to wait for a quick step. Bake and render tools wait at least 1800 (`render_video` 3600); set a larger value to extend those too |

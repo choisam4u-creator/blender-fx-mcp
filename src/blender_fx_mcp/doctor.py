@@ -18,7 +18,7 @@ from importlib import metadata
 
 from . import __version__, bridge
 from .headless import find_blender
-from .i18n import is_en, t
+from .i18n import is_en, lang_source, t
 
 SERVER_CMD = "uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-mcp"
 
@@ -275,6 +275,7 @@ def format_json(checks: list[dict]) -> str:
     report = {
         "blender_fx_mcp": __version__,
         "lang": "en" if is_en() else "ko",
+        "lang_source": lang_source(),
         "ok": not bad,
         "blender": find_blender(),
         "host": bridge.host(),

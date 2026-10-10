@@ -28,6 +28,8 @@ def _default_lang(monkeypatch):
     """셸의 BLENDER_FX_LANG(예: Mac 에서 en)이 시험으로 새지 않게 매 시험 기본값(한국어)에서 시작한다.
     언어가 필요한 시험은 monkeypatch.setenv 로 직접 정하고, 끝나면 monkeypatch 가 되돌린다."""
     monkeypatch.delenv("BLENDER_FX_LANG", raising=False)
+    for var in ("LC_ALL", "LC_MESSAGES", "LANG"):  # 로캘로 언어를 고르므로(i18n) CI 러너의 en_US 로캘도 막는다
+        monkeypatch.delenv(var, raising=False)
 
 
 def make_fake_blender(folder, body: str, name: str = "blender") -> str:

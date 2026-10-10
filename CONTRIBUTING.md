@@ -12,7 +12,7 @@ src/blender_fx_mcp/
   bridge.py        블렌더 수신기와 소켓 통신 (명령마다 붙었다 뗀다)
   headless.py      블렌더를 창 없이 띄워 레시피를 돌리는 개발용 CLI
   doctor.py        준비물 점검 CLI
-  i18n.py          메시지 언어 (BLENDER_FX_LANG)
+  i18n.py          메시지 언어 (BLENDER_FX_LANG, 없으면 로캘)
   recipes/
     _common.py     공용 도우미 (재질·힘장·접착·하늘·렌더 품질·언어)
     demo_scene.py  연습용 건물

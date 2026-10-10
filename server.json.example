@@ -17,7 +17,7 @@
       "transport": { "type": "stdio" },
       "environmentVariables": [
         { "name": "BLENDER_FX_PORT", "description": "블렌더 수신기 포트 (기본 9876)", "format": "number", "isRequired": false },
-        { "name": "BLENDER_FX_LANG", "description": "메시지 언어 ko(기본) 또는 en", "choices": ["ko", "en"], "isRequired": false },
+        { "name": "BLENDER_FX_LANG", "description": "메시지 언어 ko 또는 en. 없으면 로캘(한국어면 ko, 아니면 en, 로캘이 없으면 ko) / message language; unset follows the locale", "choices": ["ko", "en"], "isRequired": false },
         { "name": "BLENDER_FX_OUT", "description": "미리보기·영상 저장 폴더 (기본 ~/blender-fx-output)", "format": "filepath", "isRequired": false }
       ]
     }
