@@ -80,10 +80,34 @@ def mesh_objects():
     return [o for o in bpy.data.objects if o.type == "MESH"]
 
 
+def close_names(name, names):
+    """오타 제안: 대소문자만 다른 이름을 먼저, 그다음 difflib 로 가까운 이름(최대 3개)."""
+    want = str(name or "").strip().lower()
+    same_case = [n for n in names if n.lower() == want]
+    lowered = {n.lower(): n for n in names}
+    near = [lowered[c] for c in difflib.get_close_matches(want, list(lowered), n=3, cutoff=0.6)]
+    return list(dict.fromkeys(same_case + near))[:3]
+
+
 def get_target(name):
     o = bpy.data.objects.get(name) if name else None
     if o is None or o.type != "MESH":
         names = [m.name for m in mesh_objects() if not m.get(FX_TAG)]
+        if o is not None:
+            raise FxError(L(f"'{name}' 은(는) 메시가 아니라 {o.type} 입니다. 부술 수 있는 메시: {names}",
+                            f"'{name}' is a {o.type}, not a mesh. Meshes you can use: {names}"))
+        if not names:
+            raise FxError(L(f"'{name}' 이름의 메시 오브젝트가 없습니다. 장면에 메시가 하나도 없으니 "
+                            "make_demo_building 이나 import_model 로 먼저 만드세요.",
+                            f"No mesh object named '{name}'. The scene has no meshes; "
+                            "create one first with make_demo_building or import_model."))
+        guess = close_names(name, names)
+        if guess:
+            shown = ", ".join(f"'{g}'" for g in guess)
+            raise FxError(L(f"'{name}' 이름의 메시 오브젝트가 없습니다. 혹시 {shown} 인가요? 이름은 대소문자까지 같아야 합니다. "
+                            f"지금 있는 메시: {names}",
+                            f"No mesh object named '{name}'. Did you mean {shown}? Names are case-sensitive. "
+                            f"Available meshes: {names}"))
         raise FxError(L(f"'{name}' 이름의 메시 오브젝트가 없습니다. 지금 있는 메시: {names}",
                         f"No mesh object named '{name}'. Available meshes: {names}"))
     return o

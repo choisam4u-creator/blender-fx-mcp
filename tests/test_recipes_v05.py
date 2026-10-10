@@ -125,3 +125,19 @@ def test_recipe_errors_in_english(tmp_path):
     assert results[0]["ok"]
     assert results[1]["ok"] is False and "material must be one of" in results[1]["error"], results[1]
     assert results[2]["ok"] is False and "No mesh object named" in results[2]["error"], results[2]
+
+
+def test_target_typo_suggests_close_name(tmp_path):
+    """대상 이름 오타(대소문자·한 글자)에는 가까운 이름을, 메시가 아닌 오브젝트에는 그 종류를 알려 준다."""
+    results = run_steps([
+        ("demo_scene", {"_lang": "en"}),
+        ("destroy", {"target": "building", "_lang": "en"}),
+        ("destroy", {"target": "Bulding", "_lang": "en"}),
+        ("destroy", {"target": "FX_Camera", "_lang": "en"}),
+        ("destroy", {"target": "zzz", "_lang": "ko"}),
+    ], blender=BLENDER)
+    assert results[0]["ok"]
+    assert "Did you mean 'Building'?" in results[1]["error"] and "case-sensitive" in results[1]["error"], results[1]
+    assert "Did you mean 'Building'?" in results[2]["error"], results[2]
+    assert "is a CAMERA, not a mesh" in results[3]["error"], results[3]
+    assert "혹시" not in results[4]["error"] and "지금 있는 메시" in results[4]["error"], results[4]

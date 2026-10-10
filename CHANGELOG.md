@@ -25,7 +25,8 @@
   shows the Blender executable as optional `[- ]` (only headless tests need it), and `--json` prints the same checks with language-independent ids.
   Headless runs and doctor read Blender output as UTF-8, so non-UTF-8 bytes on Windows no longer raise `UnicodeDecodeError`.
   The connection-refused error now names one next step: install the add-on (none found), click Connect, or match a changed port.
-  Missing model, HDRI and snapshot paths list similar files or existing snapshots, and every recipe error says what to do next.
+  Missing model, HDRI and snapshot paths list similar files or existing snapshots, a mistyped `target` gets "Did you mean 'Building'?",
+  and every recipe error says what to do next.
   `restore` with an unknown name stops before touching Blender, so it no longer overwrites the previous `before_restore`.
   `ping_blender` and doctor show the connected Blender version and warn when it is not the tested LTS.
   doctor also looks for `blender-fx` in Claude Code, Claude Desktop, Cursor and Codex settings and, if missing, prints the register command (optional step; not in the MCP `doctor` tool, whose caller is already connected).
@@ -53,6 +54,8 @@
 - 0.7.0 이 Python 3.10 을 지원하는 마지막 판입니다(3.10 은 2026-10 EOL). 0.8.0 부터 Python 3.11 이상이 필요합니다.
 
 **고침**
+- 대상 이름 오타에 가까운 이름 제안: `destroy(target="building")` → "혹시 'Building' 인가요? 이름은 대소문자까지 같아야 합니다". 메시가 아닌 오브젝트(카메라 등)면 그 종류를,
+  장면에 메시가 없으면 `make_demo_building`·`import_model` 을 알려 준다
 - 언어 자동 선택: `BLENDER_FX_LANG` 이 없으면 로캘(`LC_ALL`→`LC_MESSAGES`→`LANG`)이 한국어면 한국어, 다른 언어면 영어. 로캘이 없거나 `C`/`POSIX` 면 지금처럼 한국어.
   doctor `--json` 에 `lang_source`(무엇으로 정했는지). ⚠️ 동작 변화: 영어 로캘 터미널에서 환경변수 없이 쓰면 이제 영어
 - `import_model` 에 `size` 를 주면 결과의 `volume_m3` 가 크기를 바꾸기 **전** 부피로 나오던 문제.
