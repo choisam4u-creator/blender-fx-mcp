@@ -28,8 +28,11 @@ def host() -> str:
     return os.environ.get("BLENDER_FX_HOST", "localhost")
 
 
+DEFAULT_PORT = 9876  # blender-mcp 수신기 애드온의 기본 포트
+
+
 def port() -> int:
-    return int(os.environ.get("BLENDER_FX_PORT", "9876"))
+    return int(os.environ.get("BLENDER_FX_PORT", str(DEFAULT_PORT)))
 
 
 def default_timeout() -> float:

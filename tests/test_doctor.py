@@ -104,10 +104,66 @@ def test_output_folder_ok_leaves_no_test_file(env):
     assert c["ok"] and list(Path(c["detail"]).iterdir()) == []
 
 
-def test_uv_missing(env, monkeypatch):
+@pytest.mark.parametrize("plat,cmd", [
+    ("darwin", "brew install uv"),
+    ("linux", "curl -LsSf https://astral.sh/uv/install.sh | sh"),
+    ("win32", "irm https://astral.sh/uv/install.ps1 | iex"),
+])
+def test_uv_missing_gives_install_command_for_this_os(env, monkeypatch, plat, cmd):
     monkeypatch.setattr(doctor.shutil, "which", lambda _: None)
+    monkeypatch.setattr(doctor.sys, "platform", plat)
     c = _by_name(doctor.run_checks())["uv"]
-    assert not c["ok"] and "brew install uv" in c["detail"]
+    assert not c["ok"] and cmd in c["detail"] and cmd in c["fix"]
+
+
+def test_blender_missing_is_optional_not_attention(env):
+    """블렌더 실행 파일은 헤드리스 시험에만 필요하다. 못 찾아도 X 가 아니라 `-` 이고, 다음 할 일에 들어가지 않는다."""
+    checks = doctor.run_checks()
+    c = _by_name(checks)["블렌더 실행 파일"]
+    assert not c["ok"] and c["optional"] and "필요 없음" in c["detail"]
+    report = doctor.format_report(checks)
+    assert f"[- ] 블렌더 실행 파일: {c['detail']}" in report.splitlines()
+    assert "블렌더 실행 파일" not in report.splitlines()[-4]  # 확인 필요 줄
+
+
+@pytest.mark.parametrize("lang", ["ko", "en"])
+def test_report_numbers_next_steps_in_install_order(env, monkeypatch, lang):
+    """실패한 필수 항목마다 다음 할 일을 설치 순서대로 번호를 매겨 보여 준다(문서를 한 번 더 열지 않게)."""
+    import re
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    monkeypatch.setattr(doctor.shutil, "which", lambda _: None)
+
+    def refused():
+        raise bridge.BlenderError("refused")
+    monkeypatch.setattr(bridge, "ping", refused)
+    checks = doctor.run_checks()
+    lines = doctor.format_report(checks).splitlines()
+    head = lines.index(next(x for x in lines if x.startswith(("확인 필요:", "Needs attention:"))))
+    steps = lines[head + 1:-1]
+    assert [s.split(".", 1)[0].strip() for s in steps] == ["1", "2", "3"]
+    assert "uv" in steps[0] and "addon.py" in steps[1] and "Connect to MCP server" in steps[2]
+    assert "Install from Disk" in steps[1]
+    assert lines[-1].endswith(bridge.TROUBLESHOOTING_URL)
+    if lang == "en":
+        assert not re.search(r"[가-힣]", "\n".join(lines[head:])), lines[head:]
+
+
+def test_connect_step_mentions_port_only_when_changed(env, monkeypatch):
+    def refused():
+        raise bridge.BlenderError("refused")
+    monkeypatch.setattr(bridge, "ping", refused)
+    assert "BLENDER_FX_PORT" not in _by_name(doctor.run_checks())["수신기 연결"]["fix"]
+    monkeypatch.setenv("BLENDER_FX_PORT", "9999")
+    fix = _by_name(doctor.run_checks())["수신기 연결"]["fix"]
+    assert "BLENDER_FX_PORT" in fix and "9999" in fix
+
+
+def test_fix_is_empty_when_ok(env):
+    for c in doctor.run_checks():
+        if c["ok"]:
+            assert c["fix"] == "", c
+        elif not c["optional"]:
+            assert c["fix"], f"{c['id']}: 실패했는데 다음 할 일이 없음"
 
 
 def test_mcp_missing(env, monkeypatch):
@@ -126,7 +182,9 @@ def test_report_all_ok_and_attention_line(env, monkeypatch):
     bad = ok + [doctor._check("b", False, "y")]
     lines = doctor.format_report(bad).splitlines()
     assert lines[1] == "[X ] b: y"
-    assert lines[-1].startswith("확인 필요: b. 해결법: ") and bridge.TROUBLESHOOTING_URL in lines[-1]
+    assert lines[2:] == ["확인 필요: b. 다음 할 일:", "  1. y", f"해결법: {bridge.TROUBLESHOOTING_URL}"]
+    with_fix = ok + [doctor._check("b", False, "y", fix="고치는 법")]
+    assert doctor.format_report(with_fix).splitlines()[3] == "  1. 고치는 법"
 
 
 @pytest.mark.parametrize("failing,code", [
@@ -175,14 +233,15 @@ def test_json_matches_text_report(monkeypatch, capsys, tmp_path, lang):
         doctor.main(["--json"])
     assert e.value.code == text_code
     data = json.loads(capsys.readouterr().out)
-    rows = text[:-1]
-    assert len(data["checks"]) == len(rows)
+    rows = text[:len(data["checks"])]
     for c, row in zip(data["checks"], rows):
-        assert row == f"[{'OK' if c['ok'] else 'X '}] {c['name']}: {c['detail']}"
+        assert row == f"[{doctor.mark(c)}] {c['name']}: {c['detail']}"
     assert [c["id"] for c in data["checks"]] == [
         "python", "blender-fx-mcp", "mcp", "uv", "blender", "addon", "connection", "output"]
-    assert data["failed"] == [c["id"] for c in data["checks"] if not c["ok"]]
-    assert {"blender", "addon", "connection"} <= set(data["failed"])
+    assert data["failed"] == [c["id"] for c in data["checks"] if not c["ok"] and not c["optional"]]
+    assert {"addon", "connection"} <= set(data["failed"]) and "blender" not in data["failed"]
+    assert next(c for c in data["checks"] if c["id"] == "blender")["optional"] is True
+    assert all(c["fix"] for c in data["checks"] if c["id"] in data["failed"])
     assert data["ok"] is False and data["help"] == bridge.TROUBLESHOOTING_URL and data["help"] in text[-1]
     assert data["lang"] == lang and data["blender"] is None
     assert data["blender_fx_mcp"] == __version__

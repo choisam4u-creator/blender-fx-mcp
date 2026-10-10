@@ -29,16 +29,37 @@ ADDON_GLOBS = [
 ]
 
 
-def _check(name: str, ok: bool, detail: str, key: str = "") -> dict:
+def _check(name: str, ok: bool, detail: str, key: str = "", fix: str = "", optional: bool = False) -> dict:
     # key 는 --json 의 id. 화면 이름(name)은 언어에 따라 바뀌어도 id 는 그대로라 신고끼리 비교할 수 있다.
-    return {"id": key or name, "name": name, "ok": ok, "detail": detail}
+    # fix 는 실패했을 때 사용자가 할 다음 한 단계. optional 이면 실패해도 MCP 사용에는 지장이 없다(`[- ]`).
+    return {"id": key or name, "name": name, "ok": ok, "detail": detail, "fix": "" if ok else fix,
+            "optional": optional}
+
+
+def _uv_install() -> str:
+    """이 OS 에서 uv 를 까는 한 줄(https://docs.astral.sh/uv/getting-started/installation/)."""
+    if sys.platform == "darwin":
+        return "brew install uv"
+    if sys.platform == "win32":
+        return 'powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"'
+    return "curl -LsSf https://astral.sh/uv/install.sh | sh"
+
+
+def _connect_fix() -> str:
+    step = t("블렌더를 켜고 3D 화면에서 N 키 → BlenderMCP 탭 → Connect to MCP server",
+             "Open Blender, press N in the 3D view → BlenderMCP tab → Connect to MCP server")
+    if bridge.port() != bridge.DEFAULT_PORT:
+        step += t(f" (BlenderMCP 탭의 Port 를 BLENDER_FX_PORT 와 같은 {bridge.port()} 로)",
+                  f" (set Port in the BlenderMCP tab to {bridge.port()}, the same as BLENDER_FX_PORT)")
+    return step
 
 
 def run_checks() -> list[dict]:
     out: list[dict] = []
     v = sys.version_info
     out.append(_check("python", v >= (3, 10), f"{v.major}.{v.minor}.{v.micro} ({platform.system()} {platform.machine()})",
-                      "python"))
+                      "python", t("Python 3.10 이상으로 실행: uvx 가 알아서 고른다(uv python install 3.13)",
+                                  "Run with Python 3.10+: uvx picks one for you (uv python install 3.13)")))
 
     # 이슈에 붙인 결과만 보고 어느 판인지 알 수 있게 맨 위에 둔다
     out.append(_check("blender-fx-mcp", True, __version__, "blender-fx-mcp"))
@@ -47,10 +68,15 @@ def run_checks() -> list[dict]:
     try:
         out.append(_check(name_mcp, True, metadata.version("mcp"), "mcp"))
     except Exception as e:
-        out.append(_check(name_mcp, False, t(f"설치 안 됨: {e}", f"not installed: {e}"), "mcp"))
+        out.append(_check(name_mcp, False, t(f"설치 안 됨: {e}", f"not installed: {e}"), "mcp",
+                          t("README 의 uvx 명령으로 실행하면 함께 설치된다(직접 설치: pip install blender-fx-mcp[cli])",
+                            "Run it with the uvx command from the README, which installs it "
+                            "(manual install: pip install blender-fx-mcp[cli])")))
 
     uv = shutil.which("uv")
-    out.append(_check("uv", uv is not None, uv or t("PATH 에 없음. brew install uv", "not on PATH. brew install uv"), "uv"))
+    out.append(_check("uv", uv is not None, uv or t(f"PATH 에 없음. {_uv_install()}", f"not on PATH. {_uv_install()}"),
+                      "uv", t(f"uv 설치: {_uv_install()} (새 터미널에서 다시 실행)",
+                              f"Install uv: {_uv_install()} (then rerun in a new terminal)")))
 
     name_blender = t("블렌더 실행 파일", "Blender executable")
     blender = find_blender()
@@ -63,9 +89,11 @@ def run_checks() -> list[dict]:
             ver = t(f"실행 실패: {e}", f"failed to run: {e}")
         out.append(_check(name_blender, True, f"{blender} — {ver}", "blender"))
     else:
+        # MCP 로 쓰는 데는 필요 없다(블렌더 창 안의 수신기와 소켓으로 말한다). 헤드리스 시험에만 쓴다
         out.append(_check(name_blender, False, t(
-            "못 찾음. BLENDER_FX_BLENDER 환경변수로 경로를 알려주세요 (헤드리스 테스트에만 필요)",
-            "not found. Set BLENDER_FX_BLENDER to its path (only needed for headless tests)"), "blender"))
+            "못 찾음 — MCP 사용에는 필요 없음. 헤드리스 시험을 돌릴 때만 BLENDER_FX_BLENDER 환경변수로 경로를 알려주세요",
+            "not found — not needed to use the MCP server. Only for headless tests: set BLENDER_FX_BLENDER to its path"),
+            "blender", optional=True))
 
     # normpath: Windows 에서 expanduser 가 붙인 `\` 와 패턴의 `/` 가 섞여 보이지 않게
     found = [os.path.normpath(p) for g in ADDON_GLOBS for p in glob.glob(os.path.expanduser(g))]
@@ -73,7 +101,11 @@ def run_checks() -> list[dict]:
                       found[0] if found else t(
                           "블렌더 애드온 폴더에 blender_mcp.py 가 없음. https://github.com/ahujasid/blender-mcp 의 addon.py 를 설치하세요",
                           "blender_mcp.py is not in the Blender add-ons folder. Install addon.py from https://github.com/ahujasid/blender-mcp"),
-                      "addon"))
+                      "addon", t(
+                          "https://github.com/ahujasid/blender-mcp 에서 addon.py 를 받아 블렌더 Edit → Preferences → Add-ons → "
+                          "오른쪽 위 ▾ → Install from Disk 로 설치하고 체크",
+                          "Download addon.py from https://github.com/ahujasid/blender-mcp, then in Blender Edit → Preferences → "
+                          "Add-ons → top-right ▾ → Install from Disk, and tick it")))
 
     name_conn = t("수신기 연결", "receiver connection")
     try:
@@ -81,7 +113,7 @@ def run_checks() -> list[dict]:
         out.append(_check(name_conn, True, t(f"{bridge.host()}:{bridge.port()} 응답함", f"{bridge.host()}:{bridge.port()} responded"),
                           "connection"))
     except bridge.BlenderError as e:
-        out.append(_check(name_conn, False, str(e), "connection"))
+        out.append(_check(name_conn, False, str(e), "connection", _connect_fix()))
 
     name_out = t("출력 폴더", "output folder")
     root = os.path.expanduser(os.environ.get("BLENDER_FX_OUT", "~/blender-fx-output"))
@@ -93,22 +125,37 @@ def run_checks() -> list[dict]:
         os.remove(test)
         out.append(_check(name_out, True, root, "output"))
     except Exception as e:
-        out.append(_check(name_out, False, t(f"{root} 에 쓸 수 없음: {e}", f"cannot write to {root}: {e}"), "output"))
+        out.append(_check(name_out, False, t(f"{root} 에 쓸 수 없음: {e}", f"cannot write to {root}: {e}"), "output",
+                          t("MCP 설정의 BLENDER_FX_OUT 을 쓸 수 있는 폴더로 지정", "Point BLENDER_FX_OUT in your MCP config to a writable folder")))
     return out
 
 
+def mark(c: dict) -> str:
+    """줄 머리 표시: OK / X(고쳐야 함) / -(없어도 되는 선택 항목)."""
+    return "OK" if c["ok"] else ("- " if c.get("optional") else "X ")
+
+
+def failed(checks: list[dict]) -> list[dict]:
+    """고쳐야 하는 항목(선택 항목 제외). 순서는 설치 순서(파이썬 → uv → 애드온 → 연결 → 출력 폴더)."""
+    return [c for c in checks if not c["ok"] and not c.get("optional")]
+
+
 def format_report(checks: list[dict]) -> str:
-    lines = [f"[{'OK' if c['ok'] else 'X '}] {c['name']}: {c['detail']}" for c in checks]
-    bad = [c["name"] for c in checks if not c["ok"]]
-    lines.append(t("모두 정상입니다.", "Everything looks good.") if not bad
-                 else t(f"확인 필요: {', '.join(bad)}. 해결법: {bridge.TROUBLESHOOTING_URL}",
-                        f"Needs attention: {', '.join(bad)}. Help: {bridge.TROUBLESHOOTING_URL}"))
+    lines = [f"[{mark(c)}] {c['name']}: {c['detail']}" for c in checks]
+    bad = failed(checks)
+    if not bad:
+        lines.append(t("모두 정상입니다.", "Everything looks good."))
+        return "\n".join(lines)
+    lines.append(t(f"확인 필요: {', '.join(c['name'] for c in bad)}. 다음 할 일:",
+                   f"Needs attention: {', '.join(c['name'] for c in bad)}. Next steps:"))
+    lines += [f"  {i}. {c.get('fix') or c['detail']}" for i, c in enumerate(bad, 1)]
+    lines.append(t(f"해결법: {bridge.TROUBLESHOOTING_URL}", f"Help: {bridge.TROUBLESHOOTING_URL}"))
     return "\n".join(lines)
 
 
 def format_json(checks: list[dict]) -> str:
     """버그 신고에 붙여 그대로 비교·재현할 수 있는 JSON. 항목·결과는 format_report 와 같다."""
-    bad = [c["id"] for c in checks if not c["ok"]]
+    bad = [c["id"] for c in failed(checks)]
     report = {
         "blender_fx_mcp": __version__,
         "lang": "en" if is_en() else "ko",
@@ -116,7 +163,8 @@ def format_json(checks: list[dict]) -> str:
         "blender": find_blender(),
         "host": bridge.host(),
         "port": bridge.port(),
-        "checks": [{"id": c["id"], "name": c["name"], "ok": c["ok"], "detail": c["detail"]} for c in checks],
+        "checks": [{"id": c["id"], "name": c["name"], "ok": c["ok"], "optional": c.get("optional", False),
+                    "detail": c["detail"], "fix": c.get("fix", "")} for c in checks],
         "failed": bad,
         "help": bridge.TROUBLESHOOTING_URL if bad else None,
     }

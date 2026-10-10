@@ -20,6 +20,10 @@
 - `BLENDER_FX_TIMEOUT` now also extends the bake and render tools, and the timeout error says how long it waited and how to raise it.
 - All 32 tools carry MCP annotations; tools that overwrite or delete data are marked `destructiveHint`.
 - `blender-fx-doctor --json` prints the same checks as JSON with language-independent ids, for bug reports.
+- `blender-fx-doctor` ends with numbered next steps in install order (uv with the command for this OS, add-on install path, Connect, port),
+  and a missing Blender executable is shown as optional `[- ]` (only headless tests need it) instead of a failure.
+- Headless runs and doctor read Blender output as UTF-8, so non-UTF-8 bytes on Windows no longer raise `UnicodeDecodeError`.
+- Security: the indirect dependency `pyjwt` is raised to 2.15.1 (PYSEC-2026-4141, PYSEC-2026-4183); a weekly `pip-audit` job checks `uv.lock`.
 
 *Tests and CI*
 - Server-side unit tests grew from 9 to over 540, running on Python 3.10–3.14 in CI with coverage in the job summary (99%).
@@ -49,6 +53,10 @@
 - `BLENDER_FX_TIMEOUT` 이 굽기·렌더 도구(1800초 고정, `render_video` 3600초)에는 먹지 않던 문제. 이제 더 큰 값을 주면 그 도구들도 따라 늘어난다
 - 시간 초과 오류가 몇 초 기다렸는지와 `BLENDER_FX_TIMEOUT` 으로 늘리는 방법을 알려 준다
 - `blender-fx-doctor` 첫 줄에 blender-fx-mcp 판 번호를 표시(이슈 재현용)
+- `blender-fx-doctor` 마지막에 **다음 할 일**을 설치 순서대로 번호를 매겨 보여 준다(uv 는 OS 별 설치 명령, 애드온 설치 메뉴 경로, Connect, 포트를 바꿨으면 포트 맞추기).
+  MCP 사용에 필요 없는 "블렌더 실행 파일"(헤드리스 시험용)은 못 찾아도 `[X ]` 가 아니라 `[- ]` 선택 항목으로 표시
+- 헤드리스 실행·doctor 가 블렌더 출력을 UTF-8 로 읽는다. Windows 기본 코드 페이지로 읽다가 `UnicodeDecodeError` 가 날 수 있던 문제
+- 보안: 간접 의존성 `pyjwt` 를 2.15.1 로 올림(PYSEC-2026-4141·4183). 매주 `pip-audit` 로 `uv.lock` 을 점검하는 작업 추가
 - 32개 도구 모두에 MCP annotations(`readOnlyHint`·`destructiveHint`·`idempotentHint`·`openWorldHint=false`).
   `restore`·`clear_caches`·`reset_destroy`·`export_model`·`snapshot`(같은 이름 덮어쓰기)은 destructive 로 표시해
   클라이언트가 실행 전에 확인을 띄울 수 있다
