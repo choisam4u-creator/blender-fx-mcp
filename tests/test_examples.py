@@ -103,6 +103,18 @@ def _load(name):
     return module
 
 
+def _results(lines, lang):
+    """진행 줄([i/n] … 기다리는 중)을 빼고, 결과 줄의 '(걸린 초)' 를 지워 비교하기 쉽게 한다."""
+    import re
+    wait = "(기다리는 중)" if lang == "ko" else "(waiting)"
+    out = []
+    for x in lines:
+        if re.fullmatch(rf"\[\d+/5\] \w+ … {re.escape(wait)}", x):
+            continue
+        out.append(re.sub(r"^(\w+) \(\d+\.\ds\): ", r"\1: ", x))
+    return out
+
+
 def _closed_port():
     import socket
 
@@ -121,7 +133,7 @@ def test_first_render_without_blender_exits_2_with_next_steps(monkeypatch, capsy
     monkeypatch.setenv("BLENDER_FX_LANG", lang)
     example = _load("first_render")
     code = asyncio.run(example.run(example.server_params([])))
-    out = capsys.readouterr().out.splitlines()
+    out = _results(capsys.readouterr().out.splitlines(), lang)
     assert code == 2
     assert out[0].startswith(prefix) and f"localhost:{port}" in out[0] and "Connect to MCP server" in out[0]
     assert out[1].startswith(nxt) and "blender-fx-doctor" in out[1] and len(out) == 2
@@ -183,6 +195,7 @@ mcp.run()
 def test_first_render_success_and_tool_failure(monkeypatch, capsys, tmp_path, fail, code):
     """가짜 서버로 성공 갈래(PNG 경로 출력)와 도구 실패 갈래(오류 문장 출력, 종료 코드 1, 렌더 안 부름)를 확인한다."""
     import asyncio
+    import re
     import sys
 
     monkeypatch.setenv("BLENDER_FX_LANG", "en")
@@ -194,7 +207,8 @@ def test_first_render_success_and_tool_failure(monkeypatch, capsys, tmp_path, fa
     script.write_text(FAKE_SERVER, encoding="utf-8")
     example = _load("first_render")
     got = asyncio.run(example.run(example.server_params([sys.executable, str(script), str(folder), fail])))
-    out = capsys.readouterr().out.splitlines()
+    raw = capsys.readouterr().out.splitlines()
+    out = _results(raw, "en")
     assert got == code
     undo = "To go back: ask your AI to 'restore first_render_before' or pick /undo_last."
     assert out[1] == "snapshot: Snapshot saved: first_render_before" or fail == "snapshot"
@@ -206,6 +220,12 @@ def test_first_render_success_and_tool_failure(monkeypatch, capsys, tmp_path, fa
         assert not any(x.startswith("render_preview") for x in out)
     else:
         assert out[-4:] == ["2 PNG files:", f"  {folder / 'frame_0001.png'}", f"  {folder / 'frame_0072.png'}", undo]
+        # 단계마다 부르기 전에 진행 줄, 끝나면 걸린 초가 붙은 결과 줄
+        names = ["ping_blender"] + [n for n, _ in example.STEPS]
+        assert [x for x in raw if x.startswith("[")] == [f"[{i}/5] {n} … (waiting)" for i, n in enumerate(names, 1)]
+        for n in names:
+            i = raw.index(next(x for x in raw if x.startswith("[") and f"] {n} " in x))
+            assert re.match(rf"{n} \(\d+\.\ds\): ", raw[i + 1]), raw[i + 1]
 
 
 def test_first_render_is_documented():
@@ -213,3 +233,11 @@ def test_first_render_is_documented():
     assert "[`first_render.py`](first_render.py)" in readme
     assert "uv run python examples/first_render.py" in readme
     assert "uv run python examples/first_render.py" in (EX / "first_render.py").read_text(encoding="utf-8")
+
+
+def test_first_render_progress_line_is_bilingual(monkeypatch):
+    example = _load("first_render")
+    monkeypatch.setenv("BLENDER_FX_LANG", "ko")
+    assert example.progress(3, "destroy") == "[3/5] destroy … (기다리는 중)"
+    monkeypatch.setenv("BLENDER_FX_LANG", "en")
+    assert example.progress(3, "destroy") == "[3/5] destroy … (waiting)"
