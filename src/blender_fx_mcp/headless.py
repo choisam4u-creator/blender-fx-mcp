@@ -110,7 +110,8 @@ def run_steps(steps: list[tuple[str, dict]], blender: str | None = None, timeout
     try:
         proc = subprocess.run(
             blender_command(blender, script),
-            capture_output=True, text=True, timeout=timeout,
+            # 블렌더 출력은 UTF-8. Windows 기본(cp1252 등)으로 읽으면 한글 로그에서 UnicodeDecodeError 가 난다
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout,
         )
     finally:
         os.unlink(script)

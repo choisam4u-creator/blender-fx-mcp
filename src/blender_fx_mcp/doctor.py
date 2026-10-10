@@ -56,7 +56,8 @@ def run_checks() -> list[dict]:
     blender = find_blender()
     if blender:
         try:
-            lines = subprocess.run([blender, "--version"], capture_output=True, text=True, timeout=30).stdout.splitlines()
+            lines = subprocess.run([blender, "--version"], capture_output=True, text=True,
+                                   encoding="utf-8", errors="replace", timeout=30).stdout.splitlines()
             ver = lines[0] if lines else t("버전 출력 없음", "printed no version")
         except Exception as e:
             ver = t(f"실행 실패: {e}", f"failed to run: {e}")

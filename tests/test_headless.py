@@ -1,65 +1,48 @@
-"""headless.py 의 실패 갈래 시험. 블렌더 대신 가짜 실행 파일(셸 스크립트)을 진짜로 띄운다.
+"""headless.py 의 실패 갈래 시험. 블렌더 대신 가짜 실행 파일(conftest 의 `fake_blender`, 본문은 파이썬)을 진짜로 띄운다.
 
-레시피 개발자가 블렌더가 죽거나 결과를 안 줄 때 보는 안내가 깨지지 않게 한다.
+레시피 개발자가 블렌더가 죽거나 결과를 안 줄 때 보는 안내가 깨지지 않게 한다. Windows 에서도 돈다(세그폴트 흉내만 POSIX 전용).
 """
 
 from __future__ import annotations
 
 import json
 import os
-import stat
 import subprocess
 import sys
-from pathlib import Path
 
 import pytest
 
 from blender_fx_mcp import headless
 
-pytestmark = pytest.mark.skipif(sys.platform == "win32", reason="가짜 실행 파일이 /bin/sh 스크립트")
-
-
-def _fake(tmp_path: Path, body: str, name: str = "blender") -> str:
-    """argv 와 받은 스크립트 내용을 tmp_path 에 남기고 body 를 실행하는 가짜 블렌더."""
-    exe = tmp_path / name
-    exe.write_text(
-        "#!/bin/sh\n"
-        f'printf "%s\\n" "$@" > "{tmp_path}/argv.txt"\n'
-        'for a in "$@"; do last="$a"; done\n'
-        f'cat "$last" > "{tmp_path}/script.py"\n'
-        + body + "\n",
-        encoding="utf-8",
-    )
-    exe.chmod(exe.stat().st_mode | stat.S_IXUSR)
-    return str(exe)
+posix_only = pytest.mark.skipif(sys.platform == "win32", reason="시그널(세그폴트) 흉내는 POSIX 전용")
 
 
 TWO_STEPS = [("demo_scene", {}), ("destroy", {"target": "Building"})]
 
 
-def test_success_returns_results_in_order(tmp_path):
-    exe = _fake(tmp_path, 'echo "아무 로그"\necho \'FX_RESULT {"n": 1}\'\necho \'FX_RESULT {"n": 2}\'')
+def test_success_returns_results_in_order(tmp_path, fake_blender):
+    exe = fake_blender('print("아무 로그")\nprint(\'FX_RESULT {"n": 1}\')\nprint(\'FX_RESULT {"n": 2}\')')
     assert headless.run_steps(TWO_STEPS, blender=exe) == [{"n": 1}, {"n": 2}]
-    argv = (tmp_path / "argv.txt").read_text().split()
+    argv = (tmp_path / "argv.txt").read_text(encoding="utf-8").split()
     assert argv[:3] == ["--background", "--factory-startup", "--python"]
 
 
-def test_bpy_python_gets_script_only(tmp_path):
-    exe = _fake(tmp_path, "echo 'FX_RESULT {}'", name="python3.11")
+def test_bpy_python_gets_script_only(tmp_path, fake_blender):
+    exe = fake_blender("print('FX_RESULT {}')", name="python3.11")
     headless.run_steps([("list_objects", {})], blender=exe)
-    argv = (tmp_path / "argv.txt").read_text().split()
+    argv = (tmp_path / "argv.txt").read_text(encoding="utf-8").split()
     assert len(argv) == 1 and argv[0].endswith(".py")
 
 
-def test_temp_script_is_removed(tmp_path):
-    exe = _fake(tmp_path, "echo 'FX_RESULT {}'")
+def test_temp_script_is_removed(tmp_path, fake_blender):
+    exe = fake_blender("print('FX_RESULT {}')")
     headless.run_steps([("list_objects", {})], blender=exe)
-    script = (tmp_path / "argv.txt").read_text().split()[-1]
+    script = (tmp_path / "argv.txt").read_text(encoding="utf-8").split()[-1]
     assert not os.path.exists(script)
 
 
-def test_immediate_exit_shows_code_and_stderr(tmp_path):
-    exe = _fake(tmp_path, 'echo "라이브러리 없음" >&2\nexit 3')
+def test_immediate_exit_shows_code_and_stderr(fake_blender):
+    exe = fake_blender('print("라이브러리 없음", file=sys.stderr)\nsys.exit(3)')
     with pytest.raises(RuntimeError) as e:
         headless.run_steps(TWO_STEPS, blender=exe)
     msg = str(e.value)
@@ -67,24 +50,25 @@ def test_immediate_exit_shows_code_and_stderr(tmp_path):
     assert "종료 코드 3" in msg and "라이브러리 없음" in msg
 
 
-def test_segfault_after_first_step_names_second_step(tmp_path):
-    exe = _fake(tmp_path, "echo 'FX_RESULT {\"ok\": true}'\nkill -SEGV $$")
+@posix_only
+def test_segfault_after_first_step_names_second_step(fake_blender):
+    exe = fake_blender("print('FX_RESULT {\"ok\": true}', flush=True)\nimport os, signal\nos.kill(os.getpid(), signal.SIGSEGV)")
     with pytest.raises(RuntimeError) as e:
         headless.run_steps(TWO_STEPS, blender=exe)
     msg = str(e.value)
     assert "2번째 단계 'destroy'" in msg and "세그폴트" in msg and "-11" in msg
 
 
-def test_no_fx_result_with_exit_zero_shows_stdout_tail(tmp_path):
-    exe = _fake(tmp_path, 'echo "Traceback: 레시피 오류"')
+def test_no_fx_result_with_exit_zero_shows_stdout_tail(fake_blender):
+    exe = fake_blender('print("Traceback: 레시피 오류")')
     with pytest.raises(RuntimeError) as e:
         headless.run_steps([("list_objects", {})], blender=exe)
     msg = str(e.value)
     assert "종료 코드 0" in msg and "Traceback: 레시피 오류" in msg
 
 
-def test_long_output_is_trimmed(tmp_path):
-    exe = _fake(tmp_path, "i=0; while [ $i -lt 400 ]; do echo \"줄$i 가나다라마바사\"; i=$((i+1)); done")
+def test_long_output_is_trimmed(fake_blender):
+    exe = fake_blender('for i in range(400):\n    print(f"줄{i} 가나다라마바사")')
     with pytest.raises(RuntimeError) as e:
         headless.run_steps([("list_objects", {})], blender=exe)
     msg = str(e.value)
@@ -92,16 +76,17 @@ def test_long_output_is_trimmed(tmp_path):
     assert len(msg) < 3500
 
 
-def test_timeout_raises_and_cleans_script(tmp_path):
-    exe = _fake(tmp_path, "sleep 5")
+def test_timeout_raises_and_cleans_script(tmp_path, fake_blender):
+    # Windows 는 .cmd 감싸개만 죽고 손자 파이썬이 파이프를 쥔 채 남아, run() 이 그 끝(4초)까지 기다린다
+    exe = fake_blender("import time\ntime.sleep(4)")
     with pytest.raises(subprocess.TimeoutExpired):
-        headless.run_steps([("list_objects", {})], blender=exe, timeout=0.5)
-    script = (tmp_path / "argv.txt").read_text().split()[-1]
+        headless.run_steps([("list_objects", {})], blender=exe, timeout=1.5)
+    script = (tmp_path / "argv.txt").read_text(encoding="utf-8").split()[-1]
     assert not os.path.exists(script)
 
 
-def test_clean_scene_and_extra_code_order(tmp_path):
-    exe = _fake(tmp_path, "echo 'FX_RESULT {}'")
+def test_clean_scene_and_extra_code_order(tmp_path, fake_blender):
+    exe = fake_blender("print('FX_RESULT {}')")
     headless.run_steps([("list_objects", {})], blender=exe, extra_code="MARK = 1")
     code = (tmp_path / "script.py").read_text(encoding="utf-8")
     assert code.startswith(headless.CLEAN_SCENE)
@@ -114,14 +99,14 @@ def test_clean_scene_and_extra_code_order(tmp_path):
 
 # ---- 블렌더 찾기 ----
 
-def test_find_blender_prefers_env(tmp_path, monkeypatch):
-    exe = _fake(tmp_path, "")
+def test_find_blender_prefers_env(monkeypatch, fake_blender):
+    exe = fake_blender("")
     monkeypatch.setenv("BLENDER_FX_BLENDER", exe)
     assert headless.find_blender() == exe
 
 
-def test_find_blender_missing_env_falls_back(tmp_path, monkeypatch):
-    other = _fake(tmp_path, "", name="other-blender")
+def test_find_blender_missing_env_falls_back(tmp_path, monkeypatch, fake_blender):
+    other = fake_blender("", name="other-blender")
     monkeypatch.setenv("BLENDER_FX_BLENDER", str(tmp_path / "없음"))
     monkeypatch.setattr(headless, "CANDIDATES", [str(tmp_path / "없음2"), other])
     assert headless.find_blender() == other
@@ -181,3 +166,9 @@ def test_main_default_steps(monkeypatch, tmp_path):
     monkeypatch.setattr(sys, "argv", ["blender-fx-headless"])
     headless.main()
     assert [r for r, _ in seen["s"]] == ["demo_scene", "destroy", "render"]
+
+
+def test_undecodable_output_does_not_crash(fake_blender):
+    """블렌더 로그에 UTF-8 이 아닌 바이트가 섞여도(Windows 콘솔 코드 페이지 등) 결과를 읽는다."""
+    exe = fake_blender("sys.stdout.flush()\nsys.stdout.buffer.write(b'\\xff\\xfe log\\n')\nprint('FX_RESULT {\"n\": 1}')")
+    assert headless.run_steps([("list_objects", {})], blender=exe) == [{"n": 1}]

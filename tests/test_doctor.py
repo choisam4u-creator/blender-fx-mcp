@@ -1,15 +1,10 @@
 # doctor.py 의 실패 갈래 시험. 사용자가 가장 먼저 돌리는 명령이라 실패 안내가 깨지지 않게 한다. 블렌더 없이 돈다.
 import json
-import stat
-import sys
 from pathlib import Path
 
 import pytest
 
 from blender_fx_mcp import __version__, bridge, doctor
-
-posix_only = pytest.mark.skipif(sys.platform == "win32", reason="가짜 블렌더가 /bin/sh 스크립트")
-
 
 @pytest.fixture
 def env(monkeypatch, tmp_path):
@@ -29,30 +24,21 @@ def _by_name(checks):
     return {c["name"]: c for c in checks}
 
 
-def _fake_blender(tmp_path: Path, body: str) -> str:
-    exe = tmp_path / "blender"
-    exe.write_text("#!/bin/sh\n" + body + "\n", encoding="utf-8")
-    exe.chmod(exe.stat().st_mode | stat.S_IXUSR)
-    return str(exe)
-
-
 def test_order_and_version_first(env):
     names = [c["name"] for c in doctor.run_checks()]
     assert names[:2] == ["python", "blender-fx-mcp"]
     assert names[-1] == "출력 폴더"
 
 
-@posix_only
-def test_blender_version_line(env, monkeypatch):
-    exe = _fake_blender(env, 'echo "Blender 5.2.0 LTS"\necho "build date"')
+def test_blender_version_line(env, monkeypatch, fake_blender):
+    exe = fake_blender('print("Blender 5.2.0 LTS")\nprint("build date")')
     monkeypatch.setattr(doctor, "find_blender", lambda: exe)
     c = _by_name(doctor.run_checks())["블렌더 실행 파일"]
     assert c["ok"] and c["detail"] == f"{exe} — Blender 5.2.0 LTS"
 
 
-@posix_only
-def test_blender_prints_nothing(env, monkeypatch):
-    exe = _fake_blender(env, "exit 0")
+def test_blender_prints_nothing(env, monkeypatch, fake_blender):
+    exe = fake_blender("sys.exit(0)")
     monkeypatch.setattr(doctor, "find_blender", lambda: exe)
     assert _by_name(doctor.run_checks())["블렌더 실행 파일"]["detail"].endswith("버전 출력 없음")
 
@@ -65,9 +51,8 @@ def test_blender_fails_to_run(env, monkeypatch):
     assert c["detail"].startswith(missing) and "실행 실패" in c["detail"]
 
 
-@posix_only
-def test_blender_hangs_is_reported(env, monkeypatch):
-    exe = _fake_blender(env, "sleep 5")
+def test_blender_hangs_is_reported(env, monkeypatch, fake_blender):
+    exe = fake_blender("import time\ntime.sleep(2)")
     monkeypatch.setattr(doctor, "find_blender", lambda: exe)
     real_run = doctor.subprocess.run
     monkeypatch.setattr(doctor.subprocess, "run", lambda *a, **k: real_run(*a, **{**k, "timeout": 0.3}))

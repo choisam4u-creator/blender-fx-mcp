@@ -110,7 +110,7 @@
 
 ### 2026-10-09 (3회차 마감) 추가
 
-- [ ] 가짜 블렌더를 파이썬 스크립트(Windows 는 `.cmd` 감싸개)로 바꿔 `tests/test_headless.py`·doctor 의 `@posix_only` 시험 18개가 Windows CI 에서도 돌게 (시험: 지금 Windows 에서 실행 실패·시간 초과 갈래가 검증되지 않음. 세그폴트 흉내는 POSIX 전용으로 남김)
+- [x] 가짜 블렌더를 파이썬 스크립트(Windows 는 `.cmd` 감싸개)로 바꿔 `tests/test_headless.py`·doctor 의 `@posix_only` 시험 18개가 Windows CI 에서도 돌게 (시험: 지금 Windows 에서 실행 실패·시간 초과 갈래가 검증되지 않음. 세그폴트 흉내는 POSIX 전용으로 남김) — `tests/conftest.py` 의 `fake_blender`(파이썬 본문 + POSIX `exec` 하는 `/bin/sh` 감싸개 / Windows `.cmd` 감싸개). Windows 건너뜀 18개 → **1개**(세그폴트). 하다가 찾은 제품 문제: headless·doctor 가 블렌더 출력을 OS 기본 인코딩으로 읽어 Windows(cp1252 등)에서 한글·깨진 바이트에 `UnicodeDecodeError` 가 날 수 있음 → `encoding="utf-8", errors="replace"`. 시험 `test_undecodable_output_does_not_crash`, `test_contributing_documents_windows_skips` 를 "/bin/sh 가짜 금지 + 건너뜀 개수"로. Windows CI 결과는 PR 에서 확인
 - [x] 모든 `.md` 의 상대 링크와 `#앵커`가 실제 파일·제목에 있는지 하나의 시험(GitHub 앵커 규칙: 소문자·공백→`-`·문장부호 제거, 한글 유지) (문서·시험: Mac 시험의 첫 FAIL 이 README 깨진 링크였음. 지금은 문서마다 따로 일부만 점검) — `tests/test_docs_links.py`: git 이 추적하는 .md 19개, 코드 블록·인라인 코드·HTML 주석은 뺌, 같은 제목은 `-1`. 지금 깨진 링크 0개(일부러 깨뜨려 잡히는 것 확인). 시험 20개(문서별 1개 + 앵커 규칙)
 - [ ] 주 1회 의존성 취약점 점검 작업(`uvx pip-audit` 또는 osv-scanner 로 `uv.lock`, SHA 고정, 읽기 권한만) + SECURITY 공급망 표에 한 줄 (보안·유지보수: dependabot 은 판 갱신만 하고 알려진 취약점이 있는 고정 판을 따로 알리지 않음)
 - [x] 휠·sdist 에 `LICENSE` 가 들어가는지 `release_check.py --dist` 칸 + sdist 에 `docs/third-party-licenses.md` 포함 여부 확인 (라이선스: 배포물만 받은 사람도 라이선스 본문을 보게. 지금은 METADATA 의 License-Expression 만 봄) — `check_license_files`: 지금 빌드는 휠 `licenses/LICENSE`, sdist `LICENSE`·`docs/third-party-licenses.md` 모두 들어 있음(25개 OK). 시험 1개 + 가짜 휠·sdist 도우미에 라이선스 파일

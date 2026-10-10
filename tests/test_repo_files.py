@@ -1008,14 +1008,15 @@ def test_security_supply_chain_table_matches_repo():
 
 
 def test_contributing_documents_windows_skips():
-    """Windows CI 에서 건너뛰는 시험(가짜 /bin/sh 블렌더)의 파일·개수가 CONTRIBUTING 한/영과 같아야 한다."""
-    doctor_src = (ROOT / "tests" / "test_doctor.py").read_text(encoding="utf-8")
-    headless_src = (ROOT / "tests" / "test_headless.py").read_text(encoding="utf-8")
-    assert 'pytestmark = pytest.mark.skipif(sys.platform == "win32"' in headless_src
-    posix = doctor_src.count("\n@posix_only\n")
-    headless = len(re.findall(r"^def test_\w+\(", headless_src, re.M))
-    params = re.findall(r"^@pytest\.mark\.parametrize\(", headless_src, re.M)
-    assert not params, "test_headless.py 에 parametrize 가 생기면 아래 개수 세는 법을 바꾼다"
+    """Windows CI 에서 건너뛰는 시험(@posix_only, 시그널 흉내)의 개수가 CONTRIBUTING 한/영과 같아야 한다.
+    가짜 블렌더는 conftest 의 fake_blender(파이썬 본문)라 /bin/sh 전용 가짜가 다시 생기면 안 된다."""
+    srcs = {p.name: p.read_text(encoding="utf-8") for p in (ROOT / "tests").glob("test_*.py")}
+    posix = sum(src.count("\n@posix_only\n") for src in srcs.values())
+    for name, src in srcs.items():
+        if name == "test_repo_files.py":
+            continue
+        assert '"#!/bin/sh' not in src, f"{name}: 가짜 블렌더는 conftest 의 fake_blender 를 쓴다"
+        assert 'pytestmark = pytest.mark.skipif(sys.platform == "win32"' not in src, name
     text = (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
-    assert f"`tests/test_headless.py` 전체({headless}개)" in text and f"`@posix_only` {posix}개" in text
-    assert f"all {headless} in `tests/test_headless.py`" in text and f"{posix} `@posix_only` tests" in text
+    assert f"`@posix_only` {posix}개" in text and f"only {posix} `@posix_only` test" in text
+    assert "fake_blender" in text
