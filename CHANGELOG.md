@@ -11,10 +11,10 @@
 - 0.7.0 is the last release that supports Python 3.10 (end of life 2026-10). 0.8.0 will require Python 3.11 or newer.
 
 *Fixes*
-- Without `BLENDER_FX_LANG`, the language now follows the locale: English unless it is Korean (Korean when no locale is set).
 - `import_model` with `size` reported the volume from before resizing; fixed. Rigid-body `glue` no longer crashes headless `bpy`
   or adds a stray constraint to the active piece.
 - All server, recipe and doctor messages, and the MCP server instructions, now follow `BLENDER_FX_LANG=en`.
+  Without it the language follows the locale: English unless it is Korean (Korean when no locale is set).
 - Arguments with fixed choices (`material`, `pattern`, `quality`, ...) and numeric ranges (`pieces`, `resolution`, `frames`, ...)
   are checked **before** anything is sent to Blender, with the allowed values and the closest match in the error.
   Out-of-range values used to be clamped silently.
