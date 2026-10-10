@@ -14,6 +14,34 @@ If your problem is not here, open a [bug report](https://github.com/choisam4u-cr
 
 ---
 
+## Tools not visible in the client
+
+**클라이언트에 도구가 안 보임**
+
+증상: AI에게 시켜도 `make_demo_building` 같은 도구를 모른다고 하거나, `/` 메뉴에 `first_demo` 가 없습니다. 블렌더 연결 전 단계 문제입니다.
+doctor 의 "MCP 클라이언트 등록" 줄이 `-` 이면 아래 1번부터, 클라이언트 이름이 보이면 2번부터 합니다.
+
+1. 등록을 확인합니다. Claude Code 는 `claude mcp list` 에 `blender-fx` 가 있어야 합니다. 없으면
+   `claude mcp add -s user blender-fx -- uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-mcp`
+2. 앱을 **완전히** 껐다 켭니다(창 닫기가 아니라 종료: macOS 는 `Cmd+Q`, Windows 는 트레이 아이콘에서 종료). Claude Code 는 새 세션을 엽니다.
+3. 설정 파일을 직접 고쳤다면 위치와 JSON 문법을 확인합니다(쉼표 하나로 파일 전체가 무시됩니다).
+
+| 클라이언트 | 설정 파일 |
+|---|---|
+| Claude Code | `~/.claude.json`(전체) 또는 프로젝트의 `.mcp.json` |
+| Claude Desktop | macOS `~/Library/Application Support/Claude/claude_desktop_config.json`, Windows `%APPDATA%\Claude\claude_desktop_config.json` |
+| Cursor | `~/.cursor/mcp.json` |
+| Codex | `~/.codex/config.toml` |
+
+4. 그래도 안 보이면 `uv` 가 앱의 PATH 에 없을 수 있습니다. 설정의 `uvx` 를 `which uvx`(Windows `where uvx`)가 알려 준 전체 경로로 바꿉니다.
+
+Symptom: the AI does not know tools such as `make_demo_building`, or `first_demo` is missing from the `/` menu. This happens before any Blender connection.
+If doctor's "MCP client registration" line shows `-`, start at step 1; if it names your client, start at step 2.
+1. Check registration: `claude mcp list` must show `blender-fx` (otherwise run the `claude mcp add` line above).
+2. Fully quit and reopen the app (`Cmd+Q` on macOS, quit from the tray on Windows); in Claude Code start a new session.
+3. If you edited a config file by hand, check its location (table above) and JSON syntax; one stray comma makes the whole file ignored.
+4. If the tools still do not appear, the app may not see `uv` on its PATH: replace `uvx` with the full path printed by `which uvx` (`where uvx` on Windows).
+
 ## Connection refused
 
 **연결 거부**

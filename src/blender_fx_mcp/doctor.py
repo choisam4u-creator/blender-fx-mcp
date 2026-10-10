@@ -23,6 +23,10 @@ from .i18n import is_en, t
 SERVER_CMD = "uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-mcp"
 
 
+# 등록했는데도 클라이언트에 도구가 안 보일 때 볼 절. 절 제목이 바뀌면 tests/test_troubleshooting.py 가 알려 준다
+CLIENT_HELP = f"{bridge.TROUBLESHOOTING_URL}#tools-not-visible-in-the-client"
+
+
 def _check(name: str, ok: bool, detail: str, key: str = "", fix: str = "", optional: bool = False) -> dict:
     # key 는 --json 의 id. 화면 이름(name)은 언어에 따라 바뀌어도 id 는 그대로라 신고끼리 비교할 수 있다.
     # fix 는 실패했을 때 사용자가 할 다음 한 단계. optional 이면 실패해도 MCP 사용에는 지장이 없다(`[- ]`).
@@ -175,9 +179,11 @@ def run_checks(clients: bool = True) -> list[dict]:
                               "(ignore if you registered it in another client)"),
                           "client", t(
                               f"클로드에 등록: claude mcp add -s user blender-fx -- {SERVER_CMD} "
-                              "(다른 클라이언트는 examples/README.md, 등록 뒤 앱을 껐다 켜기)",
+                              "(다른 클라이언트는 examples/README.md, 등록 뒤 앱을 껐다 켜기). "
+                              f"그래도 도구가 안 보이면: {CLIENT_HELP}",
                               f"Register with Claude: claude mcp add -s user blender-fx -e BLENDER_FX_LANG=en -- {SERVER_CMD} "
-                              "(other clients: examples/README.md; restart the app afterwards)"),
+                              "(other clients: examples/README.md; restart the app afterwards). "
+                              f"If the tools still do not show up: {CLIENT_HELP}"),
                           optional=True))
 
     name_out = t("출력 폴더", "output folder")
