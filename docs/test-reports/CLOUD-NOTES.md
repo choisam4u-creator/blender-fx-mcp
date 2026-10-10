@@ -3,10 +3,30 @@
 ## 맥에서 돌릴 명령 (블렌더 필요, 최신 회차 기준)
 
 ```sh
-BLENDER_FX_LANG=en uv run pytest -q                # 실패 0개인지(10/10 실패 10개는 4회차에 고침, 6회차에 한글 HOME 으로 다시 확인)
-uv run blender-fx-doctor                           # "MCP 클라이언트 등록" 줄이 [OK] Claude Code (없으면 [- ] 와 끝에 "(선택) claude mcp add …")
-uv run python examples/first_render.py             # 블렌더에서 Connect 뒤: PNG 3개 경로 + 끝 줄 "restore first_render_before". 그다음 Claude Code 에서 / 를 눌러 first_demo·my_model·undo_last 가 보이는지
+BLENDER_FX_LANG=en uv run pytest -q                # 실패 0개인지(10/10 실패 10개는 4회차에 고침, 7회차에 en + 한글 HOME·TMPDIR 로 다시 확인)
+uv run blender-fx-doctor                           # uv 줄(uvx 가 다른 폴더면 경로), "MCP 클라이언트 등록" 줄. 등록을 지운 상태면 끝 할 일에 해결법 #tools-not-visible-in-the-client 링크
+uv run python examples/first_render.py             # 블렌더에서 Connect 뒤: [1/5]…[5/5] 진행 줄과 걸린 초, PNG 3개 경로, 끝 줄 "restore first_render_before"
 ```
+
+## 2026-10-10 (7회차)
+
+- 한 일: 맨 앞 지시(10/10 Mac 실패 10개)는 **4회차에 이미 고쳐 PR #13 에 있음**(커밋 125b479)을 다시 확인 —
+  `BLENDER_FX_LANG=en` + `HOME`·`TMPDIR` 한글 폴더, `ko` 두 갈래로 전체 시험 777 통과·0 실패. `latest.md`(10/1)의 FAIL 2건은 main 에 고쳐져 있음. main 은 앞서 있지 않음.
+  그다음 백로그(사용자 체감 우선):
+  1. **해결법 문서 "Tools not visible in the client" 절**(백로그) — 등록 확인 → 앱 완전 재시작 → 설정 파일 위치·문법 → `uvx` 전체 경로, 한/영. doctor 등록 할 일 끝에 그 링크.
+  2. **doctor `--json` 의 `clients`**(백로그) — 버그 양식 클라이언트 칸에 "doctor `--json` 의 `clients` 를 고르세요". 양식 선택지 = doctor 가 아는 클라이언트 시험.
+  3. **서버 명령을 터미널에서 직접 치면 stderr 안내**(새 항목) — "멈춘 것이 아닙니다" + 등록·점검·Ctrl+C. 클라이언트가 띄우면(파이프) 조용.
+  4. **doctor 등록 안내를 깔린 클라이언트에 맞게**(새 항목) — Claude Code 없이 Cursor·Claude Desktop·Codex 만 있으면 그 설정 파일 + `examples/` 예제.
+  5. **창 앱에는 `uvx` 전체 경로**(새 항목) — Claude Desktop·Cursor 는 셸 PATH 를 못 봄(`spawn uvx ENOENT`). uv 줄·등록 안내·examples/README 한/영.
+  6. **`first_render.py` 진행 줄 `[i/5] … (기다리는 중)` + 걸린 초**(새 항목).
+  7. **README 한/영 설치 절에 `first_render.py`**(새 항목) — 영어 절에 한글 앵커를 넣었다가 기존 "영어 절에 한글 없음" 시험이 잡아 파일 링크로 고침.
+  - CHANGELOG 0.7.0(미출시) 한/영 갱신.
+  - 브랜치: 이 세션의 지정 브랜치 `claude/cloud-work-lxraz2` 에서 작업해 푸시하고, PR #13 의 머리 `claude/cloud-work` 에도 같은 커밋을 앞으로 감기(fast-forward)로 푸시.
+- 돌린 시험: `uv run pytest -q` **800 통과·34 건너뜀**(3.11, Linux, 23개 추가). 바뀐 시험 파일 5개는 **Python 3.10·3.14** 로도 통과. `uvx ruff@0.15.20 check .` 통과.
+  건너뛴 34개는 블렌더(앱·bpy)가 없어서 — 레시피 시험(CI `recipe-tests-bpy`·Mac 앱 몫). 레시피를 안 바꿔 `bpy_tests.sh` 는 안 돌림.
+  창 앱이 정말 `uvx` 를 못 찾는지, 진행 줄이 실제 굽기 동안 보이는지는 Mac 의 Claude Desktop·블렌더 앱이 필요해 Mac 몫.
+- 완료 수·추가 수: **완료 7**(백로그 기존 2 + 새 5) / **추가 5**. 남은 `[ ]` 0개 — '완료 ≥ 추가'를 지키려 이번 회차엔 더 추가하지 않음. 다음 회차가 맨 먼저 5개 추가.
+- Mac에서 확인할 것: 맨 위 명령 3줄.
 
 ## 2026-10-10 (6회차)
 
