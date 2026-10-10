@@ -23,7 +23,7 @@ def _tools():
 
 def test_prompts_are_listed_with_title():
     ps = _prompts()
-    assert set(ps) == {"first_demo", "undo_last"}
+    assert set(ps) == {"first_demo", "my_model", "undo_last"}
     for p in ps.values():
         # 제목·설명은 서버를 띄울 때의 언어(한/영 짝은 test_server_messages 가 점검)
         assert len(p.title) >= 8 and len(p.description) >= 20, p
@@ -36,13 +36,13 @@ def test_prompts_are_listed_with_title():
 
 
 @pytest.mark.parametrize("lang", ["ko", "en"])
-@pytest.mark.parametrize("name", ["first_demo", "undo_last"])
+@pytest.mark.parametrize("name", ["first_demo", "my_model", "undo_last"])
 def test_prompt_follows_language_and_names_real_tools(monkeypatch, lang, name):
     monkeypatch.setenv("BLENDER_FX_LANG", lang)
-    text = _text(name)
+    text = _text(name, {"path": "~/Desktop/tower.glb"} if name == "my_model" else None)
     assert bool(re.search(r"[가-힣]", text)) is (lang == "ko"), text
     # 문장 속 snake_case 단어와 단계 머리 단어 중 도구처럼 보이는 것은 모두 실제 도구여야 한다
-    words = set(re.findall(r"\b[a-z]+(?:_[a-z]+)+\b", text)) - {"before_demo", "before_restore"}
+    words = set(re.findall(r"\b[a-z]+(?:_[a-z]+)+\b", text)) - {"before_demo", "before_restore", "before_my_model"}
     words |= {w for w in re.findall(r"\b(doctor|snapshot|restore|destroy)\b", text)}
     assert words and words <= _tools(), words - _tools()
 
@@ -80,4 +80,30 @@ def test_readme_mentions_prompts():
     readme = (Path(__file__).resolve().parents[1] / "README.md").read_text(encoding="utf-8")
     ko, en = readme.split("\n## English\n", 1)
     for part in (ko, en):
-        assert "/first_demo" in part and "/undo_last" in part
+        assert "/first_demo" in part and "/undo_last" in part and "/my_model" in part
+
+
+def test_my_model_steps_and_arguments(monkeypatch):
+    import inspect
+
+    monkeypatch.setenv("BLENDER_FX_LANG", "en")
+    args = {a.name: a for a in _prompts()["my_model"].arguments}
+    assert args["path"].required and not args["size"].required and not args["impact"].required
+    assert args["impact"].description.split(" / ") == list(server.CHOICES["destroy"]["impact"])
+    text = _text("my_model", {"path": "C:\\모델\\tower 1.glb", "size": "12", "impact": "top"})
+    order = ["ping_blender", "snapshot", "import_model", "inspect_mesh", "destroy", "render_preview"]
+    pos = [text.index(w) for w in order]
+    assert pos == sorted(pos)
+    # 경로는 repr 로 감싸 공백·역슬래시·한글이 그대로 전달된다
+    assert "path='C:\\\\모델\\\\tower 1.glb', size=12" in text and "impact=top" in text
+    assert {"path", "size"} <= set(inspect.signature(server.import_model).parameters)
+    assert "ask me whether to continue" in text and "restore before_my_model" in text
+
+
+@pytest.mark.parametrize("lang", ["ko", "en"])
+@pytest.mark.parametrize("bad, shown", [({"impact": "lft"}, "'left'"), ({"size": "12m"}, "12m"), ({"size": "-3"}, "-3")])
+def test_my_model_wrong_argument(monkeypatch, lang, bad, shown):
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    text = _text("my_model", {"path": "a.glb", **bad})
+    assert text.startswith("/my_model") or text.startswith("Wrong /my_model")
+    assert shown in text and "import_model" not in text

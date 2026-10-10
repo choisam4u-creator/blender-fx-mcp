@@ -1043,6 +1043,44 @@ def first_demo(
     )
 
 
+@mcp.prompt(title=t("내 모델 부수기", "Break my own model"),
+            description=t("모델 파일을 가져와 상태를 점검하고 한쪽에서 부순 뒤 미리보기를 본다.",
+                          "Import a model file, check the mesh, break it from one side and show a preview."))
+def my_model(
+    path: Annotated[str, Field(description="glb / gltf / fbx / obj / stl / usd / blend")],
+    size: Annotated[str, Field(description="m, 0 = keep")] = "0",
+    impact: Annotated[str, Field(description="left / right / front / back / top / none")] = "left",
+) -> str:
+    try:
+        check_choices("destroy", dict(impact=impact))
+        meters = float(size or 0)
+        if meters < 0:
+            raise ValueError(size)
+    except (BlenderError, ValueError) as e:
+        if isinstance(e, ValueError):
+            e = BlenderError(t(f"size 값 '{size}' 은(는) 0 이상의 숫자(m)여야 합니다. 원래 크기면 0.",
+                               f"size '{size}' must be a number of meters, 0 or more. Use 0 to keep the size."))
+        return t(f"/my_model 인자가 틀렸어: {e} 아무 도구도 부르지 말고 이 문장을 나에게 그대로 보여 줘.",
+                 f"Wrong /my_model argument: {e} Do not call any tool; show me this message as it is.")
+    return t(
+        "내 모델을 부숴 보고 싶어. 단계마다 무엇을 했는지 한 줄로 알려 줘.\n"
+        "1. ping_blender 로 연결을 확인해. 실패하면 doctor 를 부르고 그 '다음 할 일'을 그대로 알려 준 뒤 멈춰.\n"
+        "2. snapshot 을 name=before_my_model 로 불러 지금 장면을 저장해.\n"
+        f"3. import_model 을 path={path!r}, size={meters:g} 로 불러. 실패하면 그 문장(비슷한 파일 이름이 들어 있음)을 그대로 보여 주고 멈춰.\n"
+        "4. 가져온 오브젝트 이름으로 inspect_mesh 를 불러 상태를 쉬운 말로 설명해. 열린 메시·면이 너무 많음 같은 문제가 있으면 계속할지 나에게 물어봐.\n"
+        f"5. destroy 를 그 이름, impact={impact} 로 불러 부숴.\n"
+        "6. render_preview 로 미리보기를 보여 주고 무엇이 보이는지 설명해. 마음에 안 들면 restore before_my_model 로 돌아갈 수 있다고 알려 줘.",
+        "I want to break my own model. After each step, say in one line what you did.\n"
+        "1. Check the connection with ping_blender. If it fails, call doctor, pass on its next steps as they are, and stop.\n"
+        "2. Call snapshot with name=before_my_model to save the current scene.\n"
+        f"3. Call import_model with path={path!r}, size={meters:g}. If it fails, show its message (it lists similar file names) and stop.\n"
+        "4. Call inspect_mesh on the imported object and explain its state in plain words. "
+        "If there is a problem such as an open mesh or too many faces, ask me whether to continue.\n"
+        f"5. Call destroy on that object with impact={impact}.\n"
+        "6. Show the preview with render_preview and describe it. Mention that restore before_my_model goes back.",
+    )
+
+
 @mcp.prompt(title=t("마지막 작업 되돌리기", "Undo the last step"),
             description=t("스냅샷 목록을 보고 확인을 받은 뒤 가장 최근 것으로 되돌린다.",
                           "List snapshots and go back to the most recent one after confirming."))

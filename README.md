@@ -113,7 +113,7 @@ claude mcp add -s user blender-fx -- uv --directory /절대/경로/blender-fx-mc
 4. 돌아온 미리보기 프레임을 보고 다시 말한다: "더 잘게", "맞은 데만 부서지게", "유리처럼", "물을 왼쪽에서 옆으로 쏴", "꿀처럼 걸쭉하게", "중력 절반", "슬로모션", "불 붙여", "눈 내리게", "로우앵글로", "노을로".
 5. 마음에 들면: "영상으로 뽑아 줘", "장면 저장해 줘", "glb로 내보내 줘."
 
-자기 모델이 있으면: **"~/Desktop/tower.glb 가져와서 12m 크기로 세우고 왼쪽에서 부숴."**
+자기 모델이 있으면: **"~/Desktop/tower.glb 가져와서 12m 크기로 세우고 왼쪽에서 부숴."** (`/` 메뉴의 **`/my_model`** 은 가져온 뒤 `inspect_mesh` 로 상태부터 봅니다)
 
 ## 도구 목록
 
@@ -316,7 +316,7 @@ Then keep directing from the preview frames: "smaller pieces", "only break where
 "thick like honey", "half gravity", "slow motion", "set it on fire", "make it snow", "low angle", "sunset".
 When you like it: "render a video", "save the scene", "export as glb".
 
-Your own model works too: **"Import ~/Desktop/tower.glb, stand it up 12 m tall and break it from the left."**
+Your own model works too: **"Import ~/Desktop/tower.glb, stand it up 12 m tall and break it from the left."** (the **`/my_model`** prompt checks the mesh with `inspect_mesh` first)
 More examples with measured results: [docs/recipes.md (English section)](docs/recipes.md#english).
 
 ### Tools
