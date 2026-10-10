@@ -28,6 +28,9 @@
   `restore` with an unknown name stops before touching Blender, so it no longer overwrites the previous `before_restore`.
   `ping_blender` and doctor show the connected Blender version and warn when it is not the tested LTS.
   doctor also looks for `blender-fx` in Claude Code, Claude Desktop, Cursor and Codex settings and, if missing, prints the register command (optional step; not in the MCP `doctor` tool, whose caller is already connected).
+  When only Claude Desktop, Cursor or Codex is installed it names that client's config file and example instead, with the full `uvx` path
+  for desktop apps that do not see the shell PATH; `--json` adds `clients`. Running the server command in a terminal prints a short
+  "not frozen" hint on stderr. New troubleshooting section: tools not visible in the client.
 
 *Tests and CI*
 - Server-side unit tests grew from 9 to over 540, running on Python 3.10–3.14 in CI with coverage in the job summary (99%).
@@ -40,7 +43,7 @@
 *Docs*
 - English sections in the README and `docs/recipes.md`; new `docs/troubleshooting.md`, `docs/architecture.md`, `docs/maintenance.md`, `SUPPORT.md`,
   `SECURITY.md`, `CODE_OF_CONDUCT.md` and `CITATION.cff`.
-- Client configs for Claude Desktop, Cursor and Codex in `examples/`, plus `first_render.py` (terminal to first preview PNG, exit 2 with next steps if not connected); YAML bug, feature request and question forms and a PR template.
+- Client configs for Claude Desktop, Cursor and Codex in `examples/`, plus `first_render.py` (terminal to first preview PNG with `[i/5]` progress lines, exit 2 with next steps if not connected, linked from the README install section); YAML bug, feature request and question forms and a PR template.
 - `server.json.example` matches the 2025-12-11 MCP registry schema, and `scripts/release_check.py` checks a release in one step.
 - `docs/third-party-licenses.md` lists the license of every installed dependency; CI checks them against a permissive allow list.
 - The README first screen is four numbered setup steps in doctor's order (uv → add-on → Connect → register), each with the doctor line that confirms it.
@@ -70,6 +73,10 @@
 - doctor 에 **MCP 클라이언트 등록** 선택 항목: Claude Code(`~/.claude.json`·폴더의 `.mcp.json`)·Claude Desktop·Cursor·Codex 설정에서 `blender-fx` 를 찾고,
   없으면 README 4단계 등록 명령을 "(선택)" 할 일로 보여 준다(필수 항목이 모두 OK 면 '모두 정상입니다' 아래 '더 할 수 있는 일').
   MCP `doctor` 도구에서는 이 항목을 뺀다(부른 클라이언트가 이미 연결돼 있으므로).
+  Claude Code 가 없고 Claude Desktop·Cursor·Codex 만 깔려 있으면 그 설정 파일과 `examples/` 예제를 안내하고, 창 앱(Claude Desktop·Cursor)에는
+  셸 PATH 를 못 보니 `command` 를 `uvx` 전체 경로로 쓰라고 한다(uv 줄에도 `uvx` 경로). `--json` 에 `clients`(등록이 보인 클라이언트).
+  그래도 안 보이면 해결법 문서의 새 절 "Tools not visible in the client"(등록 확인 → 앱 완전 재시작 → 설정 파일 위치·문법 → `uvx` 전체 경로)
+- 서버 명령(`blender-fx-mcp`)을 터미널에서 직접 치면 stderr 로 "멈춘 것이 아닙니다" + 등록·점검·끝내기 안내(클라이언트가 띄울 때는 조용)
 - `ping_blender`·doctor 연결 줄에 연결된 블렌더 판을 보여 주고, 시험한 판(5.2 LTS)이 아니면 한 줄 경고(효과가 실패하면 5.2 LTS 로 다시).
 - `restore` 에 없는 이름을 주면 블렌더에 보내기 전에 멈춘다. 지금까지는 자동 저장부터 해서 지난 `before_restore`(진짜 되돌릴 곳)를 덮어썼다.
   MCP 사용에 필요 없는 "블렌더 실행 파일"(헤드리스 시험용)은 못 찾아도 `[X ]` 가 아니라 `[- ]` 선택 항목으로 표시
@@ -141,6 +148,7 @@
 - `examples/first_render.py`: 같은 방식으로 `ping_blender` → `make_demo_building` → `destroy` → `render_preview` 를 차례로 불러 미리보기 PNG 경로를 출력.
   연결이 안 되면 다음 할 일을 출력하고 종료 코드 2, 도구가 실패하면 오류 문장과 종료 코드 1. MCP 클라이언트 없이 첫 렌더까지 확인한다.
   시작 전에 지금 장면을 스냅샷 `first_render_before` 로 저장하고 되돌리는 방법을 출력한다.
+  단계마다 `[2/5] make_demo_building … (기다리는 중)` 진행 줄과 걸린 초를 출력한다. README 한/영 설치 절에서 바로 찾을 수 있다.
   블렌더 없이 한/영으로 돌려 도구 목록이 서버와 같은지 시험한다
 - README 맨 위 배지(CI·라이선스·Python 판). 실제 파일과 어긋나면 시험이 실패한다
 - PR 양식(한/영): ruff·pytest·한/영 문장·새 레시피 확인 칸
