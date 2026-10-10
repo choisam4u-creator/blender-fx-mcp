@@ -274,9 +274,26 @@ def test_ping_blender(monkeypatch, lang, ok, bad):
 def test_doctor_tool_returns_report(monkeypatch):
     from blender_fx_mcp import doctor
 
-    monkeypatch.setattr(doctor, "run_checks", lambda: [("python", True, "3.11")])
+    monkeypatch.setattr(doctor, "run_checks", lambda clients=True: [("python", True, "3.11")])
     monkeypatch.setattr(doctor, "format_report", lambda rows: f"report:{rows[0][0]}")
     assert server.doctor() == "report:python"
+
+
+@pytest.mark.parametrize("lang", ["ko", "en"])
+def test_doctor_tool_does_not_suggest_registering(monkeypatch, tmp_path, lang):
+    """MCP doctor 도구를 부른 클라이언트는 이미 연결돼 있다. 설정 파일에 등록이 안 보여도 등록 명령을 권하지 않는다."""
+    from blender_fx_mcp import doctor
+
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path / "out"))
+    monkeypatch.setattr(doctor, "client_configs", lambda: [])  # 어느 설정에도 등록이 안 보임
+    monkeypatch.setattr(server.bridge, "ping", lambda: None)
+    monkeypatch.setattr(server.bridge, "blender_version", lambda: "5.2.0 LTS")
+    report = server.doctor()
+    assert "claude mcp add" not in report
+    assert ("MCP 클라이언트 등록" if lang == "ko" else "MCP client registration") not in report
+    # 터미널의 blender-fx-doctor 에는 그대로 있다
+    assert "client" in [c["id"] for c in doctor.run_checks()]
 
 
 def test_preview_note_only_when_something_is_hidden(monkeypatch):

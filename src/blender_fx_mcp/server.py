@@ -270,10 +270,11 @@ def _cache_dirs() -> dict:
 
 @mcp.tool(annotations=READ_ONLY)
 def doctor() -> str:
-    """Check prerequisites (python, mcp, uv, Blender, receiver add-on, connection, MCP client registration, output folder).
+    """Check prerequisites (python, mcp, uv, Blender, receiver add-on, connection, output folder).
     준비물 점검. 뭔가 안 될 때 먼저 부른다."""
     from .doctor import format_report, run_checks
-    return format_report(run_checks())
+    # 이 도구를 부른 클라이언트가 곧 등록돼 있다는 증거라 클라이언트 등록 항목은 뺀다(엉뚱한 등록 명령을 권하지 않게)
+    return format_report(run_checks(clients=False))
 
 
 @mcp.tool(annotations=READ_ONLY)

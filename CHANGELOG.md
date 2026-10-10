@@ -27,7 +27,7 @@
   Missing model, HDRI and snapshot paths list similar files or existing snapshots, and every recipe error says what to do next.
   `restore` with an unknown name stops before touching Blender, so it no longer overwrites the previous `before_restore`.
   `ping_blender` and doctor show the connected Blender version and warn when it is not the tested LTS.
-  doctor also looks for `blender-fx` in Claude Code, Claude Desktop, Cursor and Codex settings and, if missing, prints the register command (optional step).
+  doctor also looks for `blender-fx` in Claude Code, Claude Desktop, Cursor and Codex settings and, if missing, prints the register command (optional step; not in the MCP `doctor` tool, whose caller is already connected).
 
 *Tests and CI*
 - Server-side unit tests grew from 9 to over 540, running on Python 3.10–3.14 in CI with coverage in the job summary (99%).
@@ -68,6 +68,7 @@
   클라이언트의 `/` 메뉴에서 바로 골라 README 의 예시 문장을 복사해 붙이지 않아도 된다. 인자가 틀리면 가능한 값을 문장으로 돌려준다.
 - doctor 에 **MCP 클라이언트 등록** 선택 항목: Claude Code(`~/.claude.json`·폴더의 `.mcp.json`)·Claude Desktop·Cursor·Codex 설정에서 `blender-fx` 를 찾고,
   없으면 README 4단계 등록 명령을 "(선택)" 할 일로 보여 준다(필수 항목이 모두 OK 면 '모두 정상입니다' 아래 '더 할 수 있는 일').
+  MCP `doctor` 도구에서는 이 항목을 뺀다(부른 클라이언트가 이미 연결돼 있으므로).
 - `ping_blender`·doctor 연결 줄에 연결된 블렌더 판을 보여 주고, 시험한 판(5.2 LTS)이 아니면 한 줄 경고(효과가 실패하면 5.2 LTS 로 다시).
 - `restore` 에 없는 이름을 주면 블렌더에 보내기 전에 멈춘다. 지금까지는 자동 저장부터 해서 지난 `before_restore`(진짜 되돌릴 곳)를 덮어썼다.
   MCP 사용에 필요 없는 "블렌더 실행 파일"(헤드리스 시험용)은 못 찾아도 `[X ]` 가 아니라 `[- ]` 선택 항목으로 표시

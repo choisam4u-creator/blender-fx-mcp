@@ -134,7 +134,7 @@
 
 ### 2026-10-10 (6회차) 추가 — 사용자 체감 우선(오픈소스 지원 기준: 문서·시험·이슈 대응)
 
-- [ ] MCP `doctor` 도구에서는 "MCP 클라이언트 등록" 항목을 빼기(도구를 부른 클라이언트가 곧 등록돼 있다는 증거) + 시험 (오류 메시지: 1번 항목을 넣고 보니, 프로젝트 범위나 다른 클라이언트로 연결된 AI 가 doctor 를 부르면 "(선택) claude mcp add …" 를 사용자에게 권해 엉뚱한 일을 시킴)
+- [x] MCP `doctor` 도구에서는 "MCP 클라이언트 등록" 항목을 빼기(도구를 부른 클라이언트가 곧 등록돼 있다는 증거) + 시험 (오류 메시지: 1번 항목을 넣고 보니, 프로젝트 범위나 다른 클라이언트로 연결된 AI 가 doctor 를 부르면 "(선택) claude mcp add …" 를 사용자에게 권해 엉뚱한 일을 시킴) — `doctor.run_checks(clients=False)`, 서버 `doctor` 도구가 씀. 터미널 `blender-fx-doctor` 는 그대로. 시험 `test_doctor_tool_does_not_suggest_registering`(한/영, 설정에 등록이 안 보여도 등록 명령·항목 없음)
 - [ ] MCP 프롬프트 `my_model`(파일 경로 → import_model → inspect_mesh → snapshot → destroy → render_preview, 높이·방향 선택) + 시험 (첫 렌더까지 단계 수: README 의 "내 모델 부수기" 예시도 문장을 복사해야 하고, inspect_mesh 로 닫힌 메시인지 먼저 보는 순서를 사용자가 모름)
 - [ ] `examples/first_render.py` 가 시작 전에 `snapshot first_render_before` 로 지금 장면을 저장하고 끝에 되돌리는 명령을 출력 + 시험 (데이터 안전·예제가 그대로 도는지: 지금은 사용자의 작업 장면에 Building 을 더하고 부숴 버림)
 - [ ] `docs/troubleshooting.md` 에 "도구가 클라이언트에 안 보임" 절(등록 확인 `claude mcp list`, 앱 완전 재시작, 설정 파일 위치, doctor 클라이언트 줄) 한/영 + doctor 클라이언트 할 일에 그 앵커 링크 + 앵커 시험 (이슈 대응: 등록 문제는 연결 거부 다음으로 흔한 첫 설치 질문인데 해결법 문서에 절이 없음)

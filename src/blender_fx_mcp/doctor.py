@@ -99,7 +99,8 @@ def registered_clients() -> list[str]:
     return found
 
 
-def run_checks() -> list[dict]:
+def run_checks(clients: bool = True) -> list[dict]:
+    """준비물 항목들. clients=False 면 MCP 클라이언트 등록 항목을 뺀다(MCP doctor 도구에서)."""
     out: list[dict] = []
     v = sys.version_info
     out.append(_check("python", v >= (3, 10), f"{v.major}.{v.minor}.{v.micro} ({platform.system()} {platform.machine()})",
@@ -165,18 +166,19 @@ def run_checks() -> list[dict]:
         out.append(_check(name_conn, False, str(e), "connection", _connect_fix()))
 
     # 다른 클라이언트(VS Code 등)에만 등록했을 수도 있어 선택 항목이다. 못 찾으면 README 4단계 명령을 다음 할 일로
-    clients = registered_clients()
-    out.append(_check(t("MCP 클라이언트 등록", "MCP client registration"), bool(clients),
-                      ", ".join(clients) if clients else t(
-                          "Claude Code·Claude Desktop·Cursor·Codex 설정에서 blender-fx 를 못 찾음(다른 클라이언트에 등록했다면 무시)",
-                          "blender-fx not found in Claude Code, Claude Desktop, Cursor or Codex settings "
-                          "(ignore if you registered it in another client)"),
-                      "client", t(
-                          f"클로드에 등록: claude mcp add -s user blender-fx -- {SERVER_CMD} "
-                          "(다른 클라이언트는 examples/README.md, 등록 뒤 앱을 껐다 켜기)",
-                          f"Register with Claude: claude mcp add -s user blender-fx -e BLENDER_FX_LANG=en -- {SERVER_CMD} "
-                          "(other clients: examples/README.md; restart the app afterwards)"),
-                      optional=True))
+    if clients:
+        regs = registered_clients()
+        out.append(_check(t("MCP 클라이언트 등록", "MCP client registration"), bool(regs),
+                          ", ".join(regs) if regs else t(
+                              "Claude Code·Claude Desktop·Cursor·Codex 설정에서 blender-fx 를 못 찾음(다른 클라이언트에 등록했다면 무시)",
+                              "blender-fx not found in Claude Code, Claude Desktop, Cursor or Codex settings "
+                              "(ignore if you registered it in another client)"),
+                          "client", t(
+                              f"클로드에 등록: claude mcp add -s user blender-fx -- {SERVER_CMD} "
+                              "(다른 클라이언트는 examples/README.md, 등록 뒤 앱을 껐다 켜기)",
+                              f"Register with Claude: claude mcp add -s user blender-fx -e BLENDER_FX_LANG=en -- {SERVER_CMD} "
+                              "(other clients: examples/README.md; restart the app afterwards)"),
+                          optional=True))
 
     name_out = t("출력 폴더", "output folder")
     root = os.path.expanduser(os.environ.get("BLENDER_FX_OUT", "~/blender-fx-output"))
