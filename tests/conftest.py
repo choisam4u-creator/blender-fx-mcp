@@ -18,3 +18,10 @@ def pytest_collection_modifyitems(config, items):
     for item in items:
         if "app_only" in item.keywords:
             item.add_marker(skip)
+
+
+@pytest.fixture(autouse=True)
+def _default_lang(monkeypatch):
+    """셸의 BLENDER_FX_LANG(예: Mac 에서 en)이 시험으로 새지 않게 매 시험 기본값(한국어)에서 시작한다.
+    언어가 필요한 시험은 monkeypatch.setenv 로 직접 정하고, 끝나면 monkeypatch 가 되돌린다."""
+    monkeypatch.delenv("BLENDER_FX_LANG", raising=False)

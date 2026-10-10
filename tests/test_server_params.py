@@ -203,7 +203,8 @@ def test_bridge_error_status(receiver, monkeypatch):
         bridge.send_command("execute_code", timeout=5)
 
 
-def test_bridge_empty_response(receiver):
+def test_bridge_empty_response(receiver, monkeypatch):
+    monkeypatch.setenv("BLENDER_FX_LANG", "ko")
     receiver(b"")
     with pytest.raises(BlenderError, match="빈 응답"):
         bridge.send_command("ping", timeout=5)

@@ -105,13 +105,21 @@ CALLS = {
 }
 
 
+def _without_paths(text, *dirs):
+    """문장에서 주어진 폴더 경로(그대로·실제 경로 둘 다)를 지운다."""
+    for d in dirs:
+        for form in {str(d), str(d.resolve())}:
+            text = text.replace(form, "<OUT>")
+    return text
+
+
 def _text(out):
     return out[0] if isinstance(out, list) else out
 
 
 @pytest.mark.parametrize("name", sorted(CALLS))
 @pytest.mark.parametrize("lang", ["ko", "en"])
-def test_tool_success_message(fake, monkeypatch, name, lang):
+def test_tool_success_message(fake, monkeypatch, tmp_path, name, lang):
     monkeypatch.setenv("BLENDER_FX_LANG", lang)
     out = CALLS[name]()
     text = _text(out)
@@ -119,10 +127,25 @@ def test_tool_success_message(fake, monkeypatch, name, lang):
     assert not text.startswith(("실패", "Failed")), text
     if lang == "en":
         # 영어 문장에 한국어가 섞이면 안 된다(레시피가 돌려준 값은 그대로 나올 수 있어 RESULTS 의 한글은 뺐다)
-        assert not HANGUL.search(text.replace("창문을 파냈습니다", "")), text
+        # 출력 폴더 경로는 사용자 것이라 한글일 수 있다(예: 한글 홈 폴더). 경로는 빼고 문장만 본다.
+        assert not HANGUL.search(_without_paths(text, tmp_path).replace("창문을 파냈습니다", "")), text
     if isinstance(out, list):
         # 미리보기가 붙는 도구: 있는 파일만 Image 로 붙는다
         assert len(out) == 2 and isinstance(out[1], Image)
+
+
+@pytest.mark.parametrize("name", ["fire", "water", "render_preview"])
+def test_english_message_under_hangul_output_dir(fake, monkeypatch, tmp_path, name):
+    """회귀(10/10 Mac): 출력 폴더가 한글 경로여도 영어 문장 자체는 영어이고, 경로는 망가지지 않고 그대로 나온다."""
+    out_dir = tmp_path / "사용자" / "출력"
+    out_dir.mkdir(parents=True)
+    monkeypatch.setenv("BLENDER_FX_OUT", str(out_dir))
+    monkeypatch.setenv("BLENDER_FX_LANG", "en")
+    text = _text(CALLS[name]())
+    assert not text.startswith("Failed"), text
+    if name != "render_preview":  # 미리보기는 가짜 결과의 png 경로(tmp_path)를 쓴다
+        assert str(out_dir) in text, text
+    assert not HANGUL.search(_without_paths(text, out_dir, tmp_path)), text
 
 
 def test_every_tool_is_covered():

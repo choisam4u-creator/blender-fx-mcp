@@ -85,6 +85,7 @@ def test_english_failure_message(monkeypatch):
 
 def test_doctor_runs_without_blender(monkeypatch):
     from blender_fx_mcp.doctor import format_report, run_checks
+    monkeypatch.setenv("BLENDER_FX_LANG", "ko")  # 한국어 기대값: 셸·다른 시험의 en 에 기대지 않는다
     monkeypatch.setenv("BLENDER_FX_PORT", "1")  # 수신기 없음 → 연결 항목만 실패해야 한다
     checks = run_checks()
     by_name = {c["name"]: c for c in checks}
@@ -111,6 +112,7 @@ def test_parse_result_missing():
 
 
 def test_bridge_connection_refused(monkeypatch):
+    monkeypatch.setenv("BLENDER_FX_LANG", "ko")
     monkeypatch.setenv("BLENDER_FX_PORT", "1")
     with pytest.raises(BlenderError, match="연결할 수 없습니다"):
         bridge.run_python("print(1)", timeout=2)
