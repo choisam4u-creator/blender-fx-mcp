@@ -139,5 +139,5 @@ def test_target_typo_suggests_close_name(tmp_path):
     assert results[0]["ok"]
     assert "Did you mean 'Building'?" in results[1]["error"] and "case-sensitive" in results[1]["error"], results[1]
     assert "Did you mean 'Building'?" in results[2]["error"], results[2]
-    assert "is a CAMERA, not a mesh" in results[3]["error"], results[3]
+    assert "is a CAMERA, not a mesh. Ask again with one of these" in results[3]["error"], results[3]
     assert "혹시" not in results[4]["error"] and "지금 있는 메시" in results[4]["error"], results[4]

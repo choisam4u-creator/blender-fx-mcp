@@ -94,8 +94,8 @@ def get_target(name):
     if o is None or o.type != "MESH":
         names = [m.name for m in mesh_objects() if not m.get(FX_TAG)]
         if o is not None:
-            raise FxError(L(f"'{name}' 은(는) 메시가 아니라 {o.type} 입니다. 부술 수 있는 메시: {names}",
-                            f"'{name}' is a {o.type}, not a mesh. Meshes you can use: {names}"))
+            raise FxError(L(f"'{name}' 은(는) 메시가 아니라 {o.type} 입니다. 이 중 하나로 다시 시키세요: {names}",
+                            f"'{name}' is a {o.type}, not a mesh. Ask again with one of these meshes: {names}"))
         if not names:
             raise FxError(L(f"'{name}' 이름의 메시 오브젝트가 없습니다. 장면에 메시가 하나도 없으니 "
                             "make_demo_building 이나 import_model 로 먼저 만드세요.",
