@@ -387,3 +387,61 @@ def test_json_lists_registered_clients(monkeypatch, capsys, tmp_path):
     data = json.loads(capsys.readouterr().out)
     assert data["clients"] == ["Cursor"]
     assert next(c for c in data["checks"] if c["id"] == "client")["detail"] == "Cursor"
+
+
+# ---- 깔린 클라이언트에 맞춘 등록 안내·uvx 전체 경로 ----
+
+def _which(found):
+    return lambda name: found.get(name)
+
+
+@pytest.mark.parametrize("lang", ["ko", "en"])
+def test_client_fix_names_only_installed_gui_client(env, monkeypatch, lang):
+    """Claude Code 가 없고 Cursor 설정 폴더만 있으면 claude 명령 대신 Cursor 설정 파일·예제·uvx 전체 경로를 안내한다."""
+    import re
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    monkeypatch.setattr(doctor.shutil, "which", _which({"uv": "/opt/tools/uv", "uvx": "/opt/tools/uvx"}))
+    (env / "home" / ".cursor").mkdir()
+    c = next(x for x in doctor.run_checks() if x["id"] == "client")
+    assert not c["ok"] and "claude mcp add" not in c["fix"]
+    assert c["fix"].startswith(("Cursor 에 등록:", "Register with Cursor:"))
+    assert str(env / "home" / ".cursor" / "mcp.json") in c["fix"] and "examples/cursor-mcp.json" in c["fix"]
+    assert '"/opt/tools/uvx"' in c["fix"] and c["fix"].endswith(doctor.CLIENT_HELP)
+    if lang == "en":
+        assert not re.search(r"[가-힣]", c["fix"])
+
+
+def test_client_fix_cli_client_has_no_full_path(env, monkeypatch):
+    # Codex 는 터미널에서 돌아 셸 PATH 를 보므로 전체 경로 안내가 필요 없다
+    monkeypatch.setattr(doctor.shutil, "which", _which({"uv": "/opt/tools/uv", "uvx": "/opt/tools/uvx", "codex": "/x/codex"}))
+    c = next(x for x in doctor.run_checks() if x["id"] == "client")
+    assert c["fix"].startswith("Codex 에 등록:") and "examples/codex-config.toml" in c["fix"] and "/opt/tools/uvx" not in c["fix"]
+
+
+@pytest.mark.parametrize("found", [{"claude": "/x/claude"}, {}])
+def test_client_fix_prefers_claude_code_or_unknown(env, monkeypatch, found):
+    # Claude Code 가 있거나, 깔린 클라이언트를 하나도 못 찾으면 README 4단계의 등록 명령 그대로
+    if found:
+        (env / "home" / ".cursor").mkdir()  # Cursor 도 깔려 있지만 Claude Code 가 우선
+    monkeypatch.setattr(doctor.shutil, "which", _which(found))
+    c = next(x for x in doctor.run_checks() if x["id"] == "client")
+    assert c["fix"].startswith("클로드에 등록: claude mcp add -s user blender-fx")
+
+
+def test_uv_line_shows_uvx_when_in_another_folder(env, monkeypatch):
+    monkeypatch.setattr(doctor.shutil, "which", _which({"uv": "/a/uv", "uvx": "/b/uvx"}))
+    assert _by_name(doctor.run_checks())["uv"]["detail"] == "/a/uv (uvx: /b/uvx)"
+    monkeypatch.setattr(doctor.shutil, "which", _which({"uv": "/a/uv", "uvx": "/a/uvx"}))
+    assert _by_name(doctor.run_checks())["uv"]["detail"] == "/a/uv"
+
+
+def test_client_examples_exist_and_cover_non_cli_clients():
+    root = Path(__file__).resolve().parents[1]
+    names = {c for c, _ in doctor.client_configs()}
+    assert set(doctor.CLIENT_EXAMPLES) == names - {"Claude Code"}
+    assert set(doctor.GUI_CLIENTS) <= set(doctor.CLIENT_EXAMPLES)
+    readme = (root / "examples" / "README.md").read_text(encoding="utf-8")
+    for f in doctor.CLIENT_EXAMPLES.values():
+        assert (root / f).is_file(), f
+        assert f"]({f.split('/', 1)[1]})" in readme, f
+    assert "which uvx" in readme  # 창 앱의 command 를 전체 경로로 바꾸는 안내

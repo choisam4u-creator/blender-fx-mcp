@@ -81,6 +81,48 @@ def _has_server(data) -> bool:
     return isinstance(data, list) and any(_has_server(v) for v in data)
 
 
+# 클라이언트별 예제 설정 파일(examples/). Claude Code 는 명령 한 줄로 등록한다
+CLIENT_EXAMPLES = {"Claude Desktop": "examples/claude_desktop_config.json", "Cursor": "examples/cursor-mcp.json",
+                   "Codex": "examples/codex-config.toml"}
+# 셸 PATH 를 물려받지 않는 창 앱. macOS 에서는 brew 의 uvx 를 못 찾아 "spawn uvx ENOENT" 로 끝난다
+GUI_CLIENTS = ("Claude Desktop", "Cursor")
+
+
+def installed_clients() -> list[str]:
+    """이 컴퓨터에 깔린 것으로 보이는 클라이언트(설정 폴더가 있거나 명령이 PATH 에 있음). 등록 여부와는 별개."""
+    found: list[str] = []
+    for client, path in client_configs():
+        if client == "Claude Code":
+            hit = shutil.which("claude") is not None or (os.path.isfile(path) and path.endswith(".claude.json"))
+        else:
+            hit = os.path.isdir(os.path.dirname(path)) or (client == "Codex" and shutil.which("codex") is not None)
+        if hit and client not in found:
+            found.append(client)
+    return found
+
+
+def _client_fix(uvx: str | None) -> str:
+    """등록을 못 찾았을 때의 다음 할 일. Claude Code 가 있거나 아무것도 못 찾으면 등록 명령 한 줄,
+    다른 클라이언트만 있으면 그 설정 파일과 붙여 넣을 예제(창 앱이면 command 를 uvx 전체 경로로)."""
+    installed = installed_clients()
+    if "Claude Code" in installed or not installed:
+        return t(f"클로드에 등록: claude mcp add -s user blender-fx -- {SERVER_CMD} "
+                 "(다른 클라이언트는 examples/README.md, 등록 뒤 앱을 껐다 켜기). "
+                 f"그래도 도구가 안 보이면: {CLIENT_HELP}",
+                 f"Register with Claude: claude mcp add -s user blender-fx -e BLENDER_FX_LANG=en -- {SERVER_CMD} "
+                 "(other clients: examples/README.md; restart the app afterwards). "
+                 f"If the tools still do not show up: {CLIENT_HELP}")
+    client = installed[0]
+    path = dict((c, p) for c, p in reversed(client_configs()))[client]
+    step = t(f"{client} 에 등록: {path} 에 {CLIENT_EXAMPLES[client]} 의 blender-fx 항목을 더하고 앱을 완전히 껐다 켜기",
+             f"Register with {client}: add the blender-fx entry from {CLIENT_EXAMPLES[client]} to {path}, "
+             "then fully restart the app")
+    if client in GUI_CLIENTS and uvx:
+        step += t(f" (창 앱은 셸 PATH 를 못 보니 command 를 \"{uvx}\" 로)",
+                  f" (desktop apps do not see your shell PATH, so set command to \"{uvx}\")")
+    return step + t(f". 그래도 도구가 안 보이면: {CLIENT_HELP}", f". If the tools still do not show up: {CLIENT_HELP}")
+
+
 def registered_clients() -> list[str]:
     """blender-fx 가 등록된 MCP 클라이언트 이름들(중복 없이, 찾은 순서)."""
     found: list[str] = []
@@ -124,7 +166,10 @@ def run_checks(clients: bool = True) -> list[dict]:
                             "(manual install: pip install blender-fx-mcp[cli])")))
 
     uv = shutil.which("uv")
-    out.append(_check("uv", uv is not None, uv or t(f"PATH 에 없음. {_uv_install()}", f"not on PATH. {_uv_install()}"),
+    uvx = shutil.which("uvx")
+    # 창 앱(Claude Desktop·Cursor) 설정의 command 에 넣을 전체 경로. uv 와 다른 곳이면 함께 보인다
+    uv_detail = uv and (uv if not uvx or os.path.dirname(uvx) == os.path.dirname(uv) else f"{uv} (uvx: {uvx})")
+    out.append(_check("uv", uv is not None, uv_detail or t(f"PATH 에 없음. {_uv_install()}", f"not on PATH. {_uv_install()}"),
                       "uv", t(f"uv 설치: {_uv_install()} (새 터미널에서 다시 실행)",
                               f"Install uv: {_uv_install()} (then rerun in a new terminal)")))
 
@@ -177,13 +222,7 @@ def run_checks(clients: bool = True) -> list[dict]:
                               "Claude Code·Claude Desktop·Cursor·Codex 설정에서 blender-fx 를 못 찾음(다른 클라이언트에 등록했다면 무시)",
                               "blender-fx not found in Claude Code, Claude Desktop, Cursor or Codex settings "
                               "(ignore if you registered it in another client)"),
-                          "client", t(
-                              f"클로드에 등록: claude mcp add -s user blender-fx -- {SERVER_CMD} "
-                              "(다른 클라이언트는 examples/README.md, 등록 뒤 앱을 껐다 켜기). "
-                              f"그래도 도구가 안 보이면: {CLIENT_HELP}",
-                              f"Register with Claude: claude mcp add -s user blender-fx -e BLENDER_FX_LANG=en -- {SERVER_CMD} "
-                              "(other clients: examples/README.md; restart the app afterwards). "
-                              f"If the tools still do not show up: {CLIENT_HELP}"),
+                          "client", _client_fix(uvx),
                           optional=True))
 
     name_out = t("출력 폴더", "output folder")

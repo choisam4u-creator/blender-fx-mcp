@@ -13,6 +13,11 @@ All examples launch the same command. Set `BLENDER_FX_LANG` to `en` for English 
 | Cursor | [`cursor-mcp.json`](cursor-mcp.json) | 프로젝트의 `.cursor/mcp.json` 또는 전역 `~/.cursor/mcp.json` / project `.cursor/mcp.json` or global `~/.cursor/mcp.json` |
 | Codex | [`codex-config.toml`](codex-config.toml) | `~/.codex/config.toml` |
 
+Claude Desktop·Cursor 같은 창 앱은 터미널의 PATH 를 물려받지 않아(특히 macOS 의 brew) `uvx` 를 못 찾을 수 있습니다.
+도구가 안 보이면 `command` 를 `which uvx`(Windows `where uvx`)가 알려 준 전체 경로로 바꿉니다. `blender-fx-doctor` 의 uv 줄과 등록 안내에도 그 경로가 나옵니다.
+Desktop apps such as Claude Desktop and Cursor do not inherit your terminal PATH (notably Homebrew on macOS), so they may not find `uvx`.
+If the tools do not appear, set `command` to the full path printed by `which uvx` (`where uvx` on Windows); `blender-fx-doctor` shows it too.
+
 이미 다른 서버가 등록돼 있으면 `mcpServers` 안에 `"blender-fx": {...}` 한 덩어리만 더합니다.
 If other servers are already configured, add only the `"blender-fx": {...}` entry inside `mcpServers`.
 
