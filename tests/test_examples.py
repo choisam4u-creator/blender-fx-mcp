@@ -296,7 +296,7 @@ PNG = bytes.fromhex("89504e470d0a1a0a0000000d4948445200000001000000010806000000"
                     "1f15c4890000000d49444154789c6360000002000154a24f5d0000000049454e44ae426082")
 
 
-def _fake_receiver(port_holder, calls, fail=""):
+def _fake_receiver(port_holder, calls, fail="", slow=None):
     """blender-mcp 애드온과 같은 규약(JSON 한 덩어리 요청 → JSON 응답)으로 답하는 수신기.
     execute_code 의 코드가 어느 레시피인지 레시피 파일 본문으로 알아내고, 그 레시피가 내는 FX_RESULT 를 흉내 낸다.
     render 는 PARAMS 의 out_dir 에 실제 PNG 를 만든다(예제가 그 경로를 출력하는지 보려고)."""
@@ -312,7 +312,7 @@ def _fake_receiver(port_holder, calls, fail=""):
                   volume_m3=700.0, closed=True, pieces=80, pattern="voronoi", focus=0.5, material="concrete", impact="left",
                   frames=72, total_mass_kg=1200, glue="medium", glue_constraints=150, dust="on", moved_ratio=0.8,
                   max_fall_m=9.5, volume_kept=0.99, open_chunks=0, size_bytes=1_200_000, objects=3,
-                  snapshots=["first_render_before"])
+                  snapshots=["first_render_before"], path="/fake/fx_scene.blend", note="")
 
     def answer(req):
         if req["type"] == "ping":
@@ -323,6 +323,9 @@ def _fake_receiver(port_holder, calls, fail=""):
         name = next(n for n, body in recipes.items() if code.rstrip().endswith(body.rstrip()))
         params = ast.literal_eval(code.splitlines()[0].split("=", 1)[1].strip())
         calls.append(name)
+        if slow and name in slow:  # 굽기·저장처럼 오래 걸리는 레시피 흉내
+            import time
+            time.sleep(slow[name])
         if name == fail:  # 레시피가 블렌더 안에서 실패하면 emit_result(ok=False, error=…) 를 낸다
             return {"result": "FX_RESULT " + json.dumps({"ok": False, "error": "pieces is too big. Try 50-400."}) + "\n"}
         res = dict(common)
@@ -424,3 +427,41 @@ def test_first_render_recipe_failure_with_fake_receiver(monkeypatch, capsys, tmp
     assert code == 1
     assert calls == ["snapshot", "demo_scene", "render", "destroy"]
     assert out[-2] == "destroy: Failed: pieces is too big. Try 50-400." and out[-1] == example.undo_line()
+
+
+@pytest.mark.parametrize("lang, label", [("ko", "장면 저장 중 — "), ("en", "Saving the scene — ")])
+def test_progress_notifications_over_real_stdio_server(monkeypatch, tmp_path, lang, label):
+    """배포 형태 그대로(서버를 stdio 하위 프로세스로) 긴 도구의 진행 알림이 공식 클라이언트의 progress_callback 까지 오는지.
+    작업 스레드 → 이벤트 루프 → stdio 경로를 메모리 연결 시험과 따로 확인한다."""
+    import asyncio
+
+    from mcp import ClientSession
+    from mcp.client.stdio import stdio_client
+
+    port, calls = [], []
+    srv = _fake_receiver(port, calls, slow={"save_blend": 1.5})
+    seen = []
+
+    async def on_progress(progress, total, message):
+        seen.append((progress, message))
+
+    async def go():
+        params = _load("list_tools").server_params([])
+        async with stdio_client(params) as (read, write):
+            async with ClientSession(read, write) as session:
+                await session.initialize()
+                return await session.call_tool("save_blend", {"name": "fx_scene"}, progress_callback=on_progress)
+
+    try:
+        monkeypatch.setenv("BLENDER_FX_PORT", str(port[0]))
+        monkeypatch.setenv("BLENDER_FX_LANG", lang)
+        monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path / "out"))
+        monkeypatch.setenv("BLENDER_FX_PROGRESS_EVERY", "0.2")
+        result = asyncio.run(go())
+    finally:
+        srv.close()
+    assert not result.is_error, result
+    assert calls == ["save_blend"]
+    assert len(seen) >= 2, seen
+    assert all(m.startswith(label) for _, m in seen), seen
+    assert [p for p, _ in seen] == sorted(p for p, _ in seen)

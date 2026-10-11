@@ -53,6 +53,8 @@
 - README 한/영에 "도움 받기" 3줄(`doctor --issue` → 맞는 양식 3개 → 첫 답 목표, 보안은 SECURITY.md). 명령·양식·일수가 실제와 다르면 시험이 실패한다
 - 진행 알림 문장을 내부 레시피 이름(`save_blend: …`) 대신 사람 말로: "물 굽는 중 — 45초 지남(블렌더에서 작업 중)" / "Baking the liquid — 45s so far".
   레시피 27개 모두 한/영 이름표가 있는지 시험
+- 시험: 진행 알림을 배포 형태 그대로(서버를 stdio 하위 프로세스로, 느린 가짜 수신기) 공식 클라이언트 `progress_callback` 까지 확인.
+  알림 간격은 `BLENDER_FX_PROGRESS_EVERY`(초, 기본 5)
 - `scripts/release_notes.py vX.Y.Z`: CHANGELOG 의 그 절을 GitHub 릴리스 본문으로(영어 요약 먼저, 절 맨 앞 관리자 메모는 빼고, 끝에 PyPI 주소).
   없는 판·미출시 판은 종료 코드 1. 출시 절차 8단계가 손 복사 대신 이 명령을 쓴다(자동 게시는 하지 않음)
   `--draft` 면 미출시 절도 맨 위에 초안 표시를 달아(PyPI 설치 줄 없이) 미리 보여 준다
