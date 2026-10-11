@@ -127,3 +127,15 @@ def test_boundaries_and_auto_values_reach_blender(monkeypatch):
     server.run_recipe("emit", {"resolution": None, "frames": 72})
     server.run_recipe("destroy", {"focus": True})
     assert len(sent) == 2 * len(server.RANGES) + 2
+
+
+@pytest.mark.parametrize("bad", [dict(resolution=500), dict(frames=3), dict(material="titanium"), dict(pieces=5000)])
+def test_explode_checks_every_argument_before_fracturing(monkeypatch, tmp_path, bad):
+    """폭발은 조각내기(destroy) → 굽기(explode) 두 단계다. 굽기 인자가 틀렸으면 조각내기 전에 멈춰야 장면이 반쯤 바뀌지 않는다."""
+    from blender_fx_mcp import bridge, server
+    monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path))
+    monkeypatch.setenv("BLENDER_FX_LANG", "en")
+    monkeypatch.setattr(bridge, "run_python", lambda code, timeout=None: pytest.fail("블렌더로 보내면 안 됨"))
+    out = server.explode(target="Building", **bad)
+    out = out if isinstance(out, str) else out[0]
+    assert out.startswith("Failed: ") and next(iter(bad)) in out, out

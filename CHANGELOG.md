@@ -39,6 +39,7 @@
   간접 의존성 `exceptiongroup` 이 빠져 제3자 라이선스 표도 39개. 시험의 `importorskip("tomllib")` 는 보통 import 로
 
 **고침**
+- `explode` 가 건물을 조각낸(수 분) 뒤에야 굽기 인자(`resolution` 등) 범위 검사에 걸려 장면이 조각만 난 채 남던 문제. 두 단계 인자를 조각내기 전에 모두 본다
 - `restore("before_restore")`(되돌리기를 되돌리기)가 되돌아갈 파일을 지금 장면으로 먼저 덮어써 그 상태를 잃던 문제. 원본을 옮겨 두고 열어 두 상태가 맞바뀐다.
   `snapshot` 에 `before_restore` 이름은 쓸 수 없게(예약)
 - 설치 명령을 PyPI 패키지로: `uvx blender-fx-mcp`, 점검은 `uvx --from blender-fx-mcp blender-fx-doctor`(git 이 없어도 됨).

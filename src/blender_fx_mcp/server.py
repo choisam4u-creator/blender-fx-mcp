@@ -639,17 +639,20 @@ def explode(
     dust: none / low / high
     glue: none / weak / medium / strong"""
     try:
-        _check_bake_space()  # 조각내기 전에 본다(조각만 내고 굽기에서 멈추면 장면이 반쯤 바뀐 채 남음)
+        # 조각내기(수 분) 전에 두 단계의 인자·디스크를 모두 본다. 조각만 내고 굽기 단계에서 멈추면 장면이 반쯤 바뀐 채 남는다
+        shatter = dict(target=target, impact="none", hold_until=max(1, burst_frame - 1), material=material,
+                       pieces=pieces, frames=frames, dust=dust, glue=glue, pattern=pattern)
+        blast = dict(target=target or None, at=at, radius=radius, power=power, fire=fire, frames=frames,
+                     burst_frame=burst_frame, resolution=resolution, smoke_collision=smoke_collision,
+                     cache_dir=_cache_dirs()["fluid"])
+        for recipe, params in (("destroy", shatter if target else {}), ("explode", blast)):
+            given = {k: v for k, v in params.items() if v is not None}
+            check_choices(recipe, given)
+            check_ranges(recipe, given)
+        _check_bake_space()
         if target:
-            run_recipe("destroy", dict(
-                target=target, impact="none", hold_until=max(1, burst_frame - 1), material=material,
-                pieces=pieces, frames=frames, dust=dust, glue=glue, pattern=pattern,
-            ), timeout=long_timeout())
-        res = run_recipe("explode", dict(
-            target=target or None, at=at, radius=radius, power=power, fire=fire, frames=frames,
-            burst_frame=burst_frame, resolution=resolution, smoke_collision=smoke_collision,
-            cache_dir=_cache_dirs()["fluid"],
-        ), timeout=long_timeout())
+            run_recipe("destroy", shatter, timeout=long_timeout())
+        res = run_recipe("explode", blast, timeout=long_timeout())
         rend, run_dir = _render(f"explode_{target or 'point'}", quality="smoke", frame_count=preview_frames)
     except BlenderError as e:
         return _fail(e)
