@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """블렌더를 창 없이(백그라운드) 띄워 레시피를 소켓 없이 실행한다. 개발·테스트용.
 
 사용:
@@ -109,7 +110,8 @@ def run_steps(steps: list[tuple[str, dict]], blender: str | None = None, timeout
     try:
         proc = subprocess.run(
             blender_command(blender, script),
-            capture_output=True, text=True, timeout=timeout,
+            # 블렌더 출력은 UTF-8. Windows 기본(cp1252 등)으로 읽으면 한글 로그에서 UnicodeDecodeError 가 난다
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout,
         )
     finally:
         os.unlink(script)

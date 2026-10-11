@@ -1,0 +1,102 @@
+name: 버그 / Bug report
+description: 안 되는 것을 알려 주세요 / Something does not work
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        고맙습니다. 아래 필수 칸(*)을 채워야 올라갑니다. 막히는 오류 문장은 먼저 [docs/troubleshooting.md](https://github.com/choisam4u-creator/blender-fx-mcp/blob/main/docs/troubleshooting.md)에서 찾아 보세요.
+        Thanks. Required fields (*) must be filled in. Common error messages are explained in [docs/troubleshooting.md](https://github.com/choisam4u-creator/blender-fx-mcp/blob/main/docs/troubleshooting.md).
+        보안 문제는 여기에 쓰지 말고 SECURITY.md 대로 비공개로 알려 주세요. / Do not report security issues here; see SECURITY.md.
+  - type: textarea
+    id: doctor
+    attributes:
+      label: blender-fx-doctor --issue 출력 / doctor --issue output
+      description: |
+        `uv run blender-fx-doctor --issue` 결과를 그대로 붙여 주세요. 표로 보이고, 집 폴더(사용자 이름)는 `~` 로 가려집니다. uvx 로 설치했다면 `uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-doctor --issue`.
+        Paste the output of `uv run blender-fx-doctor --issue` as is. It shows as a table, with your home folder masked as `~`.
+        `--json` 출력은 아래 선택 칸에 / The `--json` output goes in the optional field below.
+    validations:
+      required: true
+  - type: textarea
+    id: doctor-json
+    attributes:
+      label: blender-fx-doctor --json 출력 (선택) / doctor --json output (optional)
+      description: |
+        도움을 주는 사람이 요청할 때만. 항목 id 가 언어와 상관없이 같습니다. 집 폴더 경로가 그대로 나오니 필요하면 `~` 로 바꿔 주세요.
+        Only if a maintainer asks. Check ids do not depend on the language. Paths include your home folder; replace it with `~` if you like.
+      render: json
+    validations:
+      required: false
+  - type: input
+    id: blender-version
+    attributes:
+      label: 블렌더 버전 / Blender version
+      placeholder: "5.2.0 LTS"
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: OS
+      options:
+        - macOS (Apple Silicon)
+        - macOS (Intel)
+        - Windows
+        - Linux
+        - 기타 / Other
+    validations:
+      required: true
+  - type: dropdown
+    id: client
+    attributes:
+      label: MCP 클라이언트 / MCP client
+      description: |
+        doctor `--json` 의 `clients` 에 나온 이름을 고르세요(여럿이면 지금 쓰는 것). 비어 있으면 등록부터: docs/troubleshooting.md 의 "Tools not visible in the client".
+        Pick the name shown in `clients` of doctor `--json` (the one you use now). If it is empty, register first: see "Tools not visible in the client" in docs/troubleshooting.md.
+      options:
+        - Claude Code
+        - Claude Desktop
+        - Codex
+        - Cursor
+        - 기타 / Other
+    validations:
+      required: true
+  - type: dropdown
+    id: lang
+    attributes:
+      label: 메시지 언어 (BLENDER_FX_LANG) / Message language
+      options:
+        - ko
+        - en
+    validations:
+      required: false
+  - type: input
+    id: receiver
+    attributes:
+      label: blender-mcp 수신기 애드온 버전 / Receiver add-on version
+      placeholder: "1.2"
+    validations:
+      required: false
+  - type: textarea
+    id: repro
+    attributes:
+      label: 재현 명령 / Steps to reproduce
+      description: |
+        AI 에게 시킨 말과 불린 도구·인자. 예: "연습용 건물 만들고 왼쪽에서 부숴" → `make_demo_building()`, `destroy("Building", impact="left")`
+        What you asked the AI, and which tool was called with which arguments.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 무엇이 나왔나 / What happened
+      description: 도구가 돌려준 메시지(오류 문장)나 이미지를 그대로 / The exact message or image the tool returned.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 기대한 것 / What you expected
+    validations:
+      required: false

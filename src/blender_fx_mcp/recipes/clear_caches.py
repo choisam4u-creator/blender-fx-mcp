@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 # 구운 캐시(리지드바디·파티클·연기·물)를 지워 디스크와 메모리를 비운다. PARAMS: cache_dirs(목록)
 
 

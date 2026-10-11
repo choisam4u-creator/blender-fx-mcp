@@ -7,10 +7,42 @@ Search this page for the error sentence the AI showed you. Running `blender-fx-d
 uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-doctor
 ```
 
-여기 없는 문제는 [버그 신고](https://github.com/choisam4u-creator/blender-fx-mcp/issues/new?template=bug_report.md)에 doctor 출력과 함께 올려 주세요.
-If your problem is not here, open a [bug report](https://github.com/choisam4u-creator/blender-fx-mcp/issues/new?template=bug_report.md) with the doctor output.
+여기 없는 문제는 [버그 신고](https://github.com/choisam4u-creator/blender-fx-mcp/issues/new?template=bug_report.yml)에 doctor 출력과 함께 올려 주세요.
+If your problem is not here, open a [bug report](https://github.com/choisam4u-creator/blender-fx-mcp/issues/new?template=bug_report.yml) with the doctor output.
+이슈에는 `blender-fx-doctor --issue` 를 붙이면 됩니다(판·OS·블렌더·클라이언트·언어 표와 점검 전체, 집 폴더는 `~` 로 가림).
+`blender-fx-doctor --json` 은 같은 결과를 JSON 으로 냅니다(항목 id: `python`·`blender-fx-mcp`·`mcp`·`uv`·`blender`·`addon`·`connection`·`client`·`output`·`space`), `clients` 에는 등록이 보인 MCP 클라이언트가 들어갑니다.
+For an issue, paste `blender-fx-doctor --issue` (version, OS, Blender, clients and language table plus all checks, home folder masked as `~`).
+`blender-fx-doctor --json` prints the same result as JSON, with language-independent check ids; `clients` lists the MCP clients where it is registered.
 
 ---
+
+## Tools not visible in the client
+
+**클라이언트에 도구가 안 보임**
+
+증상: AI에게 시켜도 `make_demo_building` 같은 도구를 모른다고 하거나, `/` 메뉴에 `first_demo` 가 없습니다. 블렌더 연결 전 단계 문제입니다.
+doctor 의 "MCP 클라이언트 등록" 줄이 `-` 이면 아래 1번부터, 클라이언트 이름이 보이면 2번부터 합니다.
+
+1. 등록을 확인합니다. Claude Code 는 `claude mcp list` 에 `blender-fx` 가 있어야 합니다. 없으면
+   `claude mcp add -s user blender-fx -- uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-mcp`
+2. 앱을 **완전히** 껐다 켭니다(창 닫기가 아니라 종료: macOS 는 `Cmd+Q`, Windows 는 트레이 아이콘에서 종료). Claude Code 는 새 세션을 엽니다.
+3. 설정 파일을 직접 고쳤다면 위치와 JSON 문법을 확인합니다(쉼표 하나로 파일 전체가 무시됩니다).
+
+| 클라이언트 | 설정 파일 |
+|---|---|
+| Claude Code | `~/.claude.json`(전체) 또는 프로젝트의 `.mcp.json` |
+| Claude Desktop | macOS `~/Library/Application Support/Claude/claude_desktop_config.json`, Windows `%APPDATA%\Claude\claude_desktop_config.json` |
+| Cursor | `~/.cursor/mcp.json` |
+| Codex | `~/.codex/config.toml` |
+
+4. 그래도 안 보이면 `uv` 가 앱의 PATH 에 없을 수 있습니다. 설정의 `uvx` 를 `which uvx`(Windows `where uvx`)가 알려 준 전체 경로로 바꿉니다.
+
+Symptom: the AI does not know tools such as `make_demo_building`, or `first_demo` is missing from the `/` menu. This happens before any Blender connection.
+If doctor's "MCP client registration" line shows `-`, start at step 1; if it names your client, start at step 2.
+1. Check registration: `claude mcp list` must show `blender-fx` (otherwise run the `claude mcp add` line above).
+2. Fully quit and reopen the app (`Cmd+Q` on macOS, quit from the tray on Windows); in Claude Code start a new session.
+3. If you edited a config file by hand, check its location (table above) and JSON syntax; one stray comma makes the whole file ignored.
+4. If the tools still do not appear, the app may not see `uv` on its PATH: replace `uvx` with the full path printed by `which uvx` (`where uvx` on Windows).
 
 ## Connection refused
 
@@ -20,13 +52,16 @@ If your problem is not here, open a [bug report](https://github.com/choisam4u-cr
 > Cannot connect to Blender (localhost:9876).
 
 원인: 블렌더가 꺼져 있거나, 수신기 애드온(blender-mcp)이 아직 연결을 기다리지 않습니다.
+오류 문장 뒤에는 원인을 좁힌 다음 한 단계가 붙습니다: 이 컴퓨터에서 애드온 파일을 못 찾으면 **설치부터**, 찾으면 **Connect**,
+`BLENDER_FX_PORT` 를 바꿨으면 **포트 맞추기**(doctor 의 "수신기 애드온 파일" 줄과 같은 폴더를 봅니다).
 
 1. 블렌더를 켭니다.
 2. 3D 화면에서 `N` 키 → **BlenderMCP** 탭 → **Connect to MCP server** 를 누릅니다.
 3. 탭이 안 보이면 Edit → Preferences → Add-ons 에서 blender-mcp 애드온을 켭니다(doctor 의 "수신기 애드온 파일" 줄 참고).
 4. `BLENDER_FX_HOST`·`BLENDER_FX_PORT` 를 바꿨다면 애드온 패널의 포트와 같은지 확인합니다.
 
-Cause: Blender is closed, or the receiver add-on is not listening. Open Blender, press `N` in the 3D view, open the
+Cause: Blender is closed, or the receiver add-on is not listening. The error ends with one narrowed-down next step: install the
+add-on if no add-on file is found on this computer, otherwise click Connect, and match the port if you changed `BLENDER_FX_PORT`. Open Blender, press `N` in the 3D view, open the
 **BlenderMCP** tab and click **Connect to MCP server**. If the tab is missing, enable the blender-mcp add-on in
 Edit → Preferences → Add-ons. If you changed `BLENDER_FX_HOST`/`BLENDER_FX_PORT`, match the port shown in the add-on panel.
 
@@ -43,11 +78,13 @@ Edit → Preferences → Add-ons. If you changed `BLENDER_FX_HOST`/`BLENDER_FX_P
 - 일부러 무거운 장면이면: MCP 설정의 환경변수 `BLENDER_FX_TIMEOUT`(초)을 크게(예: `3600`) 주고 MCP 서버를 다시 시작합니다.
   굽기·렌더 도구는 최소 1800초(`render_video` 3600초)를 기다리고, 이 값이 더 크면 따라 늘어납니다.
 - 블렌더 창이 응답 없음이면 블렌더를 다시 켜고 `restore` 로 직전 스냅샷을 불러옵니다.
+- 굽기·렌더 도구는 5초마다 MCP 진행 알림("블렌더에서 작업 중 — 45초")을 보냅니다. 이를 보여 주는 클라이언트라면 숫자가 늘고 있는 동안은 멈춘 것이 아닙니다.
 
 Cause: a bake or render took longer than the wait, or Blender froze. Lower `pieces`, `frames` or `resolution`;
 for an intentionally heavy scene set `BLENDER_FX_TIMEOUT` (seconds, e.g. `3600`) in your MCP config and restart the server.
 Bake and render tools wait at least 1800 s (`render_video` 3600 s) and grow with this value.
-If Blender is frozen, restart it and `restore` the last snapshot.
+If Blender is frozen, restart it and `restore` the last snapshot. Bake and render tools send an MCP progress notification every 5 s
+("working in Blender — 45s"); in clients that show it, a growing number means the tool is still working.
 
 ## Empty response, Blender error
 
@@ -102,6 +139,14 @@ Increase `size`, or raise `resolution` to at least the value in the message.
 `pip install bpy` 로 만든 파이썬에서는 Mantaflow 유체가 깨져 있어 항상 실패합니다. 블렌더 앱을 쓰세요(`CONTRIBUTING.md` 참고).
 Lower `resolution` or `frames` and try again; free disk space with `clear_caches`. Mantaflow fluids are broken in the
 `pip install bpy` module, so use the Blender app (see `CONTRIBUTING.md`).
+
+> 디스크 여유가 0.4GB 뿐이라 굽기를 시작하지 않았습니다(물·연기 캐시는 수 GB).
+> Only 0.4GB of disk space is left, so the bake was not started (water and smoke caches take several GB).
+
+굽기 전에 서버가 멈춘 것이라 장면은 바뀌지 않았습니다. AI 에게 `clear_caches` 를 시켜 구운 캐시를 지우고(오래된 스냅샷은 `clear_snapshots`), 그래도 모자라면 MCP 설정의 `BLENDER_FX_OUT` 을
+여유 있는 디스크의 폴더로 바꾼 뒤 다시 시킵니다. `blender-fx-doctor` 의 "출력 폴더 여유 공간" 줄이 남은 공간과 이 폴더가 쓰는 공간을 보여 줍니다.
+The server stopped before baking, so the scene is unchanged. Ask the AI to run `clear_caches` (and `clear_snapshots` for old snapshots); if that is not enough, point `BLENDER_FX_OUT` to a folder on a
+disk with more space, then ask again. The "output folder free space" line of `blender-fx-doctor` shows free space and what this folder uses.
 
 ## Black preview, effect not visible
 

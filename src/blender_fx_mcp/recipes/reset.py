@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 # 조각과 충격체를 지우고 원본을 되살린다. PARAMS: target(선택)
 
 

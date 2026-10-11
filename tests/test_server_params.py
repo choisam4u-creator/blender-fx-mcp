@@ -143,7 +143,9 @@ def test_snapshot_name_is_sanitized(calls, tmp_path):
     assert "/" not in path[len(str(tmp_path / "snapshots")) + 1:]
 
 
-def test_restore_reports_auto_save_failure(calls):
+def test_restore_reports_auto_save_failure(calls, tmp_path):
+    (tmp_path / "snapshots").mkdir(exist_ok=True)
+    (tmp_path / "snapshots" / "before.blend").write_bytes(b"x")
     out = server.restore("before")
     # 자동 저장(snapshot) 시도 후 restore 시도, 둘 다 실패 → restore 실패만 보고
     assert [c[0] for c in calls] == ["snapshot", "restore"]
@@ -203,7 +205,8 @@ def test_bridge_error_status(receiver, monkeypatch):
         bridge.send_command("execute_code", timeout=5)
 
 
-def test_bridge_empty_response(receiver):
+def test_bridge_empty_response(receiver, monkeypatch):
+    monkeypatch.setenv("BLENDER_FX_LANG", "ko")
     receiver(b"")
     with pytest.raises(BlenderError, match="빈 응답"):
         bridge.send_command("ping", timeout=5)

@@ -1,0 +1,36 @@
+# `needs-info` 이슈를 30일 마감(SUPPORT.md·docs/maintenance.md)에 맞춰 자동으로 닫는다. 관리자가 날짜를 기억하지 않아도 된다.
+# 23일 동안 아무 글이 없으면 `stale` 라벨과 안내를 달고, 그 뒤 7일 더 조용하면 닫는다(합 30일).
+# 누구든 글을 쓰면 `stale` 이 떨어지고 날짜가 다시 센다. `needs-info` 가 없는 이슈와 PR 은 건드리지 않는다.
+name: needs-info
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+# 기본 토큰은 읽기만. 이슈에 라벨·댓글을 다는 작업만 issues 쓰기를 받는다(OpenSSF Scorecard Token-Permissions).
+permissions:
+  contents: read
+
+jobs:
+  close-needs-info:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/stale@1e223db275d687790206a7acac4d1a11bd6fe629 # v10.4.0
+        with:
+          only-labels: "needs-info"
+          stale-issue-label: "stale"
+          days-before-stale: 23
+          days-before-close: 7
+          days-before-pr-stale: -1
+          days-before-pr-close: -1
+          stale-issue-message: >-
+            재현 정보(`blender-fx-doctor` 출력·블렌더 판·도구와 인자)를 기다린 지 23일이 지났습니다. 7일 안에 답이 없으면 닫힙니다.
+            정보가 오면 다시 엽니다.
+            / This issue has waited 23 days for repro info (`blender-fx-doctor` output, Blender version, tool and arguments).
+            It will be closed in 7 days without a reply, and reopened when the info arrives.
+          close-issue-message: >-
+            재현 정보 없이 30일이 지나 닫습니다. 정보를 주시면 다시 엽니다.
+            / Closed after 30 days without repro info. Reply with the info and it will be reopened.

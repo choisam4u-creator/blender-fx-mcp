@@ -1,5 +1,9 @@
+# SPDX-License-Identifier: MIT
 # 외부 모델(glb/gltf/fbx/obj/stl/usd/blend)을 가져와 하나의 메시로 합치고, 크기를 맞추고, 바닥에 세운다.
 # PARAMS: path, name, size(가장 긴 변 m, 0이면 원본), on_ground, center, parts(남길 부품 이름 목록)
+
+
+FORMATS = (".glb", ".gltf", ".fbx", ".obj", ".stl", ".usd", ".usda", ".usdc", ".usdz", ".blend")
 
 
 def import_file(path):
@@ -34,7 +38,8 @@ def main():
     p = PARAMS
     path = os.path.expanduser(p["path"])
     if not os.path.exists(path):
-        raise FxError(L(f"파일이 없습니다: {path}", f"File not found: {path}"))
+        hint = missing_file_hint(path, FORMATS)
+        raise FxError(L(f"파일이 없습니다: {path}. {hint}", f"File not found: {path}. {hint}"))
     name = p.get("name") or os.path.splitext(os.path.basename(path))[0]
     size = float(p.get("size") or 0.0)
     sc = scene()
@@ -48,8 +53,10 @@ def main():
         kinds = sorted({o.type for o in new})
         for o in new:
             remove_object(o)
-        raise FxError(L(f"가져온 파일에 메시가 없습니다. 들어 있던 것: {kinds or '없음'} ({os.path.getsize(path)} bytes)",
-                        f"The imported file contains no mesh. It held: {kinds or 'nothing'} ({os.path.getsize(path)} bytes)"))
+        raise FxError(L(f"가져온 파일에 메시가 없습니다. 들어 있던 것: {kinds or '없음'} ({os.path.getsize(path)} bytes). "
+                        "모양(메시)이 든 파일로 다시 시키거나, 원래 프로그램에서 메시로 바꿔 내보내 주세요.",
+                        f"The imported file contains no mesh. It held: {kinds or 'nothing'} ({os.path.getsize(path)} bytes). "
+                        "Use a file that has a mesh, or convert it to a mesh in the original app and export again."))
 
     # 뼈대에 묶인(스킨) 메시는 모디파이어를 먼저 구워야 지금 자세 그대로 남는다.
     # 그리고 부모를 뗀 "뒤에" 세계 위치를 되돌려 놔야 한다. 순서가 반대면 부모가 주던

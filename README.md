@@ -2,7 +2,8 @@
 
 [![ci](https://github.com/choisam4u-creator/blender-fx-mcp/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/choisam4u-creator/blender-fx-mcp/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Python 3.10–3.13](https://img.shields.io/badge/python-3.10%E2%80%933.13-blue.svg)](pyproject.toml)
+[![Python 3.10–3.14](https://img.shields.io/badge/python-3.10%E2%80%933.14-blue.svg)](pyproject.toml)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/choisam4u-creator/blender-fx-mcp/badge)](https://scorecard.dev/viewer/?uri=github.com/choisam4u-creator/blender-fx-mcp)
 
 <!-- mcp-name: io.github.choisam4u-creator/blender-fx-mcp -->
 
@@ -12,17 +13,26 @@
 ![결과 GIF 자리 — docs/demo-script.md 대본으로 촬영 후 docs/media/demo.gif 로 교체](docs/media/demo.gif)
 -->
 
-**Claude에 연결 (3줄)** — 블렌더 5.2 + [blender-mcp](https://github.com/ahujasid/blender-mcp) 수신기 애드온 켜기 + `uv` 설치 후:
+**처음 한 번 (4단계)** — 단계마다 `blender-fx-doctor` 의 그 줄이 `[OK]` 면 된 것입니다(순서도 doctor 의 "다음 할 일"과 같습니다).
+
+<!-- setup-steps: uv, addon, connection, client -->
+1. **uv 설치** — macOS `brew install uv` (Windows·Linux 명령은 doctor 가 알려 줍니다) → `[OK] uv`
+2. **블렌더 5.2 + 수신기 애드온** — [blender-mcp](https://github.com/ahujasid/blender-mcp) 의 `addon.py` 를 받아
+   블렌더 Edit → Preferences → Add-ons → 오른쪽 위 ▾ → **Install from Disk** 로 설치하고 체크 → `[OK] 수신기 애드온 파일(blender-mcp)`
+3. **블렌더에서 Connect** — 3D 화면에서 `N` 키 → **BlenderMCP** 탭 → **Connect to MCP server** → `[OK] 수신기 연결`
+4. **클로드에 등록**(다른 클라이언트는 [examples/](examples/)) → `[OK] MCP 클라이언트 등록`:
 
 ```bash
 claude mcp add -s user blender-fx -- uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-mcp
-uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-doctor   # 준비물 점검
-# 블렌더에서 N 키 → BlenderMCP 탭 → Connect to MCP server
+uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-doctor   # 점검: 끝에 "모두 정상입니다."
 ```
 
 **첫 명령 예시** — AI에게 이렇게 말합니다:
 
 > 연습용 건물 하나 만들고, 왼쪽에서 충격 줘서 콘크리트처럼 무너뜨려. 끝나면 미리보기 보여 줘.
+
+붙여 넣기 대신 클라이언트의 `/` 메뉴에서 **`/first_demo`**(같은 순서: 연결 확인 → 건물 → 스냅샷 → 붕괴 → 미리보기, `impact`·`material` 을 고를 수 있음)를,
+되돌릴 때는 **`/undo_last`**(스냅샷 목록 → 확인 → restore)를 골라도 됩니다(Claude Code 에서는 `/blender-fx:first_demo` 처럼 보일 수 있음).
 
 더 많은 예시(유리 슬로모션·모델 가져와 부수기·폭발·물 쏘기)와 실제 결과 수치는 [docs/recipes.md](docs/recipes.md).
 
@@ -53,13 +63,16 @@ AI가 도구를 골라 실행한 뒤 미리보기 프레임을 보여 줍니다.
 ```
 
 AI는 코드를 짜지 않습니다. 도구와 값만 고릅니다. 그래서 블렌더 버전이 바뀌어도 레시피 한 곳만 고치면 됩니다.
+파일별 역할과 시험 경로는 [docs/architecture.md](docs/architecture.md).
 
 ## 준비물 3가지
 
-1. **블렌더 5.2** (5.x LTS 기준으로 만들었습니다)
-2. **블렌더 안 수신기 애드온**: [blender-mcp](https://github.com/ahujasid/blender-mcp)의 `addon.py`를 블렌더에 설치하고 켭니다.
-   설치 후 3D 화면에서 `N` 키 → **BlenderMCP** 탭 → **Connect to MCP server** 를 누르면 수신기가 켜집니다.
-3. **uv** (파이썬 실행기): `brew install uv`
+순서는 첫 화면의 4단계·doctor 의 "다음 할 일"과 같습니다.
+
+1. **uv** (파이썬 실행기): macOS `brew install uv`. Windows·Linux 는 [docs.astral.sh/uv](https://docs.astral.sh/uv/) 또는 doctor 가 알려 주는 명령
+2. **블렌더 5.2** (5.x LTS 기준으로 만들었습니다) 와 **블렌더 안 수신기 애드온**: [blender-mcp](https://github.com/ahujasid/blender-mcp)의 `addon.py`를
+   Edit → Preferences → Add-ons → 오른쪽 위 ▾ → Install from Disk 로 설치하고 켭니다.
+3. **수신기 켜기**: 3D 화면에서 `N` 키 → **BlenderMCP** 탭 → **Connect to MCP server** 를 누르면 수신기가 켜집니다(블렌더를 켤 때마다).
 
 준비물이 갖춰졌는지 한 번에 확인:
 
@@ -68,6 +81,10 @@ uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-do
 ```
 
 오류 문장별 해결법(연결 거부·시간 초과·포트 충돌·유체 굽기 실패·검은 미리보기): [docs/troubleshooting.md](docs/troubleshooting.md)
+
+질문·버그·보안 신고를 어디로 보내는지, 응답 목표, 지원하는 블렌더·파이썬 판: [SUPPORT.md](SUPPORT.md)
+
+이슈 분류·의존성 갱신·출시·지원 판 정리 규칙: [docs/maintenance.md](docs/maintenance.md)
 
 ## 설치 (한 줄)
 
@@ -86,7 +103,15 @@ claude mcp add -s user blender-fx -- uv --directory /절대/경로/blender-fx-mc
 클로드 데스크톱 앱은 `~/Library/Application Support/Claude/claude_desktop_config.json`의 `mcpServers`에,
 코덱스는 `~/.codex/config.toml`의 `[mcp_servers.blender_fx]`에 같은 명령을 적습니다.
 바로 붙여 넣을 수 있는 설정(클로드 데스크톱·커서·코덱스)은 [examples/](examples/)에 있습니다.
-등록 후 앱을 완전히 껐다 켜야 도구가 보입니다.
+등록 후 앱을 완전히 껐다 켜야 도구가 보입니다. 안 보이면 [해결법](docs/troubleshooting.md#tools-not-visible-in-the-client).
+
+**AI 없이 블렌더 쪽만 먼저 확인**(첫 렌더까지): 이 저장소를 받은 폴더에서 블렌더를 켜고 Connect 를 누른 뒤
+
+```bash
+uv run python examples/first_render.py   # [1/5] 연결 확인 → 스냅샷 → 건물 → 붕괴 → 미리보기, 끝에 PNG 경로
+```
+
+연결이 안 되면 다음 할 일을 출력하고 종료 코드 2 입니다. 자세한 설명은 [examples/README.md](examples/README.md#터미널에서-첫-렌더까지--first-render-from-the-terminal).
 
 ## 매일 쓰는 순서
 
@@ -96,14 +121,14 @@ claude mcp add -s user blender-fx -- uv --directory /절대/경로/blender-fx-mc
 4. 돌아온 미리보기 프레임을 보고 다시 말한다: "더 잘게", "맞은 데만 부서지게", "유리처럼", "물을 왼쪽에서 옆으로 쏴", "꿀처럼 걸쭉하게", "중력 절반", "슬로모션", "불 붙여", "눈 내리게", "로우앵글로", "노을로".
 5. 마음에 들면: "영상으로 뽑아 줘", "장면 저장해 줘", "glb로 내보내 줘."
 
-자기 모델이 있으면: **"~/Desktop/tower.glb 가져와서 12m 크기로 세우고 왼쪽에서 부숴."**
+자기 모델이 있으면: **"~/Desktop/tower.glb 가져와서 12m 크기로 세우고 왼쪽에서 부숴."** (`/` 메뉴의 **`/my_model`** 은 가져온 뒤 `inspect_mesh` 로 상태부터 봅니다)
 
 ## 도구 목록
 
 | 도구 | 하는 일 |
 |---|---|
-| `doctor` | 준비물 점검(파이썬·mcp·uv·블렌더·수신기·출력 폴더). 안 될 때 먼저 부른다 |
-| `ping_blender` | 수신기와 연결되는지 확인 |
+| `doctor` | 준비물 점검(파이썬·mcp·uv·블렌더·수신기·클라이언트 등록·출력 폴더). 안 될 때 먼저 부른다 |
+| `ping_blender` | 수신기와 연결되는지, 블렌더 판이 시험한 판인지 확인 |
 | `list_objects` | 장면의 메시 이름·크기 목록 (부술 대상 고르기) |
 | `inspect_mesh` | 부수기 전 모델 진단: 닫혀 있나, 부피, 오목한 정도, 면 수, 수리하면 얼마나 나아지나 |
 | `make_demo_building` | 연습용 건물 + 바닥 + 카메라 + 조명 생성. `style`(plain/windows 창문 건물), `ground`(바닥 재질) |
@@ -123,6 +148,7 @@ claude mcp add -s user blender-fx -- uv --directory /절대/경로/blender-fx-mc
 | `set_look` | 조명·하늘 분위기 day/sunset/night/overcast/studio. `sky="procedural"` 진짜 하늘 텍스처, `hdri=파일경로` 내 HDRI 사진으로 조명 |
 | `set_ground` | 바닥 재질 asphalt/concrete/grass/sand/dirt/snow, `size`(m) |
 | `snapshot` / `list_snapshots` / `restore` | 장면을 저장해 두고 언제든 그때로 되돌린다. 위험한 작업 전에 쓴다 |
+| `clear_snapshots` | 오래된 스냅샷부터 지우고 최근 `keep`개(기본 5)를 남긴다. `before_restore` 는 늘 남김 |
 | `set_timing` | 프레임 범위·fps·슬로모션. 구간(`slow_from`/`slow_to`/`slow_factor`)은 물리·연기·물에만, `global_slow` 는 파티클까지 전부 |
 | `set_physics` | 중력 세기·기울기, 계산 하위단계·반복(정확도), 물리 속도, fps |
 | `set_render` | 샘플 수, 모션블러, 해상도, 노출, 필름 룩, 배경 빼기 |
@@ -212,7 +238,7 @@ import_model(path="adventurer.glb", size=2.0, parts=["Adventurer", "Backpack"])
 - `export_model` 의 `.abc` 는 물 표면과 조각 움직임을 담지만, 연기(볼륨)는 어떤 형식으로도 나가지 않습니다.
 - 창문은 벽을 실제로 파낸 것이지만 실내는 없습니다.
 - 블렌더 5.2에서만 확인했습니다.
-- 메시지는 한국어가 기본입니다. 영어는 `BLENDER_FX_LANG=en`.
+- 메시지 언어는 `BLENDER_FX_LANG`(`ko`/`en`)로 정합니다. 없으면 로캘(`LANG` 등)이 한국어면 한국어, 다른 언어면 영어이고, 로캘이 없으면(창 앱이 띄운 서버에서 흔함) 한국어입니다.
 - 수신기 애드온은 blender-mcp 것을 빌려 씁니다. 그쪽 포트·명령이 바뀌면 같이 고쳐야 합니다.
 - blender-mcp 서버와 이 서버를 같이 켜 두면 수신기가 하나라 끊길 수 있습니다. 문제가 나면 하나만 켜세요.
 
@@ -240,24 +266,32 @@ import_model(path="adventurer.glb", size=2.0, parts=["Adventurer", "Backpack"])
 
 ## 라이선스
 
-MIT (이 저장소). 블렌더 안 수신기 애드온은 blender-mcp 프로젝트 것이며 그쪽 라이선스를 따릅니다.
+MIT (이 저장소). 블렌더 안 수신기 애드온은 blender-mcp 프로젝트 것이며 그쪽 라이선스를 따릅니다. 함께 설치되는 파이썬 패키지의 라이선스는 [docs/third-party-licenses.md](docs/third-party-licenses.md)(모두 허용적 라이선스, CI 가 확인).
 
 ## English
 
 ### What you need
 
-1. **Blender 5.2** (built against the 5.x LTS line).
-2. **The receiver add-on inside Blender**: install `addon.py` from [blender-mcp](https://github.com/ahujasid/blender-mcp) and enable it.
-   In the 3D view press `N` → **BlenderMCP** tab → **Connect to MCP server**. It listens on `localhost:9876`.
-3. **uv** (Python runner): `brew install uv`, or see [docs.astral.sh/uv](https://docs.astral.sh/uv/).
+Four steps, once. Each step is done when its `blender-fx-doctor` line shows `[OK]` (same order as doctor's "Next steps").
 
-Check everything at once (Python, mcp, uv, Blender, receiver, output folder):
+<!-- setup-steps: uv, addon, connection, client -->
+1. **Install uv** (Python runner) — macOS `brew install uv` (doctor prints the Windows/Linux command) → `[OK] uv`
+2. **Blender 5.2 + the receiver add-on** — download `addon.py` from [blender-mcp](https://github.com/ahujasid/blender-mcp), then in Blender
+   Edit → Preferences → Add-ons → top-right ▾ → **Install from Disk**, and tick it → `[OK] receiver add-on file (blender-mcp)`
+3. **Connect in Blender** — in the 3D view press `N` → **BlenderMCP** tab → **Connect to MCP server**. It listens on `localhost:9876` → `[OK] receiver connection`
+4. **Register with your AI client** — see [Install](#install) below → `[OK] MCP client registration`
+
+Check everything at once (Python, mcp, uv, Blender, receiver, client registration, output folder):
 
 ```bash
 uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-doctor
 ```
 
 Fixes for each error message (connection refused, timeout, port in use, fluid bake failed, black preview): [docs/troubleshooting.md](docs/troubleshooting.md)
+
+Where to ask questions or report bugs, reply targets and supported Blender/Python versions: [SUPPORT.md](SUPPORT.md)
+
+How issues, dependency updates, releases and old versions are handled: [docs/maintenance.md](docs/maintenance.md)
 
 ### Install
 
@@ -270,10 +304,19 @@ claude mcp add -s user blender-fx -e BLENDER_FX_LANG=en -- uvx --from git+https:
 Claude Desktop, Codex, Cursor and other MCP clients: add the same command (`uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-mcp`)
 to the client's MCP server config with the environment variable `BLENDER_FX_LANG=en`, then fully restart the app.
 Ready-to-paste configs for Claude Desktop, Cursor and Codex are in [examples/](examples/).
+If the tools do not show up, see [troubleshooting](docs/troubleshooting.md#tools-not-visible-in-the-client).
+
+**Check the Blender side first, without an AI** (up to a first render): in a checkout of this repository, open Blender, click Connect, then
+
+```bash
+BLENDER_FX_LANG=en uv run python examples/first_render.py   # [1/5] connection → snapshot → building → collapse → preview, then PNG paths
+```
+
+Without a connection it prints the next step and exits with 2. Details: [examples/README.md](examples/README.md) ("First render from the terminal").
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `BLENDER_FX_LANG` | `ko` | `en` for English tool messages and errors |
+| `BLENDER_FX_LANG` | from the locale | `en` or `ko`. Unset: English unless the locale (`LC_ALL`, `LC_MESSAGES`, `LANG`) is Korean; Korean when no locale is set (common for desktop apps), so set it explicitly in GUI client configs |
 | `BLENDER_FX_OUT` | `~/blender-fx-output` | where previews, videos, `.blend` files and caches go |
 | `BLENDER_FX_HOST` / `BLENDER_FX_PORT` | `localhost` / `9876` | where the receiver listens. Keep it on localhost |
 | `BLENDER_FX_TIMEOUT` | `600` | seconds to wait for a quick step. Bake and render tools wait at least 1800 (`render_video` 3600); set a larger value to extend those too |
@@ -284,19 +327,22 @@ Open Blender, connect the receiver, then tell your AI:
 
 > Make a practice building, hit it from the left and collapse it like concrete. Show me a preview when it's done.
 
+Or pick **`/first_demo`** from your client's `/` menu instead of pasting (same steps: check connection → building → snapshot → collapse → preview;
+optional `impact` and `material`), and **`/undo_last`** to go back (snapshot list → confirm → restore). Claude Code may show them as `/blender-fx:first_demo`.
+
 Then keep directing from the preview frames: "smaller pieces", "only break where it was hit", "like glass", "shoot water sideways from the left",
 "thick like honey", "half gravity", "slow motion", "set it on fire", "make it snow", "low angle", "sunset".
 When you like it: "render a video", "save the scene", "export as glb".
 
-Your own model works too: **"Import ~/Desktop/tower.glb, stand it up 12 m tall and break it from the left."**
-More examples with measured results: [docs/recipes.md](docs/recipes.md).
+Your own model works too: **"Import ~/Desktop/tower.glb, stand it up 12 m tall and break it from the left."** (the **`/my_model`** prompt checks the mesh with `inspect_mesh` first)
+More examples with measured results: [docs/recipes.md (English section)](docs/recipes.md#english).
 
 ### Tools
 
 | Tool | What it does |
 |---|---|
-| `doctor` | Checks prerequisites (Python, mcp, uv, Blender, receiver, output folder). Call it first when something fails |
-| `ping_blender` | Checks the connection to the receiver |
+| `doctor` | Checks prerequisites (Python, mcp, uv, Blender, receiver, client registration, output folder). Call it first when something fails |
+| `ping_blender` | Checks the connection to the receiver and whether the Blender version is a tested one |
 | `list_objects` | Lists mesh names and sizes in the scene (to pick a target) |
 | `inspect_mesh` | Diagnoses a model before breaking it: closed or not, volume, concavity, face count, whether repair helps |
 | `make_demo_building` | Practice building + ground + camera + lights. `style` (plain/windows), `ground` material |
@@ -316,6 +362,7 @@ More examples with measured results: [docs/recipes.md](docs/recipes.md).
 | `set_look` | Lighting mood day/sunset/night/overcast/studio, procedural sky or your own HDRI |
 | `set_ground` | Ground material asphalt/concrete/grass/sand/dirt/snow |
 | `snapshot` / `list_snapshots` / `restore` | Save the scene and roll back to it later. Use before risky steps |
+| `clear_snapshots` | Delete old snapshots, keeping the newest `keep` (default 5); `before_restore` is always kept |
 | `set_timing` | Frame range, fps, slow motion for a frame range or globally |
 | `set_physics` | Gravity strength and tilt, substeps, solver iterations, simulation speed |
 | `set_render` | Samples, motion blur, resolution, exposure, film look, transparent background |
@@ -332,4 +379,4 @@ Outputs go to per-run folders under `~/blender-fx-output/` (`BLENDER_FX_OUT`). S
 
 The receiver runs Python it receives on `localhost:9876` without authentication. Never expose that port.
 See [SECURITY.md](SECURITY.md) for the risks and private reporting. Contributions: [CONTRIBUTING.md](CONTRIBUTING.md)
-and the [Code of Conduct](CODE_OF_CONDUCT.md). License: MIT.
+and the [Code of Conduct](CODE_OF_CONDUCT.md); how the code fits together: [docs/architecture.md](docs/architecture.md). License: MIT; licenses of the installed dependencies are listed in [docs/third-party-licenses.md](docs/third-party-licenses.md).

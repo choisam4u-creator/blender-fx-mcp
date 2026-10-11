@@ -1,0 +1,63 @@
+name: 기능 요청 / Feature request
+description: 새 효과나 도구를 제안해 주세요 / Suggest a new effect or tool
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        고맙습니다. 필수 칸(*)을 채워야 올라갑니다. 지금 도구로 되는지는 먼저 README 의 "도구" 절과 [docs/recipes.md](https://github.com/choisam4u-creator/blender-fx-mcp/blob/main/docs/recipes.md)에서 확인해 보세요.
+        Thanks. Required fields (*) must be filled in. Please check the tool list in the README and [docs/recipes.md](https://github.com/choisam4u-creator/blender-fx-mcp/blob/main/docs/recipes.md#english) first.
+  - type: textarea
+    id: goal
+    attributes:
+      label: 원하는 결과 / What you want to make
+      description: |
+        어떤 장면·효과를 만들고 싶나요. 크기·시간·재질처럼 숫자로 말할 수 있으면 함께 적어 주세요.
+        The scene or effect you want, with sizes, timing or materials if you can.
+    validations:
+      required: true
+  - type: textarea
+    id: prompt
+    attributes:
+      label: 예시 명령 / Example prompt
+      description: |
+        AI 에게 이렇게 말하고 싶다. 예: "다리를 가운데부터 끊어지게 무너뜨려"
+        What you would like to say to the AI, e.g. "collapse the bridge from the middle".
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: workaround
+    attributes:
+      label: 지금 대신 쓰는 방법 / Current workaround
+      description: |
+        지금 도구로 해 보았다면 어떤 도구·인자를 썼고 무엇이 모자랐나요. 블렌더에서 손으로 하는 순서를 알면 그것도.
+        Which tools and arguments you tried and what was missing, or the manual Blender steps if you know them.
+    validations:
+      required: true
+  - type: textarea
+    id: references
+    attributes:
+      label: 참고 자료 / References
+      description: 비슷한 결과의 영상·이미지 링크 / Links to similar shots or images.
+    validations:
+      required: false
+  - type: input
+    id: blender-version
+    attributes:
+      label: 블렌더 버전 / Blender version
+      placeholder: "5.2.0 LTS"
+    validations:
+      required: false
+  - type: dropdown
+    id: client
+    attributes:
+      label: MCP 클라이언트 / MCP client
+      options:
+        - Claude Code
+        - Claude Desktop
+        - Codex
+        - Cursor
+        - 기타 / Other
+    validations:
+      required: false

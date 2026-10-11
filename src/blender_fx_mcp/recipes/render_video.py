@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 # 최종 영상 렌더: 프레임 범위를 mp4(H.264)로 뽑는다.
 # PARAMS: out_path, quality(smoke|final|preview), width, height, fps, frame_start, frame_end
 
@@ -17,8 +18,8 @@ def main():
     f0 = int(p.get("frame_start") or sc.frame_start)
     f1 = int(p.get("frame_end") or sc.frame_end)
     if f1 < f0:
-        raise FxError(L(f"frame_end({f1}) 가 frame_start({f0}) 보다 작습니다.",
-                        f"frame_end({f1}) is smaller than frame_start({f0})."))
+        raise FxError(L(f"frame_end({f1}) 가 frame_start({f0}) 보다 작습니다. 두 값을 바꿔 다시 시키세요.",
+                        f"frame_end({f1}) is smaller than frame_start({f0}). Swap the two values and ask again."))
     if sc.camera is None:
         raise FxError(L("카메라가 없습니다. 먼저 destroy / explode / splash 로 장면을 만드세요.",
                         "There is no camera. Build a scene first with destroy / explode / splash."))
@@ -64,8 +65,10 @@ def main():
     # 블렌더가 파일 이름에 프레임 범위를 붙일 수 있어 새로 생긴 mp4 를 찾는다
     candidates = [os.path.join(out_dir, f) for f in os.listdir(out_dir) if f.lower().endswith(".mp4") and (f not in before or os.path.join(out_dir, f) == out_path)]
     if not candidates:
-        raise FxError(L("영상 파일이 만들어지지 않았습니다. 블렌더의 FFmpeg 출력이 막혀 있을 수 있습니다.",
-                        "No video file was produced. Blender's FFmpeg output may be unavailable."))
+        raise FxError(L("영상 파일이 만들어지지 않았습니다. 블렌더의 FFmpeg 출력이 막혀 있을 수 있습니다. "
+                        "render_preview 로 프레임 한 장이 나오는지 먼저 확인하고, 블렌더 창 Output 속성의 File Format 에 FFmpeg Video 가 있는지 보세요.",
+                        "No video file was produced. Blender's FFmpeg output may be unavailable. "
+                        "First check that render_preview makes a frame, then see whether FFmpeg Video is listed under File Format in the Output properties."))
     path = max(candidates, key=os.path.getmtime)
     return dict(path=path, size_bytes=os.path.getsize(path), frames=[f0, f1], engine=engine, fps=r.fps, size=[width, height])
 
