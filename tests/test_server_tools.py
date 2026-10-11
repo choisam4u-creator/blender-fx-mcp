@@ -1,5 +1,6 @@
 # 도구 함수를 끝까지(성공 갈래) 불러 결과 문장(한/영)을 확인한다. 블렌더 없이 돈다.
 # run_recipe 를 가짜로 바꿔 레시피마다 미리 정한 결과를 돌려준다.
+import os
 import re
 
 import pytest
@@ -83,7 +84,8 @@ CALLS = {
     "list_objects": lambda: server.list_objects(),
     "inspect_mesh": lambda: server.inspect_mesh("Building", decimate_to=500),
     "make_demo_building": lambda: server.make_demo_building(style="windows", ground="asphalt"),
-    "import_model": lambda: server.import_model("/m/tower.glb", size=12.0),
+    # 이 OS 의 절대 경로(Windows 에서 "/m/..." 는 드라이브가 없어 상대 경로로 풀린다)
+    "import_model": lambda: server.import_model(os.path.abspath("/m/tower.glb"), size=12.0),
     "export_model": lambda: server.export_model("/out/a.glb", bake_physics=True),
     "destroy": lambda: server.destroy("Building"),
     "explode": lambda: server.explode(target="Building"),
