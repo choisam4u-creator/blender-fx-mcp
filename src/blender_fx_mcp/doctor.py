@@ -375,7 +375,7 @@ def format_json(checks: list[dict]) -> str:
         "failed": bad,
         "help": bridge.TROUBLESHOOTING_URL if bad else None,
     }
-    return json.dumps(report, ensure_ascii=False, indent=2)
+    return mask_home(json.dumps(report, ensure_ascii=False, indent=2))  # 버그 신고용이라 집 폴더(사용자 이름)를 가린다
 
 
 def mask_home(text: str) -> str:
@@ -383,9 +383,12 @@ def mask_home(text: str) -> str:
     home = os.path.expanduser("~").rstrip("/\\")
     if len(home) <= 1:
         return text
-    for form in sorted({home, home.replace("\\", "/"), home.replace("/", "\\")}, key=len, reverse=True):
+    # JSON 안에서는 역슬래시가 두 번(\\) 쓰여 그 표기도 가린다
+    forms = {home, home.replace("\\", "/"), home.replace("/", "\\"), home.replace("\\", "\\\\")}
+    for form in sorted(forms, key=len, reverse=True):
         # 경로 경계에서만(/home/sam 이 /home/samuel 의 앞부분을 먹지 않게)
-        text = re.sub(re.escape(form) + r"(?=[/\\\s'\")\]]|$)", "~", text)
+        # 뒤가 이름 글자(문자·숫자·_·-)가 아니면 경계: /home/sam: /home/sam, /home/sam. 도 가린다
+        text = re.sub(re.escape(form) + r"(?![\w-])", "~", text)
     return text
 
 

@@ -12,6 +12,7 @@ import contextlib
 import contextvars
 import difflib
 import json
+import math
 import os
 import re
 import shutil
@@ -153,6 +154,11 @@ def output_path(path: str) -> str:
     return str(p if p.is_absolute() else out_root() / p)
 
 
+def safe_name(name: str, fallback: str) -> str:
+    """파일 이름 한 칸. `/`·`..`·`:` 같은 것을 `_` 로 바꿔 출력 폴더 밖으로 나가거나 Windows 에서 깨지지 않게."""
+    return re.sub(r"[^\w\-]+", "_", name).strip("_")[:60] or fallback
+
+
 def new_run_dir(label: str) -> Path:
     safe = re.sub(r"[^\w\-]+", "_", label)[:40]
     d = out_root() / f"{time.strftime('%Y%m%d-%H%M%S')}_{safe}"
@@ -219,6 +225,15 @@ CHOICES: dict[str, dict[str, tuple[str, ...]]] = {
     "render": {"quality": ("preview", "smoke", "final")},
     "render_video": {"quality": ("preview", "smoke", "final")},
 }
+
+
+def check_finite(params: dict) -> None:
+    """nan·inf 실수는 블렌더로 보내는 코드(`PARAMS = {...}`)에서 이름 오류가 되고, 물리에도 쓸 수 없다. 미리 막는다."""
+    for name, value in params.items():
+        values = value if isinstance(value, (list, tuple)) else [value]
+        if any(isinstance(v, float) and not math.isfinite(v) for v in values):
+            raise BlenderError(t(f"{name} 에 유한한 숫자를 주세요(지금 {value!r}).",
+                                 f"{name} must be a finite number (got {value!r})."))
 
 
 def check_choices(recipe: str, params: dict) -> None:
@@ -360,6 +375,7 @@ def _check_bake_space() -> None:
 
 def run_recipe(recipe: str, params: dict, timeout: float | None = None) -> dict:
     params = {k: v for k, v in params.items() if v is not None}
+    check_finite(params)
     check_choices(recipe, params)
     check_ranges(recipe, params)
     params.setdefault("_lang", "en" if is_en() else "ko")
@@ -1145,7 +1161,7 @@ def save_blend(name: str = "fx_scene") -> str:
     현재 장면을 .blend 로 저장한다."""
     try:
         run_dir = new_run_dir(f"blend_{name}")
-        res = run_recipe("save_blend", dict(path=str(run_dir / f"{name}.blend")), timeout=long_timeout())
+        res = run_recipe("save_blend", dict(path=str(run_dir / f"{safe_name(name, 'fx_scene')}.blend")), timeout=long_timeout())
     except BlenderError as e:
         return _fail(e)
     return t(f"저장 완료: {res['path']} ({res['size_bytes'] / 1_000_000:.1f}MB). {res['note']}",
@@ -1183,7 +1199,7 @@ def render_video(quality: str = "smoke", width: int = 1280, height: int = 720, f
     try:
         run_dir = new_run_dir(f"video_{name or quality}")
         res = run_recipe("render_video", dict(
-            out_path=str(run_dir / f"{name or 'fx'}.mp4"), quality=quality, width=width, height=height,
+            out_path=str(run_dir / f"{safe_name(name, 'fx')}.mp4"), quality=quality, width=width, height=height,
             fps=fps or None, frame_start=frame_start or None, frame_end=frame_end or None,
         ), timeout=long_timeout(3600.0))
     except BlenderError as e:

@@ -362,3 +362,17 @@ def test_snapshot_reserves_before_restore(fake, monkeypatch, name):
     monkeypatch.setenv("BLENDER_FX_LANG", "en")
     text = server.snapshot(name)
     assert fake == [] and text.startswith("Failed: ") and "another name" in text
+
+
+@pytest.mark.parametrize("name, want", [("/tmp/x", "tmp_x"), ("../../escape", "escape"), ("a:b?c", "a_b_c"), ("", None)])
+def test_save_blend_and_video_names_stay_in_output_folder(fake, tmp_path, name, want):
+    """name 이 파일 이름에 그대로 들어가 `/tmp/x`·`../x` 가 출력 폴더 밖으로 나가거나 Windows 에서 깨지던 문제."""
+    from pathlib import Path
+
+    server.save_blend(name)
+    server.render_video(name=name)
+    blend = Path(next(p for r, p in fake if r == "save_blend")["path"])
+    video = Path(next(p for r, p in fake if r == "render_video")["out_path"])
+    for path, default in ((blend, "fx_scene.blend"), (video, "fx.mp4")):
+        assert path.resolve().is_relative_to(tmp_path.resolve()), path
+        assert path.name == (f"{want}{path.suffix}" if want else default)

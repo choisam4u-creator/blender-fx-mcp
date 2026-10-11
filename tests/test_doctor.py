@@ -314,8 +314,8 @@ def test_json_matches_text_report(monkeypatch, capsys, tmp_path, lang):
     assert e.value.code == text_code
     data = json.loads(capsys.readouterr().out)
     rows = text[:len(data["checks"])]
-    for c, row in zip(data["checks"], rows):
-        assert row == f"[{doctor.mark(c)}] {c['name']}: {c['detail']}"
+    for c, row in zip(data["checks"], rows, strict=True):
+        assert doctor.mask_home(row) == f"[{doctor.mark(c)}] {c['name']}: {c['detail']}"  # JSON 은 집 폴더를 가림
     assert [c["id"] for c in data["checks"]] == [
         "python", "blender-fx-mcp", "mcp", "uv", "blender", "addon", "connection", "client", "output", "space"]
     assert data["failed"] == [c["id"] for c in data["checks"] if not c["ok"] and not c["optional"]]
@@ -557,3 +557,24 @@ def test_update_check_can_be_turned_off_and_is_cli_only(monkeypatch, env):
     assert "update" not in [c["id"] for c in doctor.run_checks(clients=False)]  # MCP doctor 도구는 묻지 않음
     # 새 판이 있어도 선택 항목이라 종료 코드·"확인 필요"에 들어가지 않는다
     assert "update" not in [c["id"] for c in doctor.failed(doctor.run_checks())]
+
+
+@pytest.mark.parametrize("home", ["/home/sam", "C:\\Users\\sam"])
+def test_mask_home_punctuation_and_json(monkeypatch, home):
+    monkeypatch.setattr(doctor.os.path, "expanduser", lambda p: home if p == "~" else p)
+    for tail in (":", ",", ".", ";", "|", ")"):
+        assert doctor.mask_home(f"cannot write to {home}{tail} denied") == f"cannot write to ~{tail} denied"
+    assert doctor.mask_home(f"{home}-old") == f"{home}-old" and doctor.mask_home(f"{home}2") == f"{home}2"
+    escaped = json.dumps({"p": home + ("\\x" if "\\" in home else "/x")})
+    assert "sam" not in doctor.mask_home(escaped), escaped
+
+
+def test_json_report_masks_home(monkeypatch, capsys, tmp_path):
+    home = str(tmp_path / "sam")
+    monkeypatch.setattr(doctor.os.path, "expanduser", lambda p: home if p == "~" else p)
+    monkeypatch.setattr(doctor, "find_blender", lambda: home + "/apps/blender")
+    monkeypatch.setattr(doctor, "run_checks", lambda: [doctor._check("output", True, home + "/out", "output")])
+    with pytest.raises(SystemExit):
+        doctor.main(["--json"])
+    data = json.loads(capsys.readouterr().out)
+    assert data["blender"] == "~/apps/blender" and data["checks"][0]["detail"] == "~/out"

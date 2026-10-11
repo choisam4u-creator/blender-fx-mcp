@@ -139,3 +139,20 @@ def test_explode_checks_every_argument_before_fracturing(monkeypatch, tmp_path, 
     out = server.explode(target="Building", **bad)
     out = out if isinstance(out, str) else out[0]
     assert out.startswith("Failed: ") and next(iter(bad)) in out, out
+
+
+@pytest.mark.parametrize("call", [
+    "destroy(target='Building', time_scale=float('inf'))",
+    "destroy(target='Building', impact_power=float('nan'))",
+    "water(mode='drop', at=[0.0, float('nan'), 1.0])",
+    "wind(strength=float('-inf'))",
+])
+def test_nan_and_inf_are_refused_before_blender(monkeypatch, tmp_path, call):
+    """nan·inf 는 블렌더로 보내는 코드에서 NameError('inf' 정의 안 됨)가 되어 원인 모를 오류가 났다. 서버가 미리 막는다."""
+    from blender_fx_mcp import bridge, server
+    monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path))
+    monkeypatch.setenv("BLENDER_FX_LANG", "en")
+    monkeypatch.setattr(bridge, "run_python", lambda code, timeout=None: pytest.fail("블렌더로 보내면 안 됨"))
+    out = eval(call, vars(server))
+    out = out if isinstance(out, str) else out[0]
+    assert out.startswith("Failed: ") and "must be a finite number" in out, out
