@@ -58,7 +58,8 @@ gh label create "stale" --color ededed --description "needs-info 마감 7일 전
 5. **승인** — `publish` 잡은 환경 `pypi` 를 쓴다. 저장소 Settings → Environments → `pypi` 에 필수 검토자(관리자)를 두면 여기서 멈추고, Actions 화면에서 빌드 기록을 본 뒤 **Approve** 한다(두지 않으면 바로 게시된다).
 6. **PyPI 확인** — `https://pypi.org/project/blender-fx-mcp/X.Y.Z/` 가 열리고 `uvx --refresh --from blender-fx-mcp==X.Y.Z blender-fx-doctor` 가 돈다.
 7. **레지스트리** — [docs/registry.md](registry.md) 의 등록 순서 3~7(`mcp-publisher publish`).
-8. **릴리스 노트** — GitHub Releases 에서 태그 `vX.Y.Z` 로 새 릴리스, 본문은 CHANGELOG 의 그 절을 그대로 복사.
+8. **릴리스 노트** — `uv run python scripts/release_notes.py vX.Y.Z > notes.md` 가 CHANGELOG 의 그 절(영어 요약 먼저, 관리자 메모 빼고, 끝에 PyPI 주소)을 만든다.
+   GitHub Releases 에서 태그 `vX.Y.Z` 로 새 릴리스를 만들며 본문에 붙이거나 `gh release create vX.Y.Z --notes-file notes.md`.
 
 태그를 잘못 밀었으면(빌드 잡이 빨감) `git push --delete origin vX.Y.Z` 로 지우고 고친 커밋에 다시 단다. PyPI 에 올라간 판은 지울 수 없으니 판을 올린다.
 
@@ -118,7 +119,8 @@ Every release follows these steps, so it does not depend on one person's memory.
 5. **Approve**: the `publish` job uses the `pypi` environment. With a required reviewer (the maintainer) set in Settings → Environments → `pypi`, it waits here: review the build in the Actions page and **Approve** it (without one it publishes right away).
 6. **Check PyPI**: `https://pypi.org/project/blender-fx-mcp/X.Y.Z/` opens and `uvx --refresh --from blender-fx-mcp==X.Y.Z blender-fx-doctor` runs.
 7. **Registry**: steps 3 to 7 of the registration order in [docs/registry.md](registry.md) (`mcp-publisher publish`).
-8. **Release notes**: create a GitHub release from tag `vX.Y.Z` and paste that CHANGELOG section as the body.
+8. **Release notes**: `uv run python scripts/release_notes.py vX.Y.Z > notes.md` prints that CHANGELOG section (English summary first,
+   maintainer notes dropped, PyPI link at the end). Create a GitHub release from tag `vX.Y.Z` with it as the body, or `gh release create vX.Y.Z --notes-file notes.md`.
 
 If a wrong tag was pushed (the build job is red), delete it with `git push --delete origin vX.Y.Z` and tag the fixed commit. A version already on PyPI cannot be replaced, so bump the version instead.
 

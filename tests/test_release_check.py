@@ -342,3 +342,38 @@ def test_main_with_tag(repo, capsys):
     assert "고칠 곳 1개" in capsys.readouterr().out
     assert rc.main(["--tag"], root=repo) == 1
     assert "--tag 뒤에 밀 태그" in capsys.readouterr().out
+
+
+# ---------- scripts/release_notes.py ----------
+
+def _release_notes():
+    spec = importlib.util.spec_from_file_location("release_notes", ROOT / "scripts" / "release_notes.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_release_notes_for_released_version(capsys):
+    rn = _release_notes()
+    assert rn.main(["v0.7.0"]) == 0
+    out = capsys.readouterr().out
+    assert out.startswith("**English summary**")
+    assert out.index("*Fixes*") < out.index("**고침**"), "영어 요약이 한국어 상세보다 먼저"
+    assert "버전 네 곳(`pyproject.toml`·" not in out, "절 맨 앞 관리자용 메모가 들어감"
+    assert "## [0.6.3]" not in out and "0.6.3 —" not in out, "다음 절까지 들어감"
+    assert out.rstrip().endswith("`uvx blender-fx-mcp@0.7.0`") and "pypi.org/project/blender-fx-mcp/0.7.0/" in out
+    assert rn.main(["0.7.0"]) == 0 and capsys.readouterr().out == out  # v 없이도 같다
+
+
+@pytest.mark.parametrize("arg, code, says", [
+    ("v9.9.9", 1, "no 9.9.9 section"), ("v0.8.0", 1, "no release date yet"), ("latest", 2, "usage"),
+])
+def test_release_notes_refuses_missing_or_unreleased(capsys, arg, code, says):
+    assert _release_notes().main([arg]) == code
+    captured = capsys.readouterr()
+    assert captured.out == "" and says in captured.err
+
+
+def test_release_procedure_uses_release_notes_script():
+    text = (ROOT / "docs" / "maintenance.md").read_text(encoding="utf-8")
+    assert text.count("scripts/release_notes.py vX.Y.Z") >= 2, "출시 절차 한/영 8단계가 이 명령을 써야 함"
