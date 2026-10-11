@@ -261,13 +261,35 @@ def _space_check(root: str) -> dict:
     used = disk.folder_bytes(root)
     detail = t(f"남은 {disk.gb(free)}, 이 폴더가 쓰는 {disk.gb(used)}", f"{disk.gb(free)} free, this folder uses {disk.gb(used)}")
     ok = free >= disk.DOCTOR_WARN_BYTES
-    if not ok:
-        detail += t(f" — 물·연기 굽기에는 {disk.gb(disk.DOCTOR_WARN_BYTES)} 이상 권장",
-                    f" — {disk.gb(disk.DOCTOR_WARN_BYTES)} or more recommended for water and smoke bakes")
-    return _check(name, ok, detail, "space",
-                  t("AI 에게 clear_caches 를 시켜 구운 캐시를 지우거나, BLENDER_FX_OUT 을 여유 있는 디스크의 폴더로 지정",
-                    "Ask the AI to run clear_caches (deletes baked caches), or point BLENDER_FX_OUT to a folder on a disk with more space"),
-                  optional=True)
+    if ok:
+        return _check(name, ok, detail, "space", optional=True)
+    detail += t(f" — 물·연기 굽기에는 {disk.gb(disk.DOCTOR_WARN_BYTES)} 이상 권장",
+                f" — {disk.gb(disk.DOCTOR_WARN_BYTES)} or more recommended for water and smoke bakes")
+    groups = [g for g in disk.usage_groups(root) if g[1] >= GROUP_MIN_BYTES]
+    if groups:
+        detail += t(". 큰 것: ", ". Largest: ") + ", ".join(f"{_GROUP_LABEL[k]()} {disk.gb(b)}" for k, b, _ in groups)
+        # 큰 묶음부터 지울 방법을 짝지어 말한다(무엇을 지워야 할지 바로 보이게)
+        steps = [_GROUP_FIX[k](c) for k, _, c in groups]
+    else:
+        steps = [t("출력 폴더는 작아서 지워도 소용없음: 디스크의 다른 큰 파일을 정리",
+                   "The output folder is small, so clearing it will not help: free space elsewhere on the disk")]
+    steps.append(t("또는 BLENDER_FX_OUT 을 여유 있는 디스크의 폴더로 지정", "or point BLENDER_FX_OUT to a folder on a disk with more space"))
+    return _check(name, ok, detail, "space", " / ".join(steps), optional=True)
+
+
+GROUP_MIN_BYTES = 100 * 1024**2  # 이보다 작은 묶음은 지워도 체감이 없어 안내하지 않는다
+_GROUP_LABEL = {
+    "caches": lambda: t("구운 캐시(cache_*)", "baked caches (cache_*)"),
+    "snapshots": lambda: t("스냅샷(snapshots)", "snapshots"),
+    "runs": lambda: t("렌더·미리보기 결과", "render and preview results"),
+}
+_GROUP_FIX = {
+    "caches": lambda c: t("AI 에게 clear_caches 를 시켜 구운 캐시를 지움", "Ask the AI to run clear_caches (deletes baked caches)"),
+    "snapshots": lambda c: t("AI 에게 clear_snapshots 를 시켜 오래된 스냅샷을 지움(최근 5개·before_restore 는 남김)",
+                             "Ask the AI to run clear_snapshots (keeps the newest 5 and before_restore)"),
+    "runs": lambda c: t(f"출력 폴더의 날짜 이름 폴더({c}개) 중 필요 없는 렌더 결과를 직접 지움",
+                        f"Delete render results you no longer need from the date-named folders ({c}) by hand"),
+}
 
 
 def format_report(checks: list[dict]) -> str:

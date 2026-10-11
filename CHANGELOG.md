@@ -13,6 +13,8 @@ Python 3.10 을 뺄 때 함께 0.8.0 으로 올린다(그전까지 `release_chec
 *Fixes*
 - Install commands now use the PyPI package: `uvx blender-fx-mcp` (and `uvx --from blender-fx-mcp blender-fx-doctor`); git is no longer needed.
   The README, `examples/`, doctor, the connection-refused error and the bug form all use it. Troubleshooting explains how to get a newer release.
+- When less than 5GB is free, doctor names the largest parts of the output folder (baked caches, snapshots, render results) with their size
+  and the tool that clears each, largest first; if the folder is small it says clearing it will not help.
 - `scripts/release_check.py --tag v0.8.0` checks the tag you are about to push against the version, with the same rule the release workflow uses.
 
 *Tests and CI*
@@ -29,6 +31,9 @@ Python 3.10 을 뺄 때 함께 0.8.0 으로 올린다(그전까지 `release_chec
 - 설치 명령을 PyPI 패키지로: `uvx blender-fx-mcp`, 점검은 `uvx --from blender-fx-mcp blender-fx-doctor`(git 이 없어도 됨).
   README·`examples/`(설정 3개·README·스크립트 2개)·doctor 등록 안내·연결 거부 오류·버그 양식. troubleshooting 에 "새 판이 나왔는데 예전 판이 돎"
   (`uv cache clean blender-fx-mcp`, 미출시 `main` 은 `git+` 주소로) 절
+- doctor "출력 폴더 여유 공간" 이 5GB 아래면 출력 폴더의 큰 묶음(구운 캐시 `cache_*`·스냅샷·렌더 결과)과 크기를 큰 것부터 보이고,
+  지울 방법(`clear_caches`·`clear_snapshots`·날짜 폴더를 손으로)을 같은 순서로 짝지어 안내. 100MB 아래 묶음은 빼고, 다 작으면
+  "출력 폴더는 작아서 지워도 소용없음" 이라고 말한다(전에는 크기와 상관없이 늘 `clear_caches` 를 권함)
 - `scripts/release_check.py --tag v0.8.0`: 밀 태그가 `v` + pyproject 판인지 본다. `v` 가 빠졌거나 판이 다르면 고칠 곳과
   이미 밀었을 때 지우는 명령을 적는다. `release.yml` build 잡도 셸 비교 대신 같은 명령(`--tag "${GITHUB_REF_NAME}"`)을 돈다
 

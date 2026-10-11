@@ -36,3 +36,22 @@ def folder_bytes(path: str | os.PathLike) -> int:
 
 def gb(n: int) -> str:
     return f"{n / 1024**3:.1f}GB"
+
+
+def usage_groups(root: str | os.PathLike) -> list[tuple[str, int, int]]:
+    """출력 폴더를 지울 수 있는 단위로 묶은 (묶음, 바이트, 폴더 수), 큰 것부터. 빈 묶음은 뺀다.
+    caches: 구운 캐시(cache_*, clear_caches), snapshots: 스냅샷(clear_snapshots), runs: 렌더·미리보기 등 실행 결과(손으로)."""
+    sizes = {"caches": [0, 0], "snapshots": [0, 0], "runs": [0, 0]}
+    try:
+        entries = list(os.scandir(root))
+    except OSError:
+        return []
+    for e in entries:
+        key = "caches" if e.name.startswith("cache_") else "snapshots" if e.name == "snapshots" else "runs"
+        try:
+            n = folder_bytes(e.path) if e.is_dir(follow_symlinks=False) else e.stat(follow_symlinks=False).st_size
+        except OSError:
+            continue
+        sizes[key][0] += n
+        sizes[key][1] += 1
+    return sorted(((k, b, c) for k, (b, c) in sizes.items() if b), key=lambda x: -x[1])

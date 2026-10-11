@@ -144,9 +144,9 @@ Lower `resolution` or `frames` and try again; free disk space with `clear_caches
 > Only 0.4GB of disk space is left, so the bake was not started (water and smoke caches take several GB).
 
 굽기 전에 서버가 멈춘 것이라 장면은 바뀌지 않았습니다. AI 에게 `clear_caches` 를 시켜 구운 캐시를 지우고(오래된 스냅샷은 `clear_snapshots`), 그래도 모자라면 MCP 설정의 `BLENDER_FX_OUT` 을
-여유 있는 디스크의 폴더로 바꾼 뒤 다시 시킵니다. `blender-fx-doctor` 의 "출력 폴더 여유 공간" 줄이 남은 공간과 이 폴더가 쓰는 공간을 보여 줍니다.
+여유 있는 디스크의 폴더로 바꾼 뒤 다시 시킵니다. `blender-fx-doctor` 의 "출력 폴더 여유 공간" 줄이 남은 공간과 이 폴더가 쓰는 공간을, 5GB 아래면 큰 것(구운 캐시·스냅샷·렌더 결과)과 크기, 그것을 지울 도구를 큰 것부터 보여 줍니다.
 The server stopped before baking, so the scene is unchanged. Ask the AI to run `clear_caches` (and `clear_snapshots` for old snapshots); if that is not enough, point `BLENDER_FX_OUT` to a folder on a
-disk with more space, then ask again. The "output folder free space" line of `blender-fx-doctor` shows free space and what this folder uses.
+disk with more space, then ask again. The "output folder free space" line of `blender-fx-doctor` shows free space and what this folder uses; below 5GB it also lists the largest parts (baked caches, snapshots, render results) with their size and the tool that clears each, largest first.
 
 ## Black preview, effect not visible
 

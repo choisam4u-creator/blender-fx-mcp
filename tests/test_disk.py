@@ -20,7 +20,10 @@ def test_doctor_space_check(monkeypatch, tmp_path, lang):
     monkeypatch.setattr(disk, "free_bytes", lambda p: 2 * 1024**3)
     c = doctor._space_check(str(tmp_path))
     assert c["id"] == "space" and c["optional"] and not c["ok"]
-    assert "2.0GB" in c["detail"] and "5.0GB" in c["detail"] and "clear_caches" in c["fix"]
+    assert "2.0GB" in c["detail"] and "5.0GB" in c["detail"]
+    # 출력 폴더가 작으면 지워도 소용없다고 말한다(엉뚱한 clear_caches 를 권하지 않음)
+    assert "clear_caches" not in c["fix"] and "BLENDER_FX_OUT" in c["fix"]
+    assert ("작아서 지워도 소용없음" if lang == "ko" else "clearing it will not help") in c["fix"]
     monkeypatch.setattr(disk, "free_bytes", lambda p: 50 * 1024**3)
     c = doctor._space_check(str(tmp_path))
     assert c["ok"] and c["fix"] == "" and "50.0GB" in c["detail"]
@@ -36,7 +39,51 @@ def test_low_space_is_optional_next_step_not_failure(monkeypatch, tmp_path, caps
     with pytest.raises(SystemExit) as e:
         doctor.main([])
     out = capsys.readouterr().out
-    assert e.value.code == 0 and "[- ] output folder free space" in out and "(optional) Ask the AI to run clear_caches" in out
+    assert e.value.code == 0 and "[- ] output folder free space" in out and "(optional) The output folder is small" in out
+
+
+def _fill(root, name, n):
+    d = root / name
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "f.bin").write_bytes(b"0" * n)
+
+
+def test_usage_groups(tmp_path):
+    _fill(tmp_path, "cache_fluid", 3000)
+    _fill(tmp_path, "cache_emit", 1000)
+    _fill(tmp_path, "snapshots", 500)
+    _fill(tmp_path, "20261011-101010_render_final", 2000)
+    _fill(tmp_path, "20261011-101011_preview", 10)
+    (tmp_path / "loose.png").write_bytes(b"0" * 5)
+    assert disk.usage_groups(tmp_path) == [("caches", 4000, 2), ("runs", 2015, 3), ("snapshots", 500, 1)]
+    assert disk.usage_groups(tmp_path / "없음") == []
+    (tmp_path / "empty").mkdir()
+    assert disk.usage_groups(tmp_path / "empty") == []
+
+
+@pytest.mark.parametrize("lang", ["ko", "en"])
+def test_low_space_names_biggest_groups_and_their_tools(monkeypatch, tmp_path, lang):
+    """여유가 5GB 아래면 큰 묶음(캐시·스냅샷·렌더 결과)과 크기, 그 묶음을 지우는 도구를 큰 것부터 짝지어 말한다."""
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    monkeypatch.setattr(disk, "free_bytes", lambda p: 2 * 1024**3)
+    monkeypatch.setattr(doctor, "GROUP_MIN_BYTES", 1000)
+    _fill(tmp_path, "snapshots", 5000)
+    _fill(tmp_path, "cache_liquid", 9000)
+    _fill(tmp_path, "20261011-101010_render_final", 3000)
+    _fill(tmp_path, "20261011-101011_preview", 10)
+    c = doctor._space_check(str(tmp_path))
+    labels = (["구운 캐시(cache_*)", "스냅샷(snapshots)", "렌더·미리보기 결과"] if lang == "ko"
+              else ["baked caches (cache_*)", "snapshots", "render and preview results"])
+    pos = [c["detail"].index(label) for label in labels]
+    assert pos == sorted(pos), c["detail"]  # 큰 것부터
+    tools = [c["fix"].index(x) for x in ("clear_caches", "clear_snapshots", "(2")]
+    assert tools == sorted(tools), c["fix"]  # 고칠 방법도 같은 순서, 렌더 결과는 폴더 수와 함께 손으로
+    assert c["fix"].endswith("BLENDER_FX_OUT 을 여유 있는 디스크의 폴더로 지정" if lang == "ko"
+                             else "point BLENDER_FX_OUT to a folder on a disk with more space")
+    assert (f"최근 {server.SNAPSHOT_KEEP}개" if lang == "ko" else f"newest {server.SNAPSHOT_KEEP}") in c["fix"]
+    monkeypatch.setattr(doctor, "GROUP_MIN_BYTES", 6000)  # 작은 묶음은 빼고 캐시만
+    c = doctor._space_check(str(tmp_path))
+    assert "clear_caches" in c["fix"] and "clear_snapshots" not in c["fix"] and "(2" not in c["fix"]
 
 
 @pytest.mark.parametrize("call", [
