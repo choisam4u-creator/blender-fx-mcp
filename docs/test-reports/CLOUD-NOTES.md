@@ -31,7 +31,7 @@ uv run python examples/first_render.py && BLENDER_FX_LANG=en uv run python -c "f
   **`scripts/bpy_tests.sh`(bpy 5.0.1) → 920 통과, 6 건너뜀**(유체 `app_only` 5개·실제 캐릭터 파일 1개 — 블렌더 앱·파일 필요). `uvx ruff@0.15.20 check .` 통과.
   release.yml build 단계를 로컬에서 그대로(태그 v0.7.0 일치·v0.6.9 불일치 검출, release_check 8개, `uv build`, `--dist` 25개, twine PASSED). actionlint 통과.
   못 돌린 것: release.yml 실제 실행(태그를 밀어야 돎 — 사람 몫), PyPI 신뢰 게시자·환경 `pypi` 설정(저장소·PyPI 설정 화면).
-- 막힌 것: 없음.
+- 막힌 것: 없음. 상대 경로 변경이 Windows CI 에서 시험 4개를 깨뜨림(`"/m/tower.glb"` 는 Windows 에서 드라이브가 없어 상대 경로) → 다른 세션이 `d6199cf` 로 시험을 이 OS 의 절대 경로로 고침(제품 동작은 그대로).
 - 완료 수·추가 수: **완료 6**(F1·F3 + 백로그 4) / **추가 5**. 남은 `[ ]` 6개.
 - 출시 전 사람이 할 것: PyPI 프로젝트 설정 → Publishing 에 저장소·`release.yml`·환경 `pypi` 신뢰 게시자 등록, GitHub Settings → Environments 에 `pypi`(필수 검토자) 생성 → 그다음 태그.
 - Mac에서 확인할 것: 맨 위 명령 3줄.
