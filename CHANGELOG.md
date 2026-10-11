@@ -17,6 +17,7 @@
   and the tool that clears each, largest first; if the folder is small it says clearing it will not help.
 - `blender-fx-doctor` says when PyPI has a newer release and how to get it (`uv cache clean blender-fx-mcp`); quiet when offline or with `BLENDER_FX_NO_UPDATE_CHECK=1`.
 - `scripts/release_notes.py vX.Y.Z` prints a CHANGELOG section as GitHub release notes (English summary first); step 8 of the release procedure uses it.
+  `--draft` previews an unreleased section.
 - `scripts/release_check.py --tag v0.8.0` checks the tag you are about to push against the version, with the same rule the release workflow uses.
 
 *Tests and CI*
@@ -49,6 +50,7 @@
 - README 첫 화면에 PyPI 판 배지(패키지 이름이 pyproject 와 같은지 시험). 파이썬 판 배지는 PyPI 분류자 대신 main 의 pyproject 를 따름
 - `scripts/release_notes.py vX.Y.Z`: CHANGELOG 의 그 절을 GitHub 릴리스 본문으로(영어 요약 먼저, 절 맨 앞 관리자 메모는 빼고, 끝에 PyPI 주소).
   없는 판·미출시 판은 종료 코드 1. 출시 절차 8단계가 손 복사 대신 이 명령을 쓴다(자동 게시는 하지 않음)
+  `--draft` 면 미출시 절도 맨 위에 초안 표시를 달아(PyPI 설치 줄 없이) 미리 보여 준다
 - doctor "새 판" 선택 줄: PyPI 에 설치된 판보다 새 판이 있으면 `uv cache clean blender-fx-mcp` 뒤 클라이언트 재시작을 안내(pip 면 `pip install -U`).
   2초 제한, 네트워크가 없거나 `BLENDER_FX_NO_UPDATE_CHECK=1` 이면 줄 없이 건너뜀. MCP `doctor` 도구에서는 묻지 않음
 - `scripts/release_check.py --tag v0.8.0`: 밀 태그가 `v` + pyproject 판인지 본다. `v` 가 빠졌거나 판이 다르면 고칠 곳과

@@ -367,7 +367,7 @@ def test_release_notes_for_released_version(capsys):
 
 
 @pytest.mark.parametrize("arg, code, says", [
-    ("v9.9.9", 1, "no 9.9.9 section"), ("v0.8.0", 1, "no release date yet"), ("latest", 2, "usage"),
+    ("v9.9.9", 1, "no 9.9.9 section"), ("v0.8.0", 1, "use --draft"), ("latest", 2, "usage"),
 ])
 def test_release_notes_refuses_missing_or_unreleased(capsys, arg, code, says):
     assert _release_notes().main([arg]) == code
@@ -378,3 +378,14 @@ def test_release_notes_refuses_missing_or_unreleased(capsys, arg, code, says):
 def test_release_procedure_uses_release_notes_script():
     text = (ROOT / "docs" / "maintenance.md").read_text(encoding="utf-8")
     assert text.count("scripts/release_notes.py vX.Y.Z") >= 2, "출시 절차 한/영 8단계가 이 명령을 써야 함"
+
+
+def test_release_notes_draft_previews_unreleased(capsys):
+    rn = _release_notes()
+    assert rn.main(["--draft", "v0.8.0"]) == 0
+    out = capsys.readouterr().out
+    assert out.startswith("> 초안 / Draft") and "**English summary**" in out
+    assert "pypi.org" not in out and "uvx blender-fx-mcp@" not in out, "아직 PyPI 에 없는 판에 설치 줄"
+    assert "## [0.7.0]" not in out
+    assert rn.main(["v0.7.0", "--draft"]) == 0  # 출시된 판은 --draft 여도 평소와 같다
+    assert capsys.readouterr().out.rstrip().endswith("`uvx blender-fx-mcp@0.7.0`")
