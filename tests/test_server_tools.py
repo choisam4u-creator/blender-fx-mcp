@@ -333,3 +333,32 @@ def test_restore_remote_blender_skips_local_check(fake, monkeypatch, tmp_path):
     monkeypatch.setenv("BLENDER_FX_HOST", "studio-mac.local")
     server.restore("only_on_the_other_machine")
     assert [r for r, _ in fake] == ["snapshot", "restore"]
+
+
+def test_restore_before_restore_swaps_instead_of_losing_it(fake, monkeypatch, tmp_path):
+    """'되돌리기를 되돌리기': before_restore 로 되돌릴 때 지금 장면 저장이 그 파일을 덮어쓰면 기록을 잃는다.
+    원본을 .swap 으로 옮겨 그것을 열고, 지금 장면이 새 before_restore 가 된다(두 번 하면 처음으로 돌아옴)."""
+    monkeypatch.setenv("BLENDER_FX_LANG", "en")
+    snaps = tmp_path / "snapshots"
+    (snaps / "before_restore.blend").write_bytes(b"S0")
+    text = server.restore("before_restore")
+    (r1, p1), (r2, p2) = fake
+    assert (r1, r2) == ("snapshot", "restore")
+    assert p1["path"] == str(snaps / "before_restore.blend")  # 지금 장면(S1)을 저장
+    assert p2["path"] == str(snaps / ".swap" / "before_restore.blend")  # 연 것은 옮겨 둔 원본(S0)
+    assert (snaps / ".swap" / "before_restore.blend").read_bytes() == b"S0"
+    assert text.endswith("The previous state was saved as before_restore.")
+
+
+def test_restore_before_restore_refused_for_remote_blender(fake, monkeypatch, tmp_path):
+    monkeypatch.setenv("BLENDER_FX_HOST", "studio-mac.local")
+    monkeypatch.setenv("BLENDER_FX_LANG", "en")
+    text = server.restore("before_restore")
+    assert fake == [] and text.startswith("Failed: ") and "remote Blender" in text
+
+
+@pytest.mark.parametrize("name", ["before_restore", "before restore"])
+def test_snapshot_reserves_before_restore(fake, monkeypatch, name):
+    monkeypatch.setenv("BLENDER_FX_LANG", "en")
+    text = server.snapshot(name)
+    assert fake == [] and text.startswith("Failed: ") and "another name" in text

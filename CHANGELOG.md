@@ -11,15 +11,15 @@
 - Python 3.11 or newer is required. Python 3.10 reached end of life in 2026-10; 0.7.0 is the last release that supports it.
 
 *Fixes*
+- `restore("before_restore")` (undoing an undo) no longer overwrites the state it goes back to; the two states swap.
 - Install commands now use the PyPI package: `uvx blender-fx-mcp` (and `uvx --from blender-fx-mcp blender-fx-doctor`); git is no longer needed.
   The README, `examples/`, doctor, the connection-refused error and the bug form all use it. Troubleshooting explains how to get a newer release.
 - When less than 5GB is free, doctor names the largest parts of the output folder (baked caches, snapshots `clear_snapshots` would delete, render results, loose files) with their size
   and the tool that clears each, largest first; if the folder is small it says clearing it will not help.
 - Progress notifications use plain words ("Baking the liquid — 45s so far") instead of internal recipe names.
 - `blender-fx-doctor` says when PyPI has a newer release and how to get it (`uv cache clean blender-fx-mcp`); quiet when offline or with `BLENDER_FX_NO_UPDATE_CHECK=1`.
-- `scripts/release_notes.py vX.Y.Z` prints a CHANGELOG section as GitHub release notes (English summary first); step 8 of the release procedure uses it.
-  `--draft` previews an unreleased section.
-- `scripts/release_check.py --tag v0.8.0` checks the tag you are about to push against the version, with the same rule the release workflow uses.
+- Maintainer scripts: `release_notes.py vX.Y.Z` prints a CHANGELOG section as GitHub release notes (`--draft` for an unreleased one),
+  and `release_check.py --tag vX.Y.Z` checks a tag before it is pushed, with the same rule the release workflow uses.
 
 *Tests and CI*
 - `examples/first_render.py` runs end to end in tests against the real server and a fake Blender receiver socket
@@ -39,6 +39,8 @@
   간접 의존성 `exceptiongroup` 이 빠져 제3자 라이선스 표도 39개. 시험의 `importorskip("tomllib")` 는 보통 import 로
 
 **고침**
+- `restore("before_restore")`(되돌리기를 되돌리기)가 되돌아갈 파일을 지금 장면으로 먼저 덮어써 그 상태를 잃던 문제. 원본을 옮겨 두고 열어 두 상태가 맞바뀐다.
+  `snapshot` 에 `before_restore` 이름은 쓸 수 없게(예약)
 - 설치 명령을 PyPI 패키지로: `uvx blender-fx-mcp`, 점검은 `uvx --from blender-fx-mcp blender-fx-doctor`(git 이 없어도 됨).
   README·`examples/`(설정 3개·README·스크립트 2개)·doctor 등록 안내·연결 거부 오류·버그 양식. troubleshooting 에 "새 판이 나왔는데 예전 판이 돎"
   (`uv cache clean blender-fx-mcp`, 미출시 `main` 은 `git+` 주소로) 절

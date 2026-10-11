@@ -14,6 +14,7 @@ import difflib
 import json
 import os
 import re
+import shutil
 import threading
 import time
 from pathlib import Path
@@ -111,6 +112,9 @@ def out_root() -> Path:
     root = Path(os.environ.get("BLENDER_FX_OUT", "~/blender-fx-output")).expanduser()
     root.mkdir(parents=True, exist_ok=True)
     return root
+
+
+AUTO_SNAPSHOT = "before_restore"  # restore 가 되돌리기 직전 장면을 자동 저장하는 스냅샷 이름
 
 
 def snapshot_dir() -> Path:
@@ -1009,8 +1013,12 @@ def set_render(samples: int = 0, motion_blur: bool | None = None, shutter: float
 def snapshot(name: str = "") -> str:
     """Save the current scene as a snapshot you can go back to.
     지금 장면을 저장한다. 되돌리고 싶을 수 있는 작업 전에 부른다."""
+    label = re.sub(r"[^\w\-]+", "_", name)[:40] or time.strftime("%Y%m%d-%H%M%S")
+    if label == AUTO_SNAPSHOT:  # restore 가 자동으로 쓰는 이름. 사용자가 쓰면 되돌릴 곳이 섞인다
+        return _fail(BlenderError(t(
+            f"'{AUTO_SNAPSHOT}' 은 restore 가 직전 상태를 자동으로 저장하는 이름이라 쓸 수 없습니다. 다른 이름으로 다시 시키세요.",
+            f"'{AUTO_SNAPSHOT}' is the name restore uses to auto-save the previous state. Ask again with another name.")))
     try:
-        label = re.sub(r"[^\w\-]+", "_", name)[:40] or time.strftime("%Y%m%d-%H%M%S")
         res = run_recipe("snapshot", dict(path=str(snapshot_dir() / f"{label}.blend")), timeout=long_timeout())
     except BlenderError as e:
         return _fail(e)
@@ -1094,13 +1102,27 @@ def restore(name: str) -> str:
     if bridge.is_local() and not target.exists():
         # 이름이 틀렸는데 자동 저장부터 하면 지난 before_restore 를 덮어써 진짜 되돌릴 곳을 잃는다. 블렌더에 보내기 전에 막는다
         return _fail(BlenderError(_missing_snapshot(label)))
+    source = target
+    if label == AUTO_SNAPSHOT:
+        # before_restore 로 되돌릴 때 자동 저장을 먼저 하면 되돌아갈 그 파일을 지금 장면으로 덮어써 기록을 잃는다.
+        # 같은 컴퓨터면 원본을 옆 폴더로 옮겨 두고 그것을 연다(지금 장면이 새 before_restore 가 되어 서로 맞바뀜).
+        if not bridge.is_local():
+            return _fail(BlenderError(t(
+                "다른 컴퓨터의 블렌더에서는 before_restore 로 되돌릴 수 없습니다(지금 장면을 저장하면 그 파일을 덮어씀). "
+                "snapshot 으로 지금 장면을 다른 이름으로 저장한 뒤, 블렌더에서 before_restore.blend 를 직접 여세요.",
+                "Restoring before_restore is not supported with a remote Blender (saving the current scene would overwrite it). "
+                "Save the current scene with snapshot under another name, then open before_restore.blend in Blender yourself.")))
+        swap = snapshot_dir() / ".swap"
+        swap.mkdir(exist_ok=True)
+        source = swap / f"{AUTO_SNAPSHOT}.blend"
+        shutil.copy2(target, source)
     auto = True
     try:
-        run_recipe("snapshot", dict(path=str(snapshot_dir() / "before_restore.blend")), timeout=long_timeout())
+        run_recipe("snapshot", dict(path=str(target.with_name(f"{AUTO_SNAPSHOT}.blend"))), timeout=long_timeout())
     except BlenderError:
         auto = False
     try:
-        res = run_recipe("restore", dict(path=str(snapshot_dir() / f"{label}.blend")), timeout=300.0)
+        res = run_recipe("restore", dict(path=str(source)), timeout=300.0)
     except BlenderError as e:
         return _fail(e)
     text = t(
