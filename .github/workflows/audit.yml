@@ -23,7 +23,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
-      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5.4.2
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
       # 잠금 파일 그대로(해시 포함) 내보내고, 설치 없이(--disable-pip) 판만 대조한다
       - run: uv export --locked --all-groups --no-emit-project --format requirements-txt -o requirements-audit.txt
       - run: uvx pip-audit@2.9.0 -r requirements-audit.txt --disable-pip --progress-spinner off
