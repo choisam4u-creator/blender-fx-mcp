@@ -47,6 +47,21 @@ gh label create "stale" --color ededed --description "needs-info 마감 7일 전
 - 출시 주기 목표: 고침이 쌓이면 패치, 새 도구가 모이면 마이너. 고칠 것이 있는데 3개월 넘게 출시가 없게 두지 않는다.
 - 출시 전에 `uv run python scripts/release_check.py --build` 가 모두 OK 여야 하고, 태그를 밀기 전에 `--tag v0.7.0` 으로 태그와 판이 맞는지 본다(release.yml 과 같은 규칙). 태그·PyPI·레지스트리 순서는 [docs/registry.md](registry.md).
 
+### 출시 절차
+
+한 번의 출시를 사람의 기억이 아니라 이 순서로 재현한다. 0.7.0 은 2026-10-11 태그 push 로 release.yml 첫 실행(성공, 44초)이 PyPI 에 올렸다.
+
+1. **판 올리기** — 버전 네 곳과 `uv.lock` 루트 판, CHANGELOG 맨 위 절 제목을 `## [X.Y.Z] - YYYY-MM-DD` 로(PR 로 main 에 병합).
+2. **점검** — main 에서 `uv run python scripts/release_check.py --build --tag vX.Y.Z` 가 모두 OK.
+3. **태그** — `git tag vX.Y.Z && git push origin vX.Y.Z`. 태그 push 만이 [`.github/workflows/release.yml`](../.github/workflows/release.yml) 을 띄운다.
+4. **빌드** — `build` 잡(읽기 권한)이 같은 `release_check.py --tag`, `uv build`, `--dist dist`, twine 점검 뒤 artifact `dist` 를 올린다.
+5. **승인** — `publish` 잡은 환경 `pypi` 를 쓴다. 저장소 Settings → Environments → `pypi` 에 필수 검토자(관리자)를 두면 여기서 멈추고, Actions 화면에서 빌드 기록을 본 뒤 **Approve** 한다(두지 않으면 바로 게시된다).
+6. **PyPI 확인** — `https://pypi.org/project/blender-fx-mcp/X.Y.Z/` 가 열리고 `uvx --refresh --from blender-fx-mcp==X.Y.Z blender-fx-doctor` 가 돈다.
+7. **레지스트리** — [docs/registry.md](registry.md) 의 등록 순서 3~7(`mcp-publisher publish`).
+8. **릴리스 노트** — GitHub Releases 에서 태그 `vX.Y.Z` 로 새 릴리스, 본문은 CHANGELOG 의 그 절을 그대로 복사.
+
+태그를 잘못 밀었으면(빌드 잡이 빨감) `git push --delete origin vX.Y.Z` 로 지우고 고친 커밋에 다시 단다. PyPI 에 올라간 판은 지울 수 없으니 판을 올린다.
+
 ### 지원 판 정리 기준
 
 - **파이썬**: 공식 지원이 끝난 판(EOL)은 그 뒤 첫 마이너 출시에서 뺀다. `pyproject.toml` 의 분류자·`requires-python`, ruff `target-version`, CI 행렬, SUPPORT.md 표, README 배지, architecture.md, 이 문서, `uv lock` 을 함께 고친다. 분류자만 바꾸고 `uv run pytest -q tests/test_repo_files.py -k python_version_range` 를 돌리면 어긋난 곳을 모두 알려 준다.
@@ -91,6 +106,21 @@ Labels are defined in [`.github/labels.yml`](../.github/labels.yml). Every label
 - Behavior changes are listed as such in [CHANGELOG.md](../CHANGELOG.md).
 - Release cadence goal: a patch when fixes pile up, a minor when new tools are ready. Fixes should not wait more than 3 months for a release.
 - Before a release, `uv run python scripts/release_check.py --build` must be all OK, and before pushing a tag run it with `--tag v0.7.0` to check the tag matches the version (same rule as release.yml). Tag, PyPI and registry steps are in [docs/registry.md](registry.md).
+
+### Release procedure
+
+Every release follows these steps, so it does not depend on one person's memory. 0.7.0 was published to PyPI by the first release.yml run (2026-10-11, success, 44 s) after its tag push.
+
+1. **Bump**: the four version fields, the root package in `uv.lock`, and the top CHANGELOG heading as `## [X.Y.Z] - YYYY-MM-DD` (merged to main through a PR).
+2. **Check**: on main, `uv run python scripts/release_check.py --build --tag vX.Y.Z` is all OK.
+3. **Tag**: `git tag vX.Y.Z && git push origin vX.Y.Z`. Only a tag push starts [`.github/workflows/release.yml`](../.github/workflows/release.yml).
+4. **Build**: the `build` job (read-only) runs the same `release_check.py --tag`, `uv build`, `--dist dist` and twine checks, then uploads the `dist` artifact.
+5. **Approve**: the `publish` job uses the `pypi` environment. With a required reviewer (the maintainer) set in Settings → Environments → `pypi`, it waits here: review the build in the Actions page and **Approve** it (without one it publishes right away).
+6. **Check PyPI**: `https://pypi.org/project/blender-fx-mcp/X.Y.Z/` opens and `uvx --refresh --from blender-fx-mcp==X.Y.Z blender-fx-doctor` runs.
+7. **Registry**: steps 3 to 7 of the registration order in [docs/registry.md](registry.md) (`mcp-publisher publish`).
+8. **Release notes**: create a GitHub release from tag `vX.Y.Z` and paste that CHANGELOG section as the body.
+
+If a wrong tag was pushed (the build job is red), delete it with `git push --delete origin vX.Y.Z` and tag the fixed commit. A version already on PyPI cannot be replaced, so bump the version instead.
 
 ### Dropping old versions
 

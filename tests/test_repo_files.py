@@ -1132,3 +1132,25 @@ def test_bug_form_clients_match_doctor_json():
     opts = _options(block)[:-1]
     assert sorted(opts) == sorted({c for c, _ in doctor.client_configs()})
     assert "`clients`" in block and "Tools not visible in the client" in block
+
+
+@pytest.mark.parametrize("title", ["### 출시 절차", "### Release procedure"])
+def test_maintenance_release_procedure_matches_workflow(title):
+    """출시 절차(한/영)가 release.yml 의 파일·잡·환경·artifact 이름, release_check 명령과 같아야 한다.
+    워크플로 이름을 바꾸면 문서도 바꾸게."""
+    text = MAINT.read_text(encoding="utf-8")
+    start = text.index(title)
+    section = text[start:text.index("\n### ", start + len(title))]
+    wf = (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
+    jobs = _job_bodies(wf)
+    env = re.search(r"^    environment: (\S+)$", jobs["publish"], re.M).group(1)
+    artifact = re.search(r"^          name: (\S+)$", jobs["build"], re.M).group(1)
+    assert "](../.github/workflows/release.yml)" in section
+    for job in jobs:
+        assert f"`{job}`" in section, f"{title}: 잡 {job} 이 없음"
+    assert f"`{env}`" in section and f"`{artifact}`" in section
+    assert "release_check.py --build --tag vX.Y.Z" in section and "release_check.py --tag" in section
+    assert "git push origin vX.Y.Z" in section and "git push --delete origin vX.Y.Z" in section
+    assert "](registry.md)" in section and "CHANGELOG" in section
+    steps = re.findall(r"^(\d+)\. ", section, re.M)
+    assert steps == [str(i) for i in range(1, 9)], steps
