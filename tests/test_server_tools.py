@@ -329,10 +329,33 @@ def test_restore_without_snapshots_says_save_first(monkeypatch, tmp_path):
 
 
 def test_restore_remote_blender_skips_local_check(fake, monkeypatch, tmp_path):
-    """다른 컴퓨터의 블렌더면 스냅샷이 그쪽 디스크에 있으니 이 컴퓨터에서 막지 않는다."""
+    """다른 컴퓨터의 블렌더면 스냅샷이 그쪽 디스크에 있으니 이 컴퓨터에서 막지 않고, 블렌더에 있는지 물은 뒤 되돌린다."""
     monkeypatch.setenv("BLENDER_FX_HOST", "studio-mac.local")
+    asked = []
+    monkeypatch.setattr(server.bridge, "run_python", lambda code, timeout=None: asked.append(code) or "True\n")
     server.restore("only_on_the_other_machine")
     assert [r for r, _ in fake] == ["snapshot", "restore"]
+    assert "only_on_the_other_machine.blend" in asked[0] and "os.path.exists" in asked[0]
+
+
+@pytest.mark.parametrize("answer", ["False\n", ""])
+def test_restore_remote_missing_name_keeps_before_restore(fake, monkeypatch, answer):
+    """원격 블렌더에도 이름이 틀리면 자동 저장(before_restore 덮어쓰기) 전에 멈춘다."""
+    monkeypatch.setenv("BLENDER_FX_HOST", "studio-mac.local")
+    monkeypatch.setenv("BLENDER_FX_LANG", "en")
+    monkeypatch.setattr(server.bridge, "run_python", lambda code, timeout=None: answer)
+    text = server.restore("typo_name")
+    assert fake == [] and text.startswith("Failed: ") and "no snapshot 'typo_name'" in text and "untouched" in text
+
+
+def test_restore_remote_query_failure_is_reported(fake, monkeypatch):
+    monkeypatch.setenv("BLENDER_FX_HOST", "studio-mac.local")
+
+    def down(code, timeout=None):
+        raise BlenderError("down")
+
+    monkeypatch.setattr(server.bridge, "run_python", down)
+    assert server.restore("x").endswith("down") and fake == []
 
 
 def test_restore_before_restore_swaps_instead_of_losing_it(fake, monkeypatch, tmp_path):

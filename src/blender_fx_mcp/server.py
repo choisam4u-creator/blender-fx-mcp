@@ -1126,6 +1126,18 @@ def restore(name: str) -> str:
     if bridge.is_local() and not target.exists():
         # 이름이 틀렸는데 자동 저장부터 하면 지난 before_restore 를 덮어써 진짜 되돌릴 곳을 잃는다. 블렌더에 보내기 전에 막는다
         return _fail(BlenderError(_missing_snapshot(label)))
+    if not bridge.is_local() and label != AUTO_SNAPSHOT:
+        # 다른 컴퓨터의 블렌더면 그쪽 디스크에 있는지 블렌더에 먼저 묻는다(없는데 자동 저장부터 하면 before_restore 를 덮어씀)
+        try:
+            found = bridge.run_python(f"import os\nprint(os.path.exists({str(target)!r}))", timeout=30.0).strip()
+        except BlenderError as e:
+            return _fail(e)
+        if found.splitlines()[-1:] != ["True"]:
+            return _fail(BlenderError(t(
+                f"블렌더가 있는 컴퓨터에 스냅샷 '{label}' 이 없습니다({target}). 이름을 확인하세요(목록: list_snapshots). "
+                "직전 상태(before_restore)는 건드리지 않았습니다.",
+                f"There is no snapshot '{label}' on the Blender computer ({target}). Check the name (list: list_snapshots). "
+                "The previous state (before_restore) was left untouched.")))
     source = target
     if label == AUTO_SNAPSHOT:
         # before_restore 로 되돌릴 때 자동 저장을 먼저 하면 되돌아갈 그 파일을 지금 장면으로 덮어써 기록을 잃는다.
