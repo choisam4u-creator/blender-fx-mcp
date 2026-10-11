@@ -18,6 +18,8 @@ Python 3.10 을 뺄 때 함께 0.8.0 으로 올린다(그전까지 `release_chec
 - `scripts/release_check.py --tag v0.8.0` checks the tag you are about to push against the version, with the same rule the release workflow uses.
 
 *Tests and CI*
+- `examples/first_render.py` runs end to end in tests against the real server and a fake Blender receiver socket
+  (five progress lines, exit 0 and the PNG paths; a recipe failure exits 1 with the error and the way back).
 - The release workflow checks the tag through `release_check.py --tag`, so the rule lives in one place and is tested.
 
 *Docs*
@@ -34,6 +36,8 @@ Python 3.10 을 뺄 때 함께 0.8.0 으로 올린다(그전까지 `release_chec
 - doctor "출력 폴더 여유 공간" 이 5GB 아래면 출력 폴더의 큰 묶음(구운 캐시 `cache_*`·스냅샷·렌더 결과)과 크기를 큰 것부터 보이고,
   지울 방법(`clear_caches`·`clear_snapshots`·날짜 폴더를 손으로)을 같은 순서로 짝지어 안내. 100MB 아래 묶음은 빼고, 다 작으면
   "출력 폴더는 작아서 지워도 소용없음" 이라고 말한다(전에는 크기와 상관없이 늘 `clear_caches` 를 권함)
+- 시험: `examples/first_render.py` 를 진짜 서버(stdio) + 가짜 블렌더 수신기(소켓, 애드온과 같은 JSON 규약)로 끝까지.
+  5단계 진행 줄·종료 코드 0·서버가 출력 폴더에 만든 PNG 경로·되돌리기 안내(한/영), 블렌더 안 레시피 실패면 오류 문장·렌더 안 부름·종료 코드 1
 - `scripts/release_check.py --tag v0.8.0`: 밀 태그가 `v` + pyproject 판인지 본다. `v` 가 빠졌거나 판이 다르면 고칠 곳과
   이미 밀었을 때 지우는 명령을 적는다. `release.yml` build 잡도 셸 비교 대신 같은 명령(`--tag "${GITHUB_REF_NAME}"`)을 돈다
 
