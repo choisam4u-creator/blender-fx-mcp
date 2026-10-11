@@ -191,7 +191,7 @@
 ### 2026-10-11 (12회차) 품질 감사 — 코드 전체를 읽어 찾은 실제 결함(사용자 요청 "퀄리티 개선 리스트업 후 바로 진행")
 
 - [x] (높음) `restore("before_restore")` 가 되돌아갈 그 파일을 지금 장면으로 먼저 덮어써 기록을 잃음 — 원본을 `snapshots/.swap/` 으로 옮겨 열고 지금 장면이 새 before_restore 가 되게(맞바꾸기). 다른 컴퓨터의 블렌더면 이 경우만 거절. `snapshot("before_restore")` 는 예약 이름이라 거절. 시험 4개
-- [ ] (중간) `destroy`·`reset_destroy(target=X)` 가 다른 효과(바다·물·연기·깃발·바람·다른 건물의 접착)까지 지움 — 대상이 있으면 그 대상의 것만
+- [x] (중간) `destroy`·`reset_destroy(target=X)` 가 다른 효과(바다·물·연기·깃발·바람·다른 건물의 접착)까지 지움 — 대상이 있으면 그 대상의 것만 — `TARGET_ROLES`(조각·접착·충격체·셀)만, 접착은 그 대상 조각을 묶은 것만, 조각이 모두 없어지면 먼지 원본도. bpy 시험 1개(옛 코드에서 바다가 지워져 실패하는 것 확인), bpy 전체 1052 통과
 - [x] (중간) `explode` 가 조각내기(수 분)를 마친 뒤에야 `resolution` 범위 검사에 걸려 장면이 반쯤 바뀐 채 남음 — 검사를 조각내기 전에 — 두 단계(destroy·explode) 인자 목록·범위와 디스크를 조각내기 전에 모두 검사. 시험 4개(resolution·frames·material·pieces 가 틀리면 블렌더에 아무것도 안 보냄)
 - [x] (중간) `set_render` 의 샘플·해상도가 렌더에서 무시됨(미리보기 품질 프리셋이 샘플을 영구히 덮고, `render_video` 는 늘 1280×720) — 렌더 뒤 되돌리고, 크기 0 이면 장면 값 — `render_state`/`restore_render_state`, `set_render` 가 장면에 사용자 값 표시(`fx_user_samples`·`fx_user_resolution`), final 은 그 샘플, `render_video` 크기 0 이면 그 크기·없으면 720p(도구 기본값 1280→0)
 - [x] (중간) 연결 뒤 끊김(블렌더가 굽다가 죽음)도 "연결할 수 없음·애드온 설치"로 안내, `BLENDER_FX_TIMEOUT=0`·숫자가 아닌 `BLENDER_FX_PORT` 가 모든 도구를 깨뜨림 — `check_env`(숫자·범위, 화면 표시는 기본값으로 버팀), 연결 뒤 OSError 는 끊김 문장, 해결법 문서 4문장. 시험 6+1개

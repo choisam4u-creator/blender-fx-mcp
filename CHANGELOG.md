@@ -12,6 +12,7 @@
 
 *Fixes*
 - `restore("before_restore")` (undoing an undo) no longer overwrites the state it goes back to; the two states swap.
+  `destroy`/`reset_destroy` with a target no longer delete unrelated effects (ocean, water, smoke, flag, wind) or other buildings' glue.
   Renders keep the samples and size set with `set_render` (previews no longer overwrite them; `render_video` uses them by default).
   A dropped connection mid-command, a cut-off reply and invalid `BLENDER_FX_TIMEOUT`/`BLENDER_FX_PORT` values now each get their own message.
 - Install commands now use the PyPI package: `uvx blender-fx-mcp` (and `uvx --from blender-fx-mcp blender-fx-doctor`); git is no longer needed.
@@ -41,6 +42,8 @@
   간접 의존성 `exceptiongroup` 이 빠져 제3자 라이선스 표도 39개. 시험의 `importorskip("tomllib")` 는 보통 import 로
 
 **고침**
+- `destroy(target=B)`·`reset_destroy(target=B)` 가 그 대상과 상관없는 효과(바다·물·연기·불·파티클·바람·깃발)와 다른 건물의 접착까지 지우던 문제.
+  대상을 정하면 그 대상의 조각·접착과 충격체만 지운다(대상 없이 `reset_destroy()` 는 전처럼 모두)
 - `set_render` 로 정한 샘플·크기를 렌더가 무시하던 문제: 미리보기·굽기 뒤 미리보기가 샘플을 16 으로 영구히 덮었고, `render_video` 는 늘 1280×720 이었다.
   이제 렌더는 바꾼 샘플을 되돌리고, `quality="final"` 은 `set_render` 의 샘플을, `render_video` 는 크기를 안 주면 `set_render` 크기(정한 적 없으면 720p)를 쓴다.
   `render_video(fps=60)` 결과에 옛 fps 를 보고하던 것, 미리보기가 중간에 실패하면 해상도·형식·경로·엔진이 바뀐 채 남던 것도 고침

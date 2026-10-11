@@ -184,17 +184,39 @@ def strip_fx_modifiers(obj):
     return n
 
 
+# 대상 하나를 다시 부술 때 지울 역할. 바다·물·연기·불·파티클·바람·깃발 같은 다른 효과는 남긴다(그 도구들이 각자 정리한다)
+TARGET_ROLES = ("chunk", "glue", "impactor", "cell")
+
+
+def _glue_of(o, target_name):
+    """접착 빈 객체가 target 의 조각끼리 묶는지. 묶은 조각을 모르면(깨진 제약) 지워도 되는 것으로 본다."""
+    c = getattr(o, "rigid_body_constraint", None)
+    ends = [x for x in ((c.object1, c.object2) if c else ()) if x is not None]
+    return not ends or any(x.get("fx_chunk_of") == target_name for x in ends)
+
+
 def cleanup_fx(target_name=None):
-    """이 도구가 만든 것을 지우고 원본을 되살린다. target_name 을 주면 그 대상의 조각만 지운다."""
+    """이 도구가 만든 것을 지우고 원본을 되살린다.
+    target_name 을 주면 그 대상의 조각·접착과 충격체만 지우고, 다른 대상의 조각과 다른 효과(바다·물·연기 등)는 남긴다."""
     removed = 0
     for o in list(bpy.data.objects):
         role = o.get(FX_TAG)
         if role not in FX_CLEANUP_ROLES:
             continue
-        if role == "chunk" and target_name and o.get("fx_chunk_of") != target_name:
-            continue
+        if target_name:
+            if role not in TARGET_ROLES:
+                continue
+            if role == "chunk" and o.get("fx_chunk_of") != target_name:
+                continue
+            if role == "glue" and not _glue_of(o, target_name):
+                continue
         remove_object(o)
         removed += 1
+    if target_name and not any(o.get(FX_TAG) == "chunk" for o in bpy.data.objects):
+        # 조각이 하나도 안 남으면 먼지 알갱이 원본도 쓸 데가 없다
+        for o in [x for x in bpy.data.objects if x.get(FX_TAG) == "dust"]:
+            remove_object(o)
+            removed += 1
     if target_name:
         t = bpy.data.objects.get(target_name)
         if t is not None:

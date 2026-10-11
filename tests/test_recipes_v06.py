@@ -189,3 +189,28 @@ def test_renders_keep_user_render_settings(tmp_path):
     assert video["ok"], video
     assert video["size"] == [320, 180] and video["fps"] == 30, video
     assert after_video["fps"] == 24 and after_video["samples"] == 200, after_video
+
+
+def test_destroy_and_reset_with_target_keep_other_effects(tmp_path):
+    """대상을 정해 부수기·되돌리기를 하면 그 대상의 것만 지운다. 바다 같은 다른 효과와 다른 건물의 조각은 남는다.
+    (전에는 destroy(target=B) 가 바다·물·연기·깃발·바람·다른 건물의 접착까지 지웠다)"""
+    results = run_steps([
+        ("demo_scene", {}),
+        ("demo_scene", {"name": "Tower", "width": 2.0, "depth": 2.0}),
+        ("ocean", {"size": 30, "frames": 24}),
+        ("destroy", {"target": "Building", "pieces": 12, "glue": "weak", "frames": 24, "dust": "none"}),
+        ("destroy", {"target": "Tower", "pieces": 12, "frames": 24, "dust": "none"}),
+        ("list_objects", {}),
+        ("reset", {"target": "Tower"}),
+        ("list_objects", {}),
+        ("reset", {}),
+        ("list_objects", {}),
+    ], blender=BLENDER)
+    assert all(r["ok"] for r in results), [r for r in results if not r["ok"]]
+    roles = lambda r: {o["fx_role"] for o in r["objects"]}  # noqa: E731
+    both, after_tower, after_all = results[5], results[7], results[9]
+    assert "ocean" in roles(both) and both["chunk_count"] >= 20, both
+    assert "ocean" in roles(after_tower) and 8 <= after_tower["chunk_count"] < both["chunk_count"], after_tower
+    tower = next(o for o in after_tower["objects"] if o["name"] == "Tower")
+    assert not tower["hidden"], tower  # 되돌린 대상은 다시 보임
+    assert after_all["chunk_count"] == 0 and "ocean" not in roles(after_all), after_all
