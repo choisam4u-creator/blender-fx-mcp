@@ -485,3 +485,75 @@ def test_issue_and_json_are_exclusive(capsys):
     with pytest.raises(SystemExit) as e:
         doctor.main(["--json", "--issue"])
     assert e.value.code == 2 and "--issue" in capsys.readouterr().err
+
+
+# ---- 새 판 알림 ----
+
+class _Resp:
+    def __init__(self, body):
+        self.body = body
+
+    def read(self):
+        return self.body
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+
+def _pypi(monkeypatch, body=None, exc=None):
+    calls = []
+
+    def fake(url, timeout=None):
+        calls.append((url, timeout))
+        if exc:
+            raise exc
+        return _Resp(body)
+
+    monkeypatch.delenv("BLENDER_FX_NO_UPDATE_CHECK", raising=False)
+    monkeypatch.setattr(doctor.urllib.request, "urlopen", fake)
+    return calls
+
+
+@pytest.mark.parametrize("lang", ["ko", "en"])
+def test_update_check_newer_release(monkeypatch, lang):
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    monkeypatch.setattr(doctor, "__version__", "0.7.0")
+    calls = _pypi(monkeypatch, json.dumps({"info": {"version": "0.8.1"}}).encode())
+    c = doctor._update_check()
+    assert calls == [(doctor.PYPI_JSON, 2.0)]
+    assert c["id"] == "update" and c["optional"] and not c["ok"]
+    assert "0.8.1" in c["detail"] and "0.7.0" in c["detail"]
+    assert "uv cache clean blender-fx-mcp" in c["fix"] and "BLENDER_FX_NO_UPDATE_CHECK=1" in c["fix"]
+
+
+@pytest.mark.parametrize("latest", ["0.7.0", "0.6.9"])
+def test_update_check_up_to_date(monkeypatch, latest):
+    monkeypatch.setattr(doctor, "__version__", "0.7.0")
+    _pypi(monkeypatch, json.dumps({"info": {"version": latest}}).encode())
+    c = doctor._update_check()
+    assert c["ok"] and c["fix"] == "" and latest in c["detail"]
+
+
+@pytest.mark.parametrize("body, exc", [
+    (None, TimeoutError("slow")), (None, OSError("offline")), (b"not json", None),
+    (json.dumps({"info": {}}).encode(), None), (json.dumps({"info": {"version": "1.0rc1"}}).encode(), None),
+    (json.dumps({"info": {"version": "0.7.0.post1"}}).encode(), None),  # 숫자 판이 아니면 알리지 않음
+])
+def test_update_check_is_quiet_on_failure(monkeypatch, body, exc):
+    _pypi(monkeypatch, body, exc)
+    assert doctor._update_check() is None
+
+
+def test_update_check_can_be_turned_off_and_is_cli_only(monkeypatch, env):
+    calls = _pypi(monkeypatch, json.dumps({"info": {"version": "9.9.9"}}).encode())
+    monkeypatch.setenv("BLENDER_FX_NO_UPDATE_CHECK", "1")
+    assert doctor._update_check() is None and calls == []
+    monkeypatch.delenv("BLENDER_FX_NO_UPDATE_CHECK")
+    ids = [c["id"] for c in doctor.run_checks()]
+    assert ids[:3] == ["python", "blender-fx-mcp", "update"]
+    assert "update" not in [c["id"] for c in doctor.run_checks(clients=False)]  # MCP doctor 도구는 묻지 않음
+    # 새 판이 있어도 선택 항목이라 종료 코드·"확인 필요"에 들어가지 않는다
+    assert "update" not in [c["id"] for c in doctor.failed(doctor.run_checks())]

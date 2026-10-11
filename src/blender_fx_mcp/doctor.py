@@ -15,6 +15,7 @@ import re
 import shutil
 import subprocess
 import sys
+import urllib.request
 from importlib import metadata
 
 from . import __version__, bridge, disk
@@ -146,8 +147,45 @@ def registered_clients() -> list[str]:
     return found
 
 
-def run_checks(clients: bool = True) -> list[dict]:
-    """준비물 항목들. clients=False 면 MCP 클라이언트 등록 항목을 뺀다(MCP doctor 도구에서)."""
+PYPI_JSON = "https://pypi.org/pypi/blender-fx-mcp/json"
+
+
+def latest_version(timeout: float = 2.0) -> str | None:
+    """PyPI 의 최신 판. 끔(BLENDER_FX_NO_UPDATE_CHECK=1)·네트워크 없음·느림·이상한 응답이면 None."""
+    if os.environ.get("BLENDER_FX_NO_UPDATE_CHECK", "").strip() not in ("", "0"):
+        return None
+    try:
+        with urllib.request.urlopen(PYPI_JSON, timeout=timeout) as resp:
+            version = json.loads(resp.read().decode("utf-8"))["info"]["version"]
+    except Exception:
+        return None
+    return version if isinstance(version, str) and re.fullmatch(r"\d+(\.\d+)*", version) else None
+
+
+def _version_key(version: str) -> tuple[int, ...]:
+    return tuple(int(n) for n in re.findall(r"\d+", version.split("+")[0])[:3])
+
+
+def _update_check() -> dict | None:
+    """새 판 알림(선택 항목). uvx 는 처음 받은 판을 계속 써서, 고친 판이 나와도 사용자가 모른다."""
+    latest = latest_version()
+    if latest is None:
+        return None
+    name = t("새 판", "newer release")
+    if _version_key(latest) <= _version_key(__version__):
+        return _check(name, True, t(f"최신(PyPI {latest})", f"up to date (PyPI {latest})"), "update", optional=True)
+    return _check(name, False, t(f"PyPI 에 {latest} 이 있음(지금 {__version__})", f"{latest} is on PyPI (you run {__version__})"),
+                  "update",
+                  t(f"새 판 받기: uv cache clean blender-fx-mcp 뒤 MCP 클라이언트 앱을 껐다 켜기(uvx 가 {latest} 을 받음). "
+                    "pip 로 깔았으면 pip install -U blender-fx-mcp. 이 확인을 끄려면 BLENDER_FX_NO_UPDATE_CHECK=1",
+                    f"Get it: uv cache clean blender-fx-mcp, then fully restart your MCP client (uvx fetches {latest}). "
+                    "If you installed with pip: pip install -U blender-fx-mcp. To skip this check: BLENDER_FX_NO_UPDATE_CHECK=1"),
+                  optional=True)
+
+
+def run_checks(clients: bool = True, updates: bool | None = None) -> list[dict]:
+    """준비물 항목들. clients=False 면 MCP 클라이언트 등록 항목을 뺀다(MCP doctor 도구에서).
+    updates(기본은 clients 와 같음)면 PyPI 에 새 판이 있는지도 묻는다(2초 제한, 실패하면 줄 없이 건너뜀)."""
     out: list[dict] = []
     v = sys.version_info
     out.append(_check("python", v >= (3, 10), f"{v.major}.{v.minor}.{v.micro} ({platform.system()} {platform.machine()})",
@@ -156,6 +194,10 @@ def run_checks(clients: bool = True) -> list[dict]:
 
     # 이슈에 붙인 결과만 보고 어느 판인지 알 수 있게 맨 위에 둔다
     out.append(_check("blender-fx-mcp", True, __version__, "blender-fx-mcp"))
+    if clients if updates is None else updates:
+        update = _update_check()
+        if update:
+            out.append(update)
 
     name_mcp = t("mcp 라이브러리", "mcp library")
     try:

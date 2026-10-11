@@ -204,10 +204,10 @@ FFmpeg output may be missing from this Blender build; use `render_preview` for f
 
 **새 판이 나왔는데 예전 판이 돎**
 
-`uvx blender-fx-mcp` 는 처음 받은 판을 캐시에 두고 계속 씁니다. doctor 의 `blender-fx-mcp` 줄에 보이는 판이 [PyPI](https://pypi.org/project/blender-fx-mcp/) 의 최신 판보다 낮으면
+`uvx blender-fx-mcp` 는 처음 받은 판을 캐시에 두고 계속 씁니다. doctor 는 PyPI 에 새 판이 있으면 "새 판" 줄로 알려 줍니다(2초 안에 답이 없거나 `BLENDER_FX_NO_UPDATE_CHECK=1` 이면 그 줄 없이 건너뜀). doctor 의 `blender-fx-mcp` 줄에 보이는 판이 [PyPI](https://pypi.org/project/blender-fx-mcp/) 의 최신 판보다 낮으면
 아래 한 줄로 캐시를 비운 뒤(다음 실행 때 최신 판을 받음) 클라이언트 앱을 완전히 껐다 켭니다. 아직 출시되지 않은 `main` 의 변경을 시험하려면 `uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-mcp` 로 등록합니다.
 
-`uvx blender-fx-mcp` keeps the version it first downloaded. If the version on doctor's `blender-fx-mcp` line is older than the latest on PyPI,
+`uvx blender-fx-mcp` keeps the version it first downloaded. doctor shows a "newer release" line when PyPI has one (skipped without a line if PyPI does not answer within 2 s or `BLENDER_FX_NO_UPDATE_CHECK=1`). If the version on doctor's `blender-fx-mcp` line is older than the latest on PyPI,
 clear the cache with the line below (the next run downloads the latest) and fully restart the client app. To try unreleased changes on `main`, register `uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-mcp` instead.
 
 ```bash
