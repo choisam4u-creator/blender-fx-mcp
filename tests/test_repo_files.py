@@ -303,6 +303,8 @@ JOB_WRITE_PERMISSIONS = {
     "stale.yml": {"issues: write"},
     "scorecard.yml": {"security-events: write", "id-token: write"},
     "greet.yml": {"issues: write", "pull-requests: write"},
+    # PyPI 신뢰 게시(OIDC). publish 잡에만 — test_release_workflow_publish_only_uploads_artifact 가 잡 단위로 본다
+    "release.yml": {"id-token: write"},
 }
 
 
@@ -318,9 +320,42 @@ def test_workflow_top_level_permissions_read_only(path):
     writes = re.findall(r"^\s+([\w-]+: write)$", text, re.M)
     assert set(writes) == allowed and len(writes) == len(allowed), f"{path.name}: 허용 밖 write 권한 {writes}"
     assert text.count("write") == len(writes), f"{path.name}: permissions 밖에 write 가 있음"
-    for perm in writes:  # 쓰기 권한은 작업 안 permissions 블록에만
-        block = re.search(r"^    permissions:\n((?:      .*\n)+)", text, re.M)
-        assert block and perm in block.group(1), f"{path.name}: {perm} 이 작업 단위 permissions 에 없음"
+    blocks = re.findall(r"^    permissions:\n((?:      .*\n)+)", text, re.M)
+    for perm in writes:  # 쓰기 권한은 작업 안 permissions 블록에만(작업이 여럿이면 그중 하나)
+        assert any(perm in b for b in blocks), f"{path.name}: {perm} 이 작업 단위 permissions 에 없음"
+
+
+def _job_bodies(text):
+    """jobs: 아래 잡 이름 → 그 잡 본문(들여쓰기 2칸 잡 기준)."""
+    jobs = text[text.index("\njobs:\n") + len("\njobs:\n"):]
+    parts = re.split(r"^  ([\w-]+):\n", jobs, flags=re.M)
+    return {parts[i]: parts[i + 1] for i in range(1, len(parts), 2)}
+
+
+def test_release_workflow_publish_only_uploads_artifact():
+    """release.yml: 태그 v* 로만 돌고, build 는 읽기 권한으로 점검·빌드하고, publish 는 id-token 만 받아
+    build 의 결과물만 올린다(저장소 코드를 받거나 실행하지 않음)."""
+    text = (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
+    on = re.search(r"^on:\n((?:[ \t]+.*\n)+)", text, re.M).group(1)
+    assert re.fullmatch(r'  push:\n    tags: \["v\*"\]\n', on), f"진입점은 tag push 'v*' 만: {on!r}"
+    jobs = _job_bodies(text)
+    assert set(jobs) == {"build", "publish"}, sorted(jobs)
+
+    build = jobs["build"]
+    assert re.search(r"^    permissions:\n      contents: read\n    steps:", build, re.M), "build 권한은 contents: read 만"
+    assert "persist-credentials: false" in build
+    assert "GITHUB_REF_NAME" in build and "pyproject.toml" in build, "태그와 pyproject 판 일치 확인"
+    assert "${{" not in build, "run 에 표현식을 넣지 않는다(태그 이름 주입 방지, 환경 변수로 읽음)"
+    for step in ("scripts/release_check.py\n", "uv build", "scripts/release_check.py --dist dist", "actions/upload-artifact@"):
+        assert step in build, f"build 에 {step.strip()} 단계가 없음"
+
+    publish = jobs["publish"]
+    assert "    needs: build\n" in publish and "    environment: pypi\n" in publish
+    m = re.search(r"^    permissions:\n((?:      .*\n)+)", publish, re.M)
+    assert m and m.group(1) == "      id-token: write\n", "publish 권한은 id-token: write 하나만"
+    uses = re.findall(r"uses: ([\w-]+/[\w-]+)@", publish)
+    assert uses == ["actions/download-artifact", "pypa/gh-action-pypi-publish"], uses
+    assert "run:" not in publish and "checkout" not in publish, "publish 는 저장소 코드를 받거나 실행하지 않는다"
 
 
 @pytest.mark.parametrize("path", sorted((ROOT / ".github" / "workflows").glob("*.yml")), ids=lambda p: p.name)

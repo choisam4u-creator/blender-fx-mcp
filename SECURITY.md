@@ -37,6 +37,7 @@ How the repository and CI protect dependencies and workflows. Each row is enforc
 | 의존성 라이선스가 허용 목록 안 / Dependency licenses within a permissive allow list | `scripts/license_check.py`, `docs/third-party-licenses.md` | CI `lint` 작업 / job |
 | OpenSSF Scorecard 점수 공개 / OpenSSF Scorecard results published | `.github/workflows/scorecard.yml` | `test_scorecard_workflow_and_badge` |
 | 휠·sdist 메타데이터 점검 / Wheel and sdist metadata checked before release | `scripts/release_check.py --dist`, `twine check` | CI `server-tests` 작업 / job |
+| PyPI 게시는 태그로만, 토큰 비밀 값 없이 신뢰 게시(OIDC). 게시 작업은 빌드 결과물만 받고 저장소 코드를 실행하지 않음 / PyPI publishing only from a tag via Trusted Publishing (OIDC, no token secret); the publish job only downloads the built files and never runs repository code | `.github/workflows/release.yml` | `test_release_workflow_publish_only_uploads_artifact` |
 
 ## 신고하는 법 / Reporting a vulnerability
 
