@@ -26,6 +26,7 @@ Python 3.10 을 뺄 때 함께 0.8.0 으로 올린다(그전까지 `release_chec
 
 *Docs*
 - Troubleshooting: "Still on the old version" (clear the uv cache; use the `git+` address only to try unreleased `main`).
+- README shows a PyPI version badge.
 - `docs/maintenance.md` has an eight-step release procedure (bump, check, tag, build, approve, PyPI, registry, release notes), tested against `release.yml`.
 - `docs/registry.md` and `docs/maintenance.md` say to run `release_check.py --tag` before pushing a tag.
 
@@ -43,6 +44,7 @@ Python 3.10 을 뺄 때 함께 0.8.0 으로 올린다(그전까지 `release_chec
   → PyPI 확인 → 레지스트리 → GitHub 릴리스 노트(CHANGELOG 절 복사), 잘못 민 태그 지우기. 문서의 잡·환경·artifact 이름이 release.yml 과 같은지 시험
 - 시험: `examples/first_render.py` 를 진짜 서버(stdio) + 가짜 블렌더 수신기(소켓, 애드온과 같은 JSON 규약)로 끝까지.
   5단계 진행 줄·종료 코드 0·서버가 출력 폴더에 만든 PNG 경로·되돌리기 안내(한/영), 블렌더 안 레시피 실패면 오류 문장·렌더 안 부름·종료 코드 1
+- README 첫 화면에 PyPI 판 배지(패키지 이름이 pyproject 와 같은지 시험). 파이썬 판 배지는 PyPI 분류자 대신 main 의 pyproject 를 따름
 - `scripts/release_notes.py vX.Y.Z`: CHANGELOG 의 그 절을 GitHub 릴리스 본문으로(영어 요약 먼저, 절 맨 앞 관리자 메모는 빼고, 끝에 PyPI 주소).
   없는 판·미출시 판은 종료 코드 1. 출시 절차 8단계가 손 복사 대신 이 명령을 쓴다(자동 게시는 하지 않음)
 - doctor "새 판" 선택 줄: PyPI 에 설치된 판보다 새 판이 있으면 `uv cache clean blender-fx-mcp` 뒤 클라이언트 재시작을 안내(pip 면 `pip install -U`).

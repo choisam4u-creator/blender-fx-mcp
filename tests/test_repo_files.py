@@ -1175,3 +1175,14 @@ def test_released_changelog_dates_match_git_tags():
         checked += 1
     if not checked:
         pytest.skip("판 태그를 가져오지 않은 클론(git fetch --tags 로 확인)")
+
+
+def test_readme_pypi_badge_matches_package():
+    """PyPI 판 배지가 pyproject 의 패키지 이름과 그 PyPI 쪽을 가리켜야 한다(설치 경로가 PyPI 라는 첫 화면 신호)."""
+    name = re.search(r'^name = "([^"]+)"$', (ROOT / "pyproject.toml").read_text(encoding="utf-8"), re.M).group(1)
+    badges = {alt: (img, link) for alt, img, link in _badges()}
+    img, link = badges["PyPI"]
+    assert img == f"https://img.shields.io/pypi/v/{name}.svg"
+    assert link == f"https://pypi.org/project/{name}/"
+    # 파이썬 배지는 PyPI 분류자(출시된 판) 대신 main 의 pyproject 를 따른다: 3.10 을 뺀 뒤 출시 전까지 PyPI 쪽은 옛 판을 보인다
+    assert "img.shields.io/badge/python-" in " ".join(i for i, _ in badges.values())
