@@ -1,6 +1,7 @@
 # examples/ 의 클라이언트 연결 설정이 읽히고, 실제 진입점·저장소 주소와 맞는지 점검. 블렌더 없이 돈다.
 import json
 import re
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -38,7 +39,6 @@ def test_json_examples(name):
 
 
 def test_codex_example():
-    tomllib = pytest.importorskip("tomllib")  # 3.11+
     data = tomllib.loads((EX / "codex-config.toml").read_text(encoding="utf-8"))
     server = data["mcp_servers"]["blender_fx"]
     _check_server(server)

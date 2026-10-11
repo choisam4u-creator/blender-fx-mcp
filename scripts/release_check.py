@@ -37,7 +37,7 @@ def project_version(root: Path) -> str:
 
 
 def project_urls(root: Path) -> dict[str, str]:
-    """pyproject.toml 의 [project.urls] (3.10 에도 돌도록 tomllib 없이 읽는다)."""
+    """pyproject.toml 의 [project.urls] (tomllib 없이 정규식으로 읽는다. 시험이 tomllib 결과와 같은지 본다)."""
     text = (root / "pyproject.toml").read_text(encoding="utf-8")
     m = re.search(r"^\[project\.urls\]\n(.*?)(?:^\[|\Z)", text, re.M | re.S)
     if not m:

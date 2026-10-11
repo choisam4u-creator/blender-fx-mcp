@@ -3,6 +3,7 @@ import importlib.util
 import re
 import shutil
 import tarfile
+import tomllib
 import zipfile
 from pathlib import Path
 
@@ -41,14 +42,16 @@ def _fails(results):
 
 
 def test_current_repo_state():
-    """준비 중(맨 위 절이 '미출시', 버전은 아직 이전 판)이면 정확히 '판 다름'과 '미출시' 두 줄만 실패하고,
-    출시 순서를 마친 뒤(날짜가 붙음)에는 모두 통과해야 한다."""
+    """준비 중(맨 위 절이 '미출시', 버전은 아직 이전 판)이면 정확히 '판 다름'과 '미출시' 두 줄만,
+    판을 올리고 날짜만 기다리면 '미출시' 한 줄만 실패하고, 출시 순서를 마친 뒤(날짜가 붙음)에는 모두 통과해야 한다."""
     fails = _fails(rc.check_files(ROOT))
     top_version, when = rc.HEADING.search((ROOT / "CHANGELOG.md").read_text(encoding="utf-8")).groups()
     if rc.DATE.fullmatch(when.strip()):
         assert fails == []
         return
-    assert top_version != rc.project_version(ROOT), "미출시 절인데 버전을 이미 올렸으면 날짜도 붙인다"
+    if top_version == rc.project_version(ROOT):  # 판은 올렸고 출시 날짜만 기다림: '미출시' 한 줄만
+        assert len(fails) == 1 and "미출시" in fails[0] and "YYYY-MM-DD" in fails[0], fails
+        return
     assert len(fails) == 2, fails
     assert "CHANGELOG.md 맨 위 절 판" in fails[0] and "pyproject 판" in fails[0]
     assert "미출시" in fails[1] and "YYYY-MM-DD" in fails[1]
@@ -92,7 +95,6 @@ def test_missing_mcp_name_and_changelog_heading(repo):
 def test_project_urls_read_without_tomllib():
     urls = rc.project_urls(ROOT)
     assert set(urls) == {"Homepage", "Documentation", "Issues", "Changelog", "Security"}
-    tomllib = pytest.importorskip("tomllib")
     assert urls == tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]["urls"]
 
 
@@ -242,7 +244,6 @@ def test_metadata_versions_cover_current_build():
 # ---------- scripts/license_check.py ----------
 
 def _license_check():
-    pytest.importorskip("tomllib")  # 3.11+
     import importlib.util
 
     spec = importlib.util.spec_from_file_location("license_check", ROOT / "scripts" / "license_check.py")
@@ -257,7 +258,7 @@ def test_license_check_passes_on_this_lock():
     assert results and all(ok for ok, _ in results), [line for ok, line in results if not ok]
     packages = lc.runtime_packages()
     # extra(`mcp[cli]` → typer·rich)와 플랫폼 조건 패키지까지 따라가는지
-    assert {"mcp", "typer", "rich", "pywin32", "exceptiongroup"} <= set(packages)
+    assert {"mcp", "typer", "rich", "pywin32"} <= set(packages)
     assert "pytest" not in packages and "blender-fx-mcp" not in packages, "개발 의존성·자기 자신은 빼야 함"
 
 

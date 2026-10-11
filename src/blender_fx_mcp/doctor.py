@@ -135,7 +135,7 @@ def registered_clients() -> list[str]:
         except OSError:
             continue
         if path.endswith(".toml"):
-            # 파이썬 3.10 에는 tomllib 가 없어 표 이름·명령만 본다
+            # 설정 파일 문법이 깨져 있어도 찾도록 tomllib 로 읽지 않고 표 이름·명령만 본다
             hit = "[mcp_servers.blender_fx]" in text or "[mcp_servers.blender-fx]" in text or "blender-fx-mcp" in text
         else:
             try:
@@ -188,9 +188,9 @@ def run_checks(clients: bool = True, updates: bool | None = None) -> list[dict]:
     updates(기본은 clients 와 같음)면 PyPI 에 새 판이 있는지도 묻는다(2초 제한, 실패하면 줄 없이 건너뜀)."""
     out: list[dict] = []
     v = sys.version_info
-    out.append(_check("python", v >= (3, 10), f"{v.major}.{v.minor}.{v.micro} ({platform.system()} {platform.machine()})",
-                      "python", t("Python 3.10 이상으로 실행: uvx 가 알아서 고른다(uv python install 3.13)",
-                                  "Run with Python 3.10+: uvx picks one for you (uv python install 3.13)")))
+    out.append(_check("python", v >= (3, 11), f"{v.major}.{v.minor}.{v.micro} ({platform.system()} {platform.machine()})",
+                      "python", t("Python 3.11 이상으로 실행: uvx 가 알아서 고른다(uv python install 3.13)",
+                                  "Run with Python 3.11+: uvx picks one for you (uv python install 3.13)")))
 
     # 이슈에 붙인 결과만 보고 어느 판인지 알 수 있게 맨 위에 둔다
     out.append(_check("blender-fx-mcp", True, __version__, "blender-fx-mcp"))

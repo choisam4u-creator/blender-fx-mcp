@@ -1,9 +1,9 @@
 [project]
 name = "blender-fx-mcp"
-version = "0.7.0"
+version = "0.8.0"
 description = "AI가 말로 시키면 블렌더 FX(파괴·폭발·물)를 만들어 주는 MCP 서버 / Blender FX (destruction, explosion, water) MCP server for AI clients"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "Sam Choi" }]
@@ -14,7 +14,6 @@ classifiers = [
   "Topic :: Multimedia :: Graphics :: 3D Modeling",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
@@ -52,7 +51,7 @@ testpaths = ["tests"]
 markers = ["app_only: 블렌더 앱에서만 도는 시험(Mantaflow 유체). bpy 모듈로는 건너뛴다"]
 
 [tool.ruff]
-target-version = "py310"
+target-version = "py311"
 line-length = 120
 
 [tool.ruff.lint.per-file-ignores]

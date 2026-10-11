@@ -2,13 +2,13 @@
 
 ## 0.8.0 — 미출시 (준비 중)
 
-0.7.0 은 2026-10-11 PyPI 에 올라감. 이 절은 다음 판에 들어갈 변경을 모은다. 버전 네 곳은 0.7.0 그대로 두고,
-Python 3.10 을 뺄 때 함께 0.8.0 으로 올린다(그전까지 `release_check.py` 는 "판 다름"·"미출시" 두 줄만 실패).
+0.7.0 은 2026-10-11 PyPI 에 올라감. 이 절은 다음 판에 들어갈 변경을 모은다. Python 3.10 을 빼면서 버전 네 곳(`pyproject.toml`·`__init__.py`·
+`server.json.example`·`CITATION.cff`)과 `uv.lock` 을 0.8.0 으로 올렸다. 날짜는 출시 때 붙인다(그전까지 `release_check.py` 는 "미출시" 한 줄만 실패).
 
 **English summary**
 
-*Deprecation*
-- 0.7.0 is the last release that supports Python 3.10 (end of life 2026-10). 0.8.0 will require Python 3.11 or newer.
+*Breaking*
+- Python 3.11 or newer is required. Python 3.10 reached end of life in 2026-10; 0.7.0 is the last release that supports it.
 
 *Fixes*
 - Install commands now use the PyPI package: `uvx blender-fx-mcp` (and `uvx --from blender-fx-mcp blender-fx-doctor`); git is no longer needed.
@@ -30,8 +30,10 @@ Python 3.10 을 뺄 때 함께 0.8.0 으로 올린다(그전까지 `release_chec
 - `docs/maintenance.md` has an eight-step release procedure (bump, check, tag, build, approve, PyPI, registry, release notes), tested against `release.yml`.
 - `docs/registry.md` and `docs/maintenance.md` say to run `release_check.py --tag` before pushing a tag.
 
-**지원 종료 예고**
-- 0.7.0 이 Python 3.10 을 지원하는 마지막 판입니다(3.10 은 2026-10 EOL). 0.8.0 부터 Python 3.11 이상이 필요합니다.
+**동작 변화**
+- ⚠️ Python 3.11 이상이 필요합니다. Python 3.10 은 2026-10 에 지원이 끝나(EOL) 약속대로 뺐습니다(0.7.0 이 3.10 을 지원한 마지막 판).
+  `requires-python`·분류자·ruff `target-version`·CI 행렬·`uv.lock`·SUPPORT·README 배지·architecture·maintenance 를 함께 고침. 3.10 에서만 쓰던
+  간접 의존성 `exceptiongroup` 이 빠져 제3자 라이선스 표도 39개. 시험의 `importorskip("tomllib")` 는 보통 import 로
 
 **고침**
 - 설치 명령을 PyPI 패키지로: `uvx blender-fx-mcp`, 점검은 `uvx --from blender-fx-mcp blender-fx-doctor`(git 이 없어도 됨).
