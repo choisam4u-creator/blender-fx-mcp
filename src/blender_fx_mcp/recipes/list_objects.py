@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 # 장면에 있는 메시 오브젝트 목록. 조각(chunk)은 개수만 센다.
 
 

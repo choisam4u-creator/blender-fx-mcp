@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 # 파티클 프리셋: 비 / 눈 / 불꽃 / 재. 같은 종류를 다시 부르면 이전 것을 바꾼다.
 # PARAMS: kind(rain|snow|sparks|ash), at, target, area(m), count, frames, start_frame, height(m)
 

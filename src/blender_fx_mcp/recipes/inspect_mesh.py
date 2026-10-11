@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 # 모델 건강 진단: 닫혀 있나, 부피는 얼마나, 조각내기에 적합한가. PARAMS: target, decimate_to
 
 

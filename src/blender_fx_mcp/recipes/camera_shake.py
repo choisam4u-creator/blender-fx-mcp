@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 # 카메라 흔들림: 지정 프레임부터 몇 프레임 동안 흔들리다 잦아든다. 충돌·폭발 순간에 쓴다.
 # PARAMS: frame, strength(m), duration(프레임), seed
 

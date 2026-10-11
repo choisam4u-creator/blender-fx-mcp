@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 # 렌더 설정: 샘플 수, 모션블러, 해상도, 노출, 필름 룩.
 # PARAMS: samples, motion_blur, shutter, width, height, exposure, view_transform, look, fps, transparent_background
 

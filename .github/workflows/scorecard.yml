@@ -1,0 +1,43 @@
+# OpenSSF Scorecard: 공급망 보안 점수(토큰 권한·액션 SHA 고정·브랜치 보호·의존성 갱신 등)를 매주와 main 푸시마다 잰다.
+# 결과는 저장소 Security 탭(코드 스캐닝)과 공개 API 에 올라가고, README 의 Scorecard 배지가 그 점수를 보여 준다.
+# 공개 저장소의 기본 브랜치에서만 publish_results 가 된다(PR 에서는 돌지 않음).
+name: scorecard
+
+on:
+  branch_protection_rule:
+  schedule:
+    - cron: "29 4 * * 1"
+  push:
+    branches: [main]
+
+# 기본 토큰은 읽기만. 결과를 올리는 데 필요한 쓰기 권한은 작업 단위로만 준다.
+permissions:
+  contents: read
+
+jobs:
+  analysis:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+      # 코드 스캐닝에 SARIF 올리기
+      security-events: write
+      # publish_results: OIDC 토큰으로 결과가 이 저장소의 것임을 증명
+      id-token: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: ossf/scorecard-action@2d1146689b8cda280b9bc96326124645441f03bc # v2.4.4
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          publish_results: true
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: scorecard-sarif
+          path: results.sarif
+          retention-days: 5
+      - uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        with:
+          sarif_file: results.sarif

@@ -29,8 +29,9 @@ uv run --with jsonschema python -c "import json,jsonschema; jsonschema.validate(
 
 ## 등록 순서 (샘님 Mac)
 
-1. 버전을 올린다: `pyproject.toml` 과 `server.json.example` 의 `version` 두 곳(`tests/test_registry.py` 가 어긋나면 실패).
-2. PyPI 에 그 버전을 올린다(`uv build` → `uv publish`). README 의 `mcp-name` 줄이 패키지 설명에 들어가야 레지스트리가 소유를 확인한다.
+1. 버전을 올린다: `pyproject.toml`·`src/blender_fx_mcp/__init__.py`·`server.json.example`·`CITATION.cff` 의 `version` 네 곳(`tests/test_registry.py`·`scripts/release_check.py` 가 어긋나면 실패).
+   `uv run python scripts/release_check.py --build` 로 버전·CHANGELOG 날짜·휠 METADATA 를 한 번에 확인한다.
+2. PyPI 에 그 버전을 올린다: `git tag v0.7.0 && git push origin v0.7.0` 이면 `.github/workflows/release.yml` 이 태그·pyproject 판 일치 → `release_check.py` → `uv build` → `--dist dist` → `uvx twine@7.0.0 check dist/*` 를 돌고, 환경 `pypi` 승인 뒤 신뢰 게시(OIDC)로 올린다. 처음 한 번은 PyPI 프로젝트 설정 → Publishing 에 저장소 `choisam4u-creator/blender-fx-mcp`·워크플로 `release.yml`·환경 `pypi` 를 신뢰 게시자로 등록하고, GitHub 저장소 설정 → Environments 에 `pypi`(필수 검토자 = 본인)를 만든다. 손으로 올릴 때의 같은 순서: `uv build` → `uv run python scripts/release_check.py --dist dist` → `uvx twine@7.0.0 check dist/*` → `uv publish`. CI 도 PR 마다 같은 `--dist`·twine 점검을 돈다(Metadata-Version 2.5 는 twine 7.0.0 미만이 거부하므로 그 판 이상). README 의 `mcp-name` 줄이 패키지 설명에 들어가야 레지스트리가 소유를 확인한다.
 3. 게시 도구 설치: `brew install mcp-publisher`
 4. `cp server.json.example server.json`
 5. `mcp-publisher login github` — 이름이 `io.github.choisam4u-creator/…` 이므로 GitHub 로그인으로 확인된다.

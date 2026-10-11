@@ -1,5 +1,237 @@
 # 클라우드 회차 기록
 
+## 맥에서 돌릴 명령 (블렌더 필요, 최신 회차 기준)
+
+```sh
+uv run python scripts/release_check.py --build        # 0.7.0: 버전 네 곳·CHANGELOG [0.7.0] - 2026-10-13·휠 METADATA 모두 OK 인지(태그 밀기 전)
+uv run pytest -q                                      # 블렌더 앱으로 전체 통과(새: tests/test_cleanup_tools.py·tests/test_server_paths.py)
+uv run python examples/first_render.py && BLENDER_FX_LANG=en uv run python -c "from blender_fx_mcp import server; print(server.export_model('t.glb'))"   # Connect 뒤: 출력 폴더 안 t.glb 전체 경로
+```
+
+## 2026-10-11 (9회차)
+
+- 한 일: 맨 앞 지시(10/11 감사, 0.7.0 출시 준비 F1·F3)부터. main 은 앞서 있지 않음, `latest.md`(10/1)의 FAIL 2건은 main 에 고쳐져 있음(재확인).
+  - **F1 버전 0.7.0** (`ff7555e`): pyproject·`__init__`·server.json.example 2곳·CITATION.cff·uv.lock 루트 패키지 판(의존성 그대로, `uv lock --check` 통과).
+    SUPPORT·SECURITY 지원 계열 0.7.x. CHANGELOG 머리 `## [0.7.0] - 2026-10-13`, 버전 유예 문장 → "올렸음, 태그·PyPI 는 사람 승인 뒤 Mac".
+    `release_check.py` 와 CHANGELOG 절 시험의 제목 정규식이 `## [X.Y.Z] - 날짜`(Keep a Changelog)도 읽게. `release_check.py` → 점검 8개 모두 OK.
+  - **F3 `.github/workflows/release.yml`** (`4eb778f`): tag push `v*` 만. 최상위·build `contents: read`. build: checkout(`persist-credentials: false`)
+    → 태그·pyproject 판 일치(표현식 대신 `GITHUB_REF_NAME` 환경 변수) → release_check → uv build → `--dist` → twine 7.0.0 check → artifact 업로드.
+    publish: `needs: build`, `environment: pypi`, 권한 `id-token: write` 하나, artifact 만 받아 `pypa/gh-action-pypi-publish` (run·checkout 없음).
+    액션 SHA 는 `git ls-remote` 로 확인(upload-artifact v7.0.2·download-artifact v8.0.2·pypi-publish v1.14.2 는 주석 태그라 `^{}` 커밋). actionlint 통과.
+    시험: `JOB_WRITE_PERMISSIONS` 에 release.yml `id-token: write` 만, 잡이 여럿이어도 잡 단위 블록에서 찾도록. 새 시험 `test_release_workflow_publish_only_uploads_artifact`.
+    변이 확인: build 에 id-token 을 넣으면 기존 권한 시험과 새 시험이, `workflow_dispatch` 를 더하면 새 시험이 실패. SECURITY 공급망 표·registry.md 게시 단계 갱신.
+  그다음 백로그(사용자 체감 우선) 4개:
+  1. **`clear_caches` 지운 양·남은 여유** — 지운 MB(없으면 그렇다고) + 출력 폴더 디스크 여유, 1GB 아래면 다음 할 일. 원격 블렌더면 여유 줄 없음.
+  2. **`clear_snapshots(keep=5)`** 새 도구(도구 33개) — 오래된 것부터, `before_restore` 는 늘 남김, `.blend1` 도. `list_snapshots` 에 개수·합계·정리 안내.
+  3. **버그 양식 doctor 칸** — `render` 없이 `--issue` 마크다운(표·접기가 보임), `--json` 은 `render: json` 선택 칸. 질문 양식도.
+  4. **상대 경로** — 확인해 보니 레시피는 `expanduser` 만 해서 블렌더 작업 폴더(Finder 로 켠 앱은 `/`) 기준이었음. 내보내기 → 출력 폴더,
+     가져오기·HDRI → 서버 작업 폴더 → 출력 폴더, 둘 다 없으면 블렌더에 보내기 전에 찾아본 폴더와 "전체 경로로 다시". ⚠️ 동작 변화.
+  - 남은 `[ ]` 1개(굽기 시간 어림 — Mac 실측 필요)라 새 항목 5개 추가(`--tag` 점검, PyPI 게시 뒤 설치 명령 단축, doctor 큰 폴더 안내, first_render 가짜 수신기 시험, 출시 절차 문서).
+- 돌린 시험: `uv run pytest -q`(3.11) **891 통과·35 건너뜀**. CI 서버 명령 3.10 + `--cov` → 882 통과·9 건너뜀, 커버리지 **98.44%**(하한 95%).
+  **`scripts/bpy_tests.sh`(bpy 5.0.1) → 920 통과, 6 건너뜀**(유체 `app_only` 5개·실제 캐릭터 파일 1개 — 블렌더 앱·파일 필요). `uvx ruff@0.15.20 check .` 통과.
+  release.yml build 단계를 로컬에서 그대로(태그 v0.7.0 일치·v0.6.9 불일치 검출, release_check 8개, `uv build`, `--dist` 25개, twine PASSED). actionlint 통과.
+  못 돌린 것: release.yml 실제 실행(태그를 밀어야 돎 — 사람 몫), PyPI 신뢰 게시자·환경 `pypi` 설정(저장소·PyPI 설정 화면).
+- 막힌 것: 없음. 상대 경로 변경이 Windows CI 에서 시험 4개를 깨뜨림(`"/m/tower.glb"` 는 Windows 에서 드라이브가 없어 상대 경로) → 다른 세션이 `d6199cf` 로 시험을 이 OS 의 절대 경로로 고침(제품 동작은 그대로).
+- 완료 수·추가 수: **완료 6**(F1·F3 + 백로그 4) / **추가 5**. 남은 `[ ]` 6개.
+- 출시 전 사람이 할 것: PyPI 프로젝트 설정 → Publishing 에 저장소·`release.yml`·환경 `pypi` 신뢰 게시자 등록, GitHub Settings → Environments 에 `pypi`(필수 검토자) 생성 → 그다음 태그.
+- Mac에서 확인할 것: 맨 위 명령 3줄.
+
+## 2026-10-10 (8회차)
+
+- 한 일: 사용자 요청 "새 항목 5개 추가하고 이어서 처리". main 은 앞서 있지 않음, `latest.md`(10/1)의 FAIL 2건은 main 에 고쳐져 있음(재확인).
+  백로그에 사용자 체감 우선 5개를 추가하고 **5개 모두 완료**:
+  1. **언어 자동 선택** — `BLENDER_FX_LANG` 이 없으면 로캘(`LC_ALL`→`LC_MESSAGES`→`LANG`): 한국어면 ko, 다른 언어면 en, 없거나 `C`/`POSIX` 면 ko(지금과 같음). doctor `--json` 에 `lang_source`. ⚠️ 동작 변화(영어 로캘 터미널).
+  2. **대상 이름 오타 제안** — `destroy(target="building")` → "Did you mean 'Building'? Names are case-sensitive." 메시가 아닌 오브젝트는 종류를, 빈 장면이면 만드는 도구를. bpy 시험.
+  3. **디스크 여유** — doctor "출력 폴더 여유 공간" 선택 줄(5GB 아래 `[- ]`), 물·연기·폭발 굽기는 1GB 아래면 블렌더에 보내기 전에 멈춤(폭발은 조각내기 전에). 해결법 문서 문장.
+  4. **긴 도구 진행 알림** — 굽기·렌더·저장 중 5초마다 MCP `report_progress`("블렌더에서 작업 중 — 45초"). 클라이언트가 progressToken 을 줄 때만. 도구 서명은 그대로(`FxServer` + contextvar).
+  5. **`blender-fx-doctor --issue`** — 이슈용 마크다운(판·OS·파이썬·블렌더·클라이언트·언어 표 + 점검 전체), 집 폴더는 `~` 로 가림. 버그·질문 양식이 권함.
+  - 남은 `[ ]` 0개가 되어 원래 규칙(3개 미만이면 5개 추가)대로 다음 회차용 5개를 근거와 함께 추가(clear_caches 확보 용량·스냅샷 정리·굽기 시간 어림·상대 경로·`--issue` 붙일 양식 칸).
+- 돌린 시험: `uv run pytest -q` **855 통과·35 건너뜀**(3.11). CI 서버 명령 3.10(846 통과, 9 건너뜀)·3.14(855 통과), 커버리지 98.4~98.7%(하한 95%). **`scripts/bpy_tests.sh` → 884 통과, 6 건너뜀**(유체 `app_only` 5개·실제 캐릭터 파일 1개). `uvx ruff@0.15.20 check .` 통과.
+  하다가 시험이 잡은 것 2개: CHANGELOG 영어 요약 6줄 한도(언어 줄에 합침), "오류마다 다음 할 일" 시험(메시가 아닌 대상 문장에 다시 시킬 말 추가).
+- 막힌 것: 없음. 진행 알림이 실제 클라이언트(Claude Code·Desktop) 화면에 보이는지는 Mac 몫.
+- 완료 수·추가 수: **완료 5** / **추가 10**(요청 5 + 규칙 5). 남은 `[ ]` 5개.
+- Mac에서 확인할 것: 맨 위 명령 3줄.
+
+## 2026-10-10 (7회차)
+
+- 한 일: 맨 앞 지시(10/10 Mac 실패 10개)는 **4회차에 이미 고쳐 PR #13 에 있음**(커밋 125b479)을 다시 확인 —
+  `BLENDER_FX_LANG=en` + `HOME`·`TMPDIR` 한글 폴더, `ko` 두 갈래로 전체 시험 777 통과·0 실패. `latest.md`(10/1)의 FAIL 2건은 main 에 고쳐져 있음. main 은 앞서 있지 않음.
+  그다음 백로그(사용자 체감 우선):
+  1. **해결법 문서 "Tools not visible in the client" 절**(백로그) — 등록 확인 → 앱 완전 재시작 → 설정 파일 위치·문법 → `uvx` 전체 경로, 한/영. doctor 등록 할 일 끝에 그 링크.
+  2. **doctor `--json` 의 `clients`**(백로그) — 버그 양식 클라이언트 칸에 "doctor `--json` 의 `clients` 를 고르세요". 양식 선택지 = doctor 가 아는 클라이언트 시험.
+  3. **서버 명령을 터미널에서 직접 치면 stderr 안내**(새 항목) — "멈춘 것이 아닙니다" + 등록·점검·Ctrl+C. 클라이언트가 띄우면(파이프) 조용.
+  4. **doctor 등록 안내를 깔린 클라이언트에 맞게**(새 항목) — Claude Code 없이 Cursor·Claude Desktop·Codex 만 있으면 그 설정 파일 + `examples/` 예제.
+  5. **창 앱에는 `uvx` 전체 경로**(새 항목) — Claude Desktop·Cursor 는 셸 PATH 를 못 봄(`spawn uvx ENOENT`). uv 줄·등록 안내·examples/README 한/영.
+  6. **`first_render.py` 진행 줄 `[i/5] … (기다리는 중)` + 걸린 초**(새 항목).
+  7. **README 한/영 설치 절에 `first_render.py`**(새 항목) — 영어 절에 한글 앵커를 넣었다가 기존 "영어 절에 한글 없음" 시험이 잡아 파일 링크로 고침.
+  - CHANGELOG 0.7.0(미출시) 한/영 갱신.
+  - 브랜치: 이 세션의 지정 브랜치 `claude/cloud-work-lxraz2` 에서 작업해 푸시하고, PR #13 의 머리 `claude/cloud-work` 에도 같은 커밋을 앞으로 감기(fast-forward)로 푸시.
+- 돌린 시험: `uv run pytest -q` **800 통과·34 건너뜀**(3.11, Linux, 23개 추가). 바뀐 시험 파일 5개는 **Python 3.10·3.14** 로도 통과. `uvx ruff@0.15.20 check .` 통과.
+  건너뛴 34개는 블렌더(앱·bpy)가 없어서 — 레시피 시험(CI `recipe-tests-bpy`·Mac 앱 몫). 레시피를 안 바꿔 `bpy_tests.sh` 는 안 돌림.
+  창 앱이 정말 `uvx` 를 못 찾는지, 진행 줄이 실제 굽기 동안 보이는지는 Mac 의 Claude Desktop·블렌더 앱이 필요해 Mac 몫.
+- 완료 수·추가 수: **완료 7**(백로그 기존 2 + 새 5) / **추가 5**. 남은 `[ ]` 0개 — '완료 ≥ 추가'를 지키려 이번 회차엔 더 추가하지 않음. 다음 회차가 맨 먼저 5개 추가.
+- Mac에서 확인할 것: 맨 위 명령 3줄.
+
+## 2026-10-10 (6회차)
+
+- 한 일: 맨 앞 지시(10/10 Mac 실패 10개)는 **4회차에 이미 고쳐 main 대상 PR #13 에 있음**을 다시 확인 —
+  `HOME`·`--basetemp` 를 한글 폴더로 + `BLENDER_FX_LANG=en` 으로 전체 시험 709 통과·0 실패(고치기 전 재현은 4회차 기록).
+  `latest.md`(10/1)의 FAIL 2건은 10/2 에 고쳐 main 에 있음. main 은 앞서 있지 않음. 그다음 백로그(사용자 체감 우선):
+  1. **doctor "MCP 클라이언트 등록" 선택 항목**(백로그) — Claude Code(`~/.claude.json` 사용자·폴더 범위, `.mcp.json`)·Claude Desktop·Cursor·Codex 설정에서 찾고,
+     없으면 README 4단계 등록 명령을 "(선택)" 할 일로. README 4단계에 `→ [OK] MCP 클라이언트 등록`. 이제 첫 화면 4단계가 모두 doctor 로 확인된다.
+  2. **MCP 프롬프트 `/first_demo`·`/undo_last`**(백로그) — 클라이언트 `/` 메뉴에서 첫 데모(연결 → 건물 → 스냅샷 → 붕괴 → 미리보기)와 되돌리기(확인 후 restore).
+  3. **`examples/first_render.py`**(백로그) — 터미널에서 첫 렌더 PNG 경로까지. 연결 안 되면 다음 할 일 + 종료 코드 2.
+     시험을 짜다 **예제 결함** 발견: `result.isError` 는 지금 SDK 에 없는 이름(`is_error`) → 성공 갈래에서 바로 죽었을 것. 고침.
+  4. **MCP `doctor` 도구에서는 클라이언트 등록 항목 뺌**(새 항목, 1번이 만든 문제) — 이미 연결된 AI 에게 등록 명령을 권하지 않게.
+  5. **`first_render.py` 가 시작 전에 `first_render_before` 스냅샷**(새 항목) — 사용자 장면에 Building 을 더해 부숴도 돌아갈 수 있게, 끝에 되돌리는 방법.
+  6. **MCP 프롬프트 `/my_model`**(새 항목) — 내 모델 가져오기 → `inspect_mesh` 점검(문제면 확인) → 붕괴 → 미리보기.
+  - 같은 브랜치에서 다른 세션이 1번 시험의 Python 3.14 CI 실패(`sys.platform` 을 바꾸면 `shutil.which` 가 `_winapi` 로 감)를 먼저 고쳐 푸시해 있어, 그 위에 이어 올림.
+- 돌린 시험: `uv run pytest -q` **777 통과·34 건너뜀**(3.11, Linux). 한글 HOME·basetemp + `en` 으로도 통과.
+  새·바뀐 시험 파일(doctor·프롬프트·예제·메시지)은 **Python 3.10·3.14** 로도 통과. `uvx ruff@0.15.20 check .` 통과.
+  건너뛴 34개는 블렌더(앱·bpy)가 없어서 — 레시피 시험(CI `recipe-tests-bpy`·Mac 앱 몫). 이번 회차는 레시피를 안 바꿔 `bpy_tests.sh` 는 안 돌림.
+  `first_render.py` 가 **실제 블렌더로** PNG 를 내는지, 프롬프트가 Claude Code `/` 메뉴에 뜨는지는 블렌더 앱·클라이언트가 필요해 Mac 몫(맨 위 3번째 줄).
+- 완료 수·추가 수: **완료 6**(백로그 기존 3 + 새 3) / **추가 5**. 남은 `[ ]` 2개(troubleshooting "도구가 안 보임" 절·doctor `--json` 의 clients).
+- Mac에서 확인할 것: 맨 위 명령 3줄.
+
+## 2026-10-10 (5회차)
+
+- 한 일: 맨 앞 지시(10/10 Mac 실패 10개)는 **4회차(오늘 이른 시각)에 이미 고쳐져 있음**을 확인 — `HOME`·`--basetemp` 를 한글 폴더로, `BLENDER_FX_LANG=en` 으로 전체 시험 661 통과·0 실패.
+  `latest.md`(10/1)의 FAIL 2건은 10/2 에 고쳐 main 에 있음. main 은 앞서 있지 않음. 그다음 백로그(사용자 체감 우선):
+  1. **연결 거부 오류가 원인을 좁혀 다음 한 단계**(백로그) — 이 컴퓨터에 애드온 파일이 없으면 설치 메뉴 경로부터, 있으면 Connect, 포트를 바꿨으면 Port 맞추기.
+     애드온 폴더 목록을 doctor 에서 bridge 로 옮겨 둘이 같은 곳을 봄. 원격 `BLENDER_FX_HOST` 면 설치 안내 안 함.
+  2. **파일·스냅샷 경로 오류에 다음 할 일**(백로그) — `import_model`·HDRI 파일이 없으면 같은 폴더의 비슷한 이름, `restore` 는 있는 스냅샷 이름.
+     레시피 오류 문장 44개 전부 다음 할 일 표지(…세요·고를 값)가 있는지 정적 시험(블렌더 내부 실패 3곳만 이유와 함께 예외).
+  3. **README 첫 화면 = doctor 순서의 4단계**(백로그) — uv → 블렌더+애드온 → Connect → 클로드 등록, 단계마다 확인할 `[OK]` 줄. 순서·이름이 doctor 와 같은지 시험.
+  4. **`restore` 이름 오타가 지난 `before_restore` 를 덮어쓰던 문제**(새 항목, 2번 하다 발견) — 블렌더에 보내기 전에 멈추고 이름 제안.
+  5. **`ping_blender`·doctor 에 블렌더 판 + 시험한 판이 아니면 경고**(새 항목).
+- 돌린 시험: `uv run pytest -q` **709 통과·34 건너뜀**(3.11, Linux). 한글 HOME·basetemp + `en` 으로도 통과. CI 서버 명령 커버리지 99.42%(하한 95%).
+  새 시험 파일은 Python 3.10 으로도 통과. `uvx ruff@0.15.20 check .` 통과. **`scripts/bpy_tests.sh`(bpy 5.0.1) 717 통과·6 건너뜀·0 실패**(레시피 문장 수정 뒤).
+  건너뛴 34개(서버 시험)·6개(bpy)는 블렌더 앱이 필요해서 — 유체 `app_only` 5개·실제 캐릭터 파일 1개, 나머지는 bpy 가 없는 기본 환경의 레시피 시험.
+- 완료 수·추가 수: **완료 5**(백로그 기존 3 + 새 2) / **추가 5**. 남은 `[ ]` 3개(doctor 클라이언트 등록 줄·MCP 프롬프트·examples/first_render.py).
+- Mac에서 확인할 것: 맨 위 명령 3줄.
+
+## 2026-10-10 (4회차)
+
+- 한 일: **10/10 Mac 실측 실패 10개 먼저** → 그다음 백로그. main 이 앞서 있어(#10 병합) 병합 확인(내용 변화 없음).
+  1. **시험 결함 10개 고침.** 여기서 그대로 재현: `BLENDER_FX_LANG=en` + 한글 `--basetemp` 로 고치기 전 10 실패 → 고친 뒤 0.
+     ① 언어: `tests/conftest.py` autouse 픽스처가 매 시험 `BLENDER_FX_LANG` 을 지우고 시작, 한국어 기대 시험 3개는 `ko` 직접 지정.
+     ② 한글 경로: 영어 메시지 한글 검사에서 출력 폴더 경로를 빼고 검사. 회귀 시험 3개(출력 폴더가 `사용자/출력` 일 때 영어 문장·경로가 온전한지).
+  2. **Windows 에서도 가짜 블렌더 시험**(백로그) — `fake_blender`(파이썬 본문 + `/bin/sh exec`·`.cmd` 감싸개). 건너뜀 18 → 1(세그폴트).
+     덤으로 **제품 문제** 고침: headless·doctor 가 블렌더 출력을 OS 기본 인코딩으로 읽어 Windows 에서 `UnicodeDecodeError` 위험 → UTF-8(errors=replace).
+  3. **주 1회 취약점 점검**(백로그) `audit.yml`(pip-audit 2.9.0, `uv.lock` 그대로). **처음 돌리자 실제 취약점 2건**: 간접 의존성 `pyjwt 2.14.0` → 2.15.1 로 올려 0건.
+  4. **이슈 양식 공통 칸 시험**(백로그) — 클라이언트 선택지·블렌더 판 placeholder·OS 가 examples/SUPPORT 와 같은지. 어긋난 곳은 없었음.
+  5. **doctor "다음 할 일"**(새 항목) — 실패 항목마다 다음 한 단계를 설치 순서대로 번호로. uv 설치 명령을 OS 별로(지금까지 Windows·Linux 에도 `brew`),
+     애드온 Install from Disk 경로, 포트를 바꿨으면 포트 맞추기. MCP `doctor` 도구도 같은 보고서.
+  6. **doctor 블렌더 실행 파일 = 선택 항목**(새 항목) — MCP 사용에 필요 없는데 `[X ]` 로 떠 첫 사용자를 막던 것 → `[- ]`, 확인 필요·JSON `failed` 에서 뺌.
+- 돌린 시험: `uv run pytest -q` **661 통과·34 건너뜀**(Python 3.11, Linux). `BLENDER_FX_LANG=en`·`ko`·없음 × 한글 `--basetemp` 로도 모두 통과.
+  `uvx ruff@0.15.20 check .` 통과. 서버 쪽 커버리지 99%. `scripts/license_check.py` 40/40.
+  건너뛴 34개는 블렌더(앱·bpy)가 없어서 — 레시피 시험(CI `recipe-tests-bpy`·Mac 앱 몫). Windows CI 결과는 PR #13 에서 확인.
+- 완료 수·추가 수: **완료 5**(백로그 기존 3 + 새 2) + Mac 실패 수정 / **추가 5**(새 항목 중 하나는 이미 있던 `CITATION.cff` 라 README 단계 정렬로 바꿈). 남은 `[ ]` 3개.
+- 하다가 실수: CHANGELOG 영어 요약 6줄 제한을 넘긴 채 한 번 푸시 → 바로 다음 커밋에서 고침.
+
+## 2026-10-09 (3회차)
+
+- 한 일: `latest.md`(10/1) FAIL 2건(GIF 링크·버튼 이름)은 10/2 회차에 고쳐 main 에 있음을 다시 확인 → 백로그로 진행. main 은 앞서 있지 않았음(cloud-work 가 main 을 포함). **백로그 21개 완료**(앞 회차가 남긴 7개 + 이번 회차에 세 번 나눠 추가한 15개 중 14개. 아래 19줄은 관련 항목을 묶어 적음). 남은 `[ ]` 3개.
+  1. **라벨 정의** `.github/labels.yml`(8개, 한/영 설명) + dependabot 라벨 고정 + maintenance.md `gh label create` 8줄. 양식·문서·dependabot·stale 이 쓰는 라벨이 모두 정의돼 있는지 시험.
+  2. **`examples/list_tools.py`** — 공식 `mcp` 클라이언트로 서버를 stdio 로 띄워 도구 목록·`ping_blender`. 닫힌 포트로 한/영 시험.
+  3. **파이썬 3.14** — 3.14.6 에서 서버 시험·커버리지 통과, 분류자·CI·SUPPORT·배지·architecture 갱신.
+  4. **`needs-info` 30일 자동 닫기** `stale.yml`(23일 뒤 `stale` 표시, 7일 뒤 닫음, PR 제외, `issues: write` 만).
+  5. **OpenSSF Scorecard** 작업·README 배지(병합 뒤 main 에서 처음 돌아야 점수가 뜸).
+  6. **recipes.md 한 줄 예시** — 예시 없던 도구 25개(한/영). 32개 도구 모두 예시가 있고 인자가 서버 검사를 통과하는지 시험.
+  7. **`blender-fx-doctor --json`** — 언어와 무관한 항목 id, 버그·질문 양식에 안내.
+  8. **의존성 라이선스 점검** `scripts/license_check.py` + `docs/third-party-licenses.md`(40개 모두 허용적 라이선스) + CI lint 단계.
+  9. **macOS·Windows CI** `server-tests-os`. 첫 실행에서 Windows 13개 실패 → **제품 버그 2개 고침**(doctor 애드온 경로 `/`·`\` 섞임, release_check 가 CRLF 메타데이터에서 README 를 못 찾음) + 시험 쪽 경로·인코딩·실행 권한 처리.
+  10. **질문 이슈 양식** `question.yml`(라벨 `question`), SUPPORT 링크.
+  11. **README 도구 표 점검** `scripts/gen_tool_table.py` — 통째 생성 대신(손으로 다듬은 설명이 더 자세함) 빠진 도구·`a/b/c` 값 목록이 서버 허용 값과 같은지 + `--draft` 초안 행.
+  12. **3.10 지원 종료 예고** — CHANGELOG 0.7.0(한/영)·maintenance.md(0.8.0 에서 뺌). 드라이런으로 고칠 곳 10곳을 시험이 모두 짚는 것 확인.
+  13. **`.gitattributes`** — 모든 OS 에서 LF, 바이너리 지정, CRLF 파일이 생기면 시험 실패.
+  14. **SPDX 표기** — 패키지·레시피·스크립트·예제 41개 첫 줄 `# SPDX-License-Identifier: MIT`.
+  15. **첫 기여자 인사** `greet.yml`(한/영, PR 코드 체크아웃 없음).
+  16. **SECURITY.md 공급망 표**(한/영 8줄) — 쓰다가 CI 의 `uv sync` 에 `--locked` 가 없던 것을 발견해 모두 고침.
+  17. **Windows 건너뛰는 시험 문서화** — CONTRIBUTING 에 18개(가짜 `/bin/sh` 블렌더)와 이유, 개수 시험.
+  18. **배포물 라이선스 파일 점검** — `release_check.py --dist` 가 휠·sdist 의 LICENSE·제3자 라이선스 표를 봄(25개 OK).
+  19. **문서 링크 점검** `tests/test_docs_links.py` — .md 19개의 상대 링크·앵커(한글 제목 포함), 지금 깨진 링크 0개.
+- 돌린 시험: `uvx ruff@0.15.20 check .` 통과. `uv run pytest -q`(블렌더 없음, 3.11) → **638 통과, 34 건너뜀**. CI 서버 명령 3.10(629 통과, 9 건너뜀 — tomllib)·3.14(638 통과), 커버리지 99.04%(하한 95%). **`scripts/bpy_tests.sh` → 666 통과, 6 건너뜀**(회차 끝 기준)(유체 `app_only` 5개·실제 캐릭터 파일 1개). `uv build` → `release_check.py --dist` 25개 OK, `twine@7.0.0 check` PASSED 2개. `uv lock --check` 통과. `license_check.py` 40/40 OK. PR CI(run 58, Windows 고친 커밋): lint·server-tests 3.10~3.14·macOS·**Windows**·recipe-tests-bpy 모두 초록.
+- 막힌 것: 없음. 라벨 만들기·Scorecard 첫 실행·stale 작업은 병합 뒤 GitHub 에서만 확인 가능(클라우드는 라벨·설정을 바꾸지 않음).
+- PR: 열려 있는 claude/cloud-work → main #13 에 이번 커밋이 함께 올라감(본문에 이번 회차 목록 추가).
+- Mac에서 확인할 것:
+  1. 맨 위 명령 3줄
+  2. 병합 뒤 `docs/maintenance.md` 의 `gh label create … --force` 8줄을 저장소 폴더에서 돌려 라벨 만들기
+  3. 병합 뒤 Actions 에서 scorecard 작업(main 푸시로 자동 실행)이 초록인지·README Scorecard 배지에 점수가 뜨는지, needs-info 작업을 Run workflow 로 한 번 돌려 초록인지
+
+## 2026-10-09 (2회차)
+
+- 한 일: `latest.md`(10/1) FAIL 2건(GIF 링크·버튼 이름)은 10/2 회차에 고쳐 main 에 있음을 다시 확인 → 백로그로 진행. main 은 앞서 있지 않았음. 백로그 4개 완료 → 남은 항목이 2개라 새 항목 5개 추가(파이썬 3.14·needs-info 자동 닫기·Scorecard·도구 예시 빠짐없이·doctor `--json`).
+  1. **`scripts/bpy_tests.sh`** — 블렌더 앱 없이 bpy 5.0.1(Python 3.11)로 레시피 시험. 개발용 `.venv` 와 따로 `.venv-bpy`, libEGL 이 없으면 CI 와 같은 apt 명령을 알려 줌. 판·apt 패키지가 ci.yml 과 같은지 시험 2개. **이번 회차부터 클라우드도 레시피 시험을 돌림.**
+  2. **Metadata-Version 2.5 확인** — twine 7.0.0(2026-07-27)부터 2.5 업로드 지원, PyPI 도 받음 → hatchling 판은 묶지 않음. `release_check.py --dist` 에 Metadata-Version(2.1~2.5) 칸, CI 에 `uvx twine@7.0.0 check dist/*`, registry.md 순서 갱신. 시험 4개.
+  3. **최저·최고 파이썬 판 한 시험** — 분류자 기준으로 requires-python·ruff target-version·uv.lock·CI 행렬·SUPPORT·README 배지·architecture·maintenance 한/영. 어긋난 곳을 모두 한 번에 알려 줌. maintenance.md 에 판 정리 순서.
+  4. **기능 요청 YAML 폼** — 필수 칸 3개(원하는 결과·예시 명령·대신 쓰는 방법), `.md` 지움, SUPPORT 링크 고침. 버그·기능 폼을 같은 시험으로.
+- 돌린 시험: `uvx ruff@0.15.20 check .` 통과. `uv run pytest -q`(블렌더 없음) → **573 통과, 34 건너뜀**. CI 서버 명령 3.10(568 통과, 5 건너뜀)·3.13(573 통과), 커버리지 99.35%(하한 95%). **`scripts/bpy_tests.sh` → 601 통과, 6 건너뜀**(유체 `app_only` 5개·실제 캐릭터 파일 1개 — 블렌더 앱·개인 파일 필요). `uv build` → `release_check.py --dist` 22개 OK, `twine@7.0.0 check` 휠·sdist PASSED. `uv lock --check` 통과.
+- PR: 열려 있는 claude/cloud-work → main #13 에 이번 커밋이 함께 올라감(본문에 이번 회차 목록 추가).
+- Mac에서 확인할 것:
+  1. `uv run pytest -q` (블렌더 앱으로 전체 통과)
+  2. `uv build && uvx twine@7.0.0 check dist/*` (둘 다 PASSED)
+  3. 병합 뒤 New issue 화면에 "기능 요청 / Feature request" 폼과 필수 칸(*)이 보이는지
+
+## 2026-10-09
+
+- 한 일: `latest.md`(10/1) FAIL 2건(GIF 링크·버튼 이름)은 10/2 회차에 고쳐 main 에 있음을 다시 확인 → 백로그로 진행. main 은 앞서 있지 않았음. 백로그 4개 완료 → 남은 항목이 1개라 새 항목 5개 추가.
+  1. **CI 시험 목록 자동화** — `pytest -q tests --ignore=…`(블렌더 전용 레시피 시험 5개 파일만 뺌). 새 시험 파일이 저절로 CI 에 들어감. CONTRIBUTING 한/영 커버리지 명령도 같은 줄로(전에는 CI 와 달랐음). 시험 2개.
+  2. **커버리지 하한 95%** — `--cov-fail-under=95`. CONTRIBUTING 한/영 수치와 일치 시험.
+  3. **CI 패키징 점검** — `release_check.py --dist dist`: 휠·sdist 의 판·Project-URL·License-Expression·마크다운 README·`mcp-name`. 판·"미출시" 점검은 빼서 출시 전 PR 에서도 통과. ci.yml 의 `uv build` 다음 줄. 시험 8개.
+  4. **`docs/maintenance.md`(한/영)** — 이슈 분류·dependabot 처리(메이저 판은 변경 기록 확인)·판 번호·출시 주기·파이썬 EOL(3.10 은 2026-10)·블렌더 LTS 정리. README·SUPPORT 링크. 시험 4개.
+- 돌린 시험: `uvx ruff@0.15.20 check .` 통과. `uv run pytest -q`(Python 3.11) → **564 통과, 34 건너뜀**(블렌더 없음). 새 CI 명령을 3.10(559 통과, 5 건너뜀 — tomllib)·3.13(564 통과) + 하한 → 99.35%. 실제 `uv build` 결과로 `--dist` 20개 OK. `uv lock --check` 통과. 못 돌린 것: 레시피 시험 34개(블렌더 필요 — 레시피 파일은 안 건드림).
+- 발견: hatchling 이 **Metadata-Version 2.5** 로 빌드해 `uvx twine@6.2.0 check` 가 거부함(그래서 CI 에 twine 은 넣지 않음). 출시 전에 PyPI·`uv publish` 가 받는지 확인 필요 → 새 백로그 첫 항목.
+- PR: 열려 있는 claude/cloud-work → main #13 에 이번 커밋이 함께 올라감(본문에 이번 회차 목록 추가).
+- Mac에서 확인할 것:
+  1. `uv run pytest -q` (블렌더 앱으로 전체 통과)
+  2. `uv build && uv run python scripts/release_check.py --dist dist` (20개 OK)
+  3. 병합 뒤 Actions 의 server-tests 에 "Required test coverage of 95% reached" 가 찍히는지
+
+## 2026-10-08 (2회차)
+
+- 한 일: `latest.md`(10/1) FAIL 2건(GIF 링크·버튼 이름)은 10/2 회차에 고쳐 main 에 있음을 다시 확인 → 백로그로 진행. main 은 앞서 있지 않았음. 백로그 4개 완료 → 남은 항목이 1개 이하라 새 항목 5개 추가.
+  1. **`CITATION.cff`** — GitHub "Cite this repository". `uvx cffconvert --validate` 통과. 출시 때 올릴 버전이 **네 곳**이 됨(`release_check.py`·CHANGELOG 출시 순서·registry.md 갱신). 시험 2개 + release_check 판 어긋남 칸.
+  2. **CHANGELOG 0.7.0 영어 요약** — *Fixes*·*Tests and CI*·*Docs*. 시험: 미출시 절마다 요약이 있고 한글이 없는지, 한국어 상세보다 앞인지.
+  3. **server.py 실패 갈래 시험** — bridge 는 이미 100%. 도구 29개 × 한/영 연결 실패 문장, `ping_blender`·`doctor` 도구 등. **server 94% → 99%**, 서버 쪽 전체 99%.
+  4. **CONTRIBUTING "처음 기여하기 좋은 일"(한/영)** — 작은 일 4가지·파일·시험 명령 표, `good first issue`·`needs-info` 뜻. 시험 3개(파일·`-k` 시험 존재, 라벨이 SUPPORT 와 같은지).
+- 돌린 시험: `uvx ruff@0.15.20 check .` 통과. `uv run pytest -q`(Python 3.11) → **546 통과, 34 건너뜀**(블렌더 없음). CI 서버 시험 목록을 3.10(544 통과, 5 건너뜀 — tomllib)·3.13(549 통과) + `--cov` → 99%. `uv lock --check` 통과. 못 돌린 것: 레시피 시험 34개(블렌더 필요 — 레시피 파일은 안 건드림).
+- 참고: dependabot 이 SHA 고정 액션을 SHA·판 주석 함께 올리는 것 확인(checkout v4.4.0 → v7.0.1, setup-uv v5.4.2 → v10.2.0 브랜치). 메이저 판이라 Mac 에서 변경 기록을 보고 병합할 것(새 백로그 `docs/maintenance.md` 항목에 처리 순서를 적을 예정).
+- PR: 열려 있는 claude/cloud-work → main #13 에 이번 커밋이 함께 올라감(본문에 이번 회차 목록 추가).
+- Mac에서 확인할 것:
+  1. `uv run pytest -q` (블렌더 앱으로 전체 통과)
+  2. `uv run python scripts/release_check.py` (CITATION.cff 줄 OK, FAIL 은 "판 다름"·"미출시" 2줄이 정상)
+  3. 병합 뒤 GitHub 저장소 오른쪽에 "Cite this repository" 가 뜨는지
+
+## 2026-10-08
+
+- 한 일: `latest.md`(10/1) FAIL 2건(GIF 링크·버튼 이름)은 10/2 회차에 고쳐 main 에 있음을 다시 확인 → 백로그로 진행. main 은 앞서 있지 않았음(병합할 것 없음). PR #13 이 아직 열려 있어 이번 커밋도 그 PR 에 쌓임. 남은 백로그 3개 완료 → 0개가 되어 새 항목 5개 추가, 그중 1개까지 모두 4개.
+  1. **버그 신고 YAML 폼** `.github/ISSUE_TEMPLATE/bug_report.yml`(한/영) — 필수 칸 6개(doctor 출력·블렌더 판·OS·MCP 클라이언트·재현 명령·결과). `.md` 양식은 지움(둘 다 있으면 두 개 보임), troubleshooting.md 의 `template=bug_report.md` 링크 2곳 고침. 시험 6개(PyYAML 이 없어 정규식으로 읽음, 로컬에서 PyYAML 로 한 번 파싱 확인).
+  2. **`SUPPORT.md`(한/영)** — 신고 경로 표, 응답 목표(보안·버그 7일 = SECURITY.md, 질문·기능 14일), 지원 판 표(블렌더 5.2 LTS·bpy 5.0.1 CI 용·4.x 미확인, 파이썬 3.10~3.13, 0.6.x). README 한/영에서 링크. 시험 4개(분류자·CI 행렬·README·app-tests·bpy 판·SECURITY 와 일치).
+  3. **`docs/recipes.md` 영어 절** — 같은 5개 예시·수치. README 영어 절 링크를 `#english` 로. 시험 4개: 한/영 도구 호출 일치, 실제 도구·인자, 영어 절 한글 없음, **예시 인자가 서버 목록·범위 검사를 통과하는지**.
+  4. **CI 파이썬 행렬에 3.11** — 분류자 모든 판을 돌림. 시험을 "양 끝" → "모든 판"으로. SUPPORT·architecture·CHANGELOG·CONTRIBUTING(커버리지 95%) 갱신.
+- 돌린 시험: `uvx ruff@0.15.20 check .` 통과. `uv run pytest -q`(Python 3.11) → **478 통과, 34 건너뜀**(블렌더 없음). CI 서버 시험 목록을 3.10(473 통과, 5 건너뜀 — tomllib)·3.11·3.13(478 통과) + `--cov` → 95~96%. `uv lock --check` 통과. 못 돌린 것: 레시피 시험 34개(블렌더 필요 — 레시피 파일은 안 건드림). YAML 폼이 GitHub 이슈 화면에서 실제로 보이는지는 main 병합 뒤에만 확인 가능.
+- PR: 열려 있는 claude/cloud-work → main #13 에 이번 커밋이 함께 올라감(본문에 이번 회차 목록 추가).
+- 참고: SUPPORT.md 가 `needs-info` 라벨을 말하므로 저장소에 그 라벨이 없으면 만들어 두면 좋음(클라우드에서는 라벨을 만들지 않았음).
+- Mac에서 확인할 것:
+  1. `uv run pytest -q` (블렌더 앱으로 전체 통과)
+  2. 병합 뒤 GitHub 에서 New issue → "버그 / Bug report" 폼에 필수 칸(*)이 보이는지
+  3. 병합 뒤 Actions 의 server-tests 에 3.11 이 생겼고 초록인지
+
+## 2026-10-07 (2회차)
+
+- 한 일: `latest.md`(10/1) FAIL 2건(README GIF 링크·버튼 이름)은 10/2 회차에 이미 고쳐 main 에 있음을 다시 확인 → 백로그로 진행. 시작 때 main(PR #10 병합분)을 받아 옴(빨리감기). 백로그 4개 완료, 남은 항목 3개라 새 항목은 추가하지 않음.
+  1. **도구 설명 ↔ `server.CHOICES` 일치** — 고정 목록 인자 23개를 `이름: a / b / c` 줄로 통일(explode 의 material·pattern·dust·glue, destroy 의 dust, render_video 의 quality 등이 설명에 없었음). `make_demo_building` 의 style·ground 도 서버 검사에 넣음. 시험: 설명과 목록 일치, 새 도구 누락 방지.
+  2. **숫자 인자 범위 미리 검사** — 레시피는 범위 밖 값을 조용히 잘라 썼음(resolution=2000 → 320). `server.RANGES`(pieces·resolution·frames·focus·samples) + `check_ranges`, 범위·권장 값을 한/영으로. `tests/test_server_ranges.py` 32개(레시피의 max/min 을 ast 로 비교). **동작 변화:** 예전에 조용히 잘리던 값(frames=6 등)이 이제 오류.
+  3. **`docs/architecture.md`(한/영)** — 호출 경로·파일 역할·레시피 규칙·시험 경로. README·CONTRIBUTING 에서 링크, CONTRIBUTING 의 없는 파일 `splash.py` → `water.py`. 시험 4개.
+  4. **`scripts/release_check.py`** — 버전 세 곳·CHANGELOG 맨 위 절(판·날짜·중복)·mcp-name, `--build` 면 휠 METADATA. 지금은 "판 다름"·"미출시" 2줄만 FAIL(정상). 출시 순서·registry.md 에 단계 추가. 시험 11개.
+- 돌린 시험: `uvx ruff@0.15.20 check .` 통과. `uv run pytest -q`(Python 3.13) → **466 통과, 34 건너뜀**(블렌더 없음). CI 서버 시험 목록을 Python 3.10 + `--cov` → 461 통과, 5 건너뜀(tomllib), 커버리지 94%(server 93%). `uv lock --check` 통과, `release_check.py --build` 로 휠 빌드 확인. 못 돌린 것: 레시피 시험 34개(블렌더 필요 — 레시피 파일은 안 건드림, 레시피 시험은 서버를 거치지 않아 새 범위 검사의 영향 없음).
+- PR: claude/cloud-work → main #13 을 새로 열었음(Mac 총괄이 확인 후 병합).
+- Mac에서 확인할 것:
+  1. `uv run pytest -q` (블렌더 앱으로 전체 통과)
+  2. `BLENDER_FX_PORT=1 uv run python -c "from blender_fx_mcp import server; print(server.water(resolution=2000))"` (블렌더 없이 범위 오류)
+  3. `uv run python scripts/release_check.py --build` (지금은 FAIL 2줄·종료 코드 1이 정상)
+
 ## 2026-10-07
 
 - 한 일: `latest.md`(10/1)의 FAIL 2건은 10/2 회차에 이미 고쳐 main에 병합됨 → 백로그로 진행. 시작할 때 main(PR #9 병합분)을 받아 옴(빨리감기). 백로그 4개 완료 → 남은 항목이 2개라 새 항목 5개 추가.

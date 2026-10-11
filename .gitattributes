@@ -1,0 +1,14 @@
+# 줄 끝은 모든 OS 에서 LF. Windows(core.autocrlf)에서도 README·스크립트가 CRLF 로 바뀌지 않게 한다.
+# CRLF 면 bash 가 scripts/bpy_tests.sh 를 못 읽고, 패키지 README 가 저장소 README 와 달라진다(tests/test_repo_files.py).
+* text=auto eol=lf
+*.sh text eol=lf
+
+# 데모 GIF·렌더 결과·블렌더 파일은 바이너리
+*.png binary
+*.jpg binary
+*.gif binary
+*.mp4 binary
+*.blend binary
+*.glb binary
+*.exr binary
+*.hdr binary

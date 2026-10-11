@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 # 계속 타오르는 불 / 피어오르는 연기 (Mantaflow). target 이 있으면 그 표면에서, 없으면 at 위치의 공에서 나온다.
 # PARAMS: kind(fire|smoke|both), target, at, radius, power, frames, start_frame, end_frame, resolution, cache_dir
 

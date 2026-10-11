@@ -11,27 +11,49 @@ permissions:
   contents: read
 
 jobs:
-  # 판을 고정해 규칙이 저절로 바뀌지 않게 한다. 설정은 pyproject.toml 의 [tool.ruff].
+  # ruff 판을 고정해 규칙이 저절로 바뀌지 않게 한다. 설정은 pyproject.toml 의 [tool.ruff]. 의존성 라이선스 점검도 여기서.
   lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5.4.2
       - run: uvx ruff@0.15.20 check .
+      # 끌어오는 패키지의 라이선스가 허용 목록 안이고 docs/third-party-licenses.md 표와 같은지(uv.lock 이 바뀌면 표도 고쳐야 함).
+      - run: uv sync --locked --python 3.13
+      - run: uv run python scripts/license_check.py
 
-  # 서버 쪽(레시피 제외) 커버리지를 로그와 작업 요약에 남긴다. 설정은 pyproject.toml 의 [tool.coverage].
+  # 서버 쪽(레시피 제외) 커버리지를 로그와 작업 요약에 남기고, 95% 아래로 떨어지면 실패한다(시험 없이 코드만 늘린 PR 을 잡음). 설정은 pyproject.toml 의 [tool.coverage].
   server-tests:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python: ["3.10", "3.12", "3.13"]
+        python: ["3.10", "3.11", "3.12", "3.13", "3.14"]
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5.4.2
       - run: uv python install ${{ matrix.python }}
-      - run: uv sync --group dev --python ${{ matrix.python }}
-      - run: uv run pytest -q tests/test_server.py tests/test_server_params.py tests/test_registry.py tests/test_recipe_messages.py tests/test_server_messages.py tests/test_repo_files.py tests/test_examples.py tests/test_server_tools.py tests/test_troubleshooting.py tests/test_headless.py tests/test_server_choices.py tests/test_doctor.py --cov --cov-report=term --cov-report=markdown-append:$GITHUB_STEP_SUMMARY
+      - run: uv sync --locked --group dev --python ${{ matrix.python }}
+      # 시험 파일을 손으로 적지 않는다: 블렌더가 있어야 하는 레시피 시험만 빼고 tests/ 를 모두 돈다(새 시험 파일이 저절로 들어옴).
+      - run: uv run pytest -q tests --ignore=tests/test_asset_robustness.py --ignore=tests/test_recipes_fx_extra.py --ignore=tests/test_recipes_headless.py --ignore=tests/test_recipes_v05.py --ignore=tests/test_recipes_v06.py --cov --cov-fail-under=95 --cov-report=term --cov-report=markdown-append:$GITHUB_STEP_SUMMARY
       - run: uv build
+      # PyPI 에 올리기 전에 휠·sdist 의 METADATA(판·Project-URL·License-Expression·README·mcp-name)를 PR 단계에서 본다.
+      - run: uv run python scripts/release_check.py --dist dist
+      # PyPI 와 같은 검사기(packaging)로 휠·sdist 를 한 번 더 본다. hatchling 이 쓰는 Metadata-Version 2.5 는 twine 7.0.0 부터 받는다.
+      - run: uvx twine@7.0.0 check dist/*
+
+  # 사용자 대부분이 Mac·Windows 다. 서버 쪽 시험을 최신 파이썬 하나로 두 OS 에서도 돌린다(커버리지는 server-tests 가 잰다).
+  server-tests-os:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5.4.2
+      - run: uv python install 3.14
+      - run: uv sync --locked --group dev --python 3.14
+      - run: uv run pytest -q tests --ignore=tests/test_asset_robustness.py --ignore=tests/test_recipes_fx_extra.py --ignore=tests/test_recipes_headless.py --ignore=tests/test_recipes_v05.py --ignore=tests/test_recipes_v06.py
 
   # `pip install bpy` 로 레시피 시험 대부분을 블렌더 앱 없이 돌린다.
   # 렌더에는 libEGL(소프트웨어 Mesa)이 필요하다. bpy 휠에서 깨지는 유체 시험(`app_only`)은 tests/conftest.py 가 건너뛴다.
@@ -42,7 +64,7 @@ jobs:
       - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5.4.2
       - run: sudo apt-get update && sudo apt-get install -y libxi6 libxxf86vm1 libxfixes3 libxrender1 libgl1 libsm6 libxkbcommon0 libegl1 libegl-mesa0 libgl1-mesa-dri
       - run: uv python install 3.11
-      - run: uv sync --group dev --python 3.11
+      - run: uv sync --locked --group dev --python 3.11
       - run: uv pip install bpy==5.0.1
       - run: uv run pytest -q
         env:

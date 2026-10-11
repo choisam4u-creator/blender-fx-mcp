@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """끝까지 검증: 실제 MCP 클라이언트 → 이 서버(stdio) → 블렌더 수신기(소켓) → 이미지.
 
 블렌더가 켜져 있고 수신기(N 패널 → BlenderMCP → 서버 시작)가 켜진 상태에서 실행한다.

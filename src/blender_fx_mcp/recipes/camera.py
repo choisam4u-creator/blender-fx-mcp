@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 # 카메라 구도 프리셋. 대상(또는 이 도구가 만든 것 전체)을 기준으로 거리·높이·방향·렌즈를 정한다.
 # PARAMS: preset, target, distance_factor, height, angle_deg, lens
 

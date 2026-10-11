@@ -1,5 +1,6 @@
 # 도구 함수를 끝까지(성공 갈래) 불러 결과 문장(한/영)을 확인한다. 블렌더 없이 돈다.
 # run_recipe 를 가짜로 바꿔 레시피마다 미리 정한 결과를 돌려준다.
+import os
 import re
 
 import pytest
@@ -53,10 +54,17 @@ RESULTS = {
 }
 
 
+def _snapshots(root, *names):
+    (root / "snapshots").mkdir(parents=True, exist_ok=True)
+    for n in names:
+        (root / "snapshots" / f"{n}.blend").write_bytes(b"x")
+
+
 @pytest.fixture
 def fake(monkeypatch, tmp_path):
     """run_recipe 를 가로채 (레시피, 파라미터)를 기록하고 RESULTS 를 돌려준다. render 는 실제 png 하나를 만든다."""
     monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path))
+    _snapshots(tmp_path, "before", "_before")  # restore 가 되돌릴 스냅샷(없으면 블렌더에 보내기 전에 막는다)
     seen = []
 
     def fake_run_recipe(recipe, params, timeout=None):
@@ -76,7 +84,8 @@ CALLS = {
     "list_objects": lambda: server.list_objects(),
     "inspect_mesh": lambda: server.inspect_mesh("Building", decimate_to=500),
     "make_demo_building": lambda: server.make_demo_building(style="windows", ground="asphalt"),
-    "import_model": lambda: server.import_model("/m/tower.glb", size=12.0),
+    # 이 OS 의 절대 경로(Windows 에서 "/m/..." 는 드라이브가 없어 상대 경로로 풀린다)
+    "import_model": lambda: server.import_model(os.path.abspath("/m/tower.glb"), size=12.0),
     "export_model": lambda: server.export_model("/out/a.glb", bake_physics=True),
     "destroy": lambda: server.destroy("Building"),
     "explode": lambda: server.explode(target="Building"),
@@ -105,13 +114,21 @@ CALLS = {
 }
 
 
+def _without_paths(text, *dirs):
+    """문장에서 주어진 폴더 경로(그대로·실제 경로 둘 다)를 지운다."""
+    for d in dirs:
+        for form in {str(d), str(d.resolve())}:
+            text = text.replace(form, "<OUT>")
+    return text
+
+
 def _text(out):
     return out[0] if isinstance(out, list) else out
 
 
 @pytest.mark.parametrize("name", sorted(CALLS))
 @pytest.mark.parametrize("lang", ["ko", "en"])
-def test_tool_success_message(fake, monkeypatch, name, lang):
+def test_tool_success_message(fake, monkeypatch, tmp_path, name, lang):
     monkeypatch.setenv("BLENDER_FX_LANG", lang)
     out = CALLS[name]()
     text = _text(out)
@@ -119,16 +136,31 @@ def test_tool_success_message(fake, monkeypatch, name, lang):
     assert not text.startswith(("실패", "Failed")), text
     if lang == "en":
         # 영어 문장에 한국어가 섞이면 안 된다(레시피가 돌려준 값은 그대로 나올 수 있어 RESULTS 의 한글은 뺐다)
-        assert not HANGUL.search(text.replace("창문을 파냈습니다", "")), text
+        # 출력 폴더 경로는 사용자 것이라 한글일 수 있다(예: 한글 홈 폴더). 경로는 빼고 문장만 본다.
+        assert not HANGUL.search(_without_paths(text, tmp_path).replace("창문을 파냈습니다", "")), text
     if isinstance(out, list):
         # 미리보기가 붙는 도구: 있는 파일만 Image 로 붙는다
         assert len(out) == 2 and isinstance(out[1], Image)
 
 
+@pytest.mark.parametrize("name", ["fire", "water", "render_preview"])
+def test_english_message_under_hangul_output_dir(fake, monkeypatch, tmp_path, name):
+    """회귀(10/10 Mac): 출력 폴더가 한글 경로여도 영어 문장 자체는 영어이고, 경로는 망가지지 않고 그대로 나온다."""
+    out_dir = tmp_path / "사용자" / "출력"
+    out_dir.mkdir(parents=True)
+    monkeypatch.setenv("BLENDER_FX_OUT", str(out_dir))
+    monkeypatch.setenv("BLENDER_FX_LANG", "en")
+    text = _text(CALLS[name]())
+    assert not text.startswith("Failed"), text
+    if name != "render_preview":  # 미리보기는 가짜 결과의 png 경로(tmp_path)를 쓴다
+        assert str(out_dir) in text, text
+    assert not HANGUL.search(_without_paths(text, out_dir, tmp_path)), text
+
+
 def test_every_tool_is_covered():
     import asyncio
     names = {t.name for t in asyncio.run(server.mcp.list_tools())}
-    assert names - set(CALLS) <= {"doctor", "ping_blender", "list_snapshots"}
+    assert names - set(CALLS) <= {"doctor", "ping_blender", "list_snapshots", "clear_snapshots"}
 
 
 def test_destroy_warns_when_nothing_moved(fake, monkeypatch):
@@ -207,3 +239,97 @@ def test_list_snapshots_lists_files(monkeypatch, tmp_path):
     (server.snapshot_dir() / "a.blend").write_bytes(b"x" * 2_000_000)
     text = server.list_snapshots()
     assert text.startswith("Snapshots:\n- a (2.0MB, ")
+
+
+# ---------- 실패 갈래: 블렌더가 꺼져 있거나 레시피가 오류를 내면 예외 대신 실패 문장 ----------
+
+@pytest.mark.parametrize("name", sorted(CALLS))
+@pytest.mark.parametrize("lang", ["ko", "en"])
+def test_tool_failure_message(monkeypatch, tmp_path, name, lang):
+    # 사용자가 가장 자주 보는 경로(블렌더 연결 실패). 어느 도구든 같은 모양으로, 고른 언어로 알려야 한다
+    monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path))
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    _snapshots(tmp_path, "before")
+
+    def run(recipe, params, timeout=None):
+        raise BlenderError("connection refused")
+
+    monkeypatch.setattr(server, "run_recipe", run)
+    text = _text(CALLS[name]())
+    assert text == ("실패: connection refused" if lang == "ko" else "Failed: connection refused"), text
+
+
+@pytest.mark.parametrize("lang,ok,bad", [("ko", "연결됨 (", "실패: "), ("en", "Connected (", "Failed: ")])
+def test_ping_blender(monkeypatch, lang, ok, bad):
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    monkeypatch.setenv("BLENDER_FX_PORT", "9999")
+    monkeypatch.setattr(server.bridge, "ping", lambda: {"ok": True})
+    assert server.ping_blender() == f"{ok}{server.bridge.host()}:9999)"
+
+    def down():
+        raise BlenderError("no receiver")
+
+    monkeypatch.setattr(server.bridge, "ping", down)
+    assert server.ping_blender() == f"{bad}no receiver"
+
+
+def test_doctor_tool_returns_report(monkeypatch):
+    from blender_fx_mcp import doctor
+
+    monkeypatch.setattr(doctor, "run_checks", lambda clients=True: [("python", True, "3.11")])
+    monkeypatch.setattr(doctor, "format_report", lambda rows: f"report:{rows[0][0]}")
+    assert server.doctor() == "report:python"
+
+
+@pytest.mark.parametrize("lang", ["ko", "en"])
+def test_doctor_tool_does_not_suggest_registering(monkeypatch, tmp_path, lang):
+    """MCP doctor 도구를 부른 클라이언트는 이미 연결돼 있다. 설정 파일에 등록이 안 보여도 등록 명령을 권하지 않는다."""
+    from blender_fx_mcp import doctor
+
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path / "out"))
+    monkeypatch.setattr(doctor, "client_configs", lambda: [])  # 어느 설정에도 등록이 안 보임
+    monkeypatch.setattr(server.bridge, "ping", lambda: None)
+    monkeypatch.setattr(server.bridge, "blender_version", lambda: "5.2.0 LTS")
+    report = server.doctor()
+    assert "claude mcp add" not in report
+    assert ("MCP 클라이언트 등록" if lang == "ko" else "MCP client registration") not in report
+    # 터미널의 blender-fx-doctor 에는 그대로 있다
+    assert "client" in [c["id"] for c in doctor.run_checks()]
+
+
+def test_preview_note_only_when_something_is_hidden(monkeypatch):
+    monkeypatch.setenv("BLENDER_FX_LANG", "en")
+    assert server._preview_note({"missing_in_preview": False}) == ""
+    assert "render_preview(quality=\"smoke\")" in server._preview_note({"missing_in_preview": True})
+
+
+def test_reset_destroy_passes_target(fake):
+    server.reset_destroy("Building")
+    server.reset_destroy()
+    assert [p for r, p in fake if r == "reset"] == [{"target": "Building"}, {"target": None}]
+
+
+@pytest.mark.parametrize("lang", ["ko", "en"])
+def test_restore_unknown_name_keeps_before_restore(fake, monkeypatch, tmp_path, lang):
+    """이름이 틀리면 블렌더에 아무것도 보내지 않는다: 자동 저장이 지난 before_restore 를 덮어쓰지 않게. 비슷한 이름을 알려 준다."""
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    _snapshots(tmp_path, "before_fire", "before_restore")
+    text = server.restore("before_fier")
+    assert fake == [], fake
+    assert text.startswith("실패: " if lang == "ko" else "Failed: "), text
+    assert "before_fire" in text and "list_snapshots" in text, text
+
+
+def test_restore_without_snapshots_says_save_first(monkeypatch, tmp_path):
+    monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path))
+    monkeypatch.setenv("BLENDER_FX_LANG", "en")
+    monkeypatch.setattr(server, "run_recipe", lambda *a, **k: pytest.fail("블렌더로 보내면 안 됨"))
+    assert "no snapshots yet" in server.restore("x") and "snapshot first" in server.restore("x")
+
+
+def test_restore_remote_blender_skips_local_check(fake, monkeypatch, tmp_path):
+    """다른 컴퓨터의 블렌더면 스냅샷이 그쪽 디스크에 있으니 이 컴퓨터에서 막지 않는다."""
+    monkeypatch.setenv("BLENDER_FX_HOST", "studio-mac.local")
+    server.restore("only_on_the_other_machine")
+    assert [r for r, _ in fake] == ["snapshot", "restore"]

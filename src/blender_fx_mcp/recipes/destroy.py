@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 # 파괴 레시피: 메시를 수리하고 보로노이로 조각내어 물리로 무너뜨린다.
 # PARAMS: target, impact, material, pieces, pattern, focus, time_scale, frames, impact_height, impact_power,
 #         dust, glue, glue_neighbors, glue_max, seed, collision, interior, repair, shell_thickness,
@@ -227,8 +228,8 @@ def main():
         bm.free()
         if solidified is not None:
             remove_object(solidified)
-        raise FxError(L(f"'{target.name}' 에 면이 없어 조각낼 수 없습니다.",
-                        f"'{target.name}' has no faces, so it cannot be fractured."))
+        raise FxError(L(f"'{target.name}' 에 면이 없어 조각낼 수 없습니다. inspect_mesh 로 면 수를 확인하고, 면이 있는 오브젝트를 고르세요.",
+                        f"'{target.name}' has no faces, so it cannot be fractured. Check its face count with inspect_mesh and pick an object that has faces."))
 
     # 2) 재질 슬롯: 겉면 + 속면
     mats = [mm for mm in target.data.materials if mm is not None]

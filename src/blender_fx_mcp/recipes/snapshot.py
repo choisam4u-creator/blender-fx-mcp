@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 # 장면 스냅샷 저장. PARAMS: path, dir(목록을 만들 폴더)
 
 

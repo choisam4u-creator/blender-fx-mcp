@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 # 깃발(천 시뮬레이션): 깃대에 한쪽을 고정한 천이 바람에 펄럭인다. PARAMS: at, width, height, pole_height, wind_strength, frames
 
 

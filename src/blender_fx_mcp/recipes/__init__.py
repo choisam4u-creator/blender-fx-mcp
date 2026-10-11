@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """블렌더 안에서 실행되는 레시피 파일들.
 
 서버가 `PARAMS = {...}` 한 줄 + _common.py + 레시피 파일을 이어 붙여 블렌더로 보낸다.

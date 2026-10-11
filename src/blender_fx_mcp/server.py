@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """blender-fx MCP 서버. AI 가 말로 시키면 블렌더 FX 를 만든다.
 
 도구는 검증된 레시피(recipes/*.py)를 블렌더 안 수신기로 보내 실행한다.
@@ -7,17 +8,25 @@ AI 는 코드를 짜지 않고 도구와 값만 고른다.
 
 from __future__ import annotations
 
+import contextlib
+import contextvars
 import difflib
+import glob
 import json
 import os
 import re
+import threading
 import time
 from pathlib import Path
+from typing import Annotated
 
+import anyio.from_thread
+import anyio.lowlevel
 from mcp.server.mcpserver import Image, MCPServer
 from mcp.types import ToolAnnotations
+from pydantic import Field
 
-from . import bridge
+from . import bridge, disk
 from .bridge import BlenderError
 from .i18n import is_en, t
 
@@ -74,7 +83,23 @@ ADDITIVE = ToolAnnotations(read_only_hint=False, destructive_hint=False, idempot
 # 되돌리기 어려움: 장면을 통째로 바꾸거나, 오브젝트·캐시를 지우거나, 같은 이름의 파일을 덮어쓴다
 DESTRUCTIVE = ToolAnnotations(read_only_hint=False, destructive_hint=True, idempotent_hint=False, open_world_hint=False)
 
-mcp = MCPServer("blender-fx", instructions=INSTRUCTIONS)
+# 지금 처리 중인 도구 호출의 (MCP Context, 이벤트 루프 토큰). 동기 도구는 작업 스레드에서 돌지만 contextvar 는 따라간다.
+_CALL: contextvars.ContextVar[tuple | None] = contextvars.ContextVar("blender_fx_call", default=None)
+PROGRESS_EVERY = 5.0  # 긴 작업 중 진행 알림 간격(초)
+
+
+class FxServer(MCPServer):
+    """도구 호출마다 Context 를 기억해, 긴 굽기·렌더 동안 작업 스레드에서 진행 알림을 보낼 수 있게 한다."""
+
+    async def call_tool(self, name, arguments, context=None):
+        token = _CALL.set((context, anyio.lowlevel.current_token()) if context is not None else None)
+        try:
+            return await super().call_tool(name, arguments, context)
+        finally:
+            _CALL.reset(token)
+
+
+mcp = FxServer("blender-fx", instructions=INSTRUCTIONS)
 
 
 # ---------- 내부 도우미 ----------
@@ -89,6 +114,36 @@ def snapshot_dir() -> Path:
     d = out_root() / "snapshots"
     d.mkdir(parents=True, exist_ok=True)
     return d
+
+
+def input_path(path: str) -> str:
+    """읽을 파일(모델·HDRI)의 상대 경로를 이 컴퓨터의 절대 경로로 푼다. 블렌더에 그대로 보내면 블렌더의 작업 폴더
+    (Finder 로 켠 Mac 앱은 `/`) 기준이 되어 엉뚱한 곳을 찾는다. 서버 작업 폴더(클라이언트가 띄운 폴더) → 출력 폴더 순으로 찾고,
+    둘 다 없으면 찾아본 곳과 다음 할 일을 말한다. 블렌더가 다른 컴퓨터면 그쪽 경로라 건드리지 않는다."""
+    if not path or not bridge.is_local():
+        return path
+    p = Path(path).expanduser()
+    if p.is_absolute():
+        return str(p)
+    tried = [Path.cwd() / p, out_root() / p]
+    for cand in tried:
+        if cand.exists():
+            return str(cand)
+    where = ", ".join(str(c.parent) for c in tried)
+    raise BlenderError(t(
+        f"파일이 없습니다: {path}. 상대 경로라 이 폴더들에서 찾아봤습니다: {where}. "
+        "전체 경로로 다시 시키세요(파일을 터미널 창에 끌어다 놓으면 전체 경로가 나옵니다).",
+        f"File not found: {path}. It is a relative path, so these folders were searched: {where}. "
+        "Ask again with the full path (drag the file onto a terminal window to see it)."))
+
+
+def output_path(path: str) -> str:
+    """내보낼 파일의 상대 경로는 출력 폴더(BLENDER_FX_OUT) 기준으로 푼다(블렌더 작업 폴더에 쓰다가 실패하거나 못 찾지 않게).
+    블렌더가 다른 컴퓨터면 건드리지 않는다."""
+    if not path or not bridge.is_local():
+        return path
+    p = Path(path).expanduser()
+    return str(p if p.is_absolute() else out_root() / p)
 
 
 def new_run_dir(label: str) -> Path:
@@ -142,6 +197,10 @@ CHOICES: dict[str, dict[str, tuple[str, ...]]] = {
         "shape": ("sphere", "box", "column"),
         "liquid": ("water", "oil", "honey", "lava", "mercury", "slime"),
     },
+    "demo_scene": {
+        "style": ("plain", "windows"),
+        "ground": ("asphalt", "concrete", "grass", "sand", "dirt", "snow"),
+    },
     "particles": {"kind": ("rain", "snow", "sparks", "ash")},
     "emit": {"kind": ("fire", "smoke", "both")},
     "set_ground": {"material": ("asphalt", "concrete", "grass", "sand", "dirt", "snow")},
@@ -170,11 +229,99 @@ def check_choices(recipe: str, params: dict) -> None:
         raise BlenderError(msg)
 
 
+# 숫자 인자 범위 (가장 작은 값, 가장 큰 값 — None 이면 끝 없음). 레시피는 범위 밖 값을 조용히 잘라 쓰므로,
+# 사용자가 준 값과 다르게 돌지 않도록 서버에서 먼저 알려 준다.
+# 레시피 쪽 max(...)/min(...) 과 같아야 한다 — tests/test_server_ranges.py 가 레시피 파일과 비교한다.
+RANGES: dict[str, dict[str, tuple[float, float | None]]] = {
+    "destroy": {"pieces": (2, 1500), "frames": (12, None), "focus": (0.0, 1.0)},
+    "explode": {"frames": (12, None), "resolution": (16, 256)},
+    "water": {"frames": (12, None), "resolution": (16, 320)},
+    "emit": {"frames": (12, None), "resolution": (16, 256)},
+    "particles": {"frames": (12, None)},
+    "set_render": {"samples": (1, None)},
+}
+
+def _range_hint(name: str) -> str:
+    """범위 오류에 덧붙이는 권장 값."""
+    if name == "pieces":
+        return t("50~400 권장. 많을수록 잘게 부서지고 오래 걸립니다.", "50-400 recommended; more pieces take longer.")
+    if name == "resolution":
+        return t("32 빠름 / 64 보통 / 128 고화질. 높을수록 몇십 분씩 걸릴 수 있습니다.",
+                 "32 fast / 64 normal / 128 high quality; higher values can take tens of minutes.")
+    if name == "frames":
+        return t("24fps 기준 72 = 3초.", "72 frames = 3 seconds at 24 fps.")
+    if name == "focus":
+        return t("1 이면 맞은 곳만 아주 잘게, 0 이면 고르게.", "1 = only the hit area is finely broken, 0 = even.")
+    return ""
+
+
+def check_ranges(recipe: str, params: dict) -> None:
+    """숫자 인자가 레시피가 쓸 수 있는 범위 밖이면 범위와 권장 값을 알려 주는 BlenderError 를 낸다."""
+    for name, (lo, hi) in RANGES.get(recipe, {}).items():
+        value = params.get(name)
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            continue
+        if lo <= value and (hi is None or value <= hi):
+            continue
+        span = f"{lo} ~ {hi}" if hi is not None else t(f"{lo} 이상", f"at least {lo}")
+        msg = t(f"{name} 값 {value} 은(는) 범위 밖입니다. 가능한 범위: {span}.",
+                f"{name} {value} is out of range. Allowed: {span}.")
+        hint = _range_hint(name)
+        raise BlenderError(msg + (" " + hint if hint else ""))
+
+
+@contextlib.contextmanager
+def _progress(label: str):
+    """블렌더가 일하는 동안 PROGRESS_EVERY 초마다 MCP 진행 알림(걸린 초)을 보낸다.
+    클라이언트가 progressToken 을 주지 않았거나 MCP 호출 밖(시험·스크립트)이면 아무것도 하지 않는다."""
+    call = _CALL.get()
+    if call is None:
+        yield
+        return
+    ctx, loop = call
+    stop = threading.Event()
+    start = time.monotonic()
+
+    def beat():
+        while not stop.wait(PROGRESS_EVERY):
+            secs = int(time.monotonic() - start)
+            msg = t(f"{label}: 블렌더에서 작업 중 — {secs}초", f"{label}: working in Blender — {secs}s")
+            try:
+                anyio.from_thread.run(ctx.report_progress, secs, None, msg, token=loop)
+            except Exception:  # 알림이 실패해도 도구는 계속한다(연결이 끊겼거나 요청 문맥이 없음)
+                return
+
+    th = threading.Thread(target=beat, name="blender-fx-progress", daemon=True)
+    th.start()
+    try:
+        yield
+    finally:
+        stop.set()
+        th.join(timeout=2)
+
+
+def _check_bake_space() -> None:
+    """굽기(캐시를 쓰는 레시피) 전에 디스크 여유를 본다. 부족하면 블렌더에 보내기 전에 해결법과 함께 멈춘다."""
+    root = out_root()
+    free = disk.free_bytes(root)
+    if free is None or free >= disk.BAKE_MIN_BYTES:
+        return
+    raise BlenderError(t(
+        f"디스크 여유가 {disk.gb(free)} 뿐이라 굽기를 시작하지 않았습니다(물·연기 캐시는 수 GB). "
+        f"clear_caches 로 구운 캐시를 지우거나, BLENDER_FX_OUT 을 여유 있는 디스크의 폴더로 바꾼 뒤 다시 시키세요. (폴더: {root})",
+        f"Only {disk.gb(free)} of disk space is left, so the bake was not started (water and smoke caches take several GB). "
+        f"Run clear_caches to delete baked caches, or point BLENDER_FX_OUT to a folder on a disk with more space, then ask again. (folder: {root})"))
+
+
 def run_recipe(recipe: str, params: dict, timeout: float | None = None) -> dict:
     params = {k: v for k, v in params.items() if v is not None}
     check_choices(recipe, params)
+    check_ranges(recipe, params)
     params.setdefault("_lang", "en" if is_en() else "ko")
-    stdout = bridge.run_python(build_code(recipe, params), timeout=timeout)
+    if params.get("cache_dir"):
+        _check_bake_space()
+    with _progress(recipe) if timeout else contextlib.nullcontext():  # 긴 작업(굽기·렌더)만 진행 알림
+        stdout = bridge.run_python(build_code(recipe, params), timeout=timeout)
     res = parse_result(stdout)
     if not res.get("ok"):
         msg = res.get("error", t("(원인 없음)", "(no reason given)"))
@@ -224,18 +371,23 @@ def doctor() -> str:
     """Check prerequisites (python, mcp, uv, Blender, receiver add-on, connection, output folder).
     준비물 점검. 뭔가 안 될 때 먼저 부른다."""
     from .doctor import format_report, run_checks
-    return format_report(run_checks())
+    # 이 도구를 부른 클라이언트가 곧 등록돼 있다는 증거라 클라이언트 등록 항목은 뺀다(엉뚱한 등록 명령을 권하지 않게)
+    return format_report(run_checks(clients=False))
 
 
 @mcp.tool(annotations=READ_ONLY)
 def ping_blender() -> str:
-    """Check the socket connection to Blender.
-    블렌더 수신기와 연결되는지 확인한다."""
+    """Check the socket connection to Blender and show its version.
+    블렌더 수신기와 연결되는지 확인하고 블렌더 판을 보여 준다(시험한 판이 아니면 경고)."""
     try:
         bridge.ping()
-        return t(f"연결됨 ({bridge.host()}:{bridge.port()})", f"Connected ({bridge.host()}:{bridge.port()})")
     except BlenderError as e:
         return _fail(e)
+    version = bridge.blender_version()
+    text = t(f"연결됨 ({bridge.host()}:{bridge.port()}", f"Connected ({bridge.host()}:{bridge.port()}")
+    text += f", Blender {version})" if version else ")"
+    warning = bridge.version_warning(version)
+    return f"{text} {warning}" if warning else text
 
 
 @mcp.tool(annotations=READ_ONLY)
@@ -267,8 +419,8 @@ def make_demo_building(floors: int = 3, width: float = 4.0, depth: float = 4.0, 
                        name: str = "Building", style: str = "plain", windows_per_side: int = 3, ground: str = ""):
     """Create a practice building with ground, camera and light. Returns one preview frame.
     연습용 건물과 바닥·카메라·조명을 만든다. 부술 오브젝트가 없을 때 쓴다.
-    style: "plain" 민무늬 / "windows" 벽을 실제로 파낸 창문 건물.
-    ground: asphalt/concrete/grass/sand/dirt/snow, 비우면 기본."""
+    style: plain(민무늬) / windows(벽을 실제로 파낸 창문 건물)
+    ground: asphalt / concrete / grass / sand / dirt / snow. 비우면 기본 바닥"""
     try:
         res = run_recipe("demo_scene", dict(floors=floors, width=width, depth=depth, floor_height=floor_height,
                                             name=name, style=style, windows_per_side=windows_per_side,
@@ -295,8 +447,10 @@ def import_model(path: str, name: str = "", size: float = 0.0, on_ground: bool =
     """Import a 3D model (glb/gltf/fbx/obj/stl/usd/blend), join it into one mesh and stand it on the ground.
     외부 모델을 가져와 하나의 메시로 합치고 바닥에 세운다.
     size: 가장 긴 변을 이 길이(m)로 맞춤(0이면 원본). 가져온 뒤 inspect_mesh 로 상태를 보고 destroy 한다.
-    parts: 파일 안 부품 중 남길 것의 이름(일부만 적어도 됨). 비우면 전부 합친다."""
+    parts: 파일 안 부품 중 남길 것의 이름(일부만 적어도 됨). 비우면 전부 합친다.
+    path 는 전체 경로가 좋다. 상대 경로면 서버 작업 폴더, 그다음 출력 폴더에서 찾는다."""
     try:
+        path = input_path(path)
         res = run_recipe("import_model", dict(path=path, name=name or None, size=size,
                                               on_ground=on_ground, center=center, parts=parts), timeout=long_timeout())
         rend, _ = _render(f"import_{res['name']}", frames=[1])
@@ -309,6 +463,8 @@ def import_model(path: str, name: str = "", size: float = 0.0, on_ground: bool =
         f"Imported '{res['name']}': {s[0]}×{s[1]}×{s[2]}m, {res['vertices']} vertices, {res['faces']} faces "
         f"(joined {res['joined']} meshes).",
     )
+    if res.get("source"):
+        text += t(f" 파일: {res['source']}", f" File: {res['source']}")
     return [text + _preview_note(rend)] + _images(rend["paths"])
 
 
@@ -317,8 +473,10 @@ def export_model(path: str, names: list[str] | None = None, bake_physics: bool =
     """Export to glb/gltf/fbx/obj, or .abc (Alembic) which also carries the animated water surface.
     장면을 내보낸다. .abc 로 하면 물 표면과 조각 움직임이 프레임마다 구워져 다른 프로그램에서 그대로 보인다.
     bake_physics=True 면 조각 물리를 키프레임으로 굽는다(되돌릴 수 없으니 먼저 snapshot).
-    연기(볼륨)는 어떤 형식으로도 나가지 않는다."""
+    연기(볼륨)는 어떤 형식으로도 나가지 않는다.
+    path 가 상대 경로(예: "tower.glb")면 출력 폴더(BLENDER_FX_OUT) 안에 만든다. 결과에 전체 경로가 나온다."""
     try:
+        path = output_path(path)
         res = run_recipe("export_model", dict(path=path, names=names or [], bake_physics=bake_physics), timeout=long_timeout())
     except BlenderError as e:
         return _fail(e)
@@ -364,13 +522,14 @@ def destroy(
     target: 부술 메시 이름
     impact: 충격 방향 left / right / front / back / top / none(충격체 없이)
     material: concrete / brick / glass / wood / stone / metal / ice / plaster (무게·마찰·튐·속 색)
-    pieces: 조각 수 (50~400 권장). 많을수록 잘게 부서지고 느려진다
+    pieces: 조각 수 2~1500 (50~400 권장). 많을수록 잘게 부서지고 느려진다
     pattern: 조각이 촘촘해지는 곳. impact(맞은 곳) / uniform(고르게) / radial(중심에서) / slabs(층층이)
     focus: 0~1. pattern 의 집중도. 1이면 맞은 곳만 아주 잘게
     impact_power: 충격체 무게 = 대상 전체 무게 × 이 값 (0.02 약하게, 0.04 보통, 0.15 폭발처럼)
+    dust: none / low / high. 무너질 때 날리는 먼지 양
     glue: none / weak / medium / strong. 조각을 붙여 두면 맞은 곳만 무너지고 나머지는 버틴다
     collision: auto / convex(빠름) / mesh(오목한 모양 정확) / box / sphere
-    interior: 부순 단면 재질. auto(재질에 맞춰) / none / 다른 material 이름
+    interior: 부순 단면 재질. auto(재질에 맞춰) / none(속 재질 없음) / concrete / brick / glass / wood / stone / metal / ice / plaster
     repair: 구멍 난 메시를 자동 수리 (남의 모델에 특히 필요)
     shell_thickness: 껍데기뿐인 모델에 줄 두께(m). 닫히지 않은 모델에서만 쓰임
     density / friction / bounce: 재질 프리셋을 덮어쓰는 값 (0 또는 음수면 프리셋 그대로)
@@ -428,9 +587,14 @@ def explode(
 ):
     """Explosion: fracture the target, blow the chunks outward, and add smoke and fire.
     폭발. target 을 주면 그 물건을 조각내 안에서 터뜨리고, 없으면 at 위치에 연기·불만 만든다.
-    power 0.5 작게 / 1 보통 / 2 크게. resolution 32 빠름 / 48 보통 / 96 고화질.
-    smoke_collision=True 면 연기가 조각을 통과하지 않고 부딪힌다(느려짐)."""
+    power 0.5 작게 / 1 보통 / 2 크게. resolution 16~256: 32 빠름 / 48 보통 / 96 고화질.
+    smoke_collision=True 면 연기가 조각을 통과하지 않고 부딪힌다(느려짐).
+    material: concrete / brick / glass / wood / stone / metal / ice / plaster
+    pattern: radial(중심에서) / impact / uniform / slabs
+    dust: none / low / high
+    glue: none / weak / medium / strong"""
     try:
+        _check_bake_space()  # 조각내기 전에 본다(조각만 내고 굽기에서 멈추면 장면이 반쯤 바뀐 채 남음)
         if target:
             run_recipe("destroy", dict(
                 target=target, impact="none", hold_until=max(1, burst_frame - 1), material=material,
@@ -504,7 +668,7 @@ def water(
     obstacles: 물이 부딪힐 물건 이름 목록. 비우면 보이는 메시 전부(바닥판 제외)
     source_object: mode="object" 일 때 물이 될 메시 이름
     spray: 물보라·거품 알갱이 계산 켜기
-    resolution: 32 빠름 / 64 보통 / 128 고화질(느리고 메모리 많이 씀)
+    resolution: 16~320. 32 빠름 / 64 보통 / 128 고화질(느리고 메모리 많이 씀)
     결과의 drift 로 물이 실제로 어느 쪽으로 갔는지 확인할 수 있다."""
     try:
         res = run_recipe("water", dict(
@@ -599,7 +763,8 @@ def particles(kind: str = "snow", target: str = "", at: list[float] | None = Non
               frames: int = 0, start_frame: int = 1, height: float = 0.0, size: float = 0.0, gravity: float = -1.0,
               drag: float = -1.0, lifetime: int = 0, speed: float = -1.0, preview_frames: int = 3):
     """Rain, snow, sparks or ash particles.
-    비·눈·불꽃·재. kind: rain / snow / sparks / ash.
+    비·눈·불꽃·재.
+    kind: rain / snow / sparks / ash
     size 알갱이 크기, gravity 중력 비율, drag 공기 저항, lifetime 수명(프레임), speed 튀어나가는 속도.
     음수/0 이면 프리셋 그대로."""
     try:
@@ -671,7 +836,8 @@ def cloth_flag(at: list[float] | None = None, width: float = 3.0, height: float 
 @mcp.tool(annotations=SETTING)
 def set_ground(material: str = "concrete", size: float = 0.0, z: float | None = None):
     """Set the ground material: asphalt, concrete, grass, sand, dirt or snow.
-    바닥 재질을 바꾼다. size 는 한 변 길이(m), z 는 높이."""
+    바닥 재질을 바꾼다. size 는 한 변 길이(m), z 는 높이.
+    material: asphalt / concrete / grass / sand / dirt / snow"""
     try:
         res = run_recipe("set_ground", dict(material=material, size=size or None, z=z))
         rend, _ = _render(f"ground_{material}", frames=[1])
@@ -686,7 +852,8 @@ def set_ground(material: str = "concrete", size: float = 0.0, z: float | None = 
 def camera(preset: str = "medium", target: str = "", distance_factor: float = 0.0, height: float | None = None,
            angle_deg: float | None = None, lens: float = 0.0):
     """Frame the shot: wide, medium, closeup, low, high, top, front or side.
-    카메라 구도. angle_deg 0=정면, 90=오른쪽, -90=왼쪽. height 0=바닥, 1=꼭대기. lens mm."""
+    카메라 구도. angle_deg 0=정면, 90=오른쪽, -90=왼쪽. height 0=바닥, 1=꼭대기. lens mm.
+    preset: wide / medium / closeup / low / high / top / front / side"""
     try:
         res = run_recipe("camera", dict(preset=preset, target=target or None, distance_factor=distance_factor or None,
                                         height=height, angle_deg=angle_deg, lens=lens or None))
@@ -713,10 +880,12 @@ def camera_shake(frame: int = 12, strength: float = 0.3, duration: int = 20, see
 @mcp.tool(annotations=SETTING)
 def set_look(preset: str = "day", sun_strength: float = 1.0, sky: str = "flat", hdri: str = ""):
     """Lighting and sky: day, sunset, night, overcast or studio; flat colour, procedural sky, or your own HDRI file.
-    조명·하늘. sky="procedural" 은 진짜 하늘 텍스처(EEVEE/Cycles 에서만 보임).
-    hdri 는 가지고 있는 .hdr/.exr 파일 경로. 인터넷에서 받아오지는 않는다."""
+    조명·하늘.
+    preset: day / sunset / night / overcast / studio
+    sky: flat(단색) / procedural(진짜 하늘 텍스처, EEVEE/Cycles 에서만 보임)
+    hdri 는 가지고 있는 .hdr/.exr 파일 경로(상대 경로면 서버 작업 폴더, 그다음 출력 폴더에서 찾음). 인터넷에서 받아오지는 않는다."""
     try:
-        res = run_recipe("set_look", dict(preset=preset, sun_strength=sun_strength, sky=sky, hdri=hdri or None))
+        res = run_recipe("set_look", dict(preset=preset, sun_strength=sun_strength, sky=sky, hdri=input_path(hdri) or None))
         rend, _ = _render(f"look_{preset}", quality="smoke", frames=[1])
     except BlenderError as e:
         return _fail(e)
@@ -821,7 +990,57 @@ def list_snapshots() -> str:
     if not items:
         return t(f"스냅샷이 없습니다. snapshot 으로 먼저 저장하세요. (폴더: {d})",
                  f"No snapshots yet. Save one with the snapshot tool. (folder: {d})")
-    return t("스냅샷 목록:\n", "Snapshots:\n") + "\n".join(f"- {n} ({mb}MB, {when})" for n, mb, when in items)
+    total = round(sum(mb for _, mb, _ in items), 1)
+    text = t("스냅샷 목록:\n", "Snapshots:\n") + "\n".join(f"- {n} ({mb}MB, {when})" for n, mb, when in items)
+    text += t(f"\n모두 {len(items)}개, {total}MB.", f"\n{len(items)} in total, {total}MB.")
+    if len(items) > SNAPSHOT_KEEP:
+        text += t(f" 오래된 것은 clear_snapshots 로 지울 수 있습니다(최근 {SNAPSHOT_KEEP}개와 before_restore 는 남김).",
+                  f" Delete old ones with clear_snapshots (keeps the newest {SNAPSHOT_KEEP} and before_restore).")
+    return text
+
+
+SNAPSHOT_KEEP = 5  # clear_snapshots 가 기본으로 남기는 개수
+
+
+@mcp.tool(annotations=DESTRUCTIVE)
+def clear_snapshots(keep: int = SNAPSHOT_KEEP) -> str:
+    """Delete old snapshots, keeping the newest `keep` ones. before_restore (the undo point of restore) is always kept.
+    오래된 스냅샷부터 지우고 최근 keep 개를 남긴다. restore 의 되돌릴 곳(before_restore)은 늘 남긴다."""
+    if isinstance(keep, bool) or not isinstance(keep, int) or not 0 <= keep <= 1000:
+        return _fail(BlenderError(t(
+            f"keep={keep!r} 은 쓸 수 없습니다. 남길 스냅샷 개수를 0~1000 사이 정수로 다시 시키세요(기본 {SNAPSHOT_KEEP}).",
+            f"keep={keep!r} is not allowed. Ask again with the number of snapshots to keep, an integer from 0 to 1000 (default {SNAPSHOT_KEEP}).")))
+    d = snapshot_dir()
+    files = sorted((f for f in d.glob("*.blend") if f.stem != "before_restore"),
+                   key=lambda f: f.stat().st_mtime, reverse=True)
+    old = files[keep:]
+    if not old:
+        return t(f"지울 스냅샷이 없습니다(있는 것 {len(files)}개 ≤ 남길 개수 {keep}개). (폴더: {d})",
+                 f"No snapshots to delete ({len(files)} saved, keeping up to {keep}). (folder: {d})")
+    freed = 0
+    for f in old:
+        # 블렌더가 같은 이름으로 다시 저장할 때 남기는 이전 판(.blend1, .blend2 …)도 함께 지운다
+        for g in [f, *d.glob(f"{glob.escape(f.stem)}.blend[0-9]*")]:
+            try:
+                freed += g.stat().st_size
+                g.unlink()
+            except OSError:
+                pass
+    names = ", ".join(f.stem for f in old)
+    kept = ", ".join(f.stem for f in files[:keep]) or t("없음", "none")
+    return t(f"스냅샷 {len(old)}개 지움({freed / 1_000_000:.1f}MB): {names}. 남긴 것: {kept} (+ before_restore 는 늘 남김).",
+             f"Deleted {len(old)} snapshots ({freed / 1_000_000:.1f}MB): {names}. Kept: {kept} (+ before_restore is always kept).") \
+        + _free_space_note()
+
+
+def _missing_snapshot(label: str) -> str:
+    names = sorted(p.stem for p in snapshot_dir().glob("*.blend"))
+    if not names:
+        return t(f"스냅샷이 없습니다: {label}. 저장된 스냅샷이 하나도 없습니다. 되돌리고 싶은 상태에서 snapshot 으로 먼저 저장하세요.",
+                 f"Snapshot not found: {label}. There are no snapshots yet. Save one with snapshot first, at the state you want to return to.")
+    shown = ", ".join(difflib.get_close_matches(label, names, n=3, cutoff=0.5) or names[:10])
+    return t(f"스냅샷이 없습니다: {label}. 있는 스냅샷: {shown}. 이 중 하나의 이름으로 restore 를 다시 시키세요(전체 목록은 list_snapshots).",
+             f"Snapshot not found: {label}. Existing snapshots: {shown}. Ask restore again with one of these names (full list: list_snapshots).")
 
 
 @mcp.tool(annotations=DESTRUCTIVE)
@@ -829,6 +1048,10 @@ def restore(name: str) -> str:
     """Go back to a snapshot. The current scene is auto-saved as "before_restore" first, so this is undoable.
     스냅샷으로 되돌린다. 되돌리기 직전 상태가 before_restore 로 자동 저장되므로 되돌리기도 되돌릴 수 있다."""
     label = re.sub(r"[^\w\-]+", "_", name)[:40]
+    target = snapshot_dir() / f"{label}.blend"
+    if bridge.is_local() and not target.exists():
+        # 이름이 틀렸는데 자동 저장부터 하면 지난 before_restore 를 덮어써 진짜 되돌릴 곳을 잃는다. 블렌더에 보내기 전에 막는다
+        return _fail(BlenderError(_missing_snapshot(label)))
     auto = True
     try:
         run_recipe("snapshot", dict(path=str(snapshot_dir() / "before_restore.blend")), timeout=long_timeout())
@@ -869,7 +1092,8 @@ def save_blend(name: str = "fx_scene") -> str:
 def render_preview(frame_count: int = 5, quality: str = "preview", width: int = 640, height: int = 360,
                    frames: list[int] | None = None):
     """Re-render the current scene. quality: preview (fast, no sky/smoke/water), smoke (shows them), final (high quality).
-    현재 장면을 다시 렌더한다."""
+    현재 장면을 다시 렌더한다.
+    quality: preview(빠름, 하늘·연기·물 안 보임) / smoke(그것들까지 보임) / final(고화질)"""
     try:
         run_dir = new_run_dir(f"render_{quality}")
         params = dict(out_dir=str(run_dir), frame_count=frame_count, quality=quality, width=width, height=height)
@@ -887,7 +1111,8 @@ def render_preview(frame_count: int = 5, quality: str = "preview", width: int = 
 def render_video(quality: str = "smoke", width: int = 1280, height: int = 720, fps: int = 0,
                  frame_start: int = 0, frame_end: int = 0, name: str = "") -> str:
     """Render the whole scene to an mp4 video.
-    장면 전체를 mp4 로 렌더한다. 72프레임 720p 기준 1~3분."""
+    장면 전체를 mp4 로 렌더한다. 72프레임 720p 기준 1~3분.
+    quality: preview / smoke / final"""
     try:
         run_dir = new_run_dir(f"video_{name or quality}")
         res = run_recipe("render_video", dict(
@@ -913,8 +1138,29 @@ def clear_caches() -> str:
         res = run_recipe("clear_caches", dict(cache_dirs=list(_cache_dirs().values())), timeout=long_timeout())
     except BlenderError as e:
         return _fail(e)
-    return t(f"캐시 정리: {res['freed_mb']}MB 비움, 유체 도메인 {res['fluid_domains']}개 초기화.",
-             f"Caches cleared: freed {res['freed_mb']}MB, reset {res['fluid_domains']} fluid domains.")
+    if res["freed_mb"]:
+        text = t(f"캐시 정리: {res['freed_mb']}MB 비움, 유체 도메인 {res['fluid_domains']}개 초기화.",
+                 f"Caches cleared: freed {res['freed_mb']}MB, reset {res['fluid_domains']} fluid domains.")
+    else:
+        text = t(f"캐시 정리: 캐시 폴더에 지울 파일이 없었습니다(유체 도메인 {res['fluid_domains']}개 초기화).",
+                 f"Caches cleared: there were no cache files to delete ({res['fluid_domains']} fluid domains reset).")
+    return text + _free_space_note()
+
+
+def _free_space_note() -> str:
+    """정리 도구 끝에 붙이는 출력 폴더 디스크 여유. 블렌더가 다른 컴퓨터면(디스크가 다름) 붙이지 않는다."""
+    if not bridge.is_local():
+        return ""
+    root = out_root()
+    free = disk.free_bytes(root)
+    if free is None:
+        return ""
+    if free >= disk.BAKE_MIN_BYTES:
+        return t(f" 출력 폴더 디스크 여유: {disk.gb(free)}.", f" Free disk space for the output folder: {disk.gb(free)}.")
+    return t(f" 출력 폴더 디스크 여유: {disk.gb(free)} — 굽기에는 아직 부족합니다({disk.gb(disk.BAKE_MIN_BYTES)} 필요). "
+             f"오래된 스냅샷은 clear_snapshots 로 지우고, 지난 렌더 폴더를 직접 지우거나 BLENDER_FX_OUT 을 여유 있는 디스크로 바꾸세요. (폴더: {root})",
+             f" Free disk space for the output folder: {disk.gb(free)}, still not enough to bake ({disk.gb(disk.BAKE_MIN_BYTES)} needed). "
+             f"Delete old snapshots with clear_snapshots, delete old render folders yourself, or point BLENDER_FX_OUT to a disk with more space. (folder: {root})")
 
 
 @mcp.tool(annotations=DESTRUCTIVE)
@@ -929,7 +1175,120 @@ def reset_destroy(target: str = "") -> str:
              f"Cleanup done: removed {res['removed']} objects, originals restored.")
 
 
+# ---- MCP 프롬프트: 클라이언트의 `/` 메뉴에서 바로 고르는 문장. README 예시 문장을 복사해 붙이지 않아도 된다 ----
+
+# 제목·설명은 INSTRUCTIONS 처럼 서버를 띄울 때의 언어로 고른다
+@mcp.prompt(title=t("첫 데모: 건물 무너뜨리기", "First demo: collapse a building"),
+            description=t("연습 건물을 만들어 한쪽에서 충격을 줘 무너뜨리고 미리보기를 본다.",
+                          "Practice building → concrete collapse from one side → preview frames."))
+def first_demo(
+    impact: Annotated[str, Field(description="left / right / front / back / top / none")] = "left",
+    material: Annotated[str, Field(description=" / ".join(_DESTROY_MATERIALS))] = "concrete",
+) -> str:
+    try:
+        check_choices("destroy", dict(impact=impact, material=material))
+    except BlenderError as e:
+        # 예외로 내면 클라이언트에는 'Error rendering prompt' 만 보여 가능한 값이 사라진다. 문장으로 돌려준다
+        return t(f"/first_demo 인자가 틀렸어: {e} 아무 도구도 부르지 말고 이 문장을 나에게 그대로 보여 줘.",
+                 f"Wrong /first_demo argument: {e} Do not call any tool; show me this message as it is.")
+    return t(
+        "블렌더 FX 첫 데모를 차례로 해 줘. 단계마다 무엇을 했는지 한 줄로 알려 줘.\n"
+        "1. ping_blender 로 연결을 확인해. 실패하면 doctor 를 부르고 그 '다음 할 일'을 그대로 알려 준 뒤 멈춰.\n"
+        "2. make_demo_building 으로 연습 건물을 만들어(이름 Building).\n"
+        "3. snapshot 을 name=before_demo 로 불러 지금 상태를 저장해.\n"
+        f"4. destroy 를 target=Building, impact={impact}, material={material} 로 불러 무너뜨려.\n"
+        "5. render_preview 로 미리보기를 보여 주고, 무엇이 보이는지 쉬운 말로 설명해.\n"
+        "끝나면 바꿔 볼 만한 지시 두 가지(예: '더 잘게', '느리게')를 제안하고, 마음에 안 들면 restore before_demo 로 돌아갈 수 있다고 알려 줘.",
+        "Run the Blender FX first demo step by step. After each step, say in one line what you did.\n"
+        "1. Check the connection with ping_blender. If it fails, call doctor, pass on its next steps as they are, and stop.\n"
+        "2. Create the practice building with make_demo_building (name Building).\n"
+        "3. Call snapshot with name=before_demo to save the current state.\n"
+        f"4. Call destroy with target=Building, impact={impact}, material={material} to collapse it.\n"
+        "5. Show the preview with render_preview and describe what you see in plain words.\n"
+        "Then suggest two directions to try (e.g. 'smaller pieces', 'slower'), and mention that restore before_demo goes back.",
+    )
+
+
+@mcp.prompt(title=t("내 모델 부수기", "Break my own model"),
+            description=t("모델 파일을 가져와 상태를 점검하고 한쪽에서 부순 뒤 미리보기를 본다.",
+                          "Import a model file, check the mesh, break it from one side and show a preview."))
+def my_model(
+    path: Annotated[str, Field(description="glb / gltf / fbx / obj / stl / usd / blend")],
+    size: Annotated[str, Field(description="m, 0 = keep")] = "0",
+    impact: Annotated[str, Field(description="left / right / front / back / top / none")] = "left",
+) -> str:
+    try:
+        check_choices("destroy", dict(impact=impact))
+        meters = float(size or 0)
+        if meters < 0:
+            raise ValueError(size)
+    except (BlenderError, ValueError) as e:
+        if isinstance(e, ValueError):
+            e = BlenderError(t(f"size 값 '{size}' 은(는) 0 이상의 숫자(m)여야 합니다. 원래 크기면 0.",
+                               f"size '{size}' must be a number of meters, 0 or more. Use 0 to keep the size."))
+        return t(f"/my_model 인자가 틀렸어: {e} 아무 도구도 부르지 말고 이 문장을 나에게 그대로 보여 줘.",
+                 f"Wrong /my_model argument: {e} Do not call any tool; show me this message as it is.")
+    return t(
+        "내 모델을 부숴 보고 싶어. 단계마다 무엇을 했는지 한 줄로 알려 줘.\n"
+        "1. ping_blender 로 연결을 확인해. 실패하면 doctor 를 부르고 그 '다음 할 일'을 그대로 알려 준 뒤 멈춰.\n"
+        "2. snapshot 을 name=before_my_model 로 불러 지금 장면을 저장해.\n"
+        f"3. import_model 을 path={path!r}, size={meters:g} 로 불러. 실패하면 그 문장(비슷한 파일 이름이 들어 있음)을 그대로 보여 주고 멈춰.\n"
+        "4. 가져온 오브젝트 이름으로 inspect_mesh 를 불러 상태를 쉬운 말로 설명해. 열린 메시·면이 너무 많음 같은 문제가 있으면 계속할지 나에게 물어봐.\n"
+        f"5. destroy 를 그 이름, impact={impact} 로 불러 부숴.\n"
+        "6. render_preview 로 미리보기를 보여 주고 무엇이 보이는지 설명해. 마음에 안 들면 restore before_my_model 로 돌아갈 수 있다고 알려 줘.",
+        "I want to break my own model. After each step, say in one line what you did.\n"
+        "1. Check the connection with ping_blender. If it fails, call doctor, pass on its next steps as they are, and stop.\n"
+        "2. Call snapshot with name=before_my_model to save the current scene.\n"
+        f"3. Call import_model with path={path!r}, size={meters:g}. If it fails, show its message (it lists similar file names) and stop.\n"
+        "4. Call inspect_mesh on the imported object and explain its state in plain words. "
+        "If there is a problem such as an open mesh or too many faces, ask me whether to continue.\n"
+        f"5. Call destroy on that object with impact={impact}.\n"
+        "6. Show the preview with render_preview and describe it. Mention that restore before_my_model goes back.",
+    )
+
+
+@mcp.prompt(title=t("마지막 작업 되돌리기", "Undo the last step"),
+            description=t("스냅샷 목록을 보고 확인을 받은 뒤 가장 최근 것으로 되돌린다.",
+                          "List snapshots and go back to the most recent one after confirming."))
+def undo_last() -> str:
+    return t(
+        "방금 한 작업을 되돌리고 싶어.\n"
+        "1. list_snapshots 로 스냅샷 목록을 보여 줘. 하나도 없으면 되돌릴 곳이 없다고 말하고, 다음부터는 작업 전에 snapshot 으로 저장하자고 제안한 뒤 멈춰.\n"
+        "2. before_restore 를 뺀 가장 최근 스냅샷을 골라 이름과 저장 시각을 말하고, 그걸로 되돌릴지 나에게 한 번 물어봐.\n"
+        "3. 좋다고 하면 restore 를 그 이름으로 불러. 지금 상태는 before_restore 로 자동 저장되니, 되돌린 것도 restore before_restore 로 취소할 수 있다고 알려 줘.",
+        "I want to undo what was just done.\n"
+        "1. Show the snapshot list with list_snapshots. If there are none, say there is nothing to go back to, "
+        "suggest saving with snapshot before the next risky step, and stop.\n"
+        "2. Pick the most recent snapshot other than before_restore, tell me its name and time, and ask me once whether to go back to it.\n"
+        "3. If I agree, call restore with that name. Mention that the current state is auto-saved as before_restore, "
+        "so restore before_restore undoes the undo.",
+    )
+
+
+def terminal_hint() -> str:
+    """사람이 터미널에서 서버 명령을 직접 쳤을 때 보일 안내. 서버는 클라이언트의 JSON 을 기다리느라 아무것도 출력하지 않는다."""
+    from .doctor import SERVER_CMD
+    return t(
+        "blender-fx-mcp 는 MCP 클라이언트(클로드·커서 등)가 띄우는 서버라 여기서는 입력을 기다리기만 합니다. 멈춘 것이 아닙니다.\n"
+        f"  등록: claude mcp add -s user blender-fx -- {SERVER_CMD}\n"
+        "  점검: uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-doctor\n"
+        "  끝내기: Ctrl+C",
+        "blender-fx-mcp is a server that an MCP client (Claude, Cursor, ...) starts; here it only waits for input. It is not frozen.\n"
+        f"  Register: claude mcp add -s user blender-fx -e BLENDER_FX_LANG=en -- {SERVER_CMD}\n"
+        "  Check: uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-doctor\n"
+        "  Quit: Ctrl+C",
+    )
+
+
 def main() -> None:
+    import sys
+    # 클라이언트가 띄우면 표준 입력은 파이프다. 터미널이면 사람이 직접 친 것이라 stderr 로 한 번 안내한다(stdout 은 MCP 전용)
+    try:
+        tty = sys.stdin.isatty()
+    except (AttributeError, ValueError):
+        tty = False
+    if tty:
+        print(terminal_hint(), file=sys.stderr, flush=True)
     mcp.run()
 
 

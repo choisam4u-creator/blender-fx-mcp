@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 # 미리보기·최종 렌더 레시피. 프레임 몇 장을 PNG 로 저장하고 경로를 돌려준다.
 # PARAMS: out_dir, frame_count 또는 frames(목록), width, height, quality(preview|final)
 
@@ -22,8 +23,8 @@ def main():
     if sc.camera is None:
         objs = [o for o in mesh_objects() if o.get(FX_TAG) != "ground"]
         if not objs:
-            raise FxError(L("카메라도 오브젝트도 없어 렌더할 수 없습니다.",
-                            "There is no camera and no object, so nothing can be rendered."))
+            raise FxError(L("카메라도 오브젝트도 없어 렌더할 수 없습니다. make_demo_building·import_model 로 장면을 먼저 만드세요.",
+                            "There is no camera and no object, so nothing can be rendered. Build a scene first with make_demo_building or import_model."))
         lo, hi = world_bbox(objs[0])
         for o in objs[1:]:
             a, b = world_bbox(o)

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 # 폭발 레시피: 연기·불(Mantaflow) + 순간 힘장(주변 조각을 날린다).
 # target 이 있으면 그 건물 중심(높이 40%)에서 터진다. 조각은 destroy(impact="none", hold_until=burst_frame) 로 미리 만들어 둔다.
 # PARAMS: target, at([x,y,z]), radius, power, fire, frames, burst_frame, resolution, cache_dir

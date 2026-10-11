@@ -3,7 +3,7 @@ import asyncio
 
 import pytest
 
-from blender_fx_mcp import __version__, bridge
+from blender_fx_mcp import __version__, bridge, server
 from blender_fx_mcp.bridge import BlenderError
 from blender_fx_mcp.server import build_code, mcp, parse_result
 
@@ -34,7 +34,7 @@ def test_every_tool_has_annotations():
         assert not (a.read_only_hint and a.destructive_hint), name
 
 
-@pytest.mark.parametrize("name", ["restore", "clear_caches", "reset_destroy", "export_model", "snapshot"])
+@pytest.mark.parametrize("name", ["restore", "clear_caches", "reset_destroy", "export_model", "snapshot", "clear_snapshots"])
 def test_hard_to_undo_tools_are_destructive(name):
     a = _annotations()[name]
     assert a.destructive_hint is True and a.read_only_hint is False
@@ -85,6 +85,7 @@ def test_english_failure_message(monkeypatch):
 
 def test_doctor_runs_without_blender(monkeypatch):
     from blender_fx_mcp.doctor import format_report, run_checks
+    monkeypatch.setenv("BLENDER_FX_LANG", "ko")  # 한국어 기대값: 셸·다른 시험의 en 에 기대지 않는다
     monkeypatch.setenv("BLENDER_FX_PORT", "1")  # 수신기 없음 → 연결 항목만 실패해야 한다
     checks = run_checks()
     by_name = {c["name"]: c for c in checks}
@@ -111,6 +112,90 @@ def test_parse_result_missing():
 
 
 def test_bridge_connection_refused(monkeypatch):
+    monkeypatch.setenv("BLENDER_FX_LANG", "ko")
     monkeypatch.setenv("BLENDER_FX_PORT", "1")
     with pytest.raises(BlenderError, match="연결할 수 없습니다"):
         bridge.run_python("print(1)", timeout=2)
+
+
+# ---- 블렌더 판 ----
+
+@pytest.mark.parametrize("lang", ["ko", "en"])
+@pytest.mark.parametrize("version,warns", [("5.2.0 LTS", False), ("5.2", False), ("4.2.3 LTS", True), ("5.3.0 Alpha", True)])
+def test_ping_blender_shows_version_and_warns_off_support(monkeypatch, lang, version, warns):
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    monkeypatch.setattr(bridge, "ping", lambda: True)
+    monkeypatch.setattr(bridge, "run_python", lambda code, timeout=None: f"noise\n{version}\n")
+    out = server.ping_blender()
+    assert out.startswith("연결됨 (" if lang == "ko" else "Connected (") and f"Blender {version})" in out, out
+    assert (bridge.SUPPORTED_BLENDER + " LTS" in out) is warns, out
+
+
+def test_ping_blender_without_version_still_connected(monkeypatch):
+    monkeypatch.setenv("BLENDER_FX_LANG", "en")
+    monkeypatch.setattr(bridge, "ping", lambda: True)
+
+    def no(code, timeout=None):
+        raise BlenderError("Blender error: execute_code is off")
+
+    monkeypatch.setattr(bridge, "run_python", no)
+    assert server.ping_blender() == f"Connected ({bridge.host()}:{bridge.port()})"
+
+
+def test_doctor_connection_line_has_version(monkeypatch, tmp_path):
+    from blender_fx_mcp import doctor
+    monkeypatch.setenv("BLENDER_FX_LANG", "en")
+    monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path))
+    monkeypatch.setattr(bridge, "ping", lambda: True)
+    monkeypatch.setattr(bridge, "run_python", lambda code, timeout=None: "4.2.3 LTS\n")
+    conn = next(c for c in doctor.run_checks() if c["id"] == "connection")
+    assert conn["ok"] and "Blender 4.2.3 LTS" in conn["detail"] and "not a tested version" in conn["detail"]
+
+
+def test_supported_blender_matches_support_md():
+    import re
+    from pathlib import Path
+    support = (Path(__file__).resolve().parents[1] / "SUPPORT.md").read_text(encoding="utf-8")
+    supported = re.search(r"^\| 블렌더 / Blender \| ([\d.]+) LTS \| 지원", support, re.M).group(1)
+    assert bridge.SUPPORTED_BLENDER == supported
+
+
+class _Stdin:
+    def __init__(self, tty):
+        self.tty = tty
+
+    def isatty(self):
+        return self.tty
+
+
+@pytest.mark.parametrize("lang,head", [("ko", "멈춘 것이 아닙니다"), ("en", "It is not frozen")])
+def test_terminal_launch_prints_hint_to_stderr(monkeypatch, capsys, lang, head):
+    # 터미널에서 서버 명령을 직접 치면 아무 출력 없이 멈춘 듯 보인다 → stderr 로 등록·점검·끝내기 안내(stdout 은 MCP 전용)
+    import sys
+    from blender_fx_mcp.doctor import SERVER_CMD
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    monkeypatch.setattr(sys, "stdin", _Stdin(True))
+    ran = []
+    monkeypatch.setattr(server.mcp, "run", lambda *a, **k: ran.append(1))
+    server.main()
+    out, err = capsys.readouterr()
+    assert ran == [1] and out == ""
+    assert head in err and "claude mcp add -s user blender-fx" in err and SERVER_CMD in err
+    assert "blender-fx-doctor" in err and "Ctrl+C" in err
+
+
+def test_client_launch_prints_nothing(monkeypatch, capsys):
+    import sys
+    monkeypatch.setattr(sys, "stdin", _Stdin(False))
+    monkeypatch.setattr(server.mcp, "run", lambda *a, **k: None)
+    server.main()
+    assert capsys.readouterr() == ("", "")
+
+
+def test_piped_server_stays_quiet():
+    # 실제 프로세스: 클라이언트처럼 파이프로 띄우면(입력 즉시 끝) 안내 없이 끝나야 한다
+    import subprocess
+    import sys
+    p = subprocess.run([sys.executable, "-m", "blender_fx_mcp.server"], input=b"", capture_output=True, timeout=60)
+    assert "Ctrl+C" not in p.stderr.decode("utf-8", "replace")
+    assert p.stdout == b""

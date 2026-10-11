@@ -37,6 +37,10 @@ PHRASES = [
     ("recipes/import_model.py", "File not found: "),
     ("recipes/render_video.py", "영상 파일이 만들어지지 않았습니다."),
     ("recipes/render_video.py", "No video file was produced."),
+    ("server.py", "뿐이라 굽기를 시작하지 않았습니다(물·연기 캐시는 수 GB)."),
+    ("server.py", "of disk space is left, so the bake was not started (water and smoke caches take several GB)."),
+    ("doctor.py", "출력 폴더 여유 공간"),
+    ("doctor.py", "output folder free space"),
 ]
 
 
@@ -107,3 +111,27 @@ def test_doctor_report_links_doc_only_when_something_is_wrong(monkeypatch):
 def test_readme_links_troubleshooting():
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     assert readme.count("docs/troubleshooting.md") >= 2  # 한국어·영어 절
+
+
+def test_doctor_client_help_points_to_real_section():
+    from blender_fx_mcp import doctor
+    assert doctor.CLIENT_HELP.startswith(bridge.TROUBLESHOOTING_URL + "#")
+    assert doctor.CLIENT_HELP.split("#", 1)[1] in _anchors(_doc())
+
+
+@pytest.mark.parametrize("lang", ["ko", "en"])
+def test_doctor_client_fix_carries_help_link(monkeypatch, tmp_path, lang):
+    from blender_fx_mcp import doctor
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    monkeypatch.setattr(doctor, "client_configs", lambda: [("Claude Code", str(tmp_path / "none.json"))])
+    c = next(x for x in doctor.run_checks() if x["id"] == "client")
+    assert not c["ok"] and c["fix"].endswith(doctor.CLIENT_HELP)
+
+
+def test_client_section_lists_every_config_doctor_reads():
+    # doctor 가 찾는 설정 파일 이름이 문서의 표에도 있어야 사용자가 같은 곳을 본다
+    from blender_fx_mcp import doctor
+    doc = _doc()
+    section = doc.split("## Tools not visible in the client", 1)[1].split("\n## ", 1)[0]
+    for _client, path in doctor.client_configs():
+        assert path.replace("\\", "/").rsplit("/", 1)[-1] in section, path

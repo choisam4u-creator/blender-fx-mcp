@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 # 물: 방향·속도·모양·점성을 정해서 떨어뜨리거나 쏘거나 채운다 (Mantaflow 액체).
 # PARAMS: mode(drop|stream|pool|object), source_object, at, size, shape(sphere|box|column),
 #         direction_deg, pitch_deg, speed, start_frame, duration, liquid, viscosity, surface_tension,
@@ -93,8 +94,8 @@ def main():
     source_name = p.get("source_object")
     if mode == "object":
         if not source_name:
-            raise FxError(L("mode='object' 에는 source_object 이름이 필요합니다.",
-                            "mode='object' needs a source_object name."))
+            raise FxError(L("mode='object' 에는 source_object 이름이 필요합니다. list_objects 로 이름을 확인해 source_object 로 주세요.",
+                            "mode='object' needs a source_object name. Look up the name with list_objects and pass it as source_object."))
         flow = get_target(source_name)
         flo, fhi = world_bbox(flow)
         at = (flo + fhi) / 2

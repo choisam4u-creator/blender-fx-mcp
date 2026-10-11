@@ -1,0 +1,29 @@
+# 의존성 취약점 점검: uv.lock 에 고정된 모든 판(개발 의존성 포함)을 PyPI 취약점 DB(OSV/PYSEC)와 맞춰 본다.
+# dependabot 은 새 판을 알려 줄 뿐, 지금 고정된 판에 알려진 취약점이 있는지는 따로 알리지 않는다.
+# 실패하면: `uv lock --upgrade-package <이름>` 으로 고친 판(Fix Versions)으로 올리고 PR 을 연다.
+name: audit
+
+on:
+  schedule:
+    - cron: "17 3 * * 2"
+  workflow_dispatch:
+  pull_request:
+    paths: ["uv.lock", "pyproject.toml", ".github/workflows/audit.yml"]
+  push:
+    branches: [main]
+    paths: ["uv.lock", "pyproject.toml"]
+
+permissions:
+  contents: read
+
+jobs:
+  pip-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5.4.2
+      # 잠금 파일 그대로(해시 포함) 내보내고, 설치 없이(--disable-pip) 판만 대조한다
+      - run: uv export --locked --all-groups --no-emit-project --format requirements-txt -o requirements-audit.txt
+      - run: uvx pip-audit@2.9.0 -r requirements-audit.txt --disable-pip --progress-spinner off
