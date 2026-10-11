@@ -4,8 +4,14 @@ import pytest
 from blender_fx_mcp import bridge, disk, doctor, server
 
 
-def test_free_bytes_walks_up_to_existing_folder(tmp_path):
-    assert disk.free_bytes(tmp_path / "없는" / "폴더") == disk.free_bytes(tmp_path) > 0
+def test_free_bytes_walks_up_to_existing_folder(monkeypatch, tmp_path):
+    assert disk.free_bytes(tmp_path) > 0
+    # 두 번 재면 그사이 다른 프로세스가 디스크를 써서 값이 달라질 수 있다(CI 러너). 어느 폴더를 재는지로 확인한다
+    asked = []
+    real = disk.shutil.disk_usage
+    monkeypatch.setattr(disk.shutil, "disk_usage", lambda p: asked.append(p) or real(p))
+    assert disk.free_bytes(tmp_path / "없는" / "폴더") > 0
+    assert asked == [tmp_path]
     (tmp_path / "a").mkdir()
     (tmp_path / "a" / "x.bin").write_bytes(b"0" * 1000)
     (tmp_path / "y.bin").write_bytes(b"0" * 24)
