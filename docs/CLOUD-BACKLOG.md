@@ -163,3 +163,11 @@
 - [ ] 굽기 전 대략 시간 안내: 물·연기 도구 결과와 진행 알림 첫 줄에 `resolution`·`frames` 로 어림한 시간대("보통 1~3분")를 넣고, Mac 실측표(`docs/recipes.md`)로 계수 맞추기 + 시험 (사용자 체감: 얼마나 기다려야 할지 모름. 진행 알림만으로는 끝이 안 보임)
 - [x] `export_model`·`import_model` 의 상대 경로를 출력 폴더(`BLENDER_FX_OUT`) 기준으로 풀고 결과에 절대 경로를 보이기 — 먼저 지금 상대 경로가 블렌더 현재 폴더 기준인지 확인 + 시험 (오류 메시지: 클라이언트마다 서버·블렌더 작업 폴더가 달라 "저장했다는데 파일이 없다"가 생길 수 있음) — 확인: 레시피는 `os.path.expanduser` 만 해서 상대 경로가 블렌더 작업 폴더(Finder 로 켠 앱은 `/`) 기준이었음. `server.output_path`(내보내기 → 출력 폴더)·`input_path`(가져오기·HDRI → 서버 작업 폴더, 그다음 출력 폴더, 없으면 블렌더에 보내기 전에 찾아본 폴더와 다음 할 일). 원격 블렌더는 그대로. `import_model` 결과에 전체 경로. 시험 `tests/test_server_paths.py` 8개
 - [x] 버그 양식에 `--issue` 출력을 붙일 마크다운 칸(`render` 없이, 표가 그대로 보이게)을 두고 doctor 칸은 `--json` 선택용으로 정리 + 양식 시험 (이슈 대응: 지금 doctor 칸은 `render: text` 라 `--issue` 의 표가 코드 블록 안 글자로 보임) — doctor 칸(필수)을 `render` 없이 `--issue` 용으로, `doctor-json` 선택 칸(`render: json`) 추가. 질문 양식 doctor 칸도 `render` 를 빼고 `--json` 은 ```json 블록으로 안내. 시험 `test_bug_form_doctor_issue_renders_as_markdown`(render 없음·`--issue` 출력이 마크다운 머리·표·접기로 시작)
+
+### 2026-10-11 (9회차) 추가 — 0.7.0 출시 직후·사용자 체감 우선(오픈소스 지원 기준: 활발한 유지보수·문서·시험·이슈 대응)
+
+- [ ] `release_check.py --tag v0.7.0`: release.yml 의 "태그와 pyproject 판 일치" 점검을 태그를 밀기 전에 Mac 에서 같은 규칙으로 + 시험(맞음·`v` 빠짐·판 다름) (유지보수: 태그를 잘못 밀면 release 워크플로가 빨개지고 태그를 지웠다 다시 달아야 함. 같은 점검을 미리 돌리면 한 번에 끝남)
+- [ ] PyPI 게시 확인 뒤(사람이 0.7.0 을 올린 다음 회차) README·`examples/`·doctor 등록 안내의 `uvx --from git+https://…` 18곳을 `uvx blender-fx-mcp` 로 바꾸고, 바꾼 명령이 같은 진입점을 가리키는지 시험 — PyPI 에 0.7.0 이 없으면 하지 않고 기록만 (사용자 체감: 첫 설치 명령이 짧아지고 git 이 없어도 됨. 첫 설치~첫 렌더 단계 수 감소)
+- [ ] doctor 의 "출력 폴더 여유 공간" 줄이 5GB 아래일 때 출력 폴더에서 큰 하위 폴더 3개(렌더·캐시·스냅샷)와 크기를 보여 주고, 지울 도구(`clear_caches`·`clear_snapshots`)를 짝지어 안내 + 시험 (오류 메시지가 다음 할 일을 말하게: 지금은 "이 폴더가 X GB" 까지만 말해 무엇을 지워야 할지 모름)
+- [ ] `examples/first_render.py` 를 가짜 수신기(소켓)로 끝까지 돌리는 시험: 5단계 진행 줄·종료 코드 0·PNG 경로 출력, 연결 거부면 종료 코드 2 와 다음 할 일 (예제가 그대로 도는지: 지금은 문법·인자만 보고 실제 흐름은 Mac 에서만 확인)
+- [ ] `docs/maintenance.md` 에 출시 절차 한 쪽(한/영): 태그 → release.yml → 환경 `pypi` 승인 → PyPI 확인 → 레지스트리 게시 → GitHub 릴리스 노트(CHANGELOG 절 복사) + 시험(문서의 워크플로·환경 이름이 release.yml 과 같은지) (활발한 유지보수 신호: 출시가 사람 한 명의 기억이 아니라 문서와 자동화로 재현됨)
