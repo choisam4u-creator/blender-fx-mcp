@@ -376,3 +376,10 @@ def test_save_blend_and_video_names_stay_in_output_folder(fake, tmp_path, name, 
     for path, default in ((blend, "fx_scene.blend"), (video, "fx.mp4")):
         assert path.resolve().is_relative_to(tmp_path.resolve()), path
         assert path.name == (f"{want}{path.suffix}" if want else default)
+
+
+def test_snapshot_says_when_it_replaces_one(fake, monkeypatch, tmp_path):
+    monkeypatch.setenv("BLENDER_FX_LANG", "en")
+    assert "replaced" not in server.snapshot("fresh_name")
+    _snapshots(tmp_path, "a_b")
+    assert "replaced the earlier snapshot 'a_b'" in server.snapshot("a b")  # 이름 정리 뒤 같아짐

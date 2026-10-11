@@ -154,7 +154,7 @@ def check_package(meta: str, label: str, license: str, readme: str) -> list[tupl
     ctype = m.group(1).strip() if m else "(없음)"
     ok = ctype.startswith("text/markdown")
     out.append((ok, f"{label} README 형식 = {ctype}" + ("" if ok else " → pyproject 의 readme 가 README.md 인지 확인")))
-    head, sep, body = meta.partition("\n\n")
+    _head, sep, body = meta.partition("\n\n")
     first = readme.strip().splitlines()[0] if readme.strip() else ""
     ok = bool(sep) and bool(first) and body.lstrip().startswith(first)
     out.append((ok, f"{label} README 본문" + ("" if ok else " → 패키지 설명에 README.md 가 들어가지 않음(pyproject 의 readme 확인)")))

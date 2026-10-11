@@ -1037,14 +1037,19 @@ def snapshot(name: str = "") -> str:
         return _fail(BlenderError(t(
             f"'{AUTO_SNAPSHOT}' 은 restore 가 직전 상태를 자동으로 저장하는 이름이라 쓸 수 없습니다. 다른 이름으로 다시 시키세요.",
             f"'{AUTO_SNAPSHOT}' is the name restore uses to auto-save the previous state. Ask again with another name.")))
+    existed = bridge.is_local() and (snapshot_dir() / f"{label}.blend").exists()
     try:
         res = run_recipe("snapshot", dict(path=str(snapshot_dir() / f"{label}.blend")), timeout=long_timeout())
     except BlenderError as e:
         return _fail(e)
-    return t(f"스냅샷 저장: {label} ({res['size_bytes'] / 1_000_000:.1f}MB, 오브젝트 {res['objects']}개). "
+    text = t(f"스냅샷 저장: {label} ({res['size_bytes'] / 1_000_000:.1f}MB, 오브젝트 {res['objects']}개). "
              f"지금 있는 스냅샷: {res['snapshots']}",
              f"Snapshot saved: {label} ({res['size_bytes'] / 1_000_000:.1f}MB, {res['objects']} objects). "
              f"Snapshots: {res['snapshots']}")
+    if existed:  # 이름 정리 뒤 같아진 이름("a b" 와 "a_b")도 여기 걸린다
+        text += t(f" 같은 이름의 이전 스냅샷 '{label}' 을 덮어썼습니다. 둘 다 남기려면 다른 이름으로 저장하세요.",
+                  f" This replaced the earlier snapshot '{label}'. Use another name to keep both.")
+    return text
 
 
 @mcp.tool(annotations=READ_ONLY)

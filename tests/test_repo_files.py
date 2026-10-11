@@ -247,7 +247,7 @@ def test_readme_badges_match_repo():
     badges = _badges()
     assert len(badges) >= 3, "README 첫 화면에 배지(CI·라이선스·Python)가 없음"
     workflows = ROOT / ".github" / "workflows"
-    for alt, img, link in badges:
+    for _alt, img, link in badges:
         m = re.search(r"/actions/workflows/([\w.-]+\.yml)/badge\.svg", img)
         if m:
             assert (workflows / m.group(1)).is_file(), m.group(1)
@@ -499,7 +499,7 @@ def _recipe_sections():
 
     def examples(part, level):
         heads = re.split(rf"^{level} (\d+)\. ", part, flags=re.M)[1:]
-        return {int(n): re.findall(r"^\| \d+ \| `([^`]+)` \|$", body, re.M) for n, body in zip(heads[::2], heads[1::2])}
+        return {int(n): re.findall(r"^\| \d+ \| `([^`]+)` \|$", body, re.M) for n, body in zip(heads[::2], heads[1::2], strict=True)}
 
     return ko, en, examples(ko, "##"), examples(en, "###")
 

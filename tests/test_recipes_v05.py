@@ -25,7 +25,7 @@ def test_snapshot_and_restore(tmp_path):
     ], blender=BLENDER)
     for r in results:
         assert r["ok"], r
-    saved, destroyed, after_destroy, restored, after_restore = results[1:]
+    saved, _destroyed, after_destroy, restored, after_restore = results[1:]
     assert os.path.getsize(snap) > 10000 and "before.blend" in saved["snapshots"]
     assert after_destroy["chunk_count"] == 25, after_destroy
     # 되돌린 뒤에는 조각이 사라지고 원본 건물이 보여야 한다
