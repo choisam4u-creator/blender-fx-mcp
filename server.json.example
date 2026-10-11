@@ -3,7 +3,7 @@
   "name": "io.github.choisam4u-creator/blender-fx-mcp",
   "title": "Blender FX",
   "description": "AI가 말로 시키면 블렌더에서 건물 파괴·폭발·물·불·파티클 FX를 만드는 MCP 서버",
-  "version": "0.6.3",
+  "version": "0.7.0",
   "repository": {
     "url": "https://github.com/choisam4u-creator/blender-fx-mcp",
     "source": "github"
@@ -12,7 +12,7 @@
     {
       "registryType": "pypi",
       "identifier": "blender-fx-mcp",
-      "version": "0.6.3",
+      "version": "0.7.0",
       "runtimeHint": "uvx",
       "transport": { "type": "stdio" },
       "environmentVariables": [

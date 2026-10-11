@@ -22,8 +22,8 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-# CHANGELOG 의 판 절 제목: "## 0.7.0 — 2026-10-20" 또는 "## 0.7.0 — 미출시 (준비 중)"
-HEADING = re.compile(r"^## (\d+\.\d+\.\d+) — (.+)$", re.M)
+# CHANGELOG 의 판 절 제목: "## [0.7.0] - 2026-10-13"(Keep a Changelog), 옛 "## 0.6.3 — 2026-09-21", 또는 "## 0.8.0 — 미출시 (준비 중)"
+HEADING = re.compile(r"^## \[?(\d+\.\d+\.\d+)\]? (?:—|-) (.+)$", re.M)
 DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
 # PyPI 가 받는 Metadata-Version. hatchling 은 2026-10 기준 2.5 를 쓰며, 2.5 를 받는 twine 은 7.0.0 부터다(6.x check 는 거부).
 # 새 판이 나와 빌드가 그 판을 쓰면 PyPI·twine 지원을 확인한 뒤 여기 더한다.
@@ -73,7 +73,7 @@ def check_files(root: Path) -> list[tuple[bool, str]]:
     changelog = (root / "CHANGELOG.md").read_text(encoding="utf-8")
     m = HEADING.search(changelog)
     if not m:
-        out.append((False, "CHANGELOG.md 에 '## X.Y.Z — 날짜' 절이 없음 → 맨 위에 이번 판 절을 만든다"))
+        out.append((False, "CHANGELOG.md 에 '## [X.Y.Z] - 날짜' 절이 없음 → 맨 위에 이번 판 절을 만든다"))
     else:
         top, when = m.group(1), m.group(2).strip()
         out.append((top == version, f"CHANGELOG.md 맨 위 절 판 = {top}"

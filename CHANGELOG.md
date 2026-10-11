@@ -1,9 +1,9 @@
 # 변경 이력
 
-## 0.7.0 — 미출시 (준비 중)
+## [0.7.0] - 2026-10-13
 
-출시 전까지 `pyproject.toml`·`src/blender_fx_mcp/__init__.py`·`server.json.example`·`CITATION.cff` 의 버전은 0.6.3 으로 둔다.
-아래 "출시 순서"에서 한꺼번에 올린다(`tests/test_registry.py` 가 넷이 어긋나면 실패한다).
+버전 네 곳(`pyproject.toml`·`src/blender_fx_mcp/__init__.py`·`server.json.example`·`CITATION.cff`)과 `uv.lock` 의 루트 패키지 판을 0.7.0 으로 올렸다
+(`tests/test_registry.py`·`scripts/release_check.py` 가 어긋나면 실패한다). 태그·릴리스·PyPI 게시는 사람이 승인한 뒤 Mac 에서 한다(아래 "출시 순서" 4~5).
 
 **English summary**
 
@@ -209,7 +209,7 @@
 **출시 순서 (샘님 Mac)**
 1. Mac 에서 `uv run pytest -q` 전부 통과(블렌더 앱으로 71개)
 2. 데모 GIF 를 찍어 `docs/media/demo.gif` 로 넣고 README 주석을 푼다(선택)
-3. 버전 네 곳(`pyproject.toml`·`__init__.py`·`server.json.example`·`CITATION.cff`)을 0.7.0 으로, 이 절의 제목을 날짜로 바꾼다
+3. ~~버전 네 곳을 0.7.0 으로, 이 절의 제목을 날짜로 바꾼다~~ — 클라우드 회차(2026-10-11)에 함
 4. `uv run python scripts/release_check.py --build` 가 모두 OK 인지 본다(버전 네 곳·CHANGELOG 날짜·휠 METADATA)
 5. 태그·PyPI·레지스트리 등록은 `docs/registry.md` 순서대로
 

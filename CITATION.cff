@@ -7,7 +7,7 @@ title: "blender-fx-mcp: Blender FX (destruction, explosion, water) MCP server fo
 authors:
   - given-names: Sam
     family-names: Choi
-version: "0.6.3"
+version: "0.7.0"
 license: MIT
 repository-code: "https://github.com/choisam4u-creator/blender-fx-mcp"
 url: "https://github.com/choisam4u-creator/blender-fx-mcp"

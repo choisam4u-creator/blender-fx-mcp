@@ -4,7 +4,7 @@
 
 | 판 / Version | 보안 수정 / Security fixes |
 |---|---|
-| 0.6.x (최신 / latest) | 예 / yes |
+| 0.7.x (최신 / latest) | 예 / yes |
 | 그 이전 / older | 아니오 — 최신 판으로 올려 주세요 / no, please upgrade |
 
 ## 구조상 알아 둘 위험 / Risks by design

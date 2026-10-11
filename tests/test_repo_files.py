@@ -507,7 +507,7 @@ def test_recipes_calls_pass_server_checks(monkeypatch, tmp_path):
 
 def _changelog_sections():
     text = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
-    parts = re.split(r"^## (\d+\.\d+\.\d+) — (.+)$", text, flags=re.M)
+    parts = re.split(r"^## \[?(\d+\.\d+\.\d+)\]? (?:—|-) (.+)$", text, flags=re.M)
     return [(parts[i], parts[i + 1].strip(), parts[i + 2]) for i in range(1, len(parts), 3)]
 
 
