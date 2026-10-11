@@ -137,6 +137,22 @@ def test_bug_form_asks_for_repro_info():
     assert langs == ["ko", "en"]  # i18n.t 가 고르는 두 언어
 
 
+def test_bug_form_doctor_issue_renders_as_markdown():
+    """`--issue` 는 표·접기(<details>)가 든 마크다운이다. `render:` 가 있으면 GitHub 가 코드 블록 안 글자로 보여 주므로
+    doctor 칸은 render 없이 받고, `--json` 은 render: json 인 별도 선택 칸에 받는다."""
+    from blender_fx_mcp import doctor
+    _, _, fields = _bug_form()
+    kind, required, block = fields["doctor"]
+    assert kind == "textarea" and required and "render:" not in block, "doctor 칸은 render 없이(표가 보이게)"
+    assert "blender-fx-doctor --issue" in block
+    kind, required, block = fields["doctor-json"]
+    assert kind == "textarea" and not required and "render: json" in block
+    out = doctor.format_issue([])
+    assert out.startswith("### ") and "| blender-fx-mcp |" in out and "<details>" in out
+    _, _, fields = _form("question.yml")
+    assert "render:" not in fields["doctor"][2] and "--issue" in fields["doctor"][2]
+
+
 def test_issue_config_links():
     text = (TEMPLATES / "config.yml").read_text(encoding="utf-8")
     assert re.search(r"^blank_issues_enabled: (true|false)$", text, re.M)

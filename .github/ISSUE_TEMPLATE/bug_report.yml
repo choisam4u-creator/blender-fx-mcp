@@ -11,15 +11,23 @@ body:
   - type: textarea
     id: doctor
     attributes:
-      label: blender-fx-doctor 출력 / doctor output
+      label: blender-fx-doctor --issue 출력 / doctor --issue output
       description: |
-        `uv run blender-fx-doctor` 결과 전체 (첫 줄에 blender-fx-mcp 버전). uvx 로 설치했다면 `uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-doctor`.
-        Full output of `uv run blender-fx-doctor` (first line shows the blender-fx-mcp version).
-        `--issue` 를 붙이면 집 폴더를 `~` 로 가린 신고용 출력이 나옵니다(권장). `--json` 출력도 됩니다(항목 id 가 언어와 상관없이 같음).
-        `--issue` prints a report with your home folder masked as `~` (recommended); the `--json` output is welcome too (its check ids do not depend on the language).
-      render: text
+        `uv run blender-fx-doctor --issue` 결과를 그대로 붙여 주세요. 표로 보이고, 집 폴더(사용자 이름)는 `~` 로 가려집니다. uvx 로 설치했다면 `uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-doctor --issue`.
+        Paste the output of `uv run blender-fx-doctor --issue` as is. It shows as a table, with your home folder masked as `~`.
+        `--json` 출력은 아래 선택 칸에 / The `--json` output goes in the optional field below.
     validations:
       required: true
+  - type: textarea
+    id: doctor-json
+    attributes:
+      label: blender-fx-doctor --json 출력 (선택) / doctor --json output (optional)
+      description: |
+        도움을 주는 사람이 요청할 때만. 항목 id 가 언어와 상관없이 같습니다. 집 폴더 경로가 그대로 나오니 필요하면 `~` 로 바꿔 주세요.
+        Only if a maintainer asks. Check ids do not depend on the language. Paths include your home folder; replace it with `~` if you like.
+      render: json
+    validations:
+      required: false
   - type: input
     id: blender-version
     attributes:

@@ -33,7 +33,7 @@ body:
       description: |
         연결·설치 질문이면 `uv run blender-fx-doctor --issue` 결과를 붙여 주세요(집 폴더는 `~` 로 가려짐. `--json` 도 됩니다).
         For setup or connection questions, paste the output of `uv run blender-fx-doctor --issue` (home folder masked as `~`; `--json` works too).
-      render: text
+        `--issue` 출력은 그대로 붙이면 표로 보입니다. `--json` 이면 ```json 블록으로 감싸 주세요. / `--issue` output shows as a table when pasted as is; wrap `--json` output in a ```json block.
     validations:
       required: false
   - type: dropdown
