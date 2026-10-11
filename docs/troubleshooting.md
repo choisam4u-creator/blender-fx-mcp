@@ -98,6 +98,29 @@ If Blender is frozen, restart it and `restore` the last snapshot. Bake and rende
 The receiver dropped the request. Another MCP server sharing the same receiver (e.g. blender-mcp itself) can cut it off;
 keep only one running and click **Connect to MCP server** again.
 
+> 명령 도중 블렌더와의 연결이 끊겼습니다(ConnectionResetError).
+> The connection to Blender dropped during the command (ConnectionResetError).
+
+> 블렌더 응답이 중간에 끊겼습니다(1234바이트 받음).
+> Blender's response was cut off (1234 bytes received).
+
+연결은 됐는데 블렌더가 명령을 처리하다 멈추거나 꺼진 경우입니다(무거운 굽기 중 메모리 부족이 흔함). 명령이 일부 실행됐을 수 있습니다.
+블렌더 창을 확인하고, 꺼졌으면 다시 켜서 **Connect to MCP server** 를 누른 뒤 `restore` 로 직전 스냅샷을 불러옵니다. 같은 명령이면 `resolution`·`pieces` 를 줄여 다시 시킵니다.
+Blender froze or quit while handling the command (often out of memory during a heavy bake), and the command may have partly run.
+Check the Blender window; if it closed, reopen it, click **Connect to MCP server** and `restore` the last snapshot. Retry with a lower `resolution` or `pieces`.
+
+> 블렌더 수신기가 알 수 없는 응답을 보냈습니다
+> The Blender receiver sent an unexpected response
+
+9876 포트에서 다른 프로그램이 답하고 있거나 수신기가 blender-mcp 애드온이 아닙니다. 블렌더 쪽 애드온과 포트를 확인합니다.
+Another program answers on the port, or the receiver is not the blender-mcp add-on. Check the add-on and the port.
+
+> 환경변수 BLENDER_FX_TIMEOUT='0' 은(는) 쓸 수 없습니다
+> The environment variable BLENDER_FX_TIMEOUT='0' is not valid (a number, at least 1).
+
+`BLENDER_FX_PORT`(1~65535)·`BLENDER_FX_TIMEOUT`(1 이상, 초)은 숫자여야 합니다. MCP 설정에서 고치거나 지우고 클라이언트를 다시 시작합니다.
+`BLENDER_FX_PORT` (1-65535) and `BLENDER_FX_TIMEOUT` (1 or more, seconds) must be numbers. Fix or remove them in your MCP config and restart the client.
+
 > 블렌더 오류: …
 > Blender error: …
 

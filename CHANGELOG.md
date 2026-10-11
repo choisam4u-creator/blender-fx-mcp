@@ -12,6 +12,7 @@
 
 *Fixes*
 - `restore("before_restore")` (undoing an undo) no longer overwrites the state it goes back to; the two states swap.
+  A dropped connection mid-command, a cut-off reply and invalid `BLENDER_FX_TIMEOUT`/`BLENDER_FX_PORT` values now each get their own message.
 - Install commands now use the PyPI package: `uvx blender-fx-mcp` (and `uvx --from blender-fx-mcp blender-fx-doctor`); git is no longer needed.
   The README, `examples/`, doctor, the connection-refused error and the bug form all use it. Troubleshooting explains how to get a newer release.
 - When less than 5GB is free, doctor names the largest parts of the output folder (baked caches, snapshots `clear_snapshots` would delete, render results, loose files) with their size
@@ -39,6 +40,10 @@
   간접 의존성 `exceptiongroup` 이 빠져 제3자 라이선스 표도 39개. 시험의 `importorskip("tomllib")` 는 보통 import 로
 
 **고침**
+- 수신기 연결 오류를 원인대로: 연결 뒤 끊김(블렌더가 굽다가 죽음)은 "명령 도중 연결이 끊겼습니다 → 블렌더 확인·restore" 로(전에는 "연결할 수 없음·애드온 설치"),
+  응답이 중간에 끊기면 받은 바이트 수와 함께, JSON 객체가 아닌 응답은 "알 수 없는 응답"으로. 객체 뒤 군더더기가 붙어도 기다리지 않고, 큰 응답을 빠르게 읽는다.
+  `BLENDER_FX_TIMEOUT=0`·음수·글자, 숫자가 아니거나 범위 밖인 `BLENDER_FX_PORT` 는 모든 도구가 같은 한 문장(고칠 곳)으로 알린다(전에는 0 이면 애드온 설치 안내, 글자면 예외).
+  해결법 문서에 새 문장 4개
 - `explode` 가 건물을 조각낸(수 분) 뒤에야 굽기 인자(`resolution` 등) 범위 검사에 걸려 장면이 조각만 난 채 남던 문제. 두 단계 인자를 조각내기 전에 모두 본다
 - `restore("before_restore")`(되돌리기를 되돌리기)가 되돌아갈 파일을 지금 장면으로 먼저 덮어써 그 상태를 잃던 문제. 원본을 옮겨 두고 열어 두 상태가 맞바뀐다.
   `snapshot` 에 `before_restore` 이름은 쓸 수 없게(예약)
