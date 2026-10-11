@@ -3,10 +3,38 @@
 ## 맥에서 돌릴 명령 (블렌더 필요, 최신 회차 기준)
 
 ```sh
-LANG=en_US.UTF-8 uv run blender-fx-doctor --issue    # 영어로 나오는지(로캘 자동), 표의 경로가 ~ 로 가려졌는지, "output folder free space" 줄
-uv run pytest -q                                      # 블렌더 앱으로 전체 통과(새 시험: 대상 이름 오타 제안 test_target_typo_suggests_close_name)
-uv run python examples/first_render.py                # 블렌더에서 Connect 뒤: 끝까지 PNG 3개. Claude Code 에서 같은 굽기를 시키면 "블렌더에서 작업 중 — N초" 진행 표시가 뜨는지
+uv run python scripts/release_check.py --build        # 0.7.0: 버전 네 곳·CHANGELOG [0.7.0] - 2026-10-13·휠 METADATA 모두 OK 인지(태그 밀기 전)
+uv run pytest -q                                      # 블렌더 앱으로 전체 통과(새: tests/test_cleanup_tools.py·tests/test_server_paths.py)
+uv run python examples/first_render.py && BLENDER_FX_LANG=en uv run python -c "from blender_fx_mcp import server; print(server.export_model('t.glb'))"   # Connect 뒤: 출력 폴더 안 t.glb 전체 경로
 ```
+
+## 2026-10-11 (9회차)
+
+- 한 일: 맨 앞 지시(10/11 감사, 0.7.0 출시 준비 F1·F3)부터. main 은 앞서 있지 않음, `latest.md`(10/1)의 FAIL 2건은 main 에 고쳐져 있음(재확인).
+  - **F1 버전 0.7.0** (`ff7555e`): pyproject·`__init__`·server.json.example 2곳·CITATION.cff·uv.lock 루트 패키지 판(의존성 그대로, `uv lock --check` 통과).
+    SUPPORT·SECURITY 지원 계열 0.7.x. CHANGELOG 머리 `## [0.7.0] - 2026-10-13`, 버전 유예 문장 → "올렸음, 태그·PyPI 는 사람 승인 뒤 Mac".
+    `release_check.py` 와 CHANGELOG 절 시험의 제목 정규식이 `## [X.Y.Z] - 날짜`(Keep a Changelog)도 읽게. `release_check.py` → 점검 8개 모두 OK.
+  - **F3 `.github/workflows/release.yml`** (`4eb778f`): tag push `v*` 만. 최상위·build `contents: read`. build: checkout(`persist-credentials: false`)
+    → 태그·pyproject 판 일치(표현식 대신 `GITHUB_REF_NAME` 환경 변수) → release_check → uv build → `--dist` → twine 7.0.0 check → artifact 업로드.
+    publish: `needs: build`, `environment: pypi`, 권한 `id-token: write` 하나, artifact 만 받아 `pypa/gh-action-pypi-publish` (run·checkout 없음).
+    액션 SHA 는 `git ls-remote` 로 확인(upload-artifact v7.0.2·download-artifact v8.0.2·pypi-publish v1.14.2 는 주석 태그라 `^{}` 커밋). actionlint 통과.
+    시험: `JOB_WRITE_PERMISSIONS` 에 release.yml `id-token: write` 만, 잡이 여럿이어도 잡 단위 블록에서 찾도록. 새 시험 `test_release_workflow_publish_only_uploads_artifact`.
+    변이 확인: build 에 id-token 을 넣으면 기존 권한 시험과 새 시험이, `workflow_dispatch` 를 더하면 새 시험이 실패. SECURITY 공급망 표·registry.md 게시 단계 갱신.
+  그다음 백로그(사용자 체감 우선) 4개:
+  1. **`clear_caches` 지운 양·남은 여유** — 지운 MB(없으면 그렇다고) + 출력 폴더 디스크 여유, 1GB 아래면 다음 할 일. 원격 블렌더면 여유 줄 없음.
+  2. **`clear_snapshots(keep=5)`** 새 도구(도구 33개) — 오래된 것부터, `before_restore` 는 늘 남김, `.blend1` 도. `list_snapshots` 에 개수·합계·정리 안내.
+  3. **버그 양식 doctor 칸** — `render` 없이 `--issue` 마크다운(표·접기가 보임), `--json` 은 `render: json` 선택 칸. 질문 양식도.
+  4. **상대 경로** — 확인해 보니 레시피는 `expanduser` 만 해서 블렌더 작업 폴더(Finder 로 켠 앱은 `/`) 기준이었음. 내보내기 → 출력 폴더,
+     가져오기·HDRI → 서버 작업 폴더 → 출력 폴더, 둘 다 없으면 블렌더에 보내기 전에 찾아본 폴더와 "전체 경로로 다시". ⚠️ 동작 변화.
+  - 남은 `[ ]` 1개(굽기 시간 어림 — Mac 실측 필요)라 새 항목 5개 추가(`--tag` 점검, PyPI 게시 뒤 설치 명령 단축, doctor 큰 폴더 안내, first_render 가짜 수신기 시험, 출시 절차 문서).
+- 돌린 시험: `uv run pytest -q`(3.11) **891 통과·35 건너뜀**. CI 서버 명령 3.10 + `--cov` → 882 통과·9 건너뜀, 커버리지 **98.44%**(하한 95%).
+  **`scripts/bpy_tests.sh`(bpy 5.0.1) → 920 통과, 6 건너뜀**(유체 `app_only` 5개·실제 캐릭터 파일 1개 — 블렌더 앱·파일 필요). `uvx ruff@0.15.20 check .` 통과.
+  release.yml build 단계를 로컬에서 그대로(태그 v0.7.0 일치·v0.6.9 불일치 검출, release_check 8개, `uv build`, `--dist` 25개, twine PASSED). actionlint 통과.
+  못 돌린 것: release.yml 실제 실행(태그를 밀어야 돎 — 사람 몫), PyPI 신뢰 게시자·환경 `pypi` 설정(저장소·PyPI 설정 화면).
+- 막힌 것: 없음.
+- 완료 수·추가 수: **완료 6**(F1·F3 + 백로그 4) / **추가 5**. 남은 `[ ]` 6개.
+- 출시 전 사람이 할 것: PyPI 프로젝트 설정 → Publishing 에 저장소·`release.yml`·환경 `pypi` 신뢰 게시자 등록, GitHub Settings → Environments 에 `pypi`(필수 검토자) 생성 → 그다음 태그.
+- Mac에서 확인할 것: 맨 위 명령 3줄.
 
 ## 2026-10-10 (8회차)
 
