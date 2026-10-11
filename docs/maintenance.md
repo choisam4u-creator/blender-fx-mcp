@@ -45,7 +45,7 @@ gh label create "stale" --color ededed --description "needs-info 마감 7일 전
 - 판 번호는 `메이저.마이너.패치` 이다. 1.0 전에는 **마이너** 가 새 도구·인자·동작 변화(예: 범위 밖 값을 오류로 바꾼 것), **패치** 가 고침만이다.
 - 동작이 바뀌면 [CHANGELOG.md](../CHANGELOG.md) 에 "동작 변화" 로 적는다.
 - 출시 주기 목표: 고침이 쌓이면 패치, 새 도구가 모이면 마이너. 고칠 것이 있는데 3개월 넘게 출시가 없게 두지 않는다.
-- 출시 전에 `uv run python scripts/release_check.py --build` 가 모두 OK 여야 한다. 태그·PyPI·레지스트리 순서는 [docs/registry.md](registry.md).
+- 출시 전에 `uv run python scripts/release_check.py --build` 가 모두 OK 여야 하고, 태그를 밀기 전에 `--tag v0.7.0` 으로 태그와 판이 맞는지 본다(release.yml 과 같은 규칙). 태그·PyPI·레지스트리 순서는 [docs/registry.md](registry.md).
 
 ### 지원 판 정리 기준
 
@@ -90,7 +90,7 @@ Labels are defined in [`.github/labels.yml`](../.github/labels.yml). Every label
 - Versions are `major.minor.patch`. Before 1.0, a **minor** release adds tools or arguments or changes behavior (e.g. turning out-of-range values into errors); a **patch** release only fixes bugs.
 - Behavior changes are listed as such in [CHANGELOG.md](../CHANGELOG.md).
 - Release cadence goal: a patch when fixes pile up, a minor when new tools are ready. Fixes should not wait more than 3 months for a release.
-- Before a release, `uv run python scripts/release_check.py --build` must be all OK. Tag, PyPI and registry steps are in [docs/registry.md](registry.md).
+- Before a release, `uv run python scripts/release_check.py --build` must be all OK, and before pushing a tag run it with `--tag v0.7.0` to check the tag matches the version (same rule as release.yml). Tag, PyPI and registry steps are in [docs/registry.md](registry.md).
 
 ### Dropping old versions
 

@@ -323,3 +323,22 @@ def test_dist_requires_license_files(repo, tmp_path):
     fails = [line for ok, line in rc.check_dist(dist, repo) if not ok]
     assert fails == ["휠 x-1.0-py3-none-any.whl 에 LICENSE 포함 → pyproject 의 license-files·sdist 포함 목록 확인",
                      "sdist x-1.0.tar.gz 에 docs/third-party-licenses.md 포함 → pyproject 의 license-files·sdist 포함 목록 확인"]
+
+
+def test_tag_matches_version():
+    """release.yml 과 Mac 이 같은 규칙: 태그는 'v' + pyproject 판."""
+    assert _fails(rc.check_tag("v9.9.9", "9.9.9")) == []
+    missing_v = _fails(rc.check_tag("9.9.9", "9.9.9"))
+    assert len(missing_v) == 1 and "v 가 빠짐" in missing_v[0] and "v9.9.9" in missing_v[0]
+    other = _fails(rc.check_tag("v9.9.8", "9.9.9"))
+    assert len(other) == 1 and "pyproject 판(9.9.9)과 다름" in other[0] and "git push --delete origin v9.9.8" in other[0]
+
+
+def test_main_with_tag(repo, capsys):
+    _release(repo)
+    assert rc.main(["--tag", "v9.9.9"], root=repo) == 0
+    assert "OK   태그 v9.9.9 = pyproject 판 9.9.9" in capsys.readouterr().out
+    assert rc.main(["--tag", "v1.0.0"], root=repo) == 1
+    assert "고칠 곳 1개" in capsys.readouterr().out
+    assert rc.main(["--tag"], root=repo) == 1
+    assert "--tag 뒤에 밀 태그" in capsys.readouterr().out

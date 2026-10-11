@@ -166,7 +166,7 @@
 
 ### 2026-10-11 (9회차) 추가 — 0.7.0 출시 직후·사용자 체감 우선(오픈소스 지원 기준: 활발한 유지보수·문서·시험·이슈 대응)
 
-- [ ] `release_check.py --tag v0.7.0`: release.yml 의 "태그와 pyproject 판 일치" 점검을 태그를 밀기 전에 Mac 에서 같은 규칙으로 + 시험(맞음·`v` 빠짐·판 다름) (유지보수: 태그를 잘못 밀면 release 워크플로가 빨개지고 태그를 지웠다 다시 달아야 함. 같은 점검을 미리 돌리면 한 번에 끝남)
+- [x] `release_check.py --tag v0.7.0`: release.yml 의 "태그와 pyproject 판 일치" 점검을 태그를 밀기 전에 Mac 에서 같은 규칙으로 + 시험(맞음·`v` 빠짐·판 다름) (유지보수: 태그를 잘못 밀면 release 워크플로가 빨개지고 태그를 지웠다 다시 달아야 함. 같은 점검을 미리 돌리면 한 번에 끝남) — `check_tag`: 맞으면 OK, `v` 빠짐·판 다름은 고칠 곳과 `git push --delete origin <태그>` 안내. release.yml build 잡의 셸 비교를 `release_check.py --tag "${GITHUB_REF_NAME}"` 한 단계로 합쳐 규칙이 한 곳(표현식 없이 환경 변수). registry·maintenance(한/영)에 태그 전 명령. 0.7.0 이 PyPI 에 올라가 CHANGELOG 맨 위에 `0.8.0 — 미출시` 절을 염. 시험 2개 + release.yml 시험이 새 단계를 봄
 - [ ] PyPI 게시 확인 뒤(사람이 0.7.0 을 올린 다음 회차) README·`examples/`·doctor 등록 안내의 `uvx --from git+https://…` 18곳을 `uvx blender-fx-mcp` 로 바꾸고, 바꾼 명령이 같은 진입점을 가리키는지 시험 — PyPI 에 0.7.0 이 없으면 하지 않고 기록만 (사용자 체감: 첫 설치 명령이 짧아지고 git 이 없어도 됨. 첫 설치~첫 렌더 단계 수 감소)
 - [ ] doctor 의 "출력 폴더 여유 공간" 줄이 5GB 아래일 때 출력 폴더에서 큰 하위 폴더 3개(렌더·캐시·스냅샷)와 크기를 보여 주고, 지울 도구(`clear_caches`·`clear_snapshots`)를 짝지어 안내 + 시험 (오류 메시지가 다음 할 일을 말하게: 지금은 "이 폴더가 X GB" 까지만 말해 무엇을 지워야 할지 모름)
 - [ ] `examples/first_render.py` 를 가짜 수신기(소켓)로 끝까지 돌리는 시험: 5단계 진행 줄·종료 코드 0·PNG 경로 출력, 연결 거부면 종료 코드 2 와 다음 할 일 (예제가 그대로 도는지: 지금은 문법·인자만 보고 실제 흐름은 Mac 에서만 확인)

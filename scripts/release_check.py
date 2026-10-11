@@ -4,6 +4,7 @@
   uv run python scripts/release_check.py           # 파일만 점검 (몇 초)
   uv run python scripts/release_check.py --build   # uv build 로 휠을 만들어 METADATA 까지
   uv run python scripts/release_check.py --dist dist   # 이미 만든 휠·sdist 의 METADATA 만 (CI 패키징 점검)
+  uv run python scripts/release_check.py --tag v0.7.0  # 파일 점검 + 밀 태그가 pyproject 판과 같은지 (release.yml 과 같은 규칙)
 
 `--dist` 는 판 번호·CHANGELOG 의 "미출시" 점검을 하지 않아 출시 전 PR 에서도 통과한다.
 실패한 줄마다 고칠 곳을 적는다. 모두 통과하면 종료 코드 0, 하나라도 실패하면 1.
@@ -89,6 +90,19 @@ def check_files(root: Path) -> list[tuple[bool, str]]:
     ok = f"mcp-name: {name}" in readme
     out.append((ok, f"README.md 의 mcp-name 줄({name})" + ("" if ok else " → 레지스트리 소유 확인용 줄을 README 맨 위에 넣는다")))
     return out
+
+
+def check_tag(tag: str, version: str) -> list[tuple[bool, str]]:
+    """태그는 'v' + pyproject 판이어야 한다. release.yml 의 build 잡도 이 함수로 본다(규칙이 한 곳)."""
+    want = f"v{version}"
+    if tag == want:
+        return [(True, f"태그 {tag} = pyproject 판 {version}")]
+    if tag == version:
+        hint = f"앞에 v 가 빠짐 → {want} 로 단다(release.yml 은 v* 태그에만 돈다)"
+    else:
+        hint = (f"pyproject 판({version})과 다름 → 버전 네 곳을 {tag.lstrip('v')} 로 올린 커밋에 태그를 달거나, "
+                f"태그를 {want} 로 고친다. 이미 밀었으면 `git push --delete origin {tag}` 뒤 다시")
+    return [(False, f"태그 {tag or '(빈 값)'}: {hint}")]
 
 
 def project_license(root: Path) -> str:
@@ -212,6 +226,12 @@ def main(argv: list[str] | None = None, root: Path = ROOT) -> int:
         results = check_dist(Path(argv[i + 1]), root)
         return _report(results, "패키지 점검 통과")
     results = check_files(root)
+    if "--tag" in argv:
+        i = argv.index("--tag")
+        if i + 1 >= len(argv) or argv[i + 1].startswith("--"):
+            print("FAIL --tag 뒤에 밀 태그를 적는다 (예: --tag v0.7.0)")
+            return 1
+        results += check_tag(argv[i + 1], project_version(root))
     if "--build" in argv:
         with tempfile.TemporaryDirectory() as tmp:
             try:

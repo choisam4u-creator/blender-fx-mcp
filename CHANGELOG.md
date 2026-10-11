@@ -1,5 +1,31 @@
 # 변경 이력
 
+## 0.8.0 — 미출시 (준비 중)
+
+0.7.0 은 2026-10-11 PyPI 에 올라감. 이 절은 다음 판에 들어갈 변경을 모은다. 버전 네 곳은 0.7.0 그대로 두고,
+Python 3.10 을 뺄 때 함께 0.8.0 으로 올린다(그전까지 `release_check.py` 는 "판 다름"·"미출시" 두 줄만 실패).
+
+**English summary**
+
+*Deprecation*
+- 0.7.0 is the last release that supports Python 3.10 (end of life 2026-10). 0.8.0 will require Python 3.11 or newer.
+
+*Fixes*
+- `scripts/release_check.py --tag v0.8.0` checks the tag you are about to push against the version, with the same rule the release workflow uses.
+
+*Tests and CI*
+- The release workflow checks the tag through `release_check.py --tag`, so the rule lives in one place and is tested.
+
+*Docs*
+- `docs/registry.md` and `docs/maintenance.md` say to run `release_check.py --tag` before pushing a tag.
+
+**지원 종료 예고**
+- 0.7.0 이 Python 3.10 을 지원하는 마지막 판입니다(3.10 은 2026-10 EOL). 0.8.0 부터 Python 3.11 이상이 필요합니다.
+
+**고침**
+- `scripts/release_check.py --tag v0.8.0`: 밀 태그가 `v` + pyproject 판인지 본다. `v` 가 빠졌거나 판이 다르면 고칠 곳과
+  이미 밀었을 때 지우는 명령을 적는다. `release.yml` build 잡도 셸 비교 대신 같은 명령(`--tag "${GITHUB_REF_NAME}"`)을 돈다
+
 ## [0.7.0] - 2026-10-13
 
 버전 네 곳(`pyproject.toml`·`src/blender_fx_mcp/__init__.py`·`server.json.example`·`CITATION.cff`)과 `uv.lock` 의 루트 패키지 판을 0.7.0 으로 올렸다

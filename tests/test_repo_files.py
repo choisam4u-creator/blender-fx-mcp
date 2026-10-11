@@ -360,9 +360,10 @@ def test_release_workflow_publish_only_uploads_artifact():
     build = jobs["build"]
     assert re.search(r"^    permissions:\n      contents: read\n    steps:", build, re.M), "build 권한은 contents: read 만"
     assert "persist-credentials: false" in build
-    assert "GITHUB_REF_NAME" in build and "pyproject.toml" in build, "태그와 pyproject 판 일치 확인"
+    # 태그와 pyproject 판 일치는 release_check.py --tag 한 곳의 규칙으로(Mac 에서 태그 전에 같은 명령)
+    assert 'scripts/release_check.py --tag "${GITHUB_REF_NAME}"\n' in build, "태그와 pyproject 판 일치 확인"
     assert "${{" not in build, "run 에 표현식을 넣지 않는다(태그 이름 주입 방지, 환경 변수로 읽음)"
-    for step in ("scripts/release_check.py\n", "uv build", "scripts/release_check.py --dist dist", "actions/upload-artifact@"):
+    for step in ("uv build", "scripts/release_check.py --dist dist", "actions/upload-artifact@"):
         assert step in build, f"build 에 {step.strip()} 단계가 없음"
 
     publish = jobs["publish"]
