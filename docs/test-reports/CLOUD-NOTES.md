@@ -2,6 +2,8 @@
 
 ## 맥에서 돌릴 명령 (블렌더 필요, 최신 회차 기준)
 
+한 번에 돌려 `latest.md` 를 새로 쓰려면 `uv run python scripts/mac_report.py`(결과 확인 뒤 커밋). 클라우드 회차는 그 FAIL 부터 고친다.
+
 ```sh
 uv sync && uv run pytest -q                        # 블렌더 앱으로 전체 통과(새 bpy 시험: 렌더 설정 보존·대상 지정 부수기가 다른 효과를 남김)
 uv run python examples/first_render.py             # Connect 뒤 끝까지. 그다음 Claude 에 "지금 상태 snapshot 해 줘 → restore before_restore 두 번" 을 시켜 두 상태가 맞바뀌는지

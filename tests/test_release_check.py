@@ -389,3 +389,53 @@ def test_release_notes_draft_previews_unreleased(capsys):
     assert "## [0.7.0]" not in out
     assert rn.main(["v0.7.0", "--draft"]) == 0  # 출시된 판은 --draft 여도 평소와 같다
     assert capsys.readouterr().out.rstrip().endswith("`uvx blender-fx-mcp@0.7.0`")
+
+
+# ---------- scripts/mac_report.py ----------
+
+def _mac_report():
+    spec = importlib.util.spec_from_file_location("mac_report", ROOT / "scripts" / "mac_report.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_mac_report_reads_the_commands_in_cloud_notes():
+    mr = _mac_report()
+    cmds = mr.mac_commands((ROOT / "docs" / "test-reports" / "CLOUD-NOTES.md").read_text(encoding="utf-8"))
+    assert 1 <= len(cmds) <= 5 and all(cmd and not cmd.startswith("#") for cmd, _ in cmds), cmds
+    assert all(note for _, note in cmds), "명령마다 '확인할 것' 주석"
+
+
+def test_mac_report_writes_latest_md(tmp_path, monkeypatch, capsys):
+    """가짜 명령 셋(통과·실패·주석)으로 돌려 latest.md 모양·종료 코드·집 폴더 가리기를 본다."""
+    import sys
+    mr = _mac_report()
+    home = str(tmp_path / "home" / "sam")
+    monkeypatch.setattr(mr, "mask_home", lambda text: text.replace(home, "~"))
+    monkeypatch.setattr(mr, "blender_version", lambda: "Blender 5.2.0 LTS")
+    py = sys.executable
+    notes = tmp_path / "NOTES.md"
+    notes.write_text(f"""# 기록
+
+## 맥에서 돌릴 명령 (블렌더 필요)
+
+```sh
+"{py}" -c "print('3 passed in 1.0s')"     # 통과해야 함
+"{py}" -c "import sys; print('{home}/x'); sys.exit(1)"   # 실패 예시
+```
+""", encoding="utf-8")
+    out = tmp_path / "latest.md"
+    assert mr.main(["--notes", str(notes), "--out", str(out), "--timeout", "60"]) == 1
+    text = out.read_text(encoding="utf-8")
+    assert text.startswith("# Mac 시험 결과 (최신)") and "**FAIL** — 1개 실패" in text
+    assert "| PASS (" in text and "3 passed in 1.0s" in text
+    assert "| 통과해야 함 |" in text and "## 실패 핵심" in text and "~/x" in text and home not in text
+    assert mr.main(["--notes", str(notes), "--dry-run"]) == 0
+    assert capsys.readouterr().out.count("print(") >= 2
+
+
+def test_mac_report_without_command_block(tmp_path):
+    notes = tmp_path / "n.md"
+    notes.write_text("# 비어 있음\n", encoding="utf-8")
+    assert _mac_report().main(["--notes", str(notes), "--dry-run"]) == 2

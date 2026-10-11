@@ -46,6 +46,7 @@ src/blender_fx_mcp/
      bpy 모듈은 Mantaflow(연기·불·물)가 깨져 있어 `@pytest.mark.app_only` 시험은 건너뛴다.
      이런 기능을 쓰는 새 시험에는 `@pytest.mark.app_only` 를 붙인다.
      bpy 4.2·4.5 LTS 휠도 같은 결함이 있다(2026-10 확인). 이 시험은 Actions 의 **app-tests** 작업(손으로 실행, 공식 블렌더 Linux 빌드)으로 돌린다.
+   - Mac 실측: `uv run python scripts/mac_report.py` 가 `docs/test-reports/CLOUD-NOTES.md` 맨 위 명령을 돌려 `docs/test-reports/latest.md` 를 새로 쓴다(집 폴더는 `~`). 클라우드 회차가 그 결과부터 읽는다.
    - Windows: CI `server-tests-os` 가 Windows 에서도 서버 시험을 돌린다. 가짜 블렌더는 `tests/conftest.py` 의 `fake_blender`(본문은 파이썬,
      POSIX 는 `/bin/sh` 감싸개, Windows 는 `.cmd` 감싸개)라 실행 실패·시간 초과·출력 자르기 갈래도 Windows 에서 돈다.
      건너뛰는 것은 세그폴트 흉내(시그널) `@posix_only` 1개(`tests/test_headless.py`)뿐이다.

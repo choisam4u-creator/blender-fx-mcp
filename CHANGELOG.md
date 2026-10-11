@@ -73,6 +73,8 @@
   5단계 진행 줄·종료 코드 0·서버가 출력 폴더에 만든 PNG 경로·되돌리기 안내(한/영), 블렌더 안 레시피 실패면 오류 문장·렌더 안 부름·종료 코드 1
 - README 첫 화면에 PyPI 판 배지(패키지 이름이 pyproject 와 같은지 시험). 파이썬 판 배지는 PyPI 분류자 대신 main 의 pyproject 를 따름
 - README 한/영에 "도움 받기" 3줄(`doctor --issue` → 맞는 양식 3개 → 첫 답 목표, 보안은 SECURITY.md). 명령·양식·일수가 실제와 다르면 시험이 실패한다
+- `scripts/mac_report.py`: CLOUD-NOTES 맨 위 Mac 명령을 돌려 `docs/test-reports/latest.md` 를 새로 쓴다(명령별 PASS/FAIL·걸린 시간·실패 끝 25줄, 집 폴더는 `~`)
+- 시험: 서버 쪽 커버리지 100%(남은 오류 갈래), bpy 레시피 시험 4분대 → 2분대
 - 진행 알림 문장을 내부 레시피 이름(`save_blend: …`) 대신 사람 말로: "물 굽는 중 — 45초 지남(블렌더에서 작업 중)" / "Baking the liquid — 45s so far".
   레시피 27개 모두 한/영 이름표가 있는지 시험
 - 시험: 진행 알림을 배포 형태 그대로(서버를 stdio 하위 프로세스로, 느린 가짜 수신기) 공식 클라이언트 `progress_callback` 까지 확인.
