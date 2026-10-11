@@ -3,10 +3,30 @@
 ## 맥에서 돌릴 명령 (블렌더 필요, 최신 회차 기준)
 
 ```sh
-uv run python scripts/release_check.py --build        # 0.7.0: 버전 네 곳·CHANGELOG [0.7.0] - 2026-10-13·휠 METADATA 모두 OK 인지(태그 밀기 전)
-uv run pytest -q                                      # 블렌더 앱으로 전체 통과(새: tests/test_cleanup_tools.py·tests/test_server_paths.py)
-uv run python examples/first_render.py && BLENDER_FX_LANG=en uv run python -c "from blender_fx_mcp import server; print(server.export_model('t.glb'))"   # Connect 뒤: 출력 폴더 안 t.glb 전체 경로
+uv run python scripts/release_check.py --tag v0.7.0 && uv run pytest -q tests/test_examples.py tests/test_disk.py   # --tag OK, 첫 렌더 가짜 수신기·디스크 묶음 시험 통과
+uvx --from blender-fx-mcp blender-fx-doctor           # PyPI 0.7.0 으로 doctor 가 돎(git 없이). 끝에 "모두 정상입니다."
+uv run python examples/first_render.py uvx blender-fx-mcp   # Connect 뒤: PyPI 서버로 [1/5]~[5/5]·PNG 3개 경로
 ```
+
+## 2026-10-11 (10회차)
+
+- 한 일: 맨 앞 지시(F1·F3)는 9회차에 끝나 PR #13 으로 main 에 병합됐고, 사람이 태그 `v0.7.0` 을 밀어 release.yml 첫 실행(10:51 UTC, 성공, 44초)이
+  PyPI 에 0.7.0(휠·sdist)을 올린 것을 확인 → 이번 회차는 바로 백로그. `latest.md`(10/1)의 FAIL 2건은 main 에 이미 고쳐져 있음(재확인).
+  0.7.0 이 나가 CHANGELOG 맨 위에 `## 0.8.0 — 미출시 (준비 중)` 절을 열고 이번 변경을 모음(버전 네 곳은 0.7.0 그대로 → `release_check.py` 는 "판 다름·미출시" 2줄만 FAIL 이 정상).
+  1. **`release_check.py --tag vX.Y.Z`** (`64515f9`): `v` 빠짐·판 다름이면 고칠 곳과 `git push --delete` 안내. release.yml build 잡의 셸 비교를 이 명령 하나로 합쳐 규칙이 한 곳.
+  2. **설치 명령을 PyPI 로** (`803802c`): `uvx blender-fx-mcp`, 점검 `uvx --from blender-fx-mcp blender-fx-doctor`. README·examples 7개·doctor·연결 거부 오류·버그 양식.
+     이 컨테이너에서 `uvx --from blender-fx-mcp==0.7.0 blender-fx-doctor --json` 실제로 돎. troubleshooting 에 "새 판이 나왔는데 예전 판이 돎" 절.
+  3. **doctor 디스크 부족 안내** (`7d85f80`): 5GB 아래면 큰 묶음(구운 캐시·스냅샷·렌더 결과)과 크기, 지울 방법을 큰 것부터. 다 작으면 "지워도 소용없음".
+  4. **first_render.py 끝까지 시험** (`c4ce5f3`): 진짜 서버 + 가짜 블렌더 수신기(소켓, 애드온 규약, render 는 진짜 PNG). 한/영 성공·레시피 실패.
+  5. **출시 절차 문서** (`f5991ab`): maintenance.md 한/영 8단계 + release.yml 과 이름이 맞는지 시험.
+  - 새 백로그 5개 (`6d8f8d6`): CHANGELOG 0.7.0 날짜(제목 10-13, 실제 10-11), doctor 새 판 알림, release_notes.py, PyPI 배지, 0.8.0 에서 3.10 빼기.
+- 돌린 시험: `uv run pytest -q`(3.11) **917 통과·35 건너뜀**. CI 서버 명령 3.10 + `--cov` → 908 통과·9 건너뜀, 커버리지 **98.28%**(하한 95%).
+  **`scripts/bpy_tests.sh`(bpy) → 946 통과, 6 건너뜀**(유체 `app_only` 5개·실제 캐릭터 파일 1개 — 블렌더 앱·파일 필요). `uvx ruff@0.15.20 check .` 통과.
+  변이 확인: README 에 git+ 설치 명령을 되돌리면 새 시험이 실패.
+- 막힌 것: 없음. 참고 — release.yml 실행이 44초라 환경 `pypi` 에 필수 검토자가 없었던 것 같음(승인 없이 게시). 의도가 아니면 Settings → Environments → `pypi` 에 검토자 추가.
+  CHANGELOG `[0.7.0]` 제목 날짜(2026-10-13)가 실제 게시일(10-11)과 다름 → 백로그 첫 항목으로 남김(사람이 정한 날짜라 이번엔 안 바꿈).
+- 완료 수·추가 수: **완료 5** / **추가 5**. 남은 `[ ]` 6개(그중 굽기 시간 어림 1개는 Mac 실측 필요).
+- Mac에서 확인할 것: 맨 위 명령 3줄.
 
 ## 2026-10-11 (9회차)
 
