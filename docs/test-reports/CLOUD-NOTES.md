@@ -3,10 +3,32 @@
 ## 맥에서 돌릴 명령 (블렌더 필요, 최신 회차 기준)
 
 ```sh
-uv sync && uv run pytest -q                           # 0.8.0 준비 상태(Python 3.11+)로 블렌더 앱 전체 통과. 3.10 가상환경이면 uv sync 가 거부하는 것이 정상
-uv run blender-fx-doctor                              # 두 번째 줄 다음 "새 판: 최신(PyPI 0.7.0)" 이 아니라 "PyPI 에 0.7.0 이 있음(지금 0.8.0)" 이 안 나오는지(0.8.0 이 더 새 판이라 '최신' 이어야 함)
-uv run python scripts/release_notes.py v0.7.0         # GitHub 릴리스 0.7.0 본문이 아직 비어 있으면 이 출력을 붙여 넣기(사람 몫)
+uv sync && uv run pytest -q                        # 블렌더 앱으로 전체 통과(새 bpy 시험: 렌더 설정 보존·대상 지정 부수기가 다른 효과를 남김)
+uv run python examples/first_render.py             # Connect 뒤 끝까지. 그다음 Claude 에 "지금 상태 snapshot 해 줘 → restore before_restore 두 번" 을 시켜 두 상태가 맞바뀌는지
+uv run blender-fx-doctor --issue                   # 표와 점검 전체에 집 폴더가 ~ 로 가려졌는지(문장부호 붙은 경로 포함)
 ```
+
+## 2026-10-11 (12회차)
+
+- 한 일: 사용자 요청 "남은 백로그 5개 + 필요한 작업 바로바로, 퀄리티 개선 리스트업". main 은 앞서 있지 않음, `latest.md`(10/1)의 FAIL 2건은 main 에 고쳐져 있음(재확인).
+  1. 백로그 5개: dependabot PR 3개 검토(세 PR 모두 고칠 것 없음, 아래 표), `release_notes.py --draft`, 진행 알림 사람 말(레시피 27개 한/영), README "도움 받기" 3줄, 진행 알림 stdio 끝까지 시험(`BLENDER_FX_PROGRESS_EVERY`).
+  2. **품질 감사**(하위 에이전트가 코드를 읽고 재현한 11건 → 하나씩 확인해 모두 고침, 백로그 "12회차 품질 감사" 절):
+     - 높음: `restore("before_restore")` 가 되돌아갈 상태를 덮어씀 → 맞바꾸기. `before_restore` 는 예약 이름.
+     - 중간: `destroy`/`reset_destroy(target=X)` 가 바다·물·연기 등 다른 효과까지 지움(옛 코드로 실패하는 bpy 시험 확인), `explode` 가 조각낸 뒤에야 인자 검사, `set_render` 샘플·크기를 렌더가 무시, 명령 도중 끊김을 "애드온 설치"로 안내·`BLENDER_FX_TIMEOUT=0` 이 모든 도구를 깸, 미리보기 실패 시 설정이 바뀐 채 남음.
+     - 낮음: 응답 틀(잘림·군더더기·객체 아님·큰 응답 느림), `nan`·`inf`, `render_video` fps 보고, `save_blend`/`render_video` 이름이 출력 폴더 밖으로, 집 폴더 가리기(문장부호·`--json`).
+  3. 덧붙임: `snapshot` 덮어쓰기 알림, ruff 에 `B`·`SIM115`·`RUF059` 추가(9곳 정리).
+  4. 다음 품질 개선 후보 5개를 근거와 함께 백로그에.
+- dependabot PR 검토 표(병합은 사람 몫):
+
+  | PR | 바뀐 것 | 이 저장소에 필요한 일 |
+  |---|---|---|
+  | #12 checkout v4→v7 | node24, 입력 같음, v6 자격 증명 별도 파일, v7 포크 PR `pull_request_target` 체크아웃 차단 | 없음(greet.yml 은 체크아웃 안 함, 나머지는 `persist-credentials: false`) |
+  | #11 setup-uv v5→v10 | node24, 입력 `pyproject-file`·`uv-file` 빠짐, 캐시 기본 glob·`prune-cache` 바뀜, 태그 push 에선 캐시 끔 | 없음(입력을 안 줌, release.yml 은 오히려 안전) |
+  | #14 stale v10→v11 | `action.yml` 입력 같음, v11 변경 기록 없음 | 없음. 병합 뒤 needs-info 작업 Run workflow 로 한 번 확인 |
+- 돌린 시험: `uv run pytest -q`(3.11) **1023 통과·37 건너뜀**(블렌더 필요). **`scripts/bpy_tests.sh` → 1052 통과, 6 건너뜀**(유체 `app_only` 5개·실제 캐릭터 파일 1개). `uvx ruff@0.15.20 check .`(새 규칙 포함) 통과.
+- 막힌 것: GitHub API 가 이 세션에 막혀 dependabot 변경 기록은 raw 파일로 확인. 굽기 시간 어림 1개는 Mac 실측 필요.
+- 완료 수·추가 수: **완료 18**(백로그 5 + 감사 11 + 덧붙임 2) / **추가 18**(감사 목록 11 + 덧붙임 2 + 다음 후보 5). 남은 `[ ]` 6개(그중 1개 Mac 실측).
+- Mac에서 확인할 것: 맨 위 명령 3줄.
 
 ## 2026-10-11 (11회차)
 
