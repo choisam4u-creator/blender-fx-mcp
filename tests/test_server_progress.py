@@ -35,7 +35,7 @@ async def _call(name, args, with_progress, seen=None):
     return result, seen
 
 
-@pytest.mark.parametrize("lang, word", [("ko", "블렌더에서 작업 중"), ("en", "working in Blender")])
+@pytest.mark.parametrize("lang, word", [("ko", "장면 저장 중 — "), ("en", "Saving the scene — ")])
 def test_long_tool_sends_progress(monkeypatch, tmp_path, lang, word):
     monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path))
     monkeypatch.setenv("BLENDER_FX_LANG", lang)
@@ -45,7 +45,7 @@ def test_long_tool_sends_progress(monkeypatch, tmp_path, lang, word):
     result, _ = anyio.run(_call, "save_blend", {"name": "fx_scene"}, True, seen)
     assert not result.is_error, result
     assert len(seen) >= 3, seen
-    assert all(word in m and m.startswith("save_blend") for _, _, m in seen)
+    assert all(m.startswith(word) and "save_blend" not in m for _, _, m in seen)  # 내부 레시피 이름 대신 사람 말
     assert [p for p, _, _ in seen] == sorted(p for p, _, _ in seen)  # 걸린 초는 줄지 않는다
 
 
@@ -76,3 +76,19 @@ def test_progress_thread_stops_and_outside_mcp_is_noop(monkeypatch, tmp_path):
     with server._progress("x"):  # MCP 호출 밖(스크립트·시험)에서는 아무 일도 없음
         pass
     assert "저장 완료" in server.save_blend("c") or "Saved" in server.save_blend("c")
+
+
+def test_every_recipe_has_a_progress_label(monkeypatch):
+    """레시피 파일마다 진행 알림용 사람 말(한/영)이 있어야 한다. 새 레시피가 내부 이름으로 보이지 않게."""
+    import re
+
+    recipes = {p.stem for p in (server.RECIPES).glob("*.py") if not p.stem.startswith("_")}
+    monkeypatch.setenv("BLENDER_FX_LANG", "ko")
+    ko = server.recipe_labels()
+    monkeypatch.setenv("BLENDER_FX_LANG", "en")
+    en = server.recipe_labels()
+    assert recipes == set(ko) == set(en), recipes ^ set(ko)
+    for name in recipes:
+        assert re.search(r"[가-힣]", ko[name]) and not re.search(r"[가-힣]", en[name]), name
+        assert name not in (ko[name], en[name]) and "_" not in ko[name] + en[name], f"{name}: 내부 이름이 그대로"
+    assert server.recipe_label("없는_레시피") == "없는_레시피"

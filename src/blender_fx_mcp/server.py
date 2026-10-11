@@ -269,6 +269,44 @@ def check_ranges(recipe: str, params: dict) -> None:
         raise BlenderError(msg + (" " + hint if hint else ""))
 
 
+# 진행 알림에 보일 사람 말(레시피 파일 이름 대신). 레시피를 새로 만들면 여기에도 더한다(tests/test_server_progress.py 가 확인).
+def recipe_labels() -> dict[str, str]:
+    """레시피 이름 → 지금 언어의 사람 말."""
+    return {
+        "camera": t("카메라 맞추는 중", "Framing the camera"),
+        "camera_shake": t("카메라 흔들림 넣는 중", "Adding camera shake"),
+        "clear_caches": t("캐시 지우는 중", "Clearing caches"),
+        "cloth_flag": t("깃발 천 계산 중", "Simulating the flag"),
+        "demo_scene": t("연습 건물 만드는 중", "Building the practice scene"),
+        "destroy": t("조각내고 무너뜨리는 중", "Fracturing and collapsing"),
+        "emit": t("불·연기 굽는 중", "Baking fire and smoke"),
+        "explode": t("폭발 굽는 중", "Baking the explosion"),
+        "export_model": t("내보내는 중", "Exporting"),
+        "import_model": t("모델 가져오는 중", "Importing the model"),
+        "inspect_mesh": t("모델 진단 중", "Inspecting the mesh"),
+        "list_objects": t("장면 살펴보는 중", "Listing objects"),
+        "ocean": t("바다 만드는 중", "Building the ocean"),
+        "particles": t("파티클 계산 중", "Simulating particles"),
+        "render": t("미리보기 렌더 중", "Rendering previews"),
+        "render_video": t("영상 렌더 중", "Rendering the video"),
+        "reset": t("원래대로 되돌리는 중", "Resetting the scene"),
+        "restore": t("스냅샷 불러오는 중", "Restoring the snapshot"),
+        "save_blend": t("장면 저장 중", "Saving the scene"),
+        "set_ground": t("바닥 바꾸는 중", "Changing the ground"),
+        "set_look": t("조명·하늘 바꾸는 중", "Changing light and sky"),
+        "set_physics": t("물리 다시 굽는 중", "Re-baking physics"),
+        "set_render": t("렌더 설정 중", "Changing render settings"),
+        "set_timing": t("시간 설정 후 다시 굽는 중", "Re-timing and re-baking"),
+        "snapshot": t("스냅샷 저장 중", "Saving a snapshot"),
+        "water": t("물 굽는 중", "Baking the liquid"),
+        "wind": t("바람 넣는 중", "Adding wind"),
+    }
+
+
+def recipe_label(recipe: str) -> str:
+    return recipe_labels().get(recipe, recipe)
+
+
 @contextlib.contextmanager
 def _progress(label: str):
     """블렌더가 일하는 동안 PROGRESS_EVERY 초마다 MCP 진행 알림(걸린 초)을 보낸다.
@@ -284,7 +322,7 @@ def _progress(label: str):
     def beat():
         while not stop.wait(PROGRESS_EVERY):
             secs = int(time.monotonic() - start)
-            msg = t(f"{label}: 블렌더에서 작업 중 — {secs}초", f"{label}: working in Blender — {secs}s")
+            msg = t(f"{label} — {secs}초 지남(블렌더에서 작업 중)", f"{label} — {secs}s so far (Blender is working)")
             try:
                 anyio.from_thread.run(ctx.report_progress, secs, None, msg, token=loop)
             except Exception:  # 알림이 실패해도 도구는 계속한다(연결이 끊겼거나 요청 문맥이 없음)
@@ -319,7 +357,7 @@ def run_recipe(recipe: str, params: dict, timeout: float | None = None) -> dict:
     params.setdefault("_lang", "en" if is_en() else "ko")
     if params.get("cache_dir"):
         _check_bake_space()
-    with _progress(recipe) if timeout else contextlib.nullcontext():  # 긴 작업(굽기·렌더)만 진행 알림
+    with _progress(recipe_label(recipe)) if timeout else contextlib.nullcontext():  # 긴 작업(굽기·렌더)만 진행 알림
         stdout = bridge.run_python(build_code(recipe, params), timeout=timeout)
     res = parse_result(stdout)
     if not res.get("ok"):
