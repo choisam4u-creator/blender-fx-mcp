@@ -3,10 +3,28 @@
 ## 맥에서 돌릴 명령 (블렌더 필요, 최신 회차 기준)
 
 ```sh
-uv run python scripts/release_check.py --tag v0.7.0 && uv run pytest -q tests/test_examples.py tests/test_disk.py   # --tag OK, 첫 렌더 가짜 수신기·디스크 묶음 시험 통과
-uvx --from blender-fx-mcp blender-fx-doctor           # PyPI 0.7.0 으로 doctor 가 돎(git 없이). 끝에 "모두 정상입니다."
-uv run python examples/first_render.py uvx blender-fx-mcp   # Connect 뒤: PyPI 서버로 [1/5]~[5/5]·PNG 3개 경로
+uv sync && uv run pytest -q                           # 0.8.0 준비 상태(Python 3.11+)로 블렌더 앱 전체 통과. 3.10 가상환경이면 uv sync 가 거부하는 것이 정상
+uv run blender-fx-doctor                              # 두 번째 줄 다음 "새 판: 최신(PyPI 0.7.0)" 이 아니라 "PyPI 에 0.7.0 이 있음(지금 0.8.0)" 이 안 나오는지(0.8.0 이 더 새 판이라 '최신' 이어야 함)
+uv run python scripts/release_notes.py v0.7.0         # GitHub 릴리스 0.7.0 본문이 아직 비어 있으면 이 출력을 붙여 넣기(사람 몫)
 ```
+
+## 2026-10-11 (11회차)
+
+- 한 일: 사용자 요청 "남은 백로그 5개 이어서". 시작 때 PR #13 은 병합됐고(0.7.0 PyPI 게시) 열린 PR 은 #15. main 은 앞서 있지 않음, `latest.md`(10/1)의 FAIL 2건은 main 에 고쳐져 있음(재확인).
+  남은 `[ ]` 6개 중 10회차가 넣은 5개를 처리(굽기 시간 어림 1개는 Mac 실측이 필요해 남김):
+  1. **CHANGELOG `[0.7.0]` 날짜 2026-10-13 → 2026-10-11**(태그 `v0.7.0` 커밋 날짜·PyPI 게시일) + 출시 절 날짜 = 태그 날짜 시험(태그 없는 얕은 클론은 건너뜀).
+  2. **doctor "새 판" 선택 줄** — PyPI JSON 2초 제한, 새 판이면 `uv cache clean blender-fx-mcp` 안내. 오프라인·`BLENDER_FX_NO_UPDATE_CHECK=1`·이상한 응답이면 줄 없음, MCP 도구는 안 물음. 이 컨테이너에서 실제 조회 "최신(PyPI 0.7.0)".
+  3. **`scripts/release_notes.py vX.Y.Z`** — CHANGELOG 절을 릴리스 본문으로(영어 요약 먼저, 관리자 메모 빼고, PyPI 주소). 출시 절차 8단계가 이 명령을 씀.
+  4. **README PyPI 판 배지** — 파이썬 배지는 PyPI 분류자로 바꾸지 않음(3.10 을 뺀 main 과 출시된 0.7.0 이 출시 전까지 어긋나므로, 지금처럼 pyproject 기준 + 판 범위 시험).
+  5. **0.8.0 준비: Python 3.10 지원 종료** — 분류자를 빼자 시험이 짚은 10곳을 한 커밋에, doctor 파이썬 점검 3.11, `uv.lock`(3.10 전용 `exceptiongroup` 빠짐 → 라이선스 점검이 잡아 표 39개), `importorskip("tomllib")` 3곳 제거, 버전 네 곳·uv.lock 0.8.0, SUPPORT·SECURITY 0.8.x. CHANGELOG 0.8.0 에 *Breaking*/동작 변화.
+     `test_current_repo_state` 에 "판은 올렸고 날짜만 기다림" 상태 추가(이제 `release_check.py` 는 '미출시' 한 줄만 실패가 정상).
+  - 남은 `[ ]` 가 1개라 규칙대로 다음 회차용 5개 추가(dependabot PR 3개 검토, release_notes `--draft`, 진행 알림 문장, README "Getting help", 진행 알림 stdio 시험).
+  - 같은 브랜치에 다른 세션이 동시에 시험 고침 1개(`208933d`)를 푸시해 한 번 거절됨 → 받아서 내 커밋을 그 위로 올려 푸시(겹친 파일 없음).
+- 돌린 시험: `uv run pytest -q`(3.11) **942 통과·35 건너뜀**(블렌더 필요한 레시피 시험). CI 서버 명령 **3.11·3.14** + `--cov` → 942 통과·**건너뜀 0**(tomllib 건너뜀이 없어짐), 커버리지 98.33%(하한 95%). 3.10 은 `uv sync` 가 거부.
+  **`scripts/bpy_tests.sh` → 971 통과, 6 건너뜀**. `uv build` → `release_check.py --dist` 25개 OK, 휠 분류자 3.11~. `license_check.py` 39/39 OK. `uvx ruff@0.15.20 check .` 통과.
+- 막힌 것: 없음. 참고 — 0.8.0 버전을 올렸으므로 출시 전까지 PyPI(0.7.0)보다 main 판이 높다. 태그·PyPI 는 사람 몫.
+- 완료 수·추가 수: **완료 5** / **추가 5**. 남은 `[ ]` 6개(그중 1개는 Mac 실측 필요).
+- Mac에서 확인할 것: 맨 위 명령 3줄.
 
 ## 2026-10-11 (10회차)
 

@@ -179,3 +179,11 @@
 - [x] `scripts/release_notes.py vX.Y.Z`: CHANGELOG 의 그 절을 GitHub 릴리스 본문으로 그대로 출력(영어 요약 먼저), 출시 절차 8단계에서 복사 대신 이 명령 + 시험(0.7.0 절·없는 판은 종료 코드 1). 쓰기 권한이 필요한 자동 게시는 하지 않음 (유지보수: 릴리스 노트가 손 복사에 기대지 않게, release.yml 권한은 그대로) — 0.7.0 절로 확인(영어 요약 → 한국어 상세, 다음 절 안 섞임, PyPI 주소). 9.9.9·0.8.0(미출시)은 1, 잘못된 인자는 2. maintenance 한/영 8단계를 이 명령으로. 시험 5개
 - [x] README 첫 화면에 PyPI 판 배지(`img.shields.io/pypi/v/blender-fx-mcp`)와 지원 파이썬 배지를 PyPI 분류자 기준으로 + 시험(배지 주소의 패키지 이름이 pyproject `name` 과 같은지) (문서: 설치 경로가 PyPI 로 바뀐 것을 첫 화면에서 보이게, 심사표의 "배포 채널" 신호) — PyPI 판 배지만 더함. **파이썬 배지는 PyPI 분류자로 바꾸지 않음**: 0.8.0 에서 3.10 을 빼면 출시 전까지 PyPI 쪽(0.7.0)은 3.10 을 보여 main 과 어긋나고, 지금 배지는 판 범위 시험이 pyproject 와 맞춰 줌. 시험 1개
 - [x] 0.8.0 준비: Python 3.10 빼기(2026-10 EOL). maintenance.md 의 10곳(requires-python·ruff·uv.lock·CI 행렬·SUPPORT·README 배지·architecture 한/영·maintenance 한/영)을 한 커밋에, `importorskip("tomllib")` 를 보통 import 로, 버전 네 곳을 0.8.0 으로 + 전체 시험 (유지보수: EOL 판을 약속대로 빼 지원 정책을 지키는 증거) — 분류자를 빼자 판 범위 시험이 짚은 10곳을 한 커밋에. doctor 파이썬 점검 3.11, `uv lock`(3.10 전용 `exceptiongroup` 빠짐 → 라이선스 점검이 잡아 표 39개), `importorskip("tomllib")` 3곳을 보통 import 로, 버전 네 곳 + uv.lock 0.8.0, SUPPORT·SECURITY 0.8.x. `test_current_repo_state` 에 '판은 올렸고 날짜만 기다림(미출시 한 줄만 실패)' 상태 추가. 3.10 은 `uv sync` 가 거부, 3.11·3.14 에서 942 통과·건너뜀 0, bpy 971 통과
+
+### 2026-10-11 (11회차) 추가 — 0.8.0 준비·사용자 체감 우선(오픈소스 지원 기준: 활발한 유지보수·문서·시험·이슈 대응)
+
+- [ ] 열린 dependabot PR 3개(#11 setup-uv v5→v10, #12 checkout v4→v7, #14 stale v10→v11)를 maintenance.md 의 메이저 판 기준대로 검토: 각 액션의 변경 기록에서 입력 이름·기본값·러너 요구가 바뀌었는지 확인해 "그대로 병합 / 이것을 고친 뒤 병합" 표를 CLOUD-NOTES 에, 고칠 것이 있으면 이 브랜치에서 미리 (유지보수: 의존성 갱신 PR 이 쌓여 방치되면 심사의 "활발한 유지보수" 신호가 약해짐. 병합은 사람 몫)
+- [ ] `release_notes.py --draft`: 미출시 절도 미리보기로 출력(맨 위에 "초안" 표시), 0.8.0 출시 전에 릴리스 노트를 PR 에서 미리 읽게 + 시험 (유지보수: 지금은 날짜가 붙어야만 출력돼 출시 당일에야 문장을 처음 봄)
+- [ ] 진행 알림 문장을 레시피 이름(`save_blend`) 대신 사람이 읽는 말로("물 굽는 중", "영상 렌더 중", 한/영) + 모든 긴 도구 레시피가 이름표를 갖는지 시험 (사용자 체감: 클라이언트에 `emit: working in Blender` 처럼 내부 이름이 보임)
+- [ ] README 영어 절 첫 화면 가까이에 "Getting help" 3줄(doctor `--issue` → 해당 양식 → 응답 목표) + 한국어 절에도 같은 3줄, 시험(양식 이름·명령이 실제와 같은지) (이슈 대응: 신고 경로가 SUPPORT.md 에만 있어 README 만 읽은 사용자는 빈 이슈를 엶)
+- [ ] 진행 알림을 stdio 실제 서버로 끝까지 시험: `tests/test_examples.py` 의 가짜 수신기에 느린 굽기를 흉내 내 공식 클라이언트가 `progress_callback` 으로 알림을 2개 이상 받는지 (시험: 지금 진행 알림 시험은 메모리 연결뿐이라 stdio·작업 스레드·이벤트 루프 사이 경로가 실제 배포 형태로는 검증되지 않음)
