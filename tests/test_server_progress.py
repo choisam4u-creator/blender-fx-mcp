@@ -9,16 +9,23 @@ from mcp import Client
 from blender_fx_mcp import bridge, server
 
 
-def _slow_receiver(seconds):
+def _slow_receiver(seconds, until=None):
+    """seconds 만큼 일하는 척하는 수신기. until(진행 알림 목록, 개수)을 주면 알림이 그만큼 올 때까지(최대 10초) 더 기다린다.
+    느린 CI 러너(macOS)에서는 0.05초 간격 알림이 0.4초 안에 2개만 오기도 해 고정 시간으로는 개수를 장담할 수 없다."""
     def run_python(code, timeout=None):
         time.sleep(seconds)
+        if until:
+            seen, n = until
+            deadline = time.monotonic() + 10
+            while len(seen) < n and time.monotonic() < deadline:
+                time.sleep(0.01)
         res = dict(ok=True, path="/x/fx_scene.blend", size_bytes=1_000_000, note="")
         return "FX_RESULT " + json.dumps(res)
     return run_python
 
 
-async def _call(name, args, with_progress):
-    seen = []
+async def _call(name, args, with_progress, seen=None):
+    seen = [] if seen is None else seen
 
     async def on_progress(progress, total, message):
         seen.append((progress, total, message))
@@ -33,8 +40,9 @@ def test_long_tool_sends_progress(monkeypatch, tmp_path, lang, word):
     monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path))
     monkeypatch.setenv("BLENDER_FX_LANG", lang)
     monkeypatch.setattr(server, "PROGRESS_EVERY", 0.05)
-    monkeypatch.setattr(bridge, "run_python", _slow_receiver(0.4))
-    result, seen = anyio.run(_call, "save_blend", {"name": "fx_scene"}, True)
+    seen = []
+    monkeypatch.setattr(bridge, "run_python", _slow_receiver(0.4, until=(seen, 3)))
+    result, _ = anyio.run(_call, "save_blend", {"name": "fx_scene"}, True, seen)
     assert not result.is_error, result
     assert len(seen) >= 3, seen
     assert all(word in m and m.startswith("save_blend") for _, _, m in seen)
