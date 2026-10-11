@@ -1186,3 +1186,20 @@ def test_readme_pypi_badge_matches_package():
     assert link == f"https://pypi.org/project/{name}/"
     # 파이썬 배지는 PyPI 분류자(출시된 판) 대신 main 의 pyproject 를 따른다: 3.10 을 뺀 뒤 출시 전까지 PyPI 쪽은 옛 판을 보인다
     assert "img.shields.io/badge/python-" in " ".join(i for i, _ in badges.values())
+
+
+def test_readme_getting_help_matches_forms_and_support():
+    """README 한/영 '도움 받기' 3줄의 명령·양식·응답 일수가 실제(doctor --issue, 양식 파일, SUPPORT 표)와 같아야 한다."""
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    ko, en = readme.split("\n## English", 1)
+    support = (ROOT / "SUPPORT.md").read_text(encoding="utf-8")
+    days = re.findall(r"\| 버그 / Bug \| (\d+)일 안|\| 질문·기능 요청 / Question, feature \| (\d+)일 안", support)
+    bug, question = days[0][0], days[1][1]
+    for part, head in ((ko, "**도움 받기**"), (en, "**Getting help**")):
+        block = part[part.index(head):].split("\n\n", 1)[0]
+        assert "blender-fx-doctor --issue" in block
+        forms = re.findall(r"issues/new\?template=([\w.]+)\)", block)
+        assert sorted(forms) == sorted(p.name for p in TEMPLATES.glob("*.yml") if p.name != "config.yml"), forms
+        assert "SECURITY.md" in block
+        assert (f"{bug}일" in block and f"{question}일" in block) or (f"{bug} days" in block and f"{question} days" in block)
+    assert '"--issue"' in (ROOT / "src" / "blender_fx_mcp" / "doctor.py").read_text(encoding="utf-8")

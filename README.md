@@ -85,6 +85,10 @@ uvx --from blender-fx-mcp blender-fx-doctor
 
 질문·버그·보안 신고를 어디로 보내는지, 응답 목표, 지원하는 블렌더·파이썬 판: [SUPPORT.md](SUPPORT.md)
 
+**도움 받기** — ① `uvx --from blender-fx-mcp blender-fx-doctor --issue` 를 돌려 결과를 복사(집 폴더는 `~` 로 가려짐)
+② [버그 신고](https://github.com/choisam4u-creator/blender-fx-mcp/issues/new?template=bug_report.yml) · [질문](https://github.com/choisam4u-creator/blender-fx-mcp/issues/new?template=question.yml) · [기능 요청](https://github.com/choisam4u-creator/blender-fx-mcp/issues/new?template=feature_request.yml) 중 맞는 양식에 붙여 넣기
+③ 첫 답 목표: 버그 7일, 질문·기능 14일 안. 보안 문제는 공개 이슈 대신 [SECURITY.md](SECURITY.md) 로.
+
 이슈 분류·의존성 갱신·출시·지원 판 정리 규칙: [docs/maintenance.md](docs/maintenance.md)
 
 ## 설치 (한 줄)
@@ -291,6 +295,10 @@ uvx --from blender-fx-mcp blender-fx-doctor
 Fixes for each error message (connection refused, timeout, port in use, fluid bake failed, black preview): [docs/troubleshooting.md](docs/troubleshooting.md)
 
 Where to ask questions or report bugs, reply targets and supported Blender/Python versions: [SUPPORT.md](SUPPORT.md)
+
+**Getting help**: ① run `uvx --from blender-fx-mcp blender-fx-doctor --issue` and copy the output (your home folder is masked as `~`)
+② paste it into the matching form: [bug report](https://github.com/choisam4u-creator/blender-fx-mcp/issues/new?template=bug_report.yml) · [question](https://github.com/choisam4u-creator/blender-fx-mcp/issues/new?template=question.yml) · [feature request](https://github.com/choisam4u-creator/blender-fx-mcp/issues/new?template=feature_request.yml)
+③ first reply targets: 7 days for bugs, 14 days for questions and ideas. Security problems go to [SECURITY.md](SECURITY.md), not a public issue.
 
 How issues, dependency updates, releases and old versions are handled: [docs/maintenance.md](docs/maintenance.md)
 

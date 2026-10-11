@@ -29,6 +29,7 @@
 *Docs*
 - Troubleshooting: "Still on the old version" (clear the uv cache; use the `git+` address only to try unreleased `main`).
 - README shows a PyPI version badge.
+- README (both languages) has a three-line "Getting help": `doctor --issue` → the matching form → reply targets.
 - `docs/maintenance.md` has an eight-step release procedure (bump, check, tag, build, approve, PyPI, registry, release notes), tested against `release.yml`.
 - `docs/registry.md` and `docs/maintenance.md` say to run `release_check.py --tag` before pushing a tag.
 
@@ -49,6 +50,7 @@
 - 시험: `examples/first_render.py` 를 진짜 서버(stdio) + 가짜 블렌더 수신기(소켓, 애드온과 같은 JSON 규약)로 끝까지.
   5단계 진행 줄·종료 코드 0·서버가 출력 폴더에 만든 PNG 경로·되돌리기 안내(한/영), 블렌더 안 레시피 실패면 오류 문장·렌더 안 부름·종료 코드 1
 - README 첫 화면에 PyPI 판 배지(패키지 이름이 pyproject 와 같은지 시험). 파이썬 판 배지는 PyPI 분류자 대신 main 의 pyproject 를 따름
+- README 한/영에 "도움 받기" 3줄(`doctor --issue` → 맞는 양식 3개 → 첫 답 목표, 보안은 SECURITY.md). 명령·양식·일수가 실제와 다르면 시험이 실패한다
 - 진행 알림 문장을 내부 레시피 이름(`save_blend: …`) 대신 사람 말로: "물 굽는 중 — 45초 지남(블렌더에서 작업 중)" / "Baking the liquid — 45s so far".
   레시피 27개 모두 한/영 이름표가 있는지 시험
 - `scripts/release_notes.py vX.Y.Z`: CHANGELOG 의 그 절을 GitHub 릴리스 본문으로(영어 요약 먼저, 절 맨 앞 관리자 메모는 빼고, 끝에 PyPI 주소).
