@@ -2,7 +2,7 @@
 
 **[English](#english)** — the same five examples in English are at the bottom of this page.
 
-한국어 절 끝의 [나머지 도구 한 줄 예시](#나머지-도구-한-줄-예시)에 32개 도구가 모두 나온다. / [Every other tool in one line](#every-other-tool-in-one-line) covers the rest of the 32 tools.
+한국어 절 끝의 [나머지 도구 한 줄 예시](#나머지-도구-한-줄-예시)에 33개 도구가 모두 나온다. / [Every other tool in one line](#every-other-tool-in-one-line) covers the rest of the 33 tools.
 
 AI(Claude 등)에게 이렇게 말하면 어떤 도구가 어떤 인자로 불리고, 결과로 무엇이 나오는지 정리했다.
 숫자는 **2026-10-04 클라우드에서 `pip install bpy`(Blender 5.0.1 모듈)로 실제로 돌린 값**이다.
@@ -112,7 +112,8 @@ AI(Claude 등)에게 이렇게 말하면 어떤 도구가 어떤 인자로 불�
 | "모션 블러 켜고 깨끗하게" | `set_render(samples=64, motion_blur=True)` | 샘플 64, 빠른 조각이 흐려지는 영화 느낌 |
 | "지금 상태 저장해 둬" | `snapshot(name="before_fire")` | 장면을 이름 붙여 저장. 같은 이름이면 덮어씀 |
 | "불 붙이기 전으로 되돌려" | `restore(name="before_fire")` | 저장한 상태로 돌아감. 지금 상태는 `before_restore` 로 자동 저장 |
-| "저장해 둔 거 뭐 있어?" | `list_snapshots()` | `snapshot` 으로 저장한 이름 목록 |
+| "저장해 둔 거 뭐 있어?" | `list_snapshots()` | `snapshot` 으로 저장한 이름·크기·저장 시각과 합계 |
+| "오래된 스냅샷 정리해" | `clear_snapshots(keep=3)` | 오래된 것부터 지우고 최근 3개를 남김. `before_restore` 는 늘 남김 |
 | "블렌더 파일로 저장해" | `save_blend(name="collapse")` | 출력 폴더에 `collapse.blend`. 블렌더에서 직접 열 수 있음 |
 | "연기 보이게 다시 렌더" | `render_preview(quality="smoke")` | 미리보기 5장. `preview` 는 빠르지만 하늘·연기·물이 안 보임 |
 | "영상으로 뽑아 줘" | `render_video(quality="final")` | 장면 전체를 mp4 로(720p 72프레임에 1~3분) |
@@ -228,7 +229,8 @@ Tools not used in the examples above. Say the left column and the AI calls the m
 | "Turn on motion blur and clean it up" | `set_render(samples=64, motion_blur=True)` | 64 samples and motion blur on fast pieces for a film look |
 | "Save the current state" | `snapshot(name="before_fire")` | Saves the scene under a name; the same name overwrites |
 | "Go back to before the fire" | `restore(name="before_fire")` | Returns to the saved state; the current one is saved as `before_restore` first |
-| "What did we save?" | `list_snapshots()` | Names saved with `snapshot` |
+| "What did we save?" | `list_snapshots()` | Names saved with `snapshot`, with size, time saved and the total |
+| "Clean up old snapshots" | `clear_snapshots(keep=3)` | Deletes the oldest first and keeps the newest 3; `before_restore` is always kept |
 | "Save it as a Blender file" | `save_blend(name="collapse")` | `collapse.blend` in the output folder, to open in Blender yourself |
 | "Re-render so the smoke shows" | `render_preview(quality="smoke")` | 5 preview frames; `preview` is faster but hides sky, smoke and water |
 | "Render it as a video" | `render_video(quality="final")` | The whole scene as an mp4 (1 to 3 minutes for 72 frames at 720p) |

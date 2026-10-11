@@ -11,6 +11,7 @@ from __future__ import annotations
 import contextlib
 import contextvars
 import difflib
+import glob
 import json
 import os
 import re
@@ -953,7 +954,47 @@ def list_snapshots() -> str:
     if not items:
         return t(f"스냅샷이 없습니다. snapshot 으로 먼저 저장하세요. (폴더: {d})",
                  f"No snapshots yet. Save one with the snapshot tool. (folder: {d})")
-    return t("스냅샷 목록:\n", "Snapshots:\n") + "\n".join(f"- {n} ({mb}MB, {when})" for n, mb, when in items)
+    total = round(sum(mb for _, mb, _ in items), 1)
+    text = t("스냅샷 목록:\n", "Snapshots:\n") + "\n".join(f"- {n} ({mb}MB, {when})" for n, mb, when in items)
+    text += t(f"\n모두 {len(items)}개, {total}MB.", f"\n{len(items)} in total, {total}MB.")
+    if len(items) > SNAPSHOT_KEEP:
+        text += t(f" 오래된 것은 clear_snapshots 로 지울 수 있습니다(최근 {SNAPSHOT_KEEP}개와 before_restore 는 남김).",
+                  f" Delete old ones with clear_snapshots (keeps the newest {SNAPSHOT_KEEP} and before_restore).")
+    return text
+
+
+SNAPSHOT_KEEP = 5  # clear_snapshots 가 기본으로 남기는 개수
+
+
+@mcp.tool(annotations=DESTRUCTIVE)
+def clear_snapshots(keep: int = SNAPSHOT_KEEP) -> str:
+    """Delete old snapshots, keeping the newest `keep` ones. before_restore (the undo point of restore) is always kept.
+    오래된 스냅샷부터 지우고 최근 keep 개를 남긴다. restore 의 되돌릴 곳(before_restore)은 늘 남긴다."""
+    if isinstance(keep, bool) or not isinstance(keep, int) or not 0 <= keep <= 1000:
+        return _fail(BlenderError(t(
+            f"keep={keep!r} 은 쓸 수 없습니다. 남길 스냅샷 개수를 0~1000 사이 정수로 다시 시키세요(기본 {SNAPSHOT_KEEP}).",
+            f"keep={keep!r} is not allowed. Ask again with the number of snapshots to keep, an integer from 0 to 1000 (default {SNAPSHOT_KEEP}).")))
+    d = snapshot_dir()
+    files = sorted((f for f in d.glob("*.blend") if f.stem != "before_restore"),
+                   key=lambda f: f.stat().st_mtime, reverse=True)
+    old = files[keep:]
+    if not old:
+        return t(f"지울 스냅샷이 없습니다(있는 것 {len(files)}개 ≤ 남길 개수 {keep}개). (폴더: {d})",
+                 f"No snapshots to delete ({len(files)} saved, keeping up to {keep}). (folder: {d})")
+    freed = 0
+    for f in old:
+        # 블렌더가 같은 이름으로 다시 저장할 때 남기는 이전 판(.blend1, .blend2 …)도 함께 지운다
+        for g in [f, *d.glob(f"{glob.escape(f.stem)}.blend[0-9]*")]:
+            try:
+                freed += g.stat().st_size
+                g.unlink()
+            except OSError:
+                pass
+    names = ", ".join(f.stem for f in old)
+    kept = ", ".join(f.stem for f in files[:keep]) or t("없음", "none")
+    return t(f"스냅샷 {len(old)}개 지움({freed / 1_000_000:.1f}MB): {names}. 남긴 것: {kept} (+ before_restore 는 늘 남김).",
+             f"Deleted {len(old)} snapshots ({freed / 1_000_000:.1f}MB): {names}. Kept: {kept} (+ before_restore is always kept).") \
+        + _free_space_note()
 
 
 def _missing_snapshot(label: str) -> str:
@@ -1061,8 +1102,29 @@ def clear_caches() -> str:
         res = run_recipe("clear_caches", dict(cache_dirs=list(_cache_dirs().values())), timeout=long_timeout())
     except BlenderError as e:
         return _fail(e)
-    return t(f"캐시 정리: {res['freed_mb']}MB 비움, 유체 도메인 {res['fluid_domains']}개 초기화.",
-             f"Caches cleared: freed {res['freed_mb']}MB, reset {res['fluid_domains']} fluid domains.")
+    if res["freed_mb"]:
+        text = t(f"캐시 정리: {res['freed_mb']}MB 비움, 유체 도메인 {res['fluid_domains']}개 초기화.",
+                 f"Caches cleared: freed {res['freed_mb']}MB, reset {res['fluid_domains']} fluid domains.")
+    else:
+        text = t(f"캐시 정리: 캐시 폴더에 지울 파일이 없었습니다(유체 도메인 {res['fluid_domains']}개 초기화).",
+                 f"Caches cleared: there were no cache files to delete ({res['fluid_domains']} fluid domains reset).")
+    return text + _free_space_note()
+
+
+def _free_space_note() -> str:
+    """정리 도구 끝에 붙이는 출력 폴더 디스크 여유. 블렌더가 다른 컴퓨터면(디스크가 다름) 붙이지 않는다."""
+    if not bridge.is_local():
+        return ""
+    root = out_root()
+    free = disk.free_bytes(root)
+    if free is None:
+        return ""
+    if free >= disk.BAKE_MIN_BYTES:
+        return t(f" 출력 폴더 디스크 여유: {disk.gb(free)}.", f" Free disk space for the output folder: {disk.gb(free)}.")
+    return t(f" 출력 폴더 디스크 여유: {disk.gb(free)} — 굽기에는 아직 부족합니다({disk.gb(disk.BAKE_MIN_BYTES)} 필요). "
+             f"오래된 스냅샷은 clear_snapshots 로 지우고, 지난 렌더 폴더를 직접 지우거나 BLENDER_FX_OUT 을 여유 있는 디스크로 바꾸세요. (폴더: {root})",
+             f" Free disk space for the output folder: {disk.gb(free)}, still not enough to bake ({disk.gb(disk.BAKE_MIN_BYTES)} needed). "
+             f"Delete old snapshots with clear_snapshots, delete old render folders yourself, or point BLENDER_FX_OUT to a disk with more space. (folder: {root})")
 
 
 @mcp.tool(annotations=DESTRUCTIVE)

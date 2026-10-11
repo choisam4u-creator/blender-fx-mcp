@@ -862,7 +862,7 @@ def _one_line_calls():
 
 
 def test_every_tool_has_a_recipes_example():
-    """32개 도구가 docs/recipes.md 의 예시(번호 예시 또는 한 줄 예시)에 한 번은 나와야 한다. 한/영 표는 같은 호출."""
+    """모든 도구가 docs/recipes.md 의 예시(번호 예시 또는 한 줄 예시)에 한 번은 나와야 한다. 한/영 표는 같은 호출."""
     import ast
     import asyncio
 
@@ -897,7 +897,7 @@ def test_one_line_examples_pass_server_checks(monkeypatch, tmp_path):
 
     monkeypatch.setattr(bridge, "run_python", reached)
     monkeypatch.setattr(bridge, "ping", reached)
-    local = {"doctor", "list_snapshots"}  # 블렌더에 묻지 않고 이 컴퓨터에서 답하는 도구
+    local = {"doctor", "list_snapshots", "clear_snapshots"}  # 블렌더에 묻지 않고 이 컴퓨터에서 답하는 도구
     (tmp_path / "snapshots").mkdir()
     (tmp_path / "snapshots" / "before_fire.blend").write_bytes(b"x")  # restore 예시의 스냅샷(없으면 서버가 먼저 막는다)
     ko, _ = _one_line_calls()

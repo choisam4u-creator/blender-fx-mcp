@@ -158,7 +158,7 @@ def test_english_message_under_hangul_output_dir(fake, monkeypatch, tmp_path, na
 def test_every_tool_is_covered():
     import asyncio
     names = {t.name for t in asyncio.run(server.mcp.list_tools())}
-    assert names - set(CALLS) <= {"doctor", "ping_blender", "list_snapshots"}
+    assert names - set(CALLS) <= {"doctor", "ping_blender", "list_snapshots", "clear_snapshots"}
 
 
 def test_destroy_warns_when_nothing_moved(fake, monkeypatch):

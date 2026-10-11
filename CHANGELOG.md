@@ -19,7 +19,7 @@
   are checked **before** anything is sent to Blender, with the allowed values and the closest match in the error.
   Out-of-range values used to be clamped silently.
 - `BLENDER_FX_TIMEOUT` now also extends the bake and render tools, and the timeout error says how long it waited and how to raise it.
-- All 32 tools carry MCP annotations; tools that overwrite or delete data are marked `destructiveHint`.
+- All 33 tools carry MCP annotations; tools that overwrite or delete data are marked `destructiveHint`.
   MCP prompts `/first_demo` (building → collapse → preview), `/my_model` (import → inspect → collapse) and `/undo_last` (snapshot list → confirm → restore) appear in the client's `/` menu.
 - `blender-fx-doctor` ends with numbered next steps in install order (uv with the command for this OS, add-on install path, Connect, port),
   shows the Blender executable as optional `[- ]` (only headless tests need it), and `--json` prints the same checks with language-independent ids.
@@ -29,6 +29,7 @@
   and every recipe error says what to do next.
   `restore` with an unknown name stops before touching Blender, so it no longer overwrites the previous `before_restore`.
   Water, smoke and explosion bakes stop before touching Blender when less than 1GB is free; doctor shows free space.
+  New `clear_snapshots(keep=5)` deletes old snapshots (never `before_restore`); `clear_caches` and it report the space freed and left.
   Long bake, render and save tools send an MCP progress notification every 5 s while Blender works.
   `blender-fx-doctor --issue` prints Markdown for bug reports with the home folder masked as `~`.
   `ping_blender` and doctor show the connected Blender version and warn when it is not the tested LTS.
@@ -63,6 +64,9 @@
   진행 알림을 받으면 시간 제한을 늘려 주는 클라이언트에서는 긴 굽기가 끊기지 않는다
 - 디스크 여유 점검: doctor 에 "출력 폴더 여유 공간" 선택 줄(5GB 아래면 `[- ]`, 이 폴더가 쓰는 크기·`clear_caches` 안내). 물·연기·폭발 굽기는 여유가 1GB 아래면
   블렌더에 보내기 전에(폭발은 조각내기 전에) 멈추고 해결법을 알려 준다. 해결법 문서에 그 문장
+- 새 도구 `clear_snapshots(keep=5)`: 오래된 스냅샷부터 지우고 최근 `keep`개를 남긴다(블렌더가 남기는 `.blend1` 이전 판까지 정리, `before_restore` 는 늘 남김, destructive).
+  `list_snapshots` 끝에 개수·합계 크기, 5개를 넘으면 이 도구 안내. `clear_caches` 와 함께 지운 용량과 출력 폴더 디스크 여유를 알려 주고,
+  그래도 1GB 아래면 다음 할 일(오래된 스냅샷·렌더 폴더·`BLENDER_FX_OUT`)을 말한다. 지울 캐시가 없었으면 그렇게 말한다
 - 대상 이름 오타에 가까운 이름 제안: `destroy(target="building")` → "혹시 'Building' 인가요? 이름은 대소문자까지 같아야 합니다". 메시가 아닌 오브젝트(카메라 등)면 그 종류를,
   장면에 메시가 없으면 `make_demo_building`·`import_model` 을 알려 준다
 - 언어 자동 선택: `BLENDER_FX_LANG` 이 없으면 로캘(`LC_ALL`→`LC_MESSAGES`→`LANG`)이 한국어면 한국어, 다른 언어면 영어. 로캘이 없거나 `C`/`POSIX` 면 지금처럼 한국어.

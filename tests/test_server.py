@@ -34,7 +34,7 @@ def test_every_tool_has_annotations():
         assert not (a.read_only_hint and a.destructive_hint), name
 
 
-@pytest.mark.parametrize("name", ["restore", "clear_caches", "reset_destroy", "export_model", "snapshot"])
+@pytest.mark.parametrize("name", ["restore", "clear_caches", "reset_destroy", "export_model", "snapshot", "clear_snapshots"])
 def test_hard_to_undo_tools_are_destructive(name):
     a = _annotations()[name]
     assert a.destructive_hint is True and a.read_only_hint is False

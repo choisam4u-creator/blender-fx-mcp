@@ -10,7 +10,7 @@
 [MCP 클라이언트: Claude · Cursor · Codex …]
    │  도구 호출  destroy(target="Building", material="brick", pieces=200)
    ▼
-[src/blender_fx_mcp/server.py]  MCP 서버(stdio). 도구 32개
+[src/blender_fx_mcp/server.py]  MCP 서버(stdio). 도구 33개
    │  1. check_choices / check_ranges — 오타·범위 밖 값은 여기서 바로 오류 (블렌더로 안 감)
    │  2. build_code — "PARAMS = {...}" 한 줄 + recipes/_common.py + recipes/destroy.py 를 이어 붙임
    ▼
@@ -79,7 +79,7 @@ bpy 모듈로 (CI recipe-tests-bpy)
 [MCP client: Claude, Cursor, Codex, ...]
    │  tool call  destroy(target="Building", material="brick", pieces=200)
    ▼
-[src/blender_fx_mcp/server.py]  MCP server over stdio, 32 tools
+[src/blender_fx_mcp/server.py]  MCP server over stdio, 33 tools
    │  1. check_choices / check_ranges: typos and out-of-range values fail here, before Blender
    │  2. build_code: one "PARAMS = {...}" line + recipes/_common.py + recipes/destroy.py
    ▼

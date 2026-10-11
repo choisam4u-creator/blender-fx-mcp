@@ -148,6 +148,7 @@ uv run python examples/first_render.py   # [1/5] 연결 확인 → 스냅샷 →
 | `set_look` | 조명·하늘 분위기 day/sunset/night/overcast/studio. `sky="procedural"` 진짜 하늘 텍스처, `hdri=파일경로` 내 HDRI 사진으로 조명 |
 | `set_ground` | 바닥 재질 asphalt/concrete/grass/sand/dirt/snow, `size`(m) |
 | `snapshot` / `list_snapshots` / `restore` | 장면을 저장해 두고 언제든 그때로 되돌린다. 위험한 작업 전에 쓴다 |
+| `clear_snapshots` | 오래된 스냅샷부터 지우고 최근 `keep`개(기본 5)를 남긴다. `before_restore` 는 늘 남김 |
 | `set_timing` | 프레임 범위·fps·슬로모션. 구간(`slow_from`/`slow_to`/`slow_factor`)은 물리·연기·물에만, `global_slow` 는 파티클까지 전부 |
 | `set_physics` | 중력 세기·기울기, 계산 하위단계·반복(정확도), 물리 속도, fps |
 | `set_render` | 샘플 수, 모션블러, 해상도, 노출, 필름 룩, 배경 빼기 |
@@ -361,6 +362,7 @@ More examples with measured results: [docs/recipes.md (English section)](docs/re
 | `set_look` | Lighting mood day/sunset/night/overcast/studio, procedural sky or your own HDRI |
 | `set_ground` | Ground material asphalt/concrete/grass/sand/dirt/snow |
 | `snapshot` / `list_snapshots` / `restore` | Save the scene and roll back to it later. Use before risky steps |
+| `clear_snapshots` | Delete old snapshots, keeping the newest `keep` (default 5); `before_restore` is always kept |
 | `set_timing` | Frame range, fps, slow motion for a frame range or globally |
 | `set_physics` | Gravity strength and tilt, substeps, solver iterations, simulation speed |
 | `set_render` | Samples, motion blur, resolution, exposure, film look, transparent background |
