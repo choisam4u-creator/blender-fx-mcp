@@ -78,7 +78,9 @@ def main():
                 exposure=round(vs.exposure, 3), view_transform=vs.view_transform, look=vs.look,
                 engine=sc.render.engine,
                 samples=sc.eevee.taa_render_samples if hasattr(sc, "eevee") else None,
-                file_format=r.image_settings.file_format)
+                file_format=r.image_settings.file_format,
+                shading=dict(cavity=sc.display.shading.show_cavity, shadows=sc.display.shading.show_shadows,
+                             light=sc.display.shading.light))
 
 
 run_guarded(main)

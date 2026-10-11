@@ -214,3 +214,16 @@ def test_destroy_and_reset_with_target_keep_other_effects(tmp_path):
     tower = next(o for o in after_tower["objects"] if o["name"] == "Tower")
     assert not tower["hidden"], tower  # 되돌린 대상은 다시 보임
     assert after_all["chunk_count"] == 0 and "ocean" not in roles(after_all), after_all
+
+
+def test_preview_render_keeps_workbench_shading(tmp_path):
+    """빠른 미리보기(워크벤치)가 바꾸는 셰이딩(그림자·캐비티·조명)은 렌더 뒤 원래대로. 사용자의 블렌더 렌더 설정을 바꾸지 않는다."""
+    results = run_steps([
+        ("demo_scene", {}),
+        ("set_render", {}),
+        ("render", {"out_dir": str(tmp_path / "prev"), "frames": [1], "quality": "preview"}),
+        ("set_render", {}),
+    ], blender=BLENDER)
+    before, after = results[1], results[3]
+    assert results[2]["ok"] and results[2]["engine"] == "BLENDER_WORKBENCH", results[2]
+    assert after["shading"] == before["shading"], (before["shading"], after["shading"])

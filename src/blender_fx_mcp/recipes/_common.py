@@ -1004,24 +1004,40 @@ USER_SAMPLES_TAG = "fx_user_samples"
 USER_RES_TAG = "fx_user_resolution"
 
 
+# 품질 프리셋(apply_render_quality)이 바꾸는 장면 값. (장면에서 가는 길, 속성 이름)
+RENDER_STATE_ATTRS = (
+    ("eevee", "taa_render_samples"), ("eevee", "volumetric_tile_size"), ("eevee", "volumetric_samples"),
+    ("cycles", "samples"),
+    # 미리보기(워크벤치) 셰이딩: 사용자가 블렌더 화면에서 쓰는 렌더 셰이딩이라 렌더 뒤 되돌린다
+    ("display.shading", "color_type"), ("display.shading", "light"), ("display.shading", "show_shadows"),
+    ("display.shading", "show_cavity"), ("display.shading", "show_object_outline"),
+)
+
+
+def _owner(sc, path):
+    for part in path.split("."):
+        sc = getattr(sc, part, None)
+        if sc is None:
+            return None
+    return sc
+
+
 def render_state():
     """렌더 품질 프리셋이 바꾸는 값들. 렌더가 끝나면(실패해도) restore_render_state 로 되돌린다."""
     sc = scene()
     state = {}
-    if hasattr(sc, "eevee"):
-        for attr in ("taa_render_samples", "volumetric_tile_size", "volumetric_samples"):
-            if hasattr(sc.eevee, attr):
-                state[("eevee", attr)] = getattr(sc.eevee, attr)
-    if hasattr(sc, "cycles") and hasattr(sc.cycles, "samples"):
-        state[("cycles", "samples")] = sc.cycles.samples
+    for path, attr in RENDER_STATE_ATTRS:
+        owner = _owner(sc, path)
+        if owner is not None and hasattr(owner, attr):
+            state[(path, attr)] = getattr(owner, attr)
     return state
 
 
 def restore_render_state(state):
     sc = scene()
-    for (owner, attr), value in state.items():
+    for (path, attr), value in state.items():
         try:
-            setattr(getattr(sc, owner), attr, value)
+            setattr(_owner(sc, path), attr, value)
         except Exception:
             pass
 
