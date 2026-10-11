@@ -282,13 +282,17 @@ _GROUP_LABEL = {
     "caches": lambda: t("구운 캐시(cache_*)", "baked caches (cache_*)"),
     "snapshots": lambda: t("스냅샷(snapshots)", "snapshots"),
     "runs": lambda: t("렌더·미리보기 결과", "render and preview results"),
+    "files": lambda: t("폴더 바로 아래 파일(내보낸 모델 등)", "loose files (exported models, ...)"),
 }
 _GROUP_FIX = {
     "caches": lambda c: t("AI 에게 clear_caches 를 시켜 구운 캐시를 지움", "Ask the AI to run clear_caches (deletes baked caches)"),
-    "snapshots": lambda c: t("AI 에게 clear_snapshots 를 시켜 오래된 스냅샷을 지움(최근 5개·before_restore 는 남김)",
-                             "Ask the AI to run clear_snapshots (keeps the newest 5 and before_restore)"),
+    "snapshots": lambda c: t(f"AI 에게 clear_snapshots 를 시켜 오래된 스냅샷 {c}개를 지움(최근 {disk.SNAPSHOT_KEEP}개·before_restore 는 남김)",
+                             f"Ask the AI to run clear_snapshots to delete {c} old snapshots "
+                             f"(keeps the newest {disk.SNAPSHOT_KEEP} and before_restore)"),
     "runs": lambda c: t(f"출력 폴더의 날짜 이름 폴더({c}개) 중 필요 없는 렌더 결과를 직접 지움",
                         f"Delete render results you no longer need from the date-named folders ({c}) by hand"),
+    "files": lambda c: t(f"출력 폴더 바로 아래 파일 {c}개(내보낸 모델 등)를 다른 곳으로 옮기거나 지움",
+                         f"Move or delete the {c} files directly in the output folder (exported models, ...)"),
 }
 
 

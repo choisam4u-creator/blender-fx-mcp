@@ -48,42 +48,67 @@ def _fill(root, name, n):
     (d / "f.bin").write_bytes(b"0" * n)
 
 
+def _snapshots(root, sizes):
+    """sizes 순서대로 오래된 → 새 스냅샷(이름 s0, s1, …)과 before_restore 하나."""
+    import os
+    d = root / "snapshots"
+    d.mkdir(parents=True, exist_ok=True)
+    for i, n in enumerate(sizes):
+        f = d / f"s{i}.blend"
+        f.write_bytes(b"0" * n)
+        os.utime(f, (1_000_000 + i, 1_000_000 + i))
+    (d / "before_restore.blend").write_bytes(b"0" * 7777)
+    return d
+
+
 def test_usage_groups(tmp_path):
     _fill(tmp_path, "cache_fluid", 3000)
     _fill(tmp_path, "cache_emit", 1000)
-    _fill(tmp_path, "snapshots", 500)
+    d = _snapshots(tmp_path, [300, 200, 1, 1, 1, 1, 1])  # 오래된 2개만 지울 수 있음(최근 5개·before_restore 남김)
+    (d / "s0.blend1").write_bytes(b"0" * 50)  # 지울 스냅샷의 이전 판도 함께 센다
     _fill(tmp_path, "20261011-101010_render_final", 2000)
     _fill(tmp_path, "20261011-101011_preview", 10)
+    (tmp_path / "tower.glb").write_bytes(b"0" * 900)  # export_model 이 출력 폴더 바로 아래에 쓰는 파일
     (tmp_path / "loose.png").write_bytes(b"0" * 5)
-    assert disk.usage_groups(tmp_path) == [("caches", 4000, 2), ("runs", 2015, 3), ("snapshots", 500, 1)]
+    assert disk.usage_groups(tmp_path) == [("caches", 4000, 2), ("runs", 2010, 2), ("files", 905, 2), ("snapshots", 550, 2)]
+    assert [g[0].name for g in disk.old_snapshots(d)] == ["s1.blend", "s0.blend"]
     assert disk.usage_groups(tmp_path / "없음") == []
     (tmp_path / "empty").mkdir()
     assert disk.usage_groups(tmp_path / "empty") == []
 
 
+def test_snapshots_that_clear_snapshots_keeps_are_not_reclaimable(tmp_path):
+    """스냅샷이 최근 5개뿐이면(아무리 커도) clear_snapshots 가 아무것도 못 지우니 doctor 도 권하지 않는다."""
+    _snapshots(tmp_path, [10**6] * 5)
+    assert disk.usage_groups(tmp_path) == []
+
+
 @pytest.mark.parametrize("lang", ["ko", "en"])
 def test_low_space_names_biggest_groups_and_their_tools(monkeypatch, tmp_path, lang):
-    """여유가 5GB 아래면 큰 묶음(캐시·스냅샷·렌더 결과)과 크기, 그 묶음을 지우는 도구를 큰 것부터 짝지어 말한다."""
+    """여유가 5GB 아래면 큰 묶음(캐시·스냅샷·렌더 결과·낱 파일)과 크기, 그 묶음을 지우는 방법을 큰 것부터 짝지어 말한다."""
     monkeypatch.setenv("BLENDER_FX_LANG", lang)
     monkeypatch.setattr(disk, "free_bytes", lambda p: 2 * 1024**3)
     monkeypatch.setattr(doctor, "GROUP_MIN_BYTES", 1000)
-    _fill(tmp_path, "snapshots", 5000)
     _fill(tmp_path, "cache_liquid", 9000)
+    _snapshots(tmp_path, [3000, 3000, 1, 1, 1, 1, 1])
     _fill(tmp_path, "20261011-101010_render_final", 3000)
     _fill(tmp_path, "20261011-101011_preview", 10)
+    (tmp_path / "tower.glb").write_bytes(b"0" * 1500)
     c = doctor._space_check(str(tmp_path))
-    labels = (["구운 캐시(cache_*)", "스냅샷(snapshots)", "렌더·미리보기 결과"] if lang == "ko"
-              else ["baked caches (cache_*)", "snapshots", "render and preview results"])
+    labels = (["구운 캐시(cache_*)", "스냅샷(snapshots)", "렌더·미리보기 결과", "폴더 바로 아래 파일"] if lang == "ko"
+              else ["baked caches (cache_*)", "snapshots", "render and preview results", "loose files"])
     pos = [c["detail"].index(label) for label in labels]
     assert pos == sorted(pos), c["detail"]  # 큰 것부터
-    tools = [c["fix"].index(x) for x in ("clear_caches", "clear_snapshots", "(2")]
-    assert tools == sorted(tools), c["fix"]  # 고칠 방법도 같은 순서, 렌더 결과는 폴더 수와 함께 손으로
+    fixes = (["clear_caches", "오래된 스냅샷 2개", "날짜 이름 폴더(2개)", "파일 1개"] if lang == "ko"
+             else ["clear_caches", "delete 2 old snapshots", "date-named folders (2)", "the 1 files"])
+    tools = [c["fix"].index(x) for x in fixes]
+    assert tools == sorted(tools), c["fix"]  # 고칠 방법도 같은 순서, 지울 수 있는 개수와 함께
     assert c["fix"].endswith("BLENDER_FX_OUT 을 여유 있는 디스크의 폴더로 지정" if lang == "ko"
                              else "point BLENDER_FX_OUT to a folder on a disk with more space")
     assert (f"최근 {server.SNAPSHOT_KEEP}개" if lang == "ko" else f"newest {server.SNAPSHOT_KEEP}") in c["fix"]
-    monkeypatch.setattr(doctor, "GROUP_MIN_BYTES", 6000)  # 작은 묶음은 빼고 캐시만
+    monkeypatch.setattr(doctor, "GROUP_MIN_BYTES", 6000)  # 작은 묶음은 빼고 캐시·스냅샷만
     c = doctor._space_check(str(tmp_path))
-    assert "clear_caches" in c["fix"] and "clear_snapshots" not in c["fix"] and "(2" not in c["fix"]
+    assert "clear_caches" in c["fix"] and "clear_snapshots" in c["fix"] and "(2" not in c["fix"]
 
 
 @pytest.mark.parametrize("call", [

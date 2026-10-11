@@ -11,7 +11,6 @@ from __future__ import annotations
 import contextlib
 import contextvars
 import difflib
-import glob
 import json
 import os
 import re
@@ -999,7 +998,7 @@ def list_snapshots() -> str:
     return text
 
 
-SNAPSHOT_KEEP = 5  # clear_snapshots 가 기본으로 남기는 개수
+SNAPSHOT_KEEP = disk.SNAPSHOT_KEEP  # clear_snapshots 가 기본으로 남기는 개수(doctor 도 같은 값으로 지울 양을 센다)
 
 
 @mcp.tool(annotations=DESTRUCTIVE)
@@ -1013,14 +1012,15 @@ def clear_snapshots(keep: int = SNAPSHOT_KEEP) -> str:
     d = snapshot_dir()
     files = sorted((f for f in d.glob("*.blend") if f.stem != "before_restore"),
                    key=lambda f: f.stat().st_mtime, reverse=True)
-    old = files[keep:]
+    groups = disk.old_snapshots(d, keep)  # doctor 가 지울 양을 셀 때와 같은 규칙
+    old = [g[0] for g in groups]
     if not old:
         return t(f"지울 스냅샷이 없습니다(있는 것 {len(files)}개 ≤ 남길 개수 {keep}개). (폴더: {d})",
                  f"No snapshots to delete ({len(files)} saved, keeping up to {keep}). (folder: {d})")
     freed = 0
-    for f in old:
+    for group in groups:
         # 블렌더가 같은 이름으로 다시 저장할 때 남기는 이전 판(.blend1, .blend2 …)도 함께 지운다
-        for g in [f, *d.glob(f"{glob.escape(f.stem)}.blend[0-9]*")]:
+        for g in group:
             try:
                 freed += g.stat().st_size
                 g.unlink()
