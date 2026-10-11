@@ -165,3 +165,27 @@ def test_import_resize_reports_scaled_volume(tmp_path):
     assert imp["ok"] and insp["ok"], (imp, insp)
     assert abs(imp["volume_m3"] - 18.0) < 0.1, imp["volume_m3"]
     assert abs(imp["volume_m3"] - insp["volume_m3"]) < 0.1, (imp["volume_m3"], insp["volume_m3"])
+
+
+def test_renders_keep_user_render_settings(tmp_path):
+    """set_render 로 정한 샘플·크기를 미리보기·영상 렌더가 덮어쓰지 않고, 영상은 그 크기와 실제 fps 를 보고한다.
+    미리보기가 중간에 실패해도 장면의 출력 설정이 바뀐 채 남지 않는다."""
+    results = run_steps([
+        ("demo_scene", {}),
+        ("set_render", {"samples": 200, "width": 320, "height": 180, "fps": 24}),
+        ("render", {"out_dir": str(tmp_path / "prev"), "frames": [1], "quality": "smoke"}),
+        ("set_render", {}),
+        ("render", {"out_dir": str(tmp_path / "bad"), "frames": ["x"], "quality": "smoke"}),  # 렌더 도중 실패
+        ("set_render", {}),
+        ("render_video", {"out_path": str(tmp_path / "clip.mp4"), "quality": "final", "fps": 30,
+                          "frame_start": 1, "frame_end": 2}),
+        ("set_render", {}),
+    ], blender=BLENDER)
+    after_preview, after_failure, video, after_video = results[3], results[5], results[6], results[7]
+    assert after_preview["samples"] == 200 and after_preview["resolution"] == [320, 180], after_preview
+    assert results[4]["ok"] is False, results[4]
+    assert after_failure["samples"] == 200 and after_failure["resolution"] == [320, 180], after_failure
+    assert after_failure["file_format"] == after_preview["file_format"], after_failure
+    assert video["ok"], video
+    assert video["size"] == [320, 180] and video["fps"] == 30, video
+    assert after_video["fps"] == 24 and after_video["samples"] == 200, after_video

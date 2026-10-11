@@ -34,30 +34,31 @@ def main():
     ensure_light()
 
     old = dict(engine=r.engine, x=r.resolution_x, y=r.resolution_y, pct=r.resolution_percentage, fmt=r.image_settings.file_format, path=r.filepath)
-    r.resolution_x = width
-    r.resolution_y = height
-    r.resolution_percentage = 100
-    r.image_settings.file_format = "PNG"
-
-    engine = apply_render_quality(quality)
-
+    samples = render_state()
     paths = []
-    for f in frames:
-        sc.frame_set(int(f))
-        path = os.path.join(out_dir, f"frame_{int(f):04d}.png")
-        r.filepath = path
-        with bpy.context.temp_override(scene=sc):
-            bpy.ops.render.render(write_still=True)
-        paths.append(path)
-
-    # 설정 되돌리기
     try:
-        r.engine = old["engine"]
-    except Exception:
-        pass
-    r.resolution_x, r.resolution_y, r.resolution_percentage = old["x"], old["y"], old["pct"]
-    r.image_settings.file_format = old["fmt"]
-    r.filepath = old["path"]
+        r.resolution_x = width
+        r.resolution_y = height
+        r.resolution_percentage = 100
+        r.image_settings.file_format = "PNG"
+        engine = apply_render_quality(quality)
+        for f in frames:
+            sc.frame_set(int(f))
+            path = os.path.join(out_dir, f"frame_{int(f):04d}.png")
+            r.filepath = path
+            with bpy.context.temp_override(scene=sc):
+                bpy.ops.render.render(write_still=True)
+            paths.append(path)
+    finally:
+        # 렌더가 중간에 실패해도 장면의 출력 설정(해상도·형식·경로·엔진·샘플)은 원래대로
+        try:
+            r.engine = old["engine"]
+        except Exception:
+            pass
+        r.resolution_x, r.resolution_y, r.resolution_percentage = old["x"], old["y"], old["pct"]
+        r.image_settings.file_format = old["fmt"]
+        r.filepath = old["path"]
+        restore_render_state(samples)
     sc.frame_set(sc.frame_start)
     # 하늘 텍스처·HDRI·연기·물은 워크벤치(빠른 미리보기)에서 안 보인다. 그럴 때 알려 준다
     fancy_sky = False

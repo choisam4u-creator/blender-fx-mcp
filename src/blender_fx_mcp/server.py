@@ -1191,15 +1191,16 @@ def render_preview(frame_count: int = 5, quality: str = "preview", width: int = 
 
 
 @mcp.tool(annotations=ADDITIVE)
-def render_video(quality: str = "smoke", width: int = 1280, height: int = 720, fps: int = 0,
+def render_video(quality: str = "smoke", width: int = 0, height: int = 0, fps: int = 0,
                  frame_start: int = 0, frame_end: int = 0, name: str = "") -> str:
     """Render the whole scene to an mp4 video.
     장면 전체를 mp4 로 렌더한다. 72프레임 720p 기준 1~3분.
+    width/height 0 이면 set_render 로 정한 크기, 정한 적 없으면 1280×720. quality=final 은 set_render 의 samples 를 따른다.
     quality: preview / smoke / final"""
     try:
         run_dir = new_run_dir(f"video_{name or quality}")
         res = run_recipe("render_video", dict(
-            out_path=str(run_dir / f"{safe_name(name, 'fx')}.mp4"), quality=quality, width=width, height=height,
+            out_path=str(run_dir / f"{safe_name(name, 'fx')}.mp4"), quality=quality, width=width or None, height=height or None,
             fps=fps or None, frame_start=frame_start or None, frame_end=frame_end or None,
         ), timeout=long_timeout(3600.0))
     except BlenderError as e:

@@ -963,8 +963,36 @@ def set_engine(candidates):
     return r.engine
 
 
+# set_render 가 사용자가 정한 값을 장면에 표시해 둔다. 렌더 도구는 이 표시가 있으면 그 값을 따른다
+USER_SAMPLES_TAG = "fx_user_samples"
+USER_RES_TAG = "fx_user_resolution"
+
+
+def render_state():
+    """렌더 품질 프리셋이 바꾸는 값들. 렌더가 끝나면(실패해도) restore_render_state 로 되돌린다."""
+    sc = scene()
+    state = {}
+    if hasattr(sc, "eevee"):
+        for attr in ("taa_render_samples", "volumetric_tile_size", "volumetric_samples"):
+            if hasattr(sc.eevee, attr):
+                state[("eevee", attr)] = getattr(sc.eevee, attr)
+    if hasattr(sc, "cycles") and hasattr(sc.cycles, "samples"):
+        state[("cycles", "samples")] = sc.cycles.samples
+    return state
+
+
+def restore_render_state(state):
+    sc = scene()
+    for (owner, attr), value in state.items():
+        try:
+            setattr(getattr(sc, owner), attr, value)
+        except Exception:
+            pass
+
+
 def apply_render_quality(quality):
-    """preview: 워크벤치(빠름, 연기·물 안 보임) / smoke: EEVEE 저샘플(빠르고 볼륨 보임) / final: 고화질. 엔진 이름을 돌려준다."""
+    """preview: 워크벤치(빠름, 연기·물 안 보임) / smoke: EEVEE 저샘플(빠르고 볼륨 보임) / final: 고화질. 엔진 이름을 돌려준다.
+    final 은 set_render 로 샘플을 정했으면 그 값을 쓴다. 바꾼 값은 render_state/restore_render_state 로 되돌린다."""
     sc = scene()
     if quality == "preview":
         engine = set_engine(["BLENDER_WORKBENCH"])
@@ -979,15 +1007,17 @@ def apply_render_quality(quality):
         sh.show_object_outline = not any(o.particle_systems for o in bpy.data.objects if o.get(FX_TAG) == "particles")
         return engine
     fast = quality == "smoke"
+    user_samples = not fast and bool(sc.get(USER_SAMPLES_TAG))
     engine = set_engine(["BLENDER_EEVEE", "BLENDER_EEVEE_NEXT", "CYCLES", "BLENDER_WORKBENCH"])
     if hasattr(sc, "eevee"):
-        sc.eevee.taa_render_samples = 16 if fast else 32
+        if not user_samples:
+            sc.eevee.taa_render_samples = 16 if fast else 32
         for attr, val in (("volumetric_tile_size", "8" if fast else "4"), ("volumetric_samples", 32 if fast else 64)):
             try:
                 setattr(sc.eevee, attr, val)
             except Exception:
                 pass
-    if engine == "CYCLES" and hasattr(sc, "cycles"):
+    if engine == "CYCLES" and hasattr(sc, "cycles") and not user_samples:
         sc.cycles.samples = 16 if fast else 64
     return engine
 
