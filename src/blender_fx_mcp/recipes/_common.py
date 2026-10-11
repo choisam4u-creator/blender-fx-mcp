@@ -199,6 +199,7 @@ def cleanup_fx(target_name=None):
     """이 도구가 만든 것을 지우고 원본을 되살린다.
     target_name 을 주면 그 대상의 조각·접착과 충격체만 지우고, 다른 대상의 조각과 다른 효과(바다·물·연기 등)는 남긴다."""
     removed = 0
+    doomed = []
     for o in list(bpy.data.objects):
         role = o.get(FX_TAG)
         if role not in FX_CLEANUP_ROLES:
@@ -210,6 +211,19 @@ def cleanup_fx(target_name=None):
                 continue
             if role == "glue" and not _glue_of(o, target_name):
                 continue
+        doomed.append(o)
+    # 접착 제약을 먼저 떼고 장면을 한 번 갱신한 뒤 객체를 지운다. 제약과 조각을 한꺼번에 지우면 의존 그래프가
+    # 평가본을 정리하면서 이미 사라진 조각의 물리 몸체를 건드려 블렌더가 가끔 세그폴트로 죽는다(bpy 5.0,
+    # 두 건물을 부순 뒤 전체 reset 에서 btRigidBody::removeConstraintRef)
+    glue = [o for o in doomed if getattr(o, "rigid_body_constraint", None) is not None]
+    rbw = scene().rigidbody_world
+    coll = rbw.constraints if rbw is not None else None
+    for o in glue:
+        if coll is not None and o.name in coll.objects:
+            coll.objects.unlink(o)
+    if glue:
+        view_layer_update()
+    for o in doomed:
         remove_object(o)
         removed += 1
     if target_name and not any(o.get(FX_TAG) == "chunk" for o in bpy.data.objects):
