@@ -116,6 +116,36 @@ def snapshot_dir() -> Path:
     return d
 
 
+def input_path(path: str) -> str:
+    """읽을 파일(모델·HDRI)의 상대 경로를 이 컴퓨터의 절대 경로로 푼다. 블렌더에 그대로 보내면 블렌더의 작업 폴더
+    (Finder 로 켠 Mac 앱은 `/`) 기준이 되어 엉뚱한 곳을 찾는다. 서버 작업 폴더(클라이언트가 띄운 폴더) → 출력 폴더 순으로 찾고,
+    둘 다 없으면 찾아본 곳과 다음 할 일을 말한다. 블렌더가 다른 컴퓨터면 그쪽 경로라 건드리지 않는다."""
+    if not path or not bridge.is_local():
+        return path
+    p = Path(path).expanduser()
+    if p.is_absolute():
+        return str(p)
+    tried = [Path.cwd() / p, out_root() / p]
+    for cand in tried:
+        if cand.exists():
+            return str(cand)
+    where = ", ".join(str(c.parent) for c in tried)
+    raise BlenderError(t(
+        f"파일이 없습니다: {path}. 상대 경로라 이 폴더들에서 찾아봤습니다: {where}. "
+        "전체 경로로 다시 시키세요(파일을 터미널 창에 끌어다 놓으면 전체 경로가 나옵니다).",
+        f"File not found: {path}. It is a relative path, so these folders were searched: {where}. "
+        "Ask again with the full path (drag the file onto a terminal window to see it)."))
+
+
+def output_path(path: str) -> str:
+    """내보낼 파일의 상대 경로는 출력 폴더(BLENDER_FX_OUT) 기준으로 푼다(블렌더 작업 폴더에 쓰다가 실패하거나 못 찾지 않게).
+    블렌더가 다른 컴퓨터면 건드리지 않는다."""
+    if not path or not bridge.is_local():
+        return path
+    p = Path(path).expanduser()
+    return str(p if p.is_absolute() else out_root() / p)
+
+
 def new_run_dir(label: str) -> Path:
     safe = re.sub(r"[^\w\-]+", "_", label)[:40]
     d = out_root() / f"{time.strftime('%Y%m%d-%H%M%S')}_{safe}"
@@ -417,8 +447,10 @@ def import_model(path: str, name: str = "", size: float = 0.0, on_ground: bool =
     """Import a 3D model (glb/gltf/fbx/obj/stl/usd/blend), join it into one mesh and stand it on the ground.
     외부 모델을 가져와 하나의 메시로 합치고 바닥에 세운다.
     size: 가장 긴 변을 이 길이(m)로 맞춤(0이면 원본). 가져온 뒤 inspect_mesh 로 상태를 보고 destroy 한다.
-    parts: 파일 안 부품 중 남길 것의 이름(일부만 적어도 됨). 비우면 전부 합친다."""
+    parts: 파일 안 부품 중 남길 것의 이름(일부만 적어도 됨). 비우면 전부 합친다.
+    path 는 전체 경로가 좋다. 상대 경로면 서버 작업 폴더, 그다음 출력 폴더에서 찾는다."""
     try:
+        path = input_path(path)
         res = run_recipe("import_model", dict(path=path, name=name or None, size=size,
                                               on_ground=on_ground, center=center, parts=parts), timeout=long_timeout())
         rend, _ = _render(f"import_{res['name']}", frames=[1])
@@ -431,6 +463,8 @@ def import_model(path: str, name: str = "", size: float = 0.0, on_ground: bool =
         f"Imported '{res['name']}': {s[0]}×{s[1]}×{s[2]}m, {res['vertices']} vertices, {res['faces']} faces "
         f"(joined {res['joined']} meshes).",
     )
+    if res.get("source"):
+        text += t(f" 파일: {res['source']}", f" File: {res['source']}")
     return [text + _preview_note(rend)] + _images(rend["paths"])
 
 
@@ -439,8 +473,10 @@ def export_model(path: str, names: list[str] | None = None, bake_physics: bool =
     """Export to glb/gltf/fbx/obj, or .abc (Alembic) which also carries the animated water surface.
     장면을 내보낸다. .abc 로 하면 물 표면과 조각 움직임이 프레임마다 구워져 다른 프로그램에서 그대로 보인다.
     bake_physics=True 면 조각 물리를 키프레임으로 굽는다(되돌릴 수 없으니 먼저 snapshot).
-    연기(볼륨)는 어떤 형식으로도 나가지 않는다."""
+    연기(볼륨)는 어떤 형식으로도 나가지 않는다.
+    path 가 상대 경로(예: "tower.glb")면 출력 폴더(BLENDER_FX_OUT) 안에 만든다. 결과에 전체 경로가 나온다."""
     try:
+        path = output_path(path)
         res = run_recipe("export_model", dict(path=path, names=names or [], bake_physics=bake_physics), timeout=long_timeout())
     except BlenderError as e:
         return _fail(e)
@@ -847,9 +883,9 @@ def set_look(preset: str = "day", sun_strength: float = 1.0, sky: str = "flat", 
     조명·하늘.
     preset: day / sunset / night / overcast / studio
     sky: flat(단색) / procedural(진짜 하늘 텍스처, EEVEE/Cycles 에서만 보임)
-    hdri 는 가지고 있는 .hdr/.exr 파일 경로. 인터넷에서 받아오지는 않는다."""
+    hdri 는 가지고 있는 .hdr/.exr 파일 경로(상대 경로면 서버 작업 폴더, 그다음 출력 폴더에서 찾음). 인터넷에서 받아오지는 않는다."""
     try:
-        res = run_recipe("set_look", dict(preset=preset, sun_strength=sun_strength, sky=sky, hdri=hdri or None))
+        res = run_recipe("set_look", dict(preset=preset, sun_strength=sun_strength, sky=sky, hdri=input_path(hdri) or None))
         rend, _ = _render(f"look_{preset}", quality="smoke", frames=[1])
     except BlenderError as e:
         return _fail(e)

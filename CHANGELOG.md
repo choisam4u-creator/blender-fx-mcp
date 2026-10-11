@@ -29,6 +29,8 @@
   and every recipe error says what to do next.
   `restore` with an unknown name stops before touching Blender, so it no longer overwrites the previous `before_restore`.
   Water, smoke and explosion bakes stop before touching Blender when less than 1GB is free; doctor shows free space.
+  Relative paths are resolved on this computer before reaching Blender (whose working folder is `/` for a Finder-launched app):
+  `export_model` writes them into the output folder, `import_model` and the HDRI look in the server folder, then the output folder.
   New `clear_snapshots(keep=5)` deletes old snapshots (never `before_restore`); `clear_caches` and it report the space freed and left.
   Long bake, render and save tools send an MCP progress notification every 5 s while Blender works.
   `blender-fx-doctor --issue` prints Markdown for bug reports with the home folder masked as `~`; the bug form shows it as a table (`--json` goes in its own optional field).
@@ -65,6 +67,10 @@
   진행 알림을 받으면 시간 제한을 늘려 주는 클라이언트에서는 긴 굽기가 끊기지 않는다
 - 디스크 여유 점검: doctor 에 "출력 폴더 여유 공간" 선택 줄(5GB 아래면 `[- ]`, 이 폴더가 쓰는 크기·`clear_caches` 안내). 물·연기·폭발 굽기는 여유가 1GB 아래면
   블렌더에 보내기 전에(폭발은 조각내기 전에) 멈추고 해결법을 알려 준다. 해결법 문서에 그 문장
+- 상대 경로를 블렌더에 보내기 전에 이 컴퓨터의 절대 경로로 푼다. 전에는 블렌더의 작업 폴더(Finder 로 켠 Mac 앱은 `/`) 기준이라
+  `export_model("tower.glb")` 가 쓰기 실패하거나 엉뚱한 곳에 생겼다. ⚠️ 동작 변화: 내보내기 상대 경로는 출력 폴더(`BLENDER_FX_OUT`) 안에,
+  가져오기·HDRI 상대 경로는 서버 작업 폴더 → 출력 폴더 순으로 찾고, 둘 다 없으면 찾아본 폴더와 "전체 경로로 다시"를 말하며 블렌더에 보내지 않는다.
+  `import_model` 결과 끝에 파일 전체 경로. 블렌더가 다른 컴퓨터(`BLENDER_FX_HOST`)면 그대로 보낸다
 - 새 도구 `clear_snapshots(keep=5)`: 오래된 스냅샷부터 지우고 최근 `keep`개를 남긴다(블렌더가 남기는 `.blend1` 이전 판까지 정리, `before_restore` 는 늘 남김, destructive).
   `list_snapshots` 끝에 개수·합계 크기, 5개를 넘으면 이 도구 안내. `clear_caches` 와 함께 지운 용량과 출력 폴더 디스크 여유를 알려 주고,
   그래도 1GB 아래면 다음 할 일(오래된 스냅샷·렌더 폴더·`BLENDER_FX_OUT`)을 말한다. 지울 캐시가 없었으면 그렇게 말한다

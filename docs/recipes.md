@@ -96,7 +96,7 @@ AI(Claude 등)에게 이렇게 말하면 어떤 도구가 어떤 인자로 불�
 | "연결이 안 돼, 점검해 줘" | `doctor()` | 파이썬·mcp·uv·블렌더·수신기·연결·출력 폴더를 줄마다 OK/X 로 |
 | "블렌더랑 연결됐어?" | `ping_blender()` | `연결됨 (localhost:9876)` 또는 해결법 링크가 붙은 실패 문장 |
 | "장면에 뭐가 있어?" | `list_objects()` | 메시 이름과 크기(m). 다른 도구의 `target` 을 고를 때 |
-| "무너지는 장면을 다른 프로그램용으로 내보내" | `export_model(path="…/scene.abc")` | `.abc` 는 조각 움직임·물 표면이 프레임마다 구워져 나감. 연기는 못 나감 |
+| "무너지는 장면을 다른 프로그램용으로 내보내" | `export_model(path="…/scene.abc")` | `.abc` 는 조각 움직임·물 표면이 프레임마다 구워져 나감. 연기는 못 나감. `"scene.abc"` 처럼 이름만 주면 출력 폴더에 |
 | "건물 위에 물 한 덩어리 떨어뜨려" | `splash(target="Building")` | `water(mode="drop")` 의 간단판 |
 | "건물에 불 붙여" | `fire(target="Building", power=1.5)` | 건물 표면에서 계속 타는 불과 연기. `resolution` 은 크기에 맞춰 자동 |
 | "꼭대기에서 굴뚝처럼 연기만 피워" | `smoke(at=[0, 0, 9], radius=0.5)` | 불 없이 피어오르는 연기. 인자는 `fire` 와 같음 |
@@ -213,7 +213,7 @@ Tools not used in the examples above. Say the left column and the AI calls the m
 | "It won't connect, check my setup" | `doctor()` | Python, mcp, uv, Blender, receiver, connection and output folder, one OK/X line each |
 | "Are you connected to Blender?" | `ping_blender()` | `Connected (localhost:9876)` or a failure message with a link to the fix |
 | "What's in the scene?" | `list_objects()` | Mesh names and sizes (m), for picking `target` in other tools |
-| "Export the collapse for another program" | `export_model(path="…/scene.abc")` | `.abc` carries piece motion and the water surface per frame; smoke cannot be exported |
+| "Export the collapse for another program" | `export_model(path="…/scene.abc")` | `.abc` carries piece motion and the water surface per frame; smoke cannot be exported. A bare name such as `"scene.abc"` goes to the output folder |
 | "Drop a blob of water on the building" | `splash(target="Building")` | Shortcut for `water(mode="drop")` |
 | "Set the building on fire" | `fire(target="Building", power=1.5)` | Fire and smoke burning on its surface; `resolution` is picked from its size |
 | "Just smoke from the top, like a chimney" | `smoke(at=[0, 0, 9], radius=0.5)` | Rising smoke without fire; same arguments as `fire` |
