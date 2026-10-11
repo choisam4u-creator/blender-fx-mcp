@@ -4,7 +4,7 @@ AI가 보여 준 오류 문장을 아래에서 찾으세요(`Ctrl+F` 로 문장 
 Search this page for the error sentence the AI showed you. Running `blender-fx-doctor` first usually names the cause.
 
 ```bash
-uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-doctor
+uvx --from blender-fx-mcp blender-fx-doctor
 ```
 
 여기 없는 문제는 [버그 신고](https://github.com/choisam4u-creator/blender-fx-mcp/issues/new?template=bug_report.yml)에 doctor 출력과 함께 올려 주세요.
@@ -24,7 +24,7 @@ For an issue, paste `blender-fx-doctor --issue` (version, OS, Blender, clients a
 doctor 의 "MCP 클라이언트 등록" 줄이 `-` 이면 아래 1번부터, 클라이언트 이름이 보이면 2번부터 합니다.
 
 1. 등록을 확인합니다. Claude Code 는 `claude mcp list` 에 `blender-fx` 가 있어야 합니다. 없으면
-   `claude mcp add -s user blender-fx -- uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-mcp`
+   `claude mcp add -s user blender-fx -- uvx blender-fx-mcp`
 2. 앱을 **완전히** 껐다 켭니다(창 닫기가 아니라 종료: macOS 는 `Cmd+Q`, Windows 는 트레이 아이콘에서 종료). Claude Code 는 새 세션을 엽니다.
 3. 설정 파일을 직접 고쳤다면 위치와 JSON 문법을 확인합니다(쉼표 하나로 파일 전체가 무시됩니다).
 
@@ -199,3 +199,17 @@ Paths are on the computer running Blender; give an absolute path.
 
 이 블렌더 빌드에서 FFmpeg 출력이 안 될 수 있습니다. `render_preview` 로 프레임을 받거나 공식 블렌더 빌드를 씁니다.
 FFmpeg output may be missing from this Blender build; use `render_preview` for frames, or the official Blender build.
+
+## Still on the old version
+
+**새 판이 나왔는데 예전 판이 돎**
+
+`uvx blender-fx-mcp` 는 처음 받은 판을 캐시에 두고 계속 씁니다. doctor 의 `blender-fx-mcp` 줄에 보이는 판이 [PyPI](https://pypi.org/project/blender-fx-mcp/) 의 최신 판보다 낮으면
+아래 한 줄로 캐시를 비운 뒤(다음 실행 때 최신 판을 받음) 클라이언트 앱을 완전히 껐다 켭니다. 아직 출시되지 않은 `main` 의 변경을 시험하려면 `uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-mcp` 로 등록합니다.
+
+`uvx blender-fx-mcp` keeps the version it first downloaded. If the version on doctor's `blender-fx-mcp` line is older than the latest on PyPI,
+clear the cache with the line below (the next run downloads the latest) and fully restart the client app. To try unreleased changes on `main`, register `uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-mcp` instead.
+
+```bash
+uv cache clean blender-fx-mcp
+```

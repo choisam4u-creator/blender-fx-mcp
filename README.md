@@ -23,8 +23,8 @@
 4. **클로드에 등록**(다른 클라이언트는 [examples/](examples/)) → `[OK] MCP 클라이언트 등록`:
 
 ```bash
-claude mcp add -s user blender-fx -- uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-mcp
-uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-doctor   # 점검: 끝에 "모두 정상입니다."
+claude mcp add -s user blender-fx -- uvx blender-fx-mcp
+uvx --from blender-fx-mcp blender-fx-doctor   # 점검: 끝에 "모두 정상입니다."
 ```
 
 **첫 명령 예시** — AI에게 이렇게 말합니다:
@@ -77,7 +77,7 @@ AI는 코드를 짜지 않습니다. 도구와 값만 고릅니다. 그래서 �
 준비물이 갖춰졌는지 한 번에 확인:
 
 ```bash
-uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-doctor
+uvx --from blender-fx-mcp blender-fx-doctor
 ```
 
 오류 문장별 해결법(연결 거부·시간 초과·포트 충돌·유체 굽기 실패·검은 미리보기): [docs/troubleshooting.md](docs/troubleshooting.md)
@@ -91,7 +91,7 @@ uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-do
 클로드 코드:
 
 ```bash
-claude mcp add -s user blender-fx -- uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-mcp
+claude mcp add -s user blender-fx -- uvx blender-fx-mcp
 ```
 
 로컬 폴더에서 개발 중이면:
@@ -284,7 +284,7 @@ Four steps, once. Each step is done when its `blender-fx-doctor` line shows `[OK
 Check everything at once (Python, mcp, uv, Blender, receiver, client registration, output folder):
 
 ```bash
-uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-doctor
+uvx --from blender-fx-mcp blender-fx-doctor
 ```
 
 Fixes for each error message (connection refused, timeout, port in use, fluid bake failed, black preview): [docs/troubleshooting.md](docs/troubleshooting.md)
@@ -298,10 +298,10 @@ How issues, dependency updates, releases and old versions are handled: [docs/mai
 Claude Code:
 
 ```bash
-claude mcp add -s user blender-fx -e BLENDER_FX_LANG=en -- uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-mcp
+claude mcp add -s user blender-fx -e BLENDER_FX_LANG=en -- uvx blender-fx-mcp
 ```
 
-Claude Desktop, Codex, Cursor and other MCP clients: add the same command (`uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-mcp`)
+Claude Desktop, Codex, Cursor and other MCP clients: add the same command (`uvx blender-fx-mcp`)
 to the client's MCP server config with the environment variable `BLENDER_FX_LANG=en`, then fully restart the app.
 Ready-to-paste configs for Claude Desktop, Cursor and Codex are in [examples/](examples/).
 If the tools do not show up, see [troubleshooting](docs/troubleshooting.md#tools-not-visible-in-the-client).

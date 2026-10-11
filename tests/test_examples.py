@@ -7,7 +7,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 EX = ROOT / "examples"
-REPO = "git+https://github.com/choisam4u-creator/blender-fx-mcp"
+PACKAGE = "blender-fx-mcp"  # PyPI 이름(0.7.0 부터 PyPI 에 있음). git+ 주소는 미출시 main 을 시험할 때만
 
 
 def _entry_points():
@@ -16,11 +16,17 @@ def _entry_points():
     return dict(re.findall(r'^([\w-]+) = "([^"]+)"$', block, re.M))
 
 
+def _project_name():
+    text = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    return re.search(r'^name = "([^"]+)"', text, re.M).group(1)
+
+
 def _check_server(server):
     assert server["command"] == "uvx"
     args = server["args"]
-    assert args[:2] == ["--from", REPO]
-    assert args[-1] in _entry_points() and args[-1] == "blender-fx-mcp"
+    # uvx <패키지> 는 같은 이름의 진입점을 띄운다: PyPI 패키지 이름 = 서버 진입점
+    assert args == [PACKAGE], args
+    assert args[-1] in _entry_points() and _project_name() == PACKAGE
     assert server["env"]["BLENDER_FX_LANG"] in ("ko", "en")
 
 
@@ -259,3 +265,25 @@ def test_readme_points_to_first_render_in_both_languages():
     anchors = {re.sub(r"[^\w\- ]", "", x.strip().lower()).replace(" ", "-") for x in titles}
     linked = set(re.findall(r"\(examples/README\.md#([^)]+)\)", readme))
     assert linked and linked <= anchors, linked - anchors
+
+
+USER_FACING = ["README.md", "docs/troubleshooting.md", "examples/README.md", "examples/first_render.py",
+               "examples/list_tools.py", ".github/ISSUE_TEMPLATE/bug_report.yml",
+               "src/blender_fx_mcp/doctor.py", "src/blender_fx_mcp/server.py"]
+
+
+@pytest.mark.parametrize("name", USER_FACING)
+def test_install_commands_use_pypi(name):
+    """사용자가 따라 칠 명령은 PyPI 패키지로(git 이 없어도 되고 짧다). git+ 주소는 troubleshooting 의 '미출시 main 시험' 한 곳만."""
+    text = (ROOT / name).read_text(encoding="utf-8")
+    entry = _entry_points()
+    cmds = re.findall(r"uvx(?: --from ([^\s`\"]+))? (blender-fx[\w-]*)", text)
+    assert cmds or name == "examples/list_tools.py", f"{name}: uvx 명령을 못 찾음"
+    for source, prog in cmds:
+        assert prog in entry or prog == PACKAGE, f"{name}: 없는 진입점 {prog}"
+        if source.startswith("git+"):
+            assert name == "docs/troubleshooting.md", f"{name}: 설치 명령이 git+ 주소 → uvx {PACKAGE}"
+        else:
+            assert source in ("", PACKAGE), f"{name}: --from {source}"
+    if name == "docs/troubleshooting.md":
+        assert text.count("git+https://") == 2 and "## Still on the old version" in text  # 한/영 한 번씩

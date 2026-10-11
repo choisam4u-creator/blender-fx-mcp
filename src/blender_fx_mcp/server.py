@@ -1271,11 +1271,11 @@ def terminal_hint() -> str:
     return t(
         "blender-fx-mcp 는 MCP 클라이언트(클로드·커서 등)가 띄우는 서버라 여기서는 입력을 기다리기만 합니다. 멈춘 것이 아닙니다.\n"
         f"  등록: claude mcp add -s user blender-fx -- {SERVER_CMD}\n"
-        "  점검: uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-doctor\n"
+        "  점검: uvx --from blender-fx-mcp blender-fx-doctor\n"
         "  끝내기: Ctrl+C",
         "blender-fx-mcp is a server that an MCP client (Claude, Cursor, ...) starts; here it only waits for input. It is not frozen.\n"
         f"  Register: claude mcp add -s user blender-fx -e BLENDER_FX_LANG=en -- {SERVER_CMD}\n"
-        "  Check: uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-doctor\n"
+        "  Check: uvx --from blender-fx-mcp blender-fx-doctor\n"
         "  Quit: Ctrl+C",
     )
 

@@ -21,7 +21,7 @@ from . import __version__, bridge, disk
 from .headless import find_blender
 from .i18n import is_en, lang_source, t
 
-SERVER_CMD = "uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-mcp"
+SERVER_CMD = "uvx blender-fx-mcp"
 
 
 # 등록했는데도 클라이언트에 도구가 안 보일 때 볼 절. 절 제목이 바뀌면 tests/test_troubleshooting.py 가 알려 준다

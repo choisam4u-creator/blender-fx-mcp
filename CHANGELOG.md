@@ -11,18 +11,24 @@ Python 3.10 을 뺄 때 함께 0.8.0 으로 올린다(그전까지 `release_chec
 - 0.7.0 is the last release that supports Python 3.10 (end of life 2026-10). 0.8.0 will require Python 3.11 or newer.
 
 *Fixes*
+- Install commands now use the PyPI package: `uvx blender-fx-mcp` (and `uvx --from blender-fx-mcp blender-fx-doctor`); git is no longer needed.
+  The README, `examples/`, doctor, the connection-refused error and the bug form all use it. Troubleshooting explains how to get a newer release.
 - `scripts/release_check.py --tag v0.8.0` checks the tag you are about to push against the version, with the same rule the release workflow uses.
 
 *Tests and CI*
 - The release workflow checks the tag through `release_check.py --tag`, so the rule lives in one place and is tested.
 
 *Docs*
+- Troubleshooting: "Still on the old version" (clear the uv cache; use the `git+` address only to try unreleased `main`).
 - `docs/registry.md` and `docs/maintenance.md` say to run `release_check.py --tag` before pushing a tag.
 
 **지원 종료 예고**
 - 0.7.0 이 Python 3.10 을 지원하는 마지막 판입니다(3.10 은 2026-10 EOL). 0.8.0 부터 Python 3.11 이상이 필요합니다.
 
 **고침**
+- 설치 명령을 PyPI 패키지로: `uvx blender-fx-mcp`, 점검은 `uvx --from blender-fx-mcp blender-fx-doctor`(git 이 없어도 됨).
+  README·`examples/`(설정 3개·README·스크립트 2개)·doctor 등록 안내·연결 거부 오류·버그 양식. troubleshooting 에 "새 판이 나왔는데 예전 판이 돎"
+  (`uv cache clean blender-fx-mcp`, 미출시 `main` 은 `git+` 주소로) 절
 - `scripts/release_check.py --tag v0.8.0`: 밀 태그가 `v` + pyproject 판인지 본다. `v` 가 빠졌거나 판이 다르면 고칠 곳과
   이미 밀었을 때 지우는 명령을 적는다. `release.yml` build 잡도 셸 비교 대신 같은 명령(`--tag "${GITHUB_REF_NAME}"`)을 돈다
 
