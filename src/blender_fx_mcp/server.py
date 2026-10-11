@@ -87,10 +87,16 @@ DESTRUCTIVE = ToolAnnotations(read_only_hint=False, destructive_hint=True, idemp
 # 지금 처리 중인 도구 호출의 (MCP Context, 이벤트 루프 토큰). 동기 도구는 작업 스레드에서 돌지만 contextvar 는 따라간다.
 _CALL: contextvars.ContextVar[tuple | None] = contextvars.ContextVar("blender_fx_call", default=None)
 # 긴 작업 중 진행 알림 간격(초). BLENDER_FX_PROGRESS_EVERY 로 바꿀 수 있다(시험이 stdio 서버를 빠르게 돌릴 때 등).
-try:
-    PROGRESS_EVERY = max(0.05, float(os.environ.get("BLENDER_FX_PROGRESS_EVERY", "5")))
-except ValueError:
-    PROGRESS_EVERY = 5.0
+def progress_every(raw: str | None) -> float:
+    """BLENDER_FX_PROGRESS_EVERY 값 → 초(최소 0.05). 비었거나 숫자가 아니면 5."""
+    try:
+        value = float(raw) if raw else 5.0
+    except ValueError:
+        return 5.0
+    return max(0.05, value) if value == value else 5.0  # value == value: NaN 거르기
+
+
+PROGRESS_EVERY = progress_every(os.environ.get("BLENDER_FX_PROGRESS_EVERY"))
 
 
 class FxServer(MCPServer):

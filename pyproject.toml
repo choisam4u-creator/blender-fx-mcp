@@ -70,5 +70,7 @@ source = ["blender_fx_mcp"]
 omit = ["*/blender_fx_mcp/recipes/*"]
 
 [tool.coverage.report]
+# 스크립트로 직접 돌릴 때만 타는 줄(시험은 main() 을 부른다)
+exclude_also = ['if __name__ == "__main__":']
 show_missing = false
 skip_empty = true

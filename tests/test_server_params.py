@@ -352,3 +352,11 @@ def test_run_steps_error_names_stuck_step(monkeypatch, tmp_path):
         headless.run_steps([("demo_scene", {}), ("destroy", {"target": "Building"})], blender="/usr/bin/blender")
     msg = str(e.value)
     assert "2번째 단계 'destroy'" in msg and "세그폴트" in msg
+
+
+def test_decode_waits_for_rest_of_multibyte_character():
+    """여러 바이트 글자(한글 등)가 조각 경계에서 반쯤 오면 아직 덜 온 것으로 보고 기다린다."""
+    whole = json.dumps({"status": "success", "result": {"result": "완료"}}, ensure_ascii=False).encode("utf-8")
+    cut = whole.index("완".encode()) + 1  # 첫 글자 3바이트 중 1바이트까지만
+    assert bridge._decode(whole[:cut]) is None
+    assert bridge._decode(whole)["result"]["result"] == "완료"

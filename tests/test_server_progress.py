@@ -92,3 +92,33 @@ def test_every_recipe_has_a_progress_label(monkeypatch):
         assert re.search(r"[가-힣]", ko[name]) and not re.search(r"[가-힣]", en[name]), name
         assert name not in (ko[name], en[name]) and "_" not in ko[name] + en[name], f"{name}: 내부 이름이 그대로"
     assert server.recipe_label("없는_레시피") == "없는_레시피"
+
+
+@pytest.mark.parametrize("raw, want", [(None, 5.0), ("", 5.0), ("2", 2.0), ("0", 0.05), ("-1", 0.05), ("x", 5.0), ("nan", 5.0)])
+def test_progress_every_env(raw, want):
+    assert server.progress_every(raw) == want
+
+
+def test_progress_thread_stops_when_notification_fails(monkeypatch, tmp_path):
+    """클라이언트가 끊겨 알림이 실패해도 도구는 끝까지 돌고, 알림 스레드는 그만둔다."""
+    import threading
+
+    class BrokenCtx:
+        async def report_progress(self, *a, **k):
+            raise RuntimeError("client gone")
+
+    monkeypatch.setattr(server, "PROGRESS_EVERY", 0.05)
+
+    async def run():
+        token = server._CALL.set((BrokenCtx(), anyio.lowlevel.current_token()))
+        try:
+            def work():
+                with server._progress("x"):
+                    time.sleep(0.3)
+                return "done"
+            return await anyio.to_thread.run_sync(work)
+        finally:
+            server._CALL.reset(token)
+
+    assert anyio.run(run) == "done"
+    assert not [th for th in threading.enumerate() if th.name == "blender-fx-progress"]

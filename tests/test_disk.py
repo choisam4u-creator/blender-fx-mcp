@@ -149,3 +149,32 @@ def test_enough_space_and_clear_caches_still_run(monkeypatch, tmp_path):
     sent.clear()
     server.water(mode="drop")
     assert sent and "'cache_dir'" in sent[-1].splitlines()[0]
+
+
+def test_disk_helpers_survive_os_errors(monkeypatch, tmp_path):
+    """디스크를 읽다 권한·경쟁 오류가 나도 doctor·굽기 전 점검이 예외로 죽지 않는다."""
+    import os
+    import shutil
+
+    def denied(*a, **k):
+        raise PermissionError("denied")
+
+    monkeypatch.setattr(shutil, "disk_usage", denied)
+    assert disk.free_bytes(tmp_path) is None  # 모르면 None → 경고·차단하지 않음
+    monkeypatch.undo()
+    (tmp_path / "a.bin").write_bytes(b"0" * 10)
+    (tmp_path / "b.bin").write_bytes(b"0" * 5)
+    real = os.path.getsize
+    monkeypatch.setattr(os.path, "getsize", lambda p: denied() if p.endswith("a.bin") else real(p))
+    assert disk.folder_bytes(tmp_path) == 5  # 읽을 수 없는 파일은 건너뜀
+
+
+def test_usage_groups_skips_unreadable_entries(monkeypatch, tmp_path):
+    (tmp_path / "cache_fluid").mkdir()
+    (tmp_path / "cache_fluid" / "x.vdb").write_bytes(b"0" * 300)
+    (tmp_path / "20261011-120000_render").mkdir()
+    (tmp_path / "20261011-120000_render" / "f.png").write_bytes(b"0" * 50)
+    real = disk.folder_bytes
+    monkeypatch.setattr(disk, "folder_bytes", lambda p: (_ for _ in ()).throw(OSError("gone")) if "cache_" in str(p) else real(p))
+    groups = {g[0]: g for g in disk.usage_groups(tmp_path)}
+    assert "caches" not in groups and groups["runs"][1] == 50  # 사라진 폴더는 건너뛰고 나머지는 센다

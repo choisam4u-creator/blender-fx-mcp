@@ -100,3 +100,27 @@ def test_clear_caches_no_disk_line_for_remote_blender(snaps, monkeypatch):
     assert not bridge.is_local()
     _fake_clear(monkeypatch, 10.0)
     assert server.clear_caches() == "Caches cleared: freed 10.0MB, reset 1 fluid domains."
+
+
+def test_clear_snapshots_survives_file_it_cannot_delete(snaps, monkeypatch):
+    """지우려던 스냅샷이 잠겨 있거나 그사이 없어져도 예외 없이 나머지를 정리한다(못 지운 크기는 세지 않음)."""
+    from pathlib import Path
+
+    monkeypatch.setenv("BLENDER_FX_LANG", "en")
+    d = snaps("old_locked", "old", "new1", "new2")
+    real = Path.unlink
+
+    def unlink(self, *a, **k):
+        if self.name == "old_locked.blend":
+            raise PermissionError("locked")
+        return real(self, *a, **k)
+
+    monkeypatch.setattr(Path, "unlink", unlink)
+    text = server.clear_snapshots(keep=2)
+    assert (d / "old_locked.blend").exists() and not (d / "old.blend").exists()
+    assert text.startswith("Deleted 2 snapshot"), text
+
+
+def test_free_space_note_quiet_when_unknown(snaps, monkeypatch):
+    monkeypatch.setattr(disk, "free_bytes", lambda p: None)
+    assert server._free_space_note() == ""

@@ -578,3 +578,9 @@ def test_json_report_masks_home(monkeypatch, capsys, tmp_path):
         doctor.main(["--json"])
     data = json.loads(capsys.readouterr().out)
     assert data["blender"] == "~/apps/blender" and data["checks"][0]["detail"] == "~/out"
+
+
+def test_mask_home_skips_root_home(monkeypatch):
+    """집 폴더가 / 이면(컨테이너 root 등) 모든 경로를 ~ 로 바꾸지 않게 그대로 둔다."""
+    monkeypatch.setattr(doctor.os.path, "expanduser", lambda p: "/" if p == "~" else p)
+    assert doctor.mask_home("/usr/bin/blender") == "/usr/bin/blender"
