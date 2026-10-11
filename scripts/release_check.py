@@ -23,7 +23,7 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-# CHANGELOG 의 판 절 제목: "## [0.7.0] - 2026-10-13"(Keep a Changelog), 옛 "## 0.6.3 — 2026-09-21", 또는 "## 0.8.0 — 미출시 (준비 중)"
+# CHANGELOG 의 판 절 제목: "## [0.7.0] - 2026-10-11"(Keep a Changelog), 옛 "## 0.6.3 — 2026-09-21", 또는 "## 0.8.0 — 미출시 (준비 중)"
 HEADING = re.compile(r"^## \[?(\d+\.\d+\.\d+)\]? (?:—|-) (.+)$", re.M)
 DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
 # PyPI 가 받는 Metadata-Version. hatchling 은 2026-10 기준 2.5 를 쓰며, 2.5 를 받는 twine 은 7.0.0 부터다(6.x check 는 거부).

@@ -1154,3 +1154,24 @@ def test_maintenance_release_procedure_matches_workflow(title):
     assert "](registry.md)" in section and "CHANGELOG" in section
     steps = re.findall(r"^(\d+)\. ", section, re.M)
     assert steps == [str(i) for i in range(1, 9)], steps
+
+
+def test_released_changelog_dates_match_git_tags():
+    """출시된 절의 날짜가 그 판 태그(vX.Y.Z) 커밋 날짜와 같아야 한다. 태그가 없으면(얕은 클론·sdist) 그 판은 건너뛴다."""
+    import shutil
+    import subprocess
+
+    if not shutil.which("git") or not (ROOT / ".git").exists():
+        pytest.skip("git 저장소가 아님")
+    checked = 0
+    for version, when, _ in _changelog_sections():
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", when):
+            continue  # 미출시 절
+        tag = subprocess.run(["git", "log", "-1", "--format=%cs", f"v{version}", "--"], cwd=ROOT,
+                             capture_output=True, text=True)
+        if tag.returncode != 0 or not tag.stdout.strip():
+            continue
+        assert when == tag.stdout.strip(), f"{version}: CHANGELOG 날짜 {when}, 태그 v{version} 날짜 {tag.stdout.strip()}"
+        checked += 1
+    if not checked:
+        pytest.skip("판 태그를 가져오지 않은 클론(git fetch --tags 로 확인)")
