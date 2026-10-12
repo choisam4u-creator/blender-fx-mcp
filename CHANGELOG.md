@@ -18,6 +18,8 @@
   on text tools (and no duplicate of the sentence in `structuredContent`), no docstring indentation. A test keeps it under a budget.
   `list_objects`, `inspect_mesh` and `list_snapshots` also return MCP structured content (`structuredContent`), so the AI reads names and sizes without re-parsing text.
   `render_preview` without a size follows the aspect set with `set_render`, scaled to 640 on the long side (a 1080×1920 scene previews at 360×640, not 640×360).
+  `render_preview`, `render_video` and `set_render` reject a `width`/`height` outside 16-7680 before anything reaches Blender, with the recommended sizes
+  (a negative size used to fail inside Blender with an unclear error).
   A dropped connection mid-command, a cut-off reply and invalid `BLENDER_FX_TIMEOUT`/`BLENDER_FX_PORT` values now each get their own message.
 - Install commands now use the PyPI package: `uvx blender-fx-mcp` (and `uvx --from blender-fx-mcp blender-fx-doctor`); git is no longer needed.
   The README, `examples/`, doctor, the connection-refused error and the bug form all use it. Troubleshooting explains how to get a newer release.

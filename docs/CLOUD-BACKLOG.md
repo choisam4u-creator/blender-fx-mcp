@@ -222,7 +222,7 @@
 
 ### 2026-10-12 (14회차 끝) 추가 — 사용자 체감 우선(오픈소스 지원 기준: 활발한 유지보수·문서·시험·이슈 대응)
 
-- [ ] `render_preview`·`render_video` 의 `width`·`height` 범위 검사(음수·8K 초과)를 서버에서 먼저, 오류 문장에 다음 할 일(권장 크기) + 시험 (근거: 이번 회차에 미리보기 크기를 고치며 보니 음수 크기는 블렌더까지 가서 원인 모를 오류)
+- [x] `render_preview`·`render_video` 의 `width`·`height` 범위 검사(음수·8K 초과)를 서버에서 먼저, 오류 문장에 다음 할 일(권장 크기) + 시험 (근거: 이번 회차에 미리보기 크기를 고치며 보니 음수 크기는 블렌더까지 가서 원인 모를 오류) — `server.RANGES` 에 `render`·`render_video`·`set_render` 의 width/height 16~7680(0 은 자동이라 통과). 레시피가 자르지 않는 값이라 `SERVER_ONLY_RANGES` 로 따로 적고 시험이 레시피 비교에서 뺌. 권장 크기(가로 1280×720·1920×1080, 세로 1080×1920)와 0 의 뜻을 한/영으로. 시험 5개 + 도구 기본값 검사에 두 도구 추가
 - [x] `recipe-tests-bpy-macos` 첫 결과 확인: 초록이면 `continue-on-error` 를 빼고 시험·architecture 갱신, 빨가면 실패 끝줄과 이유(Metal·VM)를 architecture 에 (근거: 14회차에 비차단으로 넣음) — PR #15 CI 첫 실행 초록(1098 통과·7 건너뜀, 1분 50초. Linux 보다 1개 더 건너뜀) → `continue-on-error` 뺌, 시험이 비차단을 거절, architecture 한/영
 - [ ] `doctor` 도구에도 구조화 출력(점검 항목마다 ok·다음 할 일) + 시험 (사용자 체감: "안 돼요" 때 AI 가 실패한 항목과 고칠 방법을 정확히 집음. 목록형 도구 3개와 같은 `_with_data`)
 - [ ] 서버 `instructions`(INSTRUCTIONS) 글자 수도 `tests/test_tool_budget.py` 상한에 포함하고, 도구 설명과 겹치는 문장 줄이기 (근거: 도구 목록은 24% 줄였지만 instructions 도 대화마다 들어감)

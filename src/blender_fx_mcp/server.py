@@ -294,8 +294,14 @@ RANGES: dict[str, dict[str, tuple[float, float | None]]] = {
     "water": {"frames": (12, None), "resolution": (16, 320)},
     "emit": {"frames": (12, None), "resolution": (16, 256)},
     "particles": {"frames": (12, None)},
-    "set_render": {"samples": (1, None)},
+    "set_render": {"samples": (1, None), "width": (16, 7680), "height": (16, 7680)},
+    # 렌더 크기는 레시피가 자르지 않는다(음수는 블렌더까지 가서 원인 모를 오류). 8K(7680) 넘게는 메모리·시간이 감당 안 된다.
+    "render": {"width": (16, 7680), "height": (16, 7680)},
+    "render_video": {"width": (16, 7680), "height": (16, 7680)},
 }
+
+# RANGES 중 레시피가 자르지 않아 서버에서만 막는 것(tests/test_server_ranges.py 가 레시피 비교에서 뺀다)
+SERVER_ONLY_RANGES = {(r, n) for r in ("set_render", "render", "render_video") for n in ("width", "height")}
 
 def _range_hint(name: str) -> str:
     """범위 오류에 덧붙이는 권장 값."""
@@ -308,6 +314,10 @@ def _range_hint(name: str) -> str:
         return t("24fps 기준 72 = 3초.", "72 frames = 3 seconds at 24 fps.")
     if name == "focus":
         return t("1 이면 맞은 곳만 아주 잘게, 0 이면 고르게.", "1 = only the hit area is finely broken, 0 = even.")
+    if name in ("width", "height"):
+        return t("가로 1280×720·1920×1080, 세로 1080×1920 권장. 0 이면 set_render 로 정한 크기(미리보기는 긴 변 640)를 씁니다.",
+                 "1280×720 or 1920×1080 (landscape), 1080×1920 (portrait) recommended; "
+                 "0 uses the set_render size (preview: 640 on the long side).")
     return ""
 
 

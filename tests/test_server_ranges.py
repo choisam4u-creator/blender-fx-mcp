@@ -48,7 +48,10 @@ RECIPE_SIDE = {
 
 
 def test_every_server_range_has_a_recipe_source():
-    assert {(r, n) for r, d in server.RANGES.items() for n in d} == set(RECIPE_SIDE)
+    """레시피가 자르는 범위는 레시피와 비교하고, 서버에서만 막는 범위(렌더 크기)는 따로 적어 둔다."""
+    every = {(r, n) for r, d in server.RANGES.items() for n in d}
+    assert every == set(RECIPE_SIDE) | server.SERVER_ONLY_RANGES
+    assert not set(RECIPE_SIDE) & server.SERVER_ONLY_RANGES
 
 
 @pytest.mark.parametrize("key", sorted(RECIPE_SIDE), ids=lambda k: f"{k[0]}.{k[1]}")
@@ -66,6 +69,8 @@ TOOL_RECIPES = {
     "smoke": ["emit"],
     "particles": ["particles"],
     "set_render": ["set_render"],
+    "render_preview": ["render"],
+    "render_video": ["render_video"],
 }
 
 
@@ -108,6 +113,11 @@ def test_out_of_range_is_caught_before_blender(no_blender, monkeypatch, lang, ex
     (lambda: server.smoke(at=[0, 0, 0], resolution=8), "resolution 8"),
     (lambda: server.particles(frames=3), "frames 3"),
     (lambda: server.set_render(samples=-4), "samples -4 is out of range. Allowed: at least 1."),
+    (lambda: server.set_render(width=-1920), "width -1920 is out of range. Allowed: 16 ~ 7680. 1280×720"),
+    (lambda: server.render_preview(width=-640), "width -640 is out of range. Allowed: 16 ~ 7680."),
+    (lambda: server.render_preview(height=8), "height 8 is out of range."),
+    (lambda: server.render_video(width=15360, height=8640), "width 15360 is out of range. Allowed: 16 ~ 7680."),
+    (lambda: server.render_video(height=10000), "0 uses the set_render size"),
 ])
 def test_each_tool_checks_ranges_before_blender(no_blender, monkeypatch, tmp_path, call, text):
     monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path))
