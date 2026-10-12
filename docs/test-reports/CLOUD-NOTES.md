@@ -5,10 +5,26 @@
 한 번에 돌려 `latest.md` 를 새로 쓰려면 `uv run python scripts/mac_report.py`(결과 확인 뒤 커밋). 클라우드 회차는 그 FAIL 부터 고친다.
 
 ```sh
-uv sync && uv run pytest -q                        # 블렌더 앱으로 전체 통과(새 bpy 시험: 세로 1080×1920 이면 미리보기 PNG 360×640)
-uv run python examples/first_render.py             # Connect 뒤 끝까지. 그다음 Claude 에 "set_render 1080×1920 → render_preview" 로 세로 미리보기인지, "list_objects" 가 그대로 읽히는지
-uv run blender-fx-doctor --issue                   # 표와 점검 전체에 집 폴더가 ~ 로 가려졌는지
+uv sync && uv run pytest -q                        # 블렌더 앱으로 전체 통과(새: 렌더 크기 검사·doctor 구조화·instructions 예산·오류 문장 도구 이름)
+uv run python examples/first_render.py             # Connect 뒤 끝까지. 그다음 Claude 에 "render_preview width=-640" → 블렌더에 가기 전 범위·권장 크기 안내인지
+uv run blender-fx-doctor --issue                   # 블렌더를 끈 채 Claude 에 "doctor" → 실패 항목(connection)과 고칠 방법을 정확히 집는지
 ```
+
+## 2026-10-12 (15회차)
+
+- 시작 확인: 저장된 지시의 최우선 F1·F3(0.7.0 판·release.yml)는 9회차(10/11)에 끝나 PR #13 으로 병합(`ff7555e`·`4eb778f`), 태그 `v0.7.0` 도 있음. 다시 할 것 없음 → 일반 규칙.
+  main 은 `claude/cloud-work` 보다 앞서 있지 않음. `latest.md`(10/1)의 FAIL 2건은 main 에 고쳐져 있음(재확인).
+- 한 일(백로그 위에서부터, 굽기 시간 어림은 Mac 실측 필요라 건너뜀):
+  1. **렌더 크기 범위 검사** (`187c372`) — `render_preview`·`render_video`·`set_render` 의 width/height 16~7680 을 블렌더에 보내기 전에, 권장 크기(가로 1280×720·1920×1080, 세로 1080×1920)와 0 의 뜻을 한/영으로. 레시피가 자르지 않는 값이라 `SERVER_ONLY_RANGES` 로 구분.
+  2. **doctor 도구 구조화 출력** (`5b5bbf9`) — 문장 + `ok`·`failed`(id)·`checks`(항목마다 ok·fix)·`help`. 항목 모양은 `--json` 과 같은 `doctor.check_rows`.
+  3. **instructions 예산** (`52e665a`) — 도구 설명과 겹치는 괄호 풀이를 빼 한 656→515·영 994→819자. 공식 클라이언트가 받는 값을 한/영 900자 상한·도구 목록과 합산 시험.
+  4. **오류 문장 다음 할 일(영어)·실제 도구 이름** (`7a9c0f1`) — 영어 표지 시험 추가(모두 통과). 이름 시험이 `set_ground` 의 없는 도구 `reset` 을 찾아 `reset_destroy` 로 고침.
+  - 남은 `[ ]` 1개라 새 항목 5개 추가(`0262e43`: fps·프레임 범위, 서버 쪽 오류 문장 표지, 프롬프트·문서의 도구 이름, CONTRIBUTING 오류 문장 규칙, README 첫 렌더 단계 수).
+- 돌린 시험: `uv run pytest -q`(3.11) **1081 통과·39 건너뜀**(블렌더 필요), CI 서버 명령 `--cov --cov-fail-under=99` **100%**, **`scripts/bpy_tests.sh`(bpy 5.0.1) → 1114 통과·6 건너뜀(2분 38초)**(유체 `app_only` 5개·실제 캐릭터 파일 1개 — 블렌더 앱·개인 파일 필요), `uvx ruff@0.15.20 check .` 통과.
+  변이 확인: instructions 에 괄호 풀이를 되살리면, set_ground 를 옛 문장으로 되돌리면 각각 새 시험이 실패.
+- 막힌 것: 없음.
+- 완료 수·추가 수: **완료 4** / **추가 5**. ⚠️ 이번 회차는 추가가 완료보다 1 많음 — 남은 `[ ]` 가 1개(Mac 실측)뿐이라 규칙 3(3개 미만이면 5개 추가)을 따름. 다음 회차는 추가 없이 완료만.
+- Mac에서 확인할 것: 맨 위 명령 3줄(또는 `uv run python scripts/mac_report.py` 한 번).
 
 ## 2026-10-12 (14회차)
 
