@@ -647,7 +647,8 @@ def test_ci_has_coverage_floor_matching_contributing():
     m = re.search(r"--cov-fail-under=(\d+)", ci)
     assert m, "ci.yml 에 --cov-fail-under 하한이 없음"
     floor = int(m.group(1))
-    assert 90 <= floor <= 100, floor
+    # 2026-10-11 부터 100%. 하한이 낮으면 오류 갈래 시험 없이 코드가 늘어도 초록이라 99 아래로 내리지 않는다.
+    assert 99 <= floor <= 100, floor
     text = (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
     assert f"**{floor}% 아래면 실패**" in text, "CONTRIBUTING 한국어 절의 하한이 ci.yml 과 다름"
     assert f"{floor}% floor" in text, "CONTRIBUTING 영어 절의 하한이 ci.yml 과 다름"
