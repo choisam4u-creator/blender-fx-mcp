@@ -725,6 +725,22 @@ def test_bpy_script_matches_ci_bpy_job():
     assert script_pkgs == ci_pkgs
 
 
+def test_macos_bpy_job_mirrors_linux_job():
+    """사용자 대부분이 Mac 이라 macOS 에서도 같은 bpy 판·파이썬·명령으로 레시피 시험을 돈다.
+    Metal 렌더가 러너에서 되는지 확인될 때까지만 PR 을 막지 않고(continue-on-error), 그 이유를 주석과 architecture 에 적는다."""
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    linux = ci.split("  recipe-tests-bpy:\n", 1)[1].split("\n\n", 1)[0]
+    mac = ci.split("  recipe-tests-bpy-macos:\n", 1)[1].split("\n\n", 1)[0]
+    assert "    runs-on: macos-latest\n" in mac
+    pick = lambda job: [s for s in job.splitlines() if "uv python install" in s or "bpy==" in s  # noqa: E731
+                        or "uv run pytest" in s or "BLENDER_FX_BLENDER" in s or "uses:" in s]
+    assert pick(mac) == pick(linux), (pick(mac), pick(linux))
+    if "continue-on-error: true" in mac:
+        assert "Metal" in ci.split("  recipe-tests-bpy-macos:\n", 1)[0].rsplit("\n\n", 1)[1]
+    for text in (ROOT / "docs" / "architecture.md").read_text(encoding="utf-8").split("\n## ")[1:]:
+        assert "recipe-tests-bpy-macos" in text
+
+
 def test_bpy_script_is_runnable_and_documented():
     if sys.platform != "win32":  # Windows 체크아웃에는 실행 권한 비트가 없다(Linux·Mac 에서만 확인)
         assert BPY_SCRIPT.stat().st_mode & 0o111, "실행 권한이 없음(chmod +x)"

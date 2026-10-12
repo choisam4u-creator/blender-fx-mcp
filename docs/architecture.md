@@ -63,8 +63,9 @@ AI 는 블렌더 코드를 짜지 않습니다. 검증된 레시피와 값만 �
   tests/test_server*.py · test_doctor.py · test_headless.py · …
   가짜 소켓·가짜 레시피 결과·가짜 실행 파일로 server/bridge/doctor/headless 를 시험
 
-bpy 모듈로 (CI recipe-tests-bpy)
+bpy 모듈로 (CI recipe-tests-bpy: Linux · recipe-tests-bpy-macos: macOS arm64, 같은 bpy 판)
   tests/test_recipes*.py → headless.run_steps → BLENDER_FX_BLENDER(파이썬+bpy) 로 레시피 실행
+  macOS 작업은 러너(가상 머신)에서 Metal 렌더가 되는지 확인될 때까지 PR 을 막지 않음(continue-on-error)
   Mantaflow 유체는 bpy 휠에서 깨져 @pytest.mark.app_only 로 건너뜀 (tests/conftest.py)
 
 블렌더 앱으로 (Mac · 손 실행 app-tests 워크플로)
@@ -135,8 +136,9 @@ Without Blender (CI server-tests, Python 3.11, 3.12, 3.13, 3.14)
   tests/test_server*.py, test_doctor.py, test_headless.py, ...
   fake socket, fake recipe results and fake executables test server/bridge/doctor/headless
 
-With the bpy module (CI recipe-tests-bpy)
+With the bpy module (CI recipe-tests-bpy: Linux; recipe-tests-bpy-macos: macOS arm64, same bpy version)
   tests/test_recipes*.py → headless.run_steps → recipes run by BLENDER_FX_BLENDER (python + bpy)
+  The macOS job does not block PRs (continue-on-error) until Metal rendering is confirmed on the runner VM
   Mantaflow fluids are broken in bpy wheels, so @pytest.mark.app_only tests are skipped (tests/conftest.py)
 
 With the Blender app (Mac, manual app-tests workflow)
