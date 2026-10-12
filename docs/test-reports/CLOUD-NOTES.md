@@ -5,10 +5,26 @@
 한 번에 돌려 `latest.md` 를 새로 쓰려면 `uv run python scripts/mac_report.py`(결과 확인 뒤 커밋). 클라우드 회차는 그 FAIL 부터 고친다.
 
 ```sh
-uv sync && uv run pytest -q                        # 블렌더 앱으로 전체 통과(새 bpy 시험: 렌더 설정 보존·대상 지정 부수기가 다른 효과를 남김)
-uv run python examples/first_render.py             # Connect 뒤 끝까지. 그다음 Claude 에 "지금 상태 snapshot 해 줘 → restore before_restore 두 번" 을 시켜 두 상태가 맞바뀌는지
-uv run blender-fx-doctor --issue                   # 표와 점검 전체에 집 폴더가 ~ 로 가려졌는지(문장부호 붙은 경로 포함)
+uv sync && uv run pytest -q                        # 블렌더 앱으로 전체 통과(새 bpy 시험: 세로 1080×1920 이면 미리보기 PNG 360×640)
+uv run python examples/first_render.py             # Connect 뒤 끝까지. 그다음 Claude 에 "set_render 1080×1920 → render_preview" 로 세로 미리보기인지, "list_objects" 가 그대로 읽히는지
+uv run blender-fx-doctor --issue                   # 표와 점검 전체에 집 폴더가 ~ 로 가려졌는지
 ```
+
+## 2026-10-12 (14회차)
+
+- 시작 확인: 저장된 회차 지시의 최우선 F1·F3(0.7.0 판 맞추기·release.yml)는 9회차(10/11)에 끝나 PR #13 으로 병합, 태그 `v0.7.0`·PyPI 게시까지 됨(지금 main 은 0.8.0 준비 중). 다시 할 것 없음 → 일반 규칙으로.
+  main 은 앞서 있지 않음. `latest.md`(10/1)의 FAIL 2건은 main 에 고쳐져 있음(재확인).
+- 한 일(백로그 위에서부터, 굽기 시간 어림은 Mac 실측이 필요해 건너뜀):
+  1. **CI 커버리지 하한 95% → 99%** — ci.yml·CONTRIBUTING 한/영, 시험이 99 미만 하한을 거절.
+  2. **`render_preview` 가 `set_render` 크기를 따름** — 안 주면 정한 비율을 긴 변 640 으로(1080×1920 → 360×640, 작으면 그대로, 정한 적 없으면 640×360), 하나만 주면 비율로. 크기 계산 시험 9개 + bpy 시험(실제 PNG 크기).
+  3. **목록형 도구 구조화 출력** — `list_objects`·`inspect_mesh`·`list_snapshots` 가 문장과 함께 `structuredContent`. mcp 2.2 는 `-> str` 도구에 `{"result": 문자열}` 껍데기만 주던 것을 확인.
+  4. **도구 목록 토큰 예산** — 실제로 나가는 목록을 재니 33,015자 중 인자 `title`·문장 도구 출력 스키마·독스트링 들여쓰기가 군더더기 → 25,093자(−24%). `FxServer` 의 공개 메서드(`add_tool`·`list_tools`)만 재정의, 설명 문구는 그대로. 상한 시험.
+  5. **macOS bpy CI** — bpy 5.0.1 macOS arm64 휠 확인, `recipe-tests-bpy-macos` 추가. 러너 VM 의 Metal 렌더를 몰라 확인될 때까지 `continue-on-error`. 첫 결과는 PR #15 CI 에서.
+  - 남은 `[ ]` 가 2개라 새 항목 5개 추가(렌더 크기 범위 검사, macOS 작업 결과 반영, doctor 구조화 출력, instructions 예산, 레시피 오류 문장의 다음 할 일).
+- 돌린 시험: `uv run pytest -q`(3.11) **1066 통과·39 건너뜀**(블렌더 필요), 서버 쪽 `--cov --cov-fail-under=99` **100%**(3.11·3.14), **`scripts/bpy_tests.sh` → 1099 통과·6 건너뜀(1분 56초)**(유체 `app_only` 5개·실제 캐릭터 파일 1개 — 블렌더 앱·개인 파일 필요), `uvx ruff@0.15.20 check .` 통과, `gen_tool_table.py` 일치.
+- 막힌 것: 없음. macOS 러너에서 bpy 렌더가 되는지는 이 컨테이너(Linux)에서 못 봄 → PR CI 결과로.
+- 완료 수·추가 수: **완료 5** / **추가 5**. 남은 `[ ]` 6개(그중 1개 Mac 실측).
+- Mac에서 확인할 것: 맨 위 명령 3줄(또는 `uv run python scripts/mac_report.py` 한 번).
 
 ## 2026-10-11 (13회차)
 
