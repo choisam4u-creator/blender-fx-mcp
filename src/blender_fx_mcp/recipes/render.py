@@ -1,6 +1,25 @@
 # SPDX-License-Identifier: MIT
 # 미리보기·최종 렌더 레시피. 프레임 몇 장을 PNG 로 저장하고 경로를 돌려준다.
 # PARAMS: out_dir, frame_count 또는 frames(목록), width, height, quality(preview|final)
+# width/height 를 안 주면(0) set_render 로 정한 크기의 비율을 긴 변 640 으로 줄여 쓰고, 정한 적 없으면 640×360.
+
+PREVIEW_LONG_SIDE = 640
+
+
+def preview_size(width, height, user_res):
+    """미리보기 크기. 둘 다 주면 그대로, 하나만 주면 비율로 나머지를, 안 주면 비율을 긴 변 640 으로(더 작으면 그대로).
+    비율은 set_render 로 정한 크기(user_res), 없으면 16:9."""
+    aw, ah = user_res or (16, 9)
+    if width and height:
+        return width, height
+    if width:
+        return width, max(1, round(width * ah / aw))
+    if height:
+        return max(1, round(height * aw / ah)), height
+    if user_res is None:
+        return PREVIEW_LONG_SIDE, 360
+    scale = min(1.0, PREVIEW_LONG_SIDE / max(aw, ah))
+    return max(1, round(aw * scale)), max(1, round(ah * scale))
 
 
 def pick_frames(n, start, end):
@@ -16,8 +35,10 @@ def main():
     out_dir = p["out_dir"]
     os.makedirs(out_dir, exist_ok=True)
     frames = p.get("frames") or pick_frames(int(p.get("frame_count", 5)), sc.frame_start, sc.frame_end)
-    width = int(p.get("width", 640))
-    height = int(p.get("height", 360))
+    user_res = None
+    if sc.get(USER_RES_TAG):
+        user_res = (r.resolution_x * r.resolution_percentage // 100, r.resolution_y * r.resolution_percentage // 100)
+    width, height = preview_size(int(p.get("width") or 0), int(p.get("height") or 0), user_res)
     quality = p.get("quality", "preview")
 
     if sc.camera is None:

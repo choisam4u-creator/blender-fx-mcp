@@ -227,3 +227,22 @@ def test_preview_render_keeps_workbench_shading(tmp_path):
     before, after = results[1], results[3]
     assert results[2]["ok"] and results[2]["engine"] == "BLENDER_WORKBENCH", results[2]
     assert after["shading"] == before["shading"], (before["shading"], after["shading"])
+
+
+def test_preview_follows_set_render_aspect(tmp_path):
+    """크기를 안 준 미리보기는 set_render 로 정한 비율(세로 영상)을 긴 변 640 으로 줄여 렌더하고, 장면 크기는 그대로 둔다.
+    (전에는 어떤 크기를 정해도 미리보기가 늘 640×360 이라 세로 구도를 확인할 수 없었다)"""
+    results = run_steps([
+        ("demo_scene", {}),
+        ("set_render", {"width": 1080, "height": 1920}),
+        ("render", {"out_dir": str(tmp_path / "tall"), "frames": [1], "quality": "preview"}),
+        ("set_render", {}),
+    ], blender=BLENDER)
+    assert all(r["ok"] for r in results), results
+    rend = results[2]
+    assert rend["size"] == [360, 640], rend
+    with open(rend["paths"][0], "rb") as f:
+        head = f.read(24)  # PNG 서명 8 + IHDR 길이·이름 8 + 폭·높이 8
+    assert head[:8] == b"\x89PNG\r\n\x1a\n", head
+    assert (int.from_bytes(head[16:20], "big"), int.from_bytes(head[20:24], "big")) == (360, 640), head
+    assert results[3]["resolution"] == [1080, 1920], results[3]

@@ -1195,14 +1195,16 @@ def save_blend(name: str = "fx_scene") -> str:
 # ---------- 렌더·정리 ----------
 
 @mcp.tool(annotations=ADDITIVE)
-def render_preview(frame_count: int = 5, quality: str = "preview", width: int = 640, height: int = 360,
+def render_preview(frame_count: int = 5, quality: str = "preview", width: int = 0, height: int = 0,
                    frames: list[int] | None = None):
     """Re-render the current scene. quality: preview (fast, no sky/smoke/water), smoke (shows them), final (high quality).
-    현재 장면을 다시 렌더한다.
+    width/height 0 = set_render's aspect scaled to 640 on the long side (640×360 if never set).
+    현재 장면을 다시 렌더한다. 크기를 안 주면 set_render 로 정한 비율을 긴 변 640 으로 줄여(정한 적 없으면 640×360).
     quality: preview(빠름, 하늘·연기·물 안 보임) / smoke(그것들까지 보임) / final(고화질)"""
     try:
         run_dir = new_run_dir(f"render_{quality}")
-        params = dict(out_dir=str(run_dir), frame_count=frame_count, quality=quality, width=width, height=height)
+        params = dict(out_dir=str(run_dir), frame_count=frame_count, quality=quality, width=width or None,
+                      height=height or None)
         if frames:
             params["frames"] = list(frames)
         rend = run_recipe("render", params, timeout=long_timeout())

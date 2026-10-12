@@ -14,6 +14,7 @@
 - `restore("before_restore")` (undoing an undo) no longer overwrites the state it goes back to; the two states swap.
   `destroy`/`reset_destroy` with a target no longer delete unrelated effects (ocean, water, smoke, flag, wind) or other buildings' glue.
   Renders keep the samples and size set with `set_render` (previews no longer overwrite them; `render_video` uses them by default).
+  `render_preview` without a size follows the aspect set with `set_render`, scaled to 640 on the long side (a 1080×1920 scene previews at 360×640, not 640×360).
   A dropped connection mid-command, a cut-off reply and invalid `BLENDER_FX_TIMEOUT`/`BLENDER_FX_PORT` values now each get their own message.
 - Install commands now use the PyPI package: `uvx blender-fx-mcp` (and `uvx --from blender-fx-mcp blender-fx-doctor`); git is no longer needed.
   The README, `examples/`, doctor, the connection-refused error and the bug form all use it. Troubleshooting explains how to get a newer release.
@@ -50,6 +51,8 @@
 - `set_render` 로 정한 샘플·크기를 렌더가 무시하던 문제: 미리보기·굽기 뒤 미리보기가 샘플을 16 으로 영구히 덮었고, `render_video` 는 늘 1280×720 이었다.
   이제 렌더는 바꾼 샘플을 되돌리고, `quality="final"` 은 `set_render` 의 샘플을, `render_video` 는 크기를 안 주면 `set_render` 크기(정한 적 없으면 720p)를 쓴다.
   `render_video(fps=60)` 결과에 옛 fps 를 보고하던 것, 미리보기가 중간에 실패하면 해상도·형식·경로·엔진이 바뀐 채 남던 것도 고침
+- `render_preview` 가 `set_render` 로 어떤 크기를 정해도 늘 640×360 으로 렌더해 세로·정사각 구도를 확인할 수 없던 문제. 크기를 안 주면 정한 비율을 긴 변 640 으로 줄여
+  (1080×1920 → 360×640, 640 보다 작으면 그대로, 정한 적 없으면 640×360). 하나만 주면 나머지는 비율로
 - `nan`·`inf` 실수 인자를 블렌더에 보내기 전에 막음(전에는 블렌더 안에서 `NameError: inf` 로 원인 모를 오류). `save_blend`·`render_video` 의 `name` 을
   파일 이름으로 정리(`/tmp/x`·`../x` 가 출력 폴더 밖으로 나가거나 Windows 에서 `:`·`?` 로 깨지던 문제). doctor `--json` 도 집 폴더를 `~` 로 가리고,
   `/home/sam:`·`/home/sam,` 처럼 문장부호가 붙은 경로도 가린다

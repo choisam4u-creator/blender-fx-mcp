@@ -360,3 +360,42 @@ def test_decode_waits_for_rest_of_multibyte_character():
     cut = whole.index("완".encode()) + 1  # 첫 글자 3바이트 중 1바이트까지만
     assert bridge._decode(whole[:cut]) is None
     assert bridge._decode(whole)["result"]["result"] == "완료"
+
+
+# ---------- 미리보기 크기(set_render 를 따름) ----------
+
+def _preview_size():
+    """render.py 레시피의 preview_size 만 꺼내 블렌더 없이 부른다(레시피 파일은 bpy 를 앞에 붙여야 돈다)."""
+    import ast
+
+    src = (server.RECIPES / "render.py").read_text(encoding="utf-8")
+    tree = ast.parse(src)
+    keep = [n for n in tree.body if (isinstance(n, ast.FunctionDef) and n.name == "preview_size")
+            or (isinstance(n, ast.Assign) and n.targets[0].id == "PREVIEW_LONG_SIDE")]
+    ns: dict = {}
+    exec(compile(ast.Module(body=keep, type_ignores=[]), "render.py", "exec"), ns)
+    return ns["preview_size"]
+
+
+@pytest.mark.parametrize(("width", "height", "user_res", "expect"), [
+    (0, 0, None, (640, 360)),  # 정한 적 없으면 예전과 같은 640×360
+    (0, 0, (1920, 1080), (640, 360)),
+    (0, 0, (1080, 1920), (360, 640)),  # 세로 영상: 긴 변 640, 비율 그대로
+    (0, 0, (1000, 1000), (640, 640)),
+    (0, 0, (2048, 858), (640, 268)),  # 시네마스코프
+    (0, 0, (320, 180), (320, 180)),  # 640 보다 작으면 키우지 않음
+    (800, 0, (1080, 1920), (800, 1422)),  # 하나만 주면 나머지는 비율로
+    (0, 300, None, (533, 300)),
+    (400, 300, (1080, 1920), (400, 300)),  # 둘 다 주면 그대로
+])
+def test_preview_size_follows_set_render(width, height, user_res, expect):
+    assert _preview_size()(width, height, user_res) == expect
+
+
+def test_render_preview_sends_no_size_unless_given(calls):
+    """크기를 안 주면 레시피가 장면 크기로 정하도록 width/height 를 보내지 않는다(전에는 늘 640×360 을 보냄)."""
+    server.render_preview(frames=[1])
+    server.render_preview(frames=[1], width=320)
+    (_, first), (_, second) = calls
+    assert "width" not in first and "height" not in first, first
+    assert second["width"] == 320 and "height" not in second, second
