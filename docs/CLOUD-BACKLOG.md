@@ -227,3 +227,11 @@
 - [x] `doctor` 도구에도 구조화 출력(점검 항목마다 ok·다음 할 일) + 시험 (사용자 체감: "안 돼요" 때 AI 가 실패한 항목과 고칠 방법을 정확히 집음. 목록형 도구 3개와 같은 `_with_data`) — 문장 그대로 + `structuredContent`: `ok`·`failed`(고칠 항목 id)·`checks`(항목마다 ok·optional·detail·fix)·`help`·`summary`. 항목 모양은 `--json` 과 같은 `doctor.check_rows` 로 한곳에. 시험: 공식 클라이언트로 수신기 꺼짐 → failed 에 connection·fix 가 문장에도 있음·정상 항목 fix 빈칸(한/영). architecture 한/영·CHANGELOG
 - [x] 서버 `instructions`(INSTRUCTIONS) 글자 수도 `tests/test_tool_budget.py` 상한에 포함하고, 도구 설명과 겹치는 문장 줄이기 (근거: 도구 목록은 24% 줄였지만 instructions 도 대화마다 들어감) — 도구 이름 뒤 괄호 풀이(`set_render(샘플·모션블러)` 등, 도구 설명에 이미 있음)와 형식 목록을 빼 한 656→515자·영 994→819자(−21%·−18%). 순서·태도·"실패 문장 그대로 전달"은 남김. 시험: 공식 클라이언트가 받는 instructions 를 한/영 모두 재 900자 상한·도구 목록과 합쳐 TOTAL_BUDGET 안, 도구 이름 뒤 괄호 풀이 금지(되살리면 실패 확인)
 - [x] 레시피 `FxError` 문장(한/영)마다 다음 할 일(도구 이름이나 "~하세요"/"Ask again…")이 있는지 시험으로 훑고 빠진 곳 고치기 (사용자 체감: 오류 메시지가 다음 할 일을 말하는지) — 한국어 쪽은 이미 `test_recipe_next_steps.py` 가 훑고 있었고 영어 쪽이 빠져 있었음 → 영어 표지 시험 추가(전부 통과). 새로 오류가 시키는 이름이 실제 도구·인자인지 시험: `set_ground` 의 "먼저 reset 하세요 / Reset first" 는 없는 도구라 → "reset_destroy 로 바다를 지운 뒤 다시 시키세요 / Run reset_destroy first…". 옛 문장으로 되돌리면 실패 확인
+
+### 2026-10-12 (15회차 끝) 추가 — 사용자 체감 우선(오픈소스 지원 기준: 활발한 유지보수·문서·시험·이슈 대응)
+
+- [ ] `fps`(`set_render`·`render_video`, 1~240)와 `frame_start`·`frame_end`(음수) 범위도 서버에서 먼저 검사 + 권장 값(24·30·60) + 시험 (근거: 이번 회차에 width/height 를 막으며 보니 `fps=-24` 는 레시피가 그대로 블렌더에 넣음 — 같은 종류의 원인 모를 오류)
+- [ ] 서버 쪽 오류 문장(`check_*`·`bridge` 의 `BlenderError`·`_missing_snapshot` 등)도 한/영 다음 할 일 표지 시험 (근거: 이번 회차 시험은 레시피 `FxError` 만 훑음. 사용자 체감: 연결·경로 오류가 가장 흔함)
+- [ ] 프롬프트(`first_demo`·`my_model`·`undo_last`)와 README·`docs/troubleshooting` 에 적힌 도구 이름이 실제 도구인지 시험 (근거: 이번 회차에 오류 문장이 없는 도구 `reset` 을 시키던 것을 찾음. 예제가 그대로 도는지)
+- [ ] CONTRIBUTING 한/영에 "오류 문장 규칙" 절(무엇이 틀렸나 + 다음 할 일 + 실제 도구·인자 이름 + 한/영 짝) 과 그 규칙을 지키는 시험 파일 목록 (오픈소스 지원 기준: 문서·새 기여자가 리뷰 없이 규칙을 앎)
+- [ ] README 빠른 시작이 첫 렌더까지 몇 단계인지 시험으로 세어 상한(지금 수)을 두고, 단계마다 실패 시 볼 troubleshooting 절 링크 (사용자 체감: 첫 설치~첫 렌더 단계 수가 늘지 않게)
