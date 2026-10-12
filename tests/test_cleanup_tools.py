@@ -5,6 +5,7 @@ import time
 import pytest
 
 from blender_fx_mcp import bridge, disk, server
+from conftest import tool_text
 
 
 @pytest.fixture
@@ -64,10 +65,10 @@ def test_clear_snapshots_rejects_bad_keep_and_deletes_nothing(snaps, monkeypatch
 def test_list_snapshots_total_and_cleanup_hint(snaps, monkeypatch):
     monkeypatch.setenv("BLENDER_FX_LANG", "en")
     snaps("a", "b")
-    text = server.list_snapshots()
+    text = tool_text(server.list_snapshots())
     assert "\n2 in total, 2.0MB." in text and "clear_snapshots" not in text, text
     snaps("c", "d", "e", "f")
-    text = server.list_snapshots()
+    text = tool_text(server.list_snapshots())
     assert "6 in total, 6.0MB. Delete old ones with clear_snapshots (keeps the newest 5 and before_restore)." in text
 
 

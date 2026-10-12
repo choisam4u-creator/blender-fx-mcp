@@ -8,6 +8,7 @@ import pytest
 from blender_fx_mcp import server
 from blender_fx_mcp.bridge import BlenderError
 from mcp.server.mcpserver import Image
+from conftest import tool_text
 
 HANGUL = re.compile(r"[가-힣]")
 
@@ -123,7 +124,7 @@ def _without_paths(text, *dirs):
 
 
 def _text(out):
-    return out[0] if isinstance(out, list) else out
+    return tool_text(out)
 
 
 @pytest.mark.parametrize("name", sorted(CALLS))
@@ -237,7 +238,7 @@ def test_list_snapshots_lists_files(monkeypatch, tmp_path):
     monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path))
     monkeypatch.setenv("BLENDER_FX_LANG", "en")
     (server.snapshot_dir() / "a.blend").write_bytes(b"x" * 2_000_000)
-    text = server.list_snapshots()
+    text = tool_text(server.list_snapshots())
     assert text.startswith("Snapshots:\n- a (2.0MB, ")
 
 

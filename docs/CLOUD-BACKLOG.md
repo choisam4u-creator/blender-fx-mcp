@@ -218,4 +218,4 @@
 - [ ] 도구 설명(docstring) 토큰 예산: 33개 도구 설명·인자 스키마가 클라이언트 문맥에서 차지하는 글자 수를 재고, 긴 것을 줄인 뒤 상한 시험 (사용자 체감: 모든 대화마다 도구 목록이 문맥을 먹음. 값 목록 시험은 유지)
 - [x] `render_preview` 도 `set_render` 크기를 따르게(크기를 안 주면 정한 비율을 640 폭으로 줄여), `render_video` 와 같은 규칙 + bpy 시험 (일관성: 16:9 가 아닌 크기를 정해도 미리보기는 늘 640×360 이라 구도 확인이 틀림) — 레시피 `preview_size`: 안 주면 정한 비율을 긴 변 640(작으면 그대로, 정한 적 없으면 640×360), 하나만 주면 비율로. 서버 기본값 0. 시험: 크기 계산 9가지(블렌더 없이)·서버가 크기를 안 보냄·bpy 세로 1080×1920 → PNG 360×640 + 장면 크기 그대로
 - [ ] macOS 러너에서 bpy 레시피 시험(bpy 휠이 macOS arm64 를 내면): `recipe-tests-bpy` 를 macOS 로도, 안 되면 이유를 문서에 (시험: 사용자 대부분이 Mac 인데 레시피는 Linux bpy 와 사람 손 Mac 실측뿐)
-- [ ] 목록형 도구(`list_objects`·`list_snapshots`·`inspect_mesh`)에 MCP 구조화 출력(`structured_content`)을 함께 주고 시험 (사용자 체감: AI 가 문장을 다시 파싱하지 않고 이름·크기를 정확히 집음)
+- [x] 목록형 도구(`list_objects`·`list_snapshots`·`inspect_mesh`)에 MCP 구조화 출력(`structured_content`)을 함께 주고 시험 (사용자 체감: AI 가 문장을 다시 파싱하지 않고 이름·크기를 정확히 집음) — `_with_data`: 문장 + `structured_content`(실패는 문장만, 빈 스냅샷 목록도 구조화). mcp 2.2 는 `-> str` 도구에 `{"result": 문자열}` 만 주던 것을 확인하고 `CallToolResult` 로. 시험: 공식 클라이언트(메모리 연결)로 3개 도구·실패·빈 목록 5개, 기존 시험은 `conftest.tool_text` 로. architecture 한/영·CHANGELOG

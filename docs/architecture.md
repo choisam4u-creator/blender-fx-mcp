@@ -29,6 +29,9 @@
 [MCP 클라이언트]  결과 문장(한/영) + 미리보기 이미지
 ```
 
+목록형 도구(`list_objects`·`inspect_mesh`·`list_snapshots`)는 같은 내용을 구조화 값(`structuredContent`)으로도 준다(`_with_data`).
+AI 가 문장을 다시 파싱하지 않고 이름·크기를 집는다. 실패는 다른 도구처럼 문장만.
+
 AI 는 블렌더 코드를 짜지 않습니다. 검증된 레시피와 값만 고릅니다.
 
 ### 파일별 역할
@@ -97,6 +100,9 @@ bpy 모듈로 (CI recipe-tests-bpy)
    ▼
 [MCP client]  result sentence (Korean or English) + preview images
 ```
+
+The list tools (`list_objects`, `inspect_mesh`, `list_snapshots`) also return the same content as `structuredContent` (`_with_data`),
+so the AI picks names and sizes without re-parsing text. Failures stay plain sentences like every other tool.
 
 The AI never writes Blender code. It only picks a tested recipe and its values.
 

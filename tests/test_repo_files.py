@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from conftest import tool_text
 
 ROOT = Path(__file__).resolve().parents[1]
 TEMPLATES = ROOT / ".github" / "ISSUE_TEMPLATE"
@@ -553,7 +554,7 @@ def test_recipes_calls_pass_server_checks(monkeypatch, tmp_path):
 
             monkeypatch.setattr(bridge, "run_python", reached)
             out = eval(call.replace("…/model.glb", (tmp_path / "model.glb").as_posix()), vars(server))
-            out = out if isinstance(out, str) else out[0]
+            out = tool_text(out)
             assert sent, f"예시 {n}: {call} 이 블렌더로 가기 전에 막힘: {out}"
 
 
@@ -922,7 +923,7 @@ def test_one_line_examples_pass_server_checks(monkeypatch, tmp_path):
     for call in ko:
         name = ast.parse(call.replace("…", "x"), mode="eval").body.func.id
         out = eval(call.replace("…/", f"{tmp_path.as_posix()}/"), vars(server))  # Windows 경로의 `\` 는 문자열 이스케이프가 됨
-        out = out if isinstance(out, str) else out[0]
+        out = tool_text(out)
         if name in local:
             assert out and not out.startswith("실패"), call
         else:

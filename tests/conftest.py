@@ -65,3 +65,12 @@ def make_fake_blender(folder, body: str, name: str = "blender") -> str:
 def fake_blender(tmp_path):
     """`fake_blender(본문, name=...)` → 가짜 블렌더 경로. 파일은 tmp_path 에 생긴다."""
     return lambda body, name="blender": make_fake_blender(tmp_path, body, name)
+
+
+def tool_text(out) -> str:
+    """도구가 돌려준 값에서 사람이 읽는 문장만. 문장(str), [문장, 이미지...], 구조화 값을 함께 주는 CallToolResult 모두."""
+    from mcp.types import CallToolResult
+
+    if isinstance(out, CallToolResult):
+        return out.content[0].text
+    return out[0] if isinstance(out, list) else out

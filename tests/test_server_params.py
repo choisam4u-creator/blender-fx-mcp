@@ -5,6 +5,7 @@ import threading
 
 import pytest
 
+from conftest import tool_text
 from blender_fx_mcp import bridge, server
 from blender_fx_mcp.bridge import BlenderError
 
@@ -155,7 +156,7 @@ def test_restore_reports_auto_save_failure(calls, tmp_path):
 def test_list_snapshots_empty(monkeypatch, tmp_path):
     monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path))
     monkeypatch.setenv("BLENDER_FX_LANG", "en")
-    assert server.list_snapshots().startswith("No snapshots yet")
+    assert tool_text(server.list_snapshots()).startswith("No snapshots yet")
 
 
 def test_new_run_dir_label_is_safe(monkeypatch, tmp_path):

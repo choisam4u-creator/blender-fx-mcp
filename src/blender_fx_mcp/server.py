@@ -24,7 +24,7 @@ from typing import Annotated
 import anyio.from_thread
 import anyio.lowlevel
 from mcp.server.mcpserver import Image, MCPServer
-from mcp.types import ToolAnnotations
+from mcp.types import CallToolResult, TextContent, ToolAnnotations
 from pydantic import Field
 
 from . import bridge, disk
@@ -402,6 +402,12 @@ def _fail(e: Exception) -> str:
     return t(f"실패: {e}", f"Failed: {e}")
 
 
+def _with_data(text: str, data: dict) -> CallToolResult:
+    """문장(content)과 같은 내용을 구조화 값(structured_content)으로도 준다. AI 가 문장을 다시 파싱하지 않고 이름·크기를 집는다.
+    실패는 다른 도구처럼 문장(str)만 돌려준다."""
+    return CallToolResult(content=[TextContent(type="text", text=text)], structured_content=data)
+
+
 def _images(paths: list[str]) -> list:
     return [Image(path=p) for p in paths if os.path.exists(p)]
 
@@ -458,17 +464,18 @@ def ping_blender() -> str:
 
 
 @mcp.tool(annotations=READ_ONLY)
-def list_objects() -> str:
+def list_objects() -> CallToolResult:
     """List mesh objects with their names and sizes.
     장면에 있는 메시 이름과 크기(m)를 돌려준다. 효과의 target 을 고를 때 쓴다."""
     try:
-        return json.dumps(run_recipe("list_objects", {}), ensure_ascii=False, indent=1)
+        res = run_recipe("list_objects", {})
     except BlenderError as e:
         return _fail(e)
+    return _with_data(json.dumps(res, ensure_ascii=False, indent=1), res)
 
 
 @mcp.tool(annotations=READ_ONLY)
-def inspect_mesh(target: str, decimate_to: int = 0) -> str:
+def inspect_mesh(target: str, decimate_to: int = 0) -> CallToolResult:
     """Diagnose a mesh before fracturing it: closed?, volume, concavity, face count, repair preview.
     부수기 전에 모델 상태를 본다. 닫혀 있는지, 부피, 오목한 정도, 면 수, 수리하면 얼마나 나아지는지.
     남이 만든 모델을 가져왔을 때 destroy 전에 부르면 문제를 미리 알 수 있다."""
@@ -476,7 +483,7 @@ def inspect_mesh(target: str, decimate_to: int = 0) -> str:
         res = run_recipe("inspect_mesh", dict(target=target, decimate_to=decimate_to or None), timeout=long_timeout())
     except BlenderError as e:
         return _fail(e)
-    return json.dumps(res, ensure_ascii=False, indent=1)
+    return _with_data(json.dumps(res, ensure_ascii=False, indent=1), res)
 
 
 # ---------- 장면 만들기 ----------
@@ -1059,7 +1066,7 @@ def snapshot(name: str = "") -> str:
 
 
 @mcp.tool(annotations=READ_ONLY)
-def list_snapshots() -> str:
+def list_snapshots() -> CallToolResult:
     """List saved snapshots.
     저장해 둔 스냅샷 목록."""
     d = snapshot_dir()
@@ -1067,15 +1074,18 @@ def list_snapshots() -> str:
                     time.strftime("%Y-%m-%d %H:%M", time.localtime(f.stat().st_mtime)))
                    for f in d.glob("*.blend"))
     if not items:
-        return t(f"스냅샷이 없습니다. snapshot 으로 먼저 저장하세요. (폴더: {d})",
+        text = t(f"스냅샷이 없습니다. snapshot 으로 먼저 저장하세요. (폴더: {d})",
                  f"No snapshots yet. Save one with the snapshot tool. (folder: {d})")
+        return _with_data(text, dict(snapshots=[], total_mb=0.0, folder=str(d), summary=text))
     total = round(sum(mb for _, mb, _ in items), 1)
     text = t("스냅샷 목록:\n", "Snapshots:\n") + "\n".join(f"- {n} ({mb}MB, {when})" for n, mb, when in items)
     text += t(f"\n모두 {len(items)}개, {total}MB.", f"\n{len(items)} in total, {total}MB.")
     if len(items) > SNAPSHOT_KEEP:
         text += t(f" 오래된 것은 clear_snapshots 로 지울 수 있습니다(최근 {SNAPSHOT_KEEP}개와 before_restore 는 남김).",
                   f" Delete old ones with clear_snapshots (keeps the newest {SNAPSHOT_KEEP} and before_restore).")
-    return text
+    data = dict(snapshots=[dict(name=n, size_mb=mb, modified=when) for n, mb, when in items], total_mb=total,
+                folder=str(d), summary=text)
+    return _with_data(text, data)
 
 
 SNAPSHOT_KEEP = disk.SNAPSHOT_KEEP  # clear_snapshots 가 기본으로 남기는 개수(doctor 도 같은 값으로 지울 양을 센다)
