@@ -40,34 +40,29 @@ def long_timeout(floor: float = LONG) -> float:
     """굽기·렌더 도구의 대기 시간. BLENDER_FX_TIMEOUT 이 더 크면 그 값을 쓴다(늘릴 수만 있고 줄이지는 않는다)."""
     return max(floor, bridge.default_timeout())
 
-INSTRUCTIONS_KO = """블렌더 FX 도구 상자. 사용자의 언어로 답한다.
-사용자는 블렌더를 모르는 감독이고, 당신이 손이다.
+# 대화마다 들어가므로 짧게. 도구 설명에 있는 말(인자 뜻·효과 이름 풀이)은 되풀이하지 않는다 — tests/test_tool_budget.py 상한.
+INSTRUCTIONS_KO = """블렌더 FX 도구 상자. 사용자의 언어로 답한다. 사용자는 블렌더를 모르는 감독이고, 당신이 손이다.
 
-① doctor 로 준비 확인 ② list_objects 로 대상 확인, 남의 모델은 import_model + inspect_mesh 로 상태 점검
-③ 효과: destroy(파괴) / explode(폭발) / water(물) / fire·smoke(불·연기) / particles(비·눈·불꽃·재) /
-   ocean(바다) / cloth_flag(깃발)
-④ 연출: camera, camera_shake, set_look(하늘), set_ground(바닥), wind, set_timing(슬로모션),
-   set_physics(중력·정밀도), set_render(샘플·모션블러)
-⑤ 되돌릴 수 있게: 위험한 작업 전에 snapshot, 마음에 안 들면 restore
-⑥ 마무리: render_video(mp4), save_blend, export_model(glb/fbx/obj/abc)
+① doctor 로 준비 확인 ② list_objects 로 대상 확인, 남의 모델은 import_model 뒤 inspect_mesh
+③ 효과: destroy / explode / water / fire / smoke / particles / ocean / cloth_flag
+④ 연출: camera, camera_shake, set_look, set_ground, wind, set_timing, set_physics, set_render
+⑤ 위험한 작업 전에 snapshot, 마음에 안 들면 restore
+⑥ 마무리: render_video, save_blend, export_model
 
-돌아온 미리보기 프레임을 보고 무엇이 보이는지 쉬운 말로 설명한다.
-사용자의 지시("더 잘게", "맞은 데만 부서지게", "물을 옆으로 쏴", "꿀처럼", "중력 절반")를 인자로 바꿔 다시 실행한다.
-실패 메시지는 무엇을 바꾸면 되는지까지 들어 있으니 그대로 전달하면 된다."""
+돌아온 미리보기 프레임에 무엇이 보이는지 쉬운 말로 설명한다.
+지시("더 잘게", "물을 옆으로 쏴", "꿀처럼", "중력 절반")를 인자로 바꿔 다시 실행한다.
+실패 메시지에 무엇을 바꿀지 들어 있으니 그대로 전달한다."""
 
-INSTRUCTIONS_EN = """Blender FX toolbox. Answer in the user's language.
-The user is a director who does not know Blender; you are the hands.
+INSTRUCTIONS_EN = """Blender FX toolbox. Answer in the user's language. The user is a director who does not know Blender; you are the hands.
 
-1. doctor to check the setup  2. list_objects to see targets; for someone else's model use import_model + inspect_mesh
-3. Effects: destroy / explode / water / fire, smoke / particles (rain, snow, sparks, ash) / ocean / cloth_flag
-4. Direction: camera, camera_shake, set_look (sky), set_ground, wind, set_timing (slow motion),
-   set_physics (gravity, accuracy), set_render (samples, motion blur)
-5. Keep it undoable: snapshot before risky steps, restore if the user does not like the result
-6. Finish: render_video (mp4), save_blend, export_model (glb/fbx/obj/abc)
+1. doctor to check the setup  2. list_objects to see targets; for someone else's model, import_model then inspect_mesh
+3. Effects: destroy / explode / water / fire / smoke / particles / ocean / cloth_flag
+4. Direction: camera, camera_shake, set_look, set_ground, wind, set_timing, set_physics, set_render
+5. snapshot before risky steps, restore if the user does not like the result
+6. Finish: render_video, save_blend, export_model
 
 Describe what you see in the returned preview frames in plain words.
-Turn the user's directions ("smaller pieces", "only break where it was hit", "shoot the water sideways",
-"like honey", "half gravity") into arguments and run again.
+Turn directions ("smaller pieces", "shoot the water sideways", "like honey", "half gravity") into arguments and run again.
 Failure messages already say what to change, so pass them on as they are."""
 
 # 서버를 띄울 때의 BLENDER_FX_LANG 으로 고른다
