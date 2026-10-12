@@ -219,3 +219,11 @@
 - [x] `render_preview` 도 `set_render` 크기를 따르게(크기를 안 주면 정한 비율을 640 폭으로 줄여), `render_video` 와 같은 규칙 + bpy 시험 (일관성: 16:9 가 아닌 크기를 정해도 미리보기는 늘 640×360 이라 구도 확인이 틀림) — 레시피 `preview_size`: 안 주면 정한 비율을 긴 변 640(작으면 그대로, 정한 적 없으면 640×360), 하나만 주면 비율로. 서버 기본값 0. 시험: 크기 계산 9가지(블렌더 없이)·서버가 크기를 안 보냄·bpy 세로 1080×1920 → PNG 360×640 + 장면 크기 그대로
 - [x] macOS 러너에서 bpy 레시피 시험(bpy 휠이 macOS arm64 를 내면): `recipe-tests-bpy` 를 macOS 로도, 안 되면 이유를 문서에 (시험: 사용자 대부분이 Mac 인데 레시피는 Linux bpy 와 사람 손 Mac 실측뿐) — bpy 5.0.1 에 macOS arm64 휠(cp311) 있음(PyPI 확인). ci.yml `recipe-tests-bpy-macos`(macos-latest, Linux 작업과 같은 판·명령, 시험이 둘을 비교). 러너 VM 의 Metal 렌더 여부를 몰라 확인될 때까지 `continue-on-error`(architecture 한/영에 이유). 첫 결과는 PR CI 에서 확인 — CLOUD-NOTES 에 적음
 - [x] 목록형 도구(`list_objects`·`list_snapshots`·`inspect_mesh`)에 MCP 구조화 출력(`structured_content`)을 함께 주고 시험 (사용자 체감: AI 가 문장을 다시 파싱하지 않고 이름·크기를 정확히 집음) — `_with_data`: 문장 + `structured_content`(실패는 문장만, 빈 스냅샷 목록도 구조화). mcp 2.2 는 `-> str` 도구에 `{"result": 문자열}` 만 주던 것을 확인하고 `CallToolResult` 로. 시험: 공식 클라이언트(메모리 연결)로 3개 도구·실패·빈 목록 5개, 기존 시험은 `conftest.tool_text` 로. architecture 한/영·CHANGELOG
+
+### 2026-10-12 (14회차 끝) 추가 — 사용자 체감 우선(오픈소스 지원 기준: 활발한 유지보수·문서·시험·이슈 대응)
+
+- [ ] `render_preview`·`render_video` 의 `width`·`height` 범위 검사(음수·8K 초과)를 서버에서 먼저, 오류 문장에 다음 할 일(권장 크기) + 시험 (근거: 이번 회차에 미리보기 크기를 고치며 보니 음수 크기는 블렌더까지 가서 원인 모를 오류)
+- [ ] `recipe-tests-bpy-macos` 첫 결과 확인: 초록이면 `continue-on-error` 를 빼고 시험·architecture 갱신, 빨가면 실패 끝줄과 이유(Metal·VM)를 architecture 에 (근거: 14회차에 비차단으로 넣음)
+- [ ] `doctor` 도구에도 구조화 출력(점검 항목마다 ok·다음 할 일) + 시험 (사용자 체감: "안 돼요" 때 AI 가 실패한 항목과 고칠 방법을 정확히 집음. 목록형 도구 3개와 같은 `_with_data`)
+- [ ] 서버 `instructions`(INSTRUCTIONS) 글자 수도 `tests/test_tool_budget.py` 상한에 포함하고, 도구 설명과 겹치는 문장 줄이기 (근거: 도구 목록은 24% 줄였지만 instructions 도 대화마다 들어감)
+- [ ] 레시피 `FxError` 문장(한/영)마다 다음 할 일(도구 이름이나 "~하세요"/"Ask again…")이 있는지 시험으로 훑고 빠진 곳 고치기 (사용자 체감: 오류 메시지가 다음 할 일을 말하는지)
