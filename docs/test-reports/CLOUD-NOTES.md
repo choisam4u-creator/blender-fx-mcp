@@ -23,7 +23,8 @@ uv run blender-fx-doctor --issue                   # 표와 점검 전체에 집
   - 남은 `[ ]` 가 2개라 새 항목 5개 추가(렌더 크기 범위 검사, macOS 작업 결과 반영, doctor 구조화 출력, instructions 예산, 레시피 오류 문장의 다음 할 일).
 - 돌린 시험: `uv run pytest -q`(3.11) **1066 통과·39 건너뜀**(블렌더 필요), 서버 쪽 `--cov --cov-fail-under=99` **100%**(3.11·3.14), **`scripts/bpy_tests.sh` → 1099 통과·6 건너뜀(1분 56초)**(유체 `app_only` 5개·실제 캐릭터 파일 1개 — 블렌더 앱·개인 파일 필요), `uvx ruff@0.15.20 check .` 통과, `gen_tool_table.py` 일치.
 - 막힌 것: 없음. macOS 러너에서 bpy 렌더가 되는지는 이 컨테이너(Linux)에서 못 봄 → PR CI 결과로.
-- 완료 수·추가 수: **완료 5** / **추가 5**. 남은 `[ ]` 6개(그중 1개 Mac 실측).
+  6. (CI 결과를 보고 이어서) **macOS bpy 작업을 막는 작업으로** — PR #15 CI 첫 실행 1098 통과·7 건너뜀(1분 50초)이라 러너 VM 에서도 Metal 렌더가 됨 → `continue-on-error` 뺌. 새로 넣은 항목 중 하나를 바로 끝냄.
+- 완료 수·추가 수: **완료 6** / **추가 5**. 남은 `[ ]` 5개(그중 1개 Mac 실측).
 - Mac에서 확인할 것: 맨 위 명령 3줄(또는 `uv run python scripts/mac_report.py` 한 번).
 
 ## 2026-10-11 (13회차)

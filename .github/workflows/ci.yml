@@ -71,10 +71,9 @@ jobs:
           BLENDER_FX_BLENDER: ${{ github.workspace }}/.venv/bin/python
 
   # 사용자 대부분이 Mac 이다. 같은 bpy 판의 macOS arm64 휠로 레시피 시험을 돈다(Linux 와 같은 시험·같은 app_only 건너뜀).
-  # GitHub 의 macOS 러너는 가상 머신이라 Metal 렌더가 되는지 아직 확인 전이다. 초록이 확인될 때까지 PR 을 막지 않는다(continue-on-error).
+  # 러너(가상 머신)에서도 Metal 렌더가 된다: 2026-10-12 첫 실행 1098 통과·7 건너뜀(1분 50초). 그래서 PR 을 막는 작업이다.
   recipe-tests-bpy-macos:
     runs-on: macos-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5.4.2

@@ -727,7 +727,7 @@ def test_bpy_script_matches_ci_bpy_job():
 
 def test_macos_bpy_job_mirrors_linux_job():
     """사용자 대부분이 Mac 이라 macOS 에서도 같은 bpy 판·파이썬·명령으로 레시피 시험을 돈다.
-    Metal 렌더가 러너에서 되는지 확인될 때까지만 PR 을 막지 않고(continue-on-error), 그 이유를 주석과 architecture 에 적는다."""
+    러너에서 Metal 렌더가 되는 것을 확인해(2026-10-12) Linux 작업처럼 PR 을 막는다."""
     ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
     linux = ci.split("  recipe-tests-bpy:\n", 1)[1].split("\n\n", 1)[0]
     mac = ci.split("  recipe-tests-bpy-macos:\n", 1)[1].split("\n\n", 1)[0]
@@ -735,8 +735,7 @@ def test_macos_bpy_job_mirrors_linux_job():
     pick = lambda job: [s for s in job.splitlines() if "uv python install" in s or "bpy==" in s  # noqa: E731
                         or "uv run pytest" in s or "BLENDER_FX_BLENDER" in s or "uses:" in s]
     assert pick(mac) == pick(linux), (pick(mac), pick(linux))
-    if "continue-on-error: true" in mac:
-        assert "Metal" in ci.split("  recipe-tests-bpy-macos:\n", 1)[0].rsplit("\n\n", 1)[1]
+    assert "continue-on-error" not in mac, "macOS 러너에서 렌더가 됨이 확인됐다(2026-10-12). 빨가면 막아야 한다"
     for text in (ROOT / "docs" / "architecture.md").read_text(encoding="utf-8").split("\n## ")[1:]:
         assert "recipe-tests-bpy-macos" in text
 
