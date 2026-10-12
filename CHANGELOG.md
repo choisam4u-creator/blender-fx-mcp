@@ -14,6 +14,8 @@
 - `restore("before_restore")` (undoing an undo) no longer overwrites the state it goes back to; the two states swap.
   `destroy`/`reset_destroy` with a target no longer delete unrelated effects (ocean, water, smoke, flag, wind) or other buildings' glue.
   Renders keep the samples and size set with `set_render` (previews no longer overwrite them; `render_video` uses them by default).
+  The tool list every client loads into each conversation is 24% smaller (33,015 → 25,093 characters): no per-argument `title`, no `{"result": string}` output schema
+  on text tools (and no duplicate of the sentence in `structuredContent`), no docstring indentation. A test keeps it under a budget.
   `list_objects`, `inspect_mesh` and `list_snapshots` also return MCP structured content (`structuredContent`), so the AI reads names and sizes without re-parsing text.
   `render_preview` without a size follows the aspect set with `set_render`, scaled to 640 on the long side (a 1080×1920 scene previews at 360×640, not 640×360).
   A dropped connection mid-command, a cut-off reply and invalid `BLENDER_FX_TIMEOUT`/`BLENDER_FX_PORT` values now each get their own message.
@@ -52,6 +54,8 @@
 - `set_render` 로 정한 샘플·크기를 렌더가 무시하던 문제: 미리보기·굽기 뒤 미리보기가 샘플을 16 으로 영구히 덮었고, `render_video` 는 늘 1280×720 이었다.
   이제 렌더는 바꾼 샘플을 되돌리고, `quality="final"` 은 `set_render` 의 샘플을, `render_video` 는 크기를 안 주면 `set_render` 크기(정한 적 없으면 720p)를 쓴다.
   `render_video(fps=60)` 결과에 옛 fps 를 보고하던 것, 미리보기가 중간에 실패하면 해상도·형식·경로·엔진이 바뀐 채 남던 것도 고침
+- 모든 대화마다 클라이언트 문맥에 들어가는 도구 목록을 24% 줄임(33,015 → 25,093자): 인자마다 붙던 `title`, 문장 도구의 `{"result": 문자열}` 출력 스키마
+  (응답마다 같은 문장을 `structuredContent` 로 한 번 더 보내던 것), 독스트링 들여쓰기를 뺌. 설명 문구는 그대로. 상한 시험(`tests/test_tool_budget.py`)
 - 목록형 도구(`list_objects`·`inspect_mesh`·`list_snapshots`)가 문장과 같은 내용을 MCP 구조화 출력(`structuredContent`)으로도 준다. 전에는 JSON 을 문자열로만 줘
   (구조화 값은 `{"result": "...문자열..."}` 껍데기) AI 가 다시 파싱해야 했다. 실패는 다른 도구처럼 문장만
 - `render_preview` 가 `set_render` 로 어떤 크기를 정해도 늘 640×360 으로 렌더해 세로·정사각 구도를 확인할 수 없던 문제. 크기를 안 주면 정한 비율을 긴 변 640 으로 줄여

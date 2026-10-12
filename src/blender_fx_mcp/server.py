@@ -11,6 +11,7 @@ from __future__ import annotations
 import contextlib
 import contextvars
 import difflib
+import inspect
 import json
 import math
 import os
@@ -99,8 +100,26 @@ def progress_every(raw: str | None) -> float:
 PROGRESS_EVERY = progress_every(os.environ.get("BLENDER_FX_PROGRESS_EVERY"))
 
 
+def _drop_titles(node):
+    """JSON 스키마에서 pydantic 이 붙이는 "title"(인자 이름을 다시 쓴 것)을 뺀다. "title" 이라는 이름의 인자는 남긴다."""
+    if isinstance(node, list):
+        return [_drop_titles(x) for x in node]
+    if not isinstance(node, dict):
+        return node
+    out = {}
+    for key, value in node.items():
+        if key == "title" and isinstance(value, str):
+            continue
+        if key in ("properties", "$defs") and isinstance(value, dict):
+            out[key] = {name: _drop_titles(sub) for name, sub in value.items()}
+        else:
+            out[key] = _drop_titles(value)
+    return out
+
+
 class FxServer(MCPServer):
-    """도구 호출마다 Context 를 기억해, 긴 굽기·렌더 동안 작업 스레드에서 진행 알림을 보낼 수 있게 한다."""
+    """도구 호출마다 Context 를 기억해, 긴 굽기·렌더 동안 작업 스레드에서 진행 알림을 보낼 수 있게 한다.
+    도구 목록은 모든 대화의 문맥을 차지하므로 군더더기를 뺀다(설명 들여쓰기·인자 title·문장 도구의 {"result": 문자열} 출력 스키마)."""
 
     async def call_tool(self, name, arguments, context=None):
         token = _CALL.set((context, anyio.lowlevel.current_token()) if context is not None else None)
@@ -108,6 +127,15 @@ class FxServer(MCPServer):
             return await super().call_tool(name, arguments, context)
         finally:
             _CALL.reset(token)
+
+    def add_tool(self, fn, *args, description=None, structured_output=None, **kwargs):
+        # 문장을 돌려주는 도구는 같은 문장을 structuredContent 로 한 번 더 보내지 않는다. 구조화 값은 _with_data 가 직접 만든다.
+        super().add_tool(fn, *args, description=inspect.cleandoc(description or fn.__doc__ or ""),
+                         structured_output=False if structured_output is None else structured_output, **kwargs)
+
+    async def list_tools(self):
+        return [tool.model_copy(update={"input_schema": _drop_titles(tool.input_schema)})
+                for tool in await super().list_tools()]
 
 
 mcp = FxServer("blender-fx", instructions=INSTRUCTIONS)
