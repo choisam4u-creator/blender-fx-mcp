@@ -17,6 +17,7 @@
   The tool list every client loads into each conversation is 24% smaller (33,015 → 25,093 characters): no per-argument `title`, no `{"result": string}` output schema
   on text tools (and no duplicate of the sentence in `structuredContent`), no docstring indentation. A test keeps it under a budget.
   `list_objects`, `inspect_mesh` and `list_snapshots` also return MCP structured content (`structuredContent`), so the AI reads names and sizes without re-parsing text.
+  The `doctor` tool does too: each check with `ok` and `fix` (the next step), and `failed` with the ids to fix, so the AI names the broken step and its fix.
   `render_preview` without a size follows the aspect set with `set_render`, scaled to 640 on the long side (a 1080×1920 scene previews at 360×640, not 640×360).
   `render_preview`, `render_video` and `set_render` reject a `width`/`height` outside 16-7680 before anything reaches Blender, with the recommended sizes
   (a negative size used to fail inside Blender with an unclear error).

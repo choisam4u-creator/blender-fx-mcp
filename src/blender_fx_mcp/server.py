@@ -478,12 +478,17 @@ def _cache_dirs() -> dict:
 # ---------- 점검·조회 ----------
 
 @mcp.tool(annotations=READ_ONLY)
-def doctor() -> str:
+def doctor() -> CallToolResult:
     """Check prerequisites (python, mcp, uv, Blender, receiver add-on, connection, output folder).
     준비물 점검. 뭔가 안 될 때 먼저 부른다."""
-    from .doctor import format_report, run_checks
+    from .doctor import check_rows, failed, format_report, run_checks
     # 이 도구를 부른 클라이언트가 곧 등록돼 있다는 증거라 클라이언트 등록 항목은 뺀다(엉뚱한 등록 명령을 권하지 않게)
-    return format_report(run_checks(clients=False))
+    checks = run_checks(clients=False)
+    text = format_report(checks)
+    # 항목마다 ok·다음 할 일(fix)을 구조화 값으로도 준다. AI 가 실패한 항목과 고칠 방법을 문장에서 다시 찾지 않는다
+    bad = [c["id"] for c in failed(checks)]
+    return _with_data(text, dict(ok=not bad, failed=bad, checks=check_rows(checks),
+                                 help=bridge.TROUBLESHOOTING_URL if bad else None, summary=text))
 
 
 @mcp.tool(annotations=READ_ONLY)

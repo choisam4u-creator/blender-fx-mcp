@@ -1,4 +1,4 @@
-# 목록형 도구(list_objects·inspect_mesh·list_snapshots)가 문장과 함께 구조화 값(structuredContent)을 주는지,
+# 목록형 도구(list_objects·inspect_mesh·list_snapshots)와 doctor 가 문장과 함께 구조화 값(structuredContent)을 주는지,
 # 공식 클라이언트(메모리 연결)로 확인한다. 블렌더 없이 돈다.
 import json
 
@@ -70,3 +70,28 @@ def test_empty_snapshot_list_is_structured_too(monkeypatch, tmp_path):
     result, _ = anyio.run(_call, "list_snapshots")
     assert result.content[0].text.startswith("No snapshots yet")
     assert result.structured_content["snapshots"] == [] and result.structured_content["total_mb"] == 0.0
+
+
+@pytest.mark.parametrize("lang", ["ko", "en"])
+def test_doctor_structured_names_failed_checks_and_fixes(monkeypatch, tmp_path, lang):
+    """블렌더 수신기가 꺼져 있으면 구조화 값의 failed 에 connection 이, 그 항목의 fix 에 다음 할 일이 있다."""
+    monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path))
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    monkeypatch.setenv("BLENDER_FX_NO_UPDATE_CHECK", "1")
+
+    def down():
+        raise bridge.BlenderError("refused")
+
+    monkeypatch.setattr(bridge, "ping", down)
+    result, tool = anyio.run(_call, "doctor")
+    data = result.structured_content
+    assert data["summary"] == result.content[0].text
+    assert data["ok"] is False and "connection" in data["failed"], data
+    rows = {c["id"]: c for c in data["checks"]}
+    assert "client" not in rows  # 부른 클라이언트는 이미 연결돼 있다
+    conn = rows["connection"]
+    assert conn["ok"] is False and conn["fix"] and conn["fix"] in data["summary"]
+    assert all(c["fix"] == "" for c in data["checks"] if c["ok"])  # 정상 항목엔 할 일이 없다
+    assert data["help"].startswith("https://")
+    assert set(data["failed"]) == {c["id"] for c in data["checks"] if not c["ok"] and not c["optional"]}
+    assert tool.output_schema is None

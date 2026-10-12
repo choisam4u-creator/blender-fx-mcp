@@ -357,6 +357,12 @@ def format_report(checks: list[dict]) -> str:
     return "\n".join(lines)
 
 
+def check_rows(checks: list[dict]) -> list[dict]:
+    """점검 항목을 바깥에 보이는 모양으로(--json·MCP doctor 도구의 구조화 출력이 같은 모양을 쓴다)."""
+    return [{"id": c["id"], "name": c["name"], "ok": c["ok"], "optional": c.get("optional", False),
+             "detail": c["detail"], "fix": c.get("fix", "")} for c in checks]
+
+
 def format_json(checks: list[dict]) -> str:
     """버그 신고에 붙여 그대로 비교·재현할 수 있는 JSON. 항목·결과는 format_report 와 같다."""
     bad = [c["id"] for c in failed(checks)]
@@ -370,8 +376,7 @@ def format_json(checks: list[dict]) -> str:
         "port": bridge.port(),
         # 등록이 보인 클라이언트(버그 양식의 클라이언트 선택지와 같은 이름). 신고마다 "어떤 클라이언트?"를 되묻지 않게
         "clients": registered_clients(),
-        "checks": [{"id": c["id"], "name": c["name"], "ok": c["ok"], "optional": c.get("optional", False),
-                    "detail": c["detail"], "fix": c.get("fix", "")} for c in checks],
+        "checks": check_rows(checks),
         "failed": bad,
         "help": bridge.TROUBLESHOOTING_URL if bad else None,
     }
