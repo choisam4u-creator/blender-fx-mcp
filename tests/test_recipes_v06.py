@@ -157,6 +157,19 @@ def test_global_slow_is_relative_to_the_original_speed():
     assert maps == [100, 200, 200, 400, 100, 200], maps
 
 
+def test_global_slow_keeps_the_exact_length_for_uneven_factors():
+    """0.75 처럼 100/배율이 정수가 아니면 반올림한 frame_map 으로 되짚을 때 한 프레임씩 어긋났다(101 → 102)."""
+    results = run_steps([
+        ("set_timing", {"frame_start": 1, "frame_end": 101}),
+        ("set_timing", {"global_slow": 0.75, "rebake": False}),
+        ("set_timing", {"global_slow": 0.75, "rebake": False}),
+        ("set_timing", {"global_slow": 1.0, "rebake": False}),
+    ], blender=BLENDER)
+    for r in results:
+        assert r["ok"], r
+    assert [r["frame_range"][1] for r in results] == [101, 135, 135, 101], results
+
+
 def test_alembic_export(tmp_path):
     abc = tmp_path / "scene.abc"
     results = run_steps([

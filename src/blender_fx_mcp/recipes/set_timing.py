@@ -44,12 +44,20 @@ def main():
         g = max(0.05, min(float(p["global_slow"]), 1.0))
         r = sc.render
         # 이미 늘린 장면이면 원래 길이로 되살린 뒤 늘린다(두 번 시키면 길이만 또 늘고 시간 배율은 그대로이던 문제).
-        # 같은 호출에 frame_end 를 줬으면 그 값이 원래 길이다
+        # 원래 길이는 장면에 적어 둔다(반올림한 frame_map 으로 되짚으면 0.75 같은 배율에서 한 프레임씩 어긋남).
+        # 같은 호출에 frame_end 를 줬거나, 늘린 뒤 길이를 손으로 바꿨으면 지금 값을 기준으로 삼는다
         stretch = r.frame_map_new / r.frame_map_old if r.frame_map_old else 1.0
-        base_end = sc.frame_end if p.get("frame_end") else int(round(sc.frame_end / stretch))
+        if p.get("frame_end"):
+            base_end = sc.frame_end
+        elif sc.get("fx_slow_frame_end") == sc.frame_end and "fx_base_frame_end" in sc:
+            base_end = int(sc["fx_base_frame_end"])
+        else:
+            base_end = int(round(sc.frame_end / stretch))
         r.frame_map_old = 100
         r.frame_map_new = int(round(100 / g))
         sc.frame_end = int(round(base_end / g))
+        sc["fx_base_frame_end"] = base_end
+        sc["fx_slow_frame_end"] = sc.frame_end
         changed["global_slow"] = dict(factor=g, frame_map=[r.frame_map_old, r.frame_map_new],
                                       new_frame_end=sc.frame_end)
         if p.get("rebake", True):
