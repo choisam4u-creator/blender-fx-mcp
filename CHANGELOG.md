@@ -24,10 +24,15 @@
   (a negative size used to fail inside Blender with an unclear error).
   The same goes for `fps` (1-240, recommended 24/30/60) in `set_render`, `render_video`, `set_timing` and `set_physics`, and for
   `frame_start`/`frame_end`/`slow_from`/`slow_to` (frame numbers start at 1; 0 keeps the scene value).
+  `set_timing(fps=…)` always failed after already changing the scene (a duplicate `fps` key in the result); fixed.
+  `set_timing` and `render_video` stop a reversed pair (`frame_end` before `frame_start`, `slow_to` not after `slow_from`) before anything reaches Blender,
+  with the swapped values to use, and `set_timing` checks the order and the slow-motion target before changing the length or fps.
+  Both now say the length in seconds ("72 frames = 3s at 24fps"), not only the frame range.
+  `set_timing(global_slow=…)` is relative to the original speed: asking twice no longer stretches the length again (48 → 192 frames at 2× timing), and 1.0 undoes it.
   A receiver failure (`Blender error: …`) and a missing result line now say it may be a bug and how to report it (`blender-fx-doctor --issue`);
   out-of-range `samples` gets recommended values like the other numbers. A test keeps every server-side error telling the next step in Korean and English.
   The README no longer tells you to lower `glue_neighbors`/`glue_max` (not `destroy` arguments); it says to lower `pieces` or use `glue="none"`.
-  A test checks that tool and argument names in the README, troubleshooting, recipes and demo docs are real.
+  A test checks that tool and argument names (including `name=` inside calls) in the README, troubleshooting, recipes, demo, examples, architecture and CONTRIBUTING docs are real.
   Changing the ground while an ocean replaces it now says to run `reset_destroy` (it named a `reset` tool that does not exist).
   A dropped connection mid-command, a cut-off reply and invalid `BLENDER_FX_TIMEOUT`/`BLENDER_FX_PORT` values now each get their own message.
 - Install commands now use the PyPI package: `uvx blender-fx-mcp` (and `uvx --from blender-fx-mcp blender-fx-doctor`); git is no longer needed.
@@ -36,6 +41,8 @@
   and the tool that clears each, largest first; if the folder is small it says clearing it will not help.
 - Progress notifications use plain words ("Baking the liquid — 45s so far") instead of internal recipe names.
 - `blender-fx-doctor` says when PyPI has a newer release and how to get it (`uv cache clean blender-fx-mcp`); quiet when offline or with `BLENDER_FX_NO_UPDATE_CHECK=1`.
+  It links the troubleshooting section for each failed check (uv → "uv not found", add-on and connection → "Connection refused",
+  client → "Tools not visible in the client") instead of the top of the page; `--json` and the `doctor` tool give it per check as `help`.
 - Maintainer scripts: `release_notes.py vX.Y.Z` prints a CHANGELOG section as GitHub release notes (`--draft` for an unreleased one),
   and `release_check.py --tag vX.Y.Z` checks a tag before it is pushed, with the same rule the release workflow uses.
 
@@ -60,6 +67,15 @@
   간접 의존성 `exceptiongroup` 이 빠져 제3자 라이선스 표도 39개. 시험의 `importorskip("tomllib")` 는 보통 import 로
 
 **고침**
+- `set_timing(global_slow=0.5)` 를 두 번 시키면 시간 배율은 2배 그대로인데 길이만 또 늘어(48 → 96 → 192프레임) 뒤 절반이 멈춘 화면이던 문제.
+  배율은 늘 원래 속도 기준(다시 시켜도 겹치지 않음), `global_slow=1` 이면 되돌림. 같은 호출의 `frame_end` 는 원래 길이로 본다
+- `set_timing`·`render_video` 결과 문장에 영상 길이를 초로("72프레임 = 24fps 로 3초"). 프레임 수만으로는 몇 초짜리인지 몰랐다
+- 문서 도구·인자 이름 시험을 `examples/README.md`·`docs/architecture.md`·`CONTRIBUTING.md` 까지 넓히고(기여자 문서의 내부 함수 이름은 코드에 있어야 함),
+  호출 안 인자 이름(`destroy(glue_max=3)` 꼴)도 본다. recipes.md 가 `destroy` 도구에 없는 `hold_until` 을 도구 호출처럼 적던 것을 "서버 안쪽 값"으로
+- `blender-fx-doctor` 의 "해결법:" 줄이 문서 첫머리 대신 실패 항목의 절로 바로(uv → `#uv-not-found`, 애드온·연결 → `#connection-refused`,
+  클라이언트 → `#tools-not-visible-in-the-client`, 디스크 → `#fluid-bake-failed`). `--json`·MCP `doctor` 도구는 항목마다 `help` 로. 앵커가 실제 절 제목인지 시험
+- `set_timing(fps=…)` 가 결과에 `fps` 가 겹쳐 늘 실패하던 문제(장면은 이미 바뀐 뒤). 거꾸로 준 쌍(`frame_end` < `frame_start`, `slow_to` ≤ `slow_from`)은
+  서버가 블렌더에 보내기 전에 바꿔 줄 값과 함께 막고, 레시피도 순서·슬로모션 대상 검사를 길이·fps 를 바꾸기 전에 한다(실패했는데 장면이 반쯤 바뀐 채 남던 문제)
 - `snapshot` 이 같은 이름(이름 정리 뒤 같아지는 `a b`·`a_b` 포함)의 이전 스냅샷을 덮어쓰면 그렇다고 알려 준다
 - ruff 에 실제 결함을 잡는 규칙(bugbear `B`, 닫히지 않는 파일 `SIM115`, 쓰지 않는 변수 `RUF059`)을 더하고 걸린 9곳을 고침
 - `destroy(target=B)`·`reset_destroy(target=B)` 가 그 대상과 상관없는 효과(바다·물·연기·불·파티클·바람·깃발)와 다른 건물의 접착까지 지우던 문제.

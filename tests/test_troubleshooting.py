@@ -111,9 +111,9 @@ def test_doctor_report_links_doc_only_when_something_is_wrong(monkeypatch):
     from blender_fx_mcp.doctor import format_report
     monkeypatch.setenv("BLENDER_FX_LANG", "en")
     ok = [{"name": "python", "ok": True, "detail": "3.13"}]
-    bad = ok + [{"name": "receiver connection", "ok": False, "detail": "refused"}]
+    bad = ok + [{"id": "connection", "name": "receiver connection", "ok": False, "detail": "refused"}]
     assert bridge.TROUBLESHOOTING_URL not in format_report(ok)
-    assert format_report(bad).endswith(f"Help: {bridge.TROUBLESHOOTING_URL}")
+    assert format_report(bad).endswith(f"Help: {bridge.TROUBLESHOOTING_URL}#connection-refused")
 
 
 def test_readme_links_troubleshooting():
