@@ -17,11 +17,11 @@
 **처음 한 번 (4단계)** — 단계마다 `blender-fx-doctor` 의 그 줄이 `[OK]` 면 된 것입니다(순서도 doctor 의 "다음 할 일"과 같습니다).
 
 <!-- setup-steps: uv, addon, connection, client -->
-1. **uv 설치** — macOS `brew install uv` (Windows·Linux 명령은 doctor 가 알려 줍니다) → `[OK] uv`
+1. **uv 설치** — macOS `brew install uv`, Linux `curl -LsSf https://astral.sh/uv/install.sh | sh`, Windows 는 [해결법](docs/troubleshooting.md#uv-not-found)의 한 줄 → `[OK] uv`
 2. **블렌더 5.2 + 수신기 애드온** — [blender-mcp](https://github.com/ahujasid/blender-mcp) 의 `addon.py` 를 받아
-   블렌더 Edit → Preferences → Add-ons → 오른쪽 위 ▾ → **Install from Disk** 로 설치하고 체크 → `[OK] 수신기 애드온 파일(blender-mcp)`
-3. **블렌더에서 Connect** — 3D 화면에서 `N` 키 → **BlenderMCP** 탭 → **Connect to MCP server** → `[OK] 수신기 연결`
-4. **클로드에 등록**(다른 클라이언트는 [examples/](examples/)) → `[OK] MCP 클라이언트 등록`:
+   블렌더 Edit → Preferences → Add-ons → 오른쪽 위 ▾ → **Install from Disk** 로 설치하고 체크 → `[OK] 수신기 애드온 파일(blender-mcp)` · 막히면 [해결법](docs/troubleshooting.md#connection-refused)
+3. **블렌더에서 Connect** — 3D 화면에서 `N` 키 → **BlenderMCP** 탭 → **Connect to MCP server** → `[OK] 수신기 연결` · 막히면 [해결법](docs/troubleshooting.md#connection-refused)
+4. **클로드에 등록**(다른 클라이언트는 [examples/](examples/)) → `[OK] MCP 클라이언트 등록` · 막히면 [해결법](docs/troubleshooting.md#tools-not-visible-in-the-client):
 
 ```bash
 claude mcp add -s user blender-fx -- uvx blender-fx-mcp
@@ -31,6 +31,8 @@ uvx --from blender-fx-mcp blender-fx-doctor   # 점검: 끝에 "모두 정상입
 **첫 명령 예시** — AI에게 이렇게 말합니다:
 
 > 연습용 건물 하나 만들고, 왼쪽에서 충격 줘서 콘크리트처럼 무너뜨려. 끝나면 미리보기 보여 줘.
+
+미리보기가 검거나 효과가 안 보이면 [해결법](docs/troubleshooting.md#black-preview-effect-not-visible), 오류 문장이 나오면 [문제 해결](docs/troubleshooting.md)에서 그 문장을 찾습니다.
 
 붙여 넣기 대신 클라이언트의 `/` 메뉴에서 **`/first_demo`**(같은 순서: 연결 확인 → 건물 → 스냅샷 → 붕괴 → 미리보기, `impact`·`material` 을 고를 수 있음)를,
 되돌릴 때는 **`/undo_last`**(스냅샷 목록 → 확인 → restore)를 골라도 됩니다(Claude Code 에서는 `/blender-fx:first_demo` 처럼 보일 수 있음).
@@ -280,11 +282,11 @@ MIT (이 저장소). 블렌더 안 수신기 애드온은 blender-mcp 프로젝�
 Four steps, once. Each step is done when its `blender-fx-doctor` line shows `[OK]` (same order as doctor's "Next steps").
 
 <!-- setup-steps: uv, addon, connection, client -->
-1. **Install uv** (Python runner) — macOS `brew install uv` (doctor prints the Windows/Linux command) → `[OK] uv`
+1. **Install uv** (Python runner) — macOS `brew install uv`, Linux `curl -LsSf https://astral.sh/uv/install.sh | sh`, Windows: the one line in [troubleshooting](docs/troubleshooting.md#uv-not-found) → `[OK] uv`
 2. **Blender 5.2 + the receiver add-on** — download `addon.py` from [blender-mcp](https://github.com/ahujasid/blender-mcp), then in Blender
-   Edit → Preferences → Add-ons → top-right ▾ → **Install from Disk**, and tick it → `[OK] receiver add-on file (blender-mcp)`
-3. **Connect in Blender** — in the 3D view press `N` → **BlenderMCP** tab → **Connect to MCP server**. It listens on `localhost:9876` → `[OK] receiver connection`
-4. **Register with your AI client** — see [Install](#install) below → `[OK] MCP client registration`
+   Edit → Preferences → Add-ons → top-right ▾ → **Install from Disk**, and tick it → `[OK] receiver add-on file (blender-mcp)` · stuck: [fix](docs/troubleshooting.md#connection-refused)
+3. **Connect in Blender** — in the 3D view press `N` → **BlenderMCP** tab → **Connect to MCP server**. It listens on `localhost:9876` → `[OK] receiver connection` · stuck: [fix](docs/troubleshooting.md#connection-refused)
+4. **Register with your AI client** — see [Install](#install) below → `[OK] MCP client registration` · stuck: [fix](docs/troubleshooting.md#tools-not-visible-in-the-client)
 
 Check everything at once (Python, mcp, uv, Blender, receiver, client registration, output folder):
 
@@ -337,6 +339,8 @@ Without a connection it prints the next step and exits with 2. Details: [example
 Open Blender, connect the receiver, then tell your AI:
 
 > Make a practice building, hit it from the left and collapse it like concrete. Show me a preview when it's done.
+
+If the preview is black or the effect is missing, see [the fix](docs/troubleshooting.md#black-preview-effect-not-visible); for an error message, search [troubleshooting](docs/troubleshooting.md) for it.
 
 Or pick **`/first_demo`** from your client's `/` menu instead of pasting (same steps: check connection → building → snapshot → collapse → preview;
 optional `impact` and `material`), and **`/undo_last`** to go back (snapshot list → confirm → restore). Claude Code may show them as `/blender-fx:first_demo`.

@@ -16,6 +16,26 @@ For an issue, paste `blender-fx-doctor --issue` (version, OS, Blender, clients a
 
 ---
 
+## uv not found
+
+**uv 를 찾을 수 없음**
+
+> zsh: command not found: uvx
+> 'uvx' is not recognized as an internal or external command
+
+원인: uv(파이썬 실행기)가 없거나, 설치한 뒤 터미널을 새로 열지 않았습니다. doctor 도 uv 로 돌기 때문에 이 단계는 doctor 없이 합니다.
+
+1. 설치합니다. macOS `brew install uv`(Homebrew 가 없으면 아래 Linux 줄), Linux·macOS `curl -LsSf https://astral.sh/uv/install.sh | sh`,
+   Windows PowerShell `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`.
+2. 터미널을 **새로** 열고 `uv --version` 이 판 번호를 내는지 봅니다. 그다음 `uvx --from blender-fx-mcp blender-fx-doctor`.
+3. 터미널에서는 되는데 클로드 데스크톱·커서에서만 도구가 안 보이면 [클라이언트에 도구가 안 보임](#tools-not-visible-in-the-client)의 4번(전체 경로).
+
+Cause: uv (the Python runner) is not installed, or the terminal was opened before installing it. doctor itself runs through uv, so do this step without it.
+1. Install: macOS `brew install uv` (without Homebrew, use the Linux line), Linux and macOS `curl -LsSf https://astral.sh/uv/install.sh | sh`,
+   Windows PowerShell `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`.
+2. Open a **new** terminal and check that `uv --version` prints a version, then run `uvx --from blender-fx-mcp blender-fx-doctor`.
+3. If it works in the terminal but the tools do not show up in Claude Desktop or Cursor, see step 4 of [Tools not visible in the client](#tools-not-visible-in-the-client) (full path).
+
 ## Tools not visible in the client
 
 **클라이언트에 도구가 안 보임**

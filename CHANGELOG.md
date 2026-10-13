@@ -50,6 +50,9 @@
 - README (both languages) has a three-line "Getting help": `doctor --issue` → the matching form → reply targets.
 - `docs/maintenance.md` has an eight-step release procedure (bump, check, tag, build, approve, PyPI, registry, release notes), tested against `release.yml`.
 - `docs/registry.md` and `docs/maintenance.md` say to run `release_check.py --tag` before pushing a tag.
+- README quick start: the uv step gives the Linux and Windows install commands directly (it used to point to doctor, which itself needs uv),
+  and each step links the troubleshooting section to read when stuck. Troubleshooting has a new "uv not found" section.
+  A test keeps the quick start at five steps or fewer up to the first render.
 - CONTRIBUTING (both languages) has "Error message rules": what was wrong, the next step, real tool names, a Korean/English pair, and the tests that enforce them.
 
 **동작 변화**

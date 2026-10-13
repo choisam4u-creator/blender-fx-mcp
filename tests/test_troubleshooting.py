@@ -143,3 +143,40 @@ def test_client_section_lists_every_config_doctor_reads():
     section = doc.split("## Tools not visible in the client", 1)[1].split("\n## ", 1)[0]
     for _client, path in doctor.client_configs():
         assert path.replace("\\", "/").rsplit("/", 1)[-1] in section, path
+
+
+# 첫 설치 ~ 첫 렌더 단계 수의 상한(2026-10-13: 준비 4단계 + 첫 명령 1). 늘리려면 이 수와 README 를 함께 고치고 PR 에 이유를 적는다
+MAX_FIRST_RENDER_STEPS = 5
+
+
+def _first_render_steps(section: str) -> list[str]:
+    """README 절의 `<!-- setup-steps: … -->` 번호 단계들 + 첫 명령(인용문) 단락."""
+    block = re.search(r"<!-- setup-steps: [\w, ]+ -->\n(.*?)\n\n", section, re.S).group(1)
+    steps = re.split(r"\n(?=\d\. )", block)
+    first = re.search(r"\n> [^\n]+\n\n([^\n]+)\n", section[section.index("<!-- setup-steps"):]).group(1)
+    return [*steps, first]
+
+
+@pytest.mark.parametrize("lang", ["ko", "en"])
+def test_readme_first_render_steps_are_few_and_each_links_a_fix(lang):
+    """README 빠른 시작이 첫 렌더까지 몇 단계인지 세어 상한을 두고, 단계마다 막혔을 때 볼 해결법 절이 실제로 있어야 한다."""
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    section = readme.split("\n## English\n", 1)[0 if lang == "ko" else 1]
+    steps = _first_render_steps(section)
+    assert len(steps) <= MAX_FIRST_RENDER_STEPS, f"{lang}: 첫 렌더까지 {len(steps)}단계(상한 {MAX_FIRST_RENDER_STEPS})"
+    assert [s[:2] for s in steps[:-1]] == [f"{i}." for i in range(1, len(steps))]
+    anchors = _anchors(_doc())
+    for step in steps:
+        links = re.findall(r"docs/troubleshooting\.md#([\w-]+)", step)
+        assert links, f"{lang}: 막혔을 때 볼 해결법 링크가 없는 단계: {step[:60]!r}"
+        assert set(links) <= anchors, f"{lang}: 없는 절 {set(links) - anchors}"
+
+
+@pytest.mark.parametrize("lang", ["ko", "en"])
+def test_uv_step_does_not_need_doctor(lang):
+    """doctor 도 uv 로 돈다. uv 설치 단계는 doctor 에 기대지 않고 OS 별 명령을 직접 준다."""
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    section = readme.split("\n## English\n", 1)[0 if lang == "ko" else 1]
+    uv_step = _first_render_steps(section)[0]
+    assert "brew install uv" in uv_step and "astral.sh/uv/install.sh" in uv_step and "doctor" not in uv_step
+    assert 'install.ps1 | iex"' in _doc().split("## uv not found", 1)[1].split("\n## ", 1)[0]
