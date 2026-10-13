@@ -106,3 +106,8 @@ def test_missing_result_line_says_how_to_report(monkeypatch, lang, expect):
     with pytest.raises(bridge.BlenderError) as e:
         server.parse_result("boom")
     assert "blender-fx-doctor --issue" in str(e.value) and str(e.value).endswith(expect)
+
+
+def test_range_hint_is_empty_for_unknown_names():
+    """RANGES 에 없는 이름은 안내를 붙이지 않는다(엉뚱한 권장 값을 말하지 않게)."""
+    assert server._range_hint("unknown_argument") == ""

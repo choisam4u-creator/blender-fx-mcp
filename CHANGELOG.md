@@ -46,8 +46,7 @@
 
 *Docs*
 - Troubleshooting: "Still on the old version" (clear the uv cache; use the `git+` address only to try unreleased `main`).
-- README shows a PyPI version badge.
-- README (both languages) has a three-line "Getting help": `doctor --issue` → the matching form → reply targets.
+- README shows a PyPI version badge, and (both languages) a three-line "Getting help": `doctor --issue` → the matching form → reply targets.
 - `docs/maintenance.md` has an eight-step release procedure (bump, check, tag, build, approve, PyPI, registry, release notes), tested against `release.yml`.
 - `docs/registry.md` and `docs/maintenance.md` say to run `release_check.py --tag` before pushing a tag.
 - README quick start: the uv step gives the Linux and Windows install commands directly (it used to point to doctor, which itself needs uv),
