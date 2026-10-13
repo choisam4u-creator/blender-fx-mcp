@@ -123,7 +123,7 @@ def main():
     ds.vorticity = float(p.get("vorticity", 0.35))
     ds.use_dissolve_smoke = True
     ds.dissolve_speed = int(p.get("dissolve", 160))
-    for attr, key, default in (("alpha", "buoyancy_density", None), ("beta", "buoyancy_heat", None)):
+    for attr, key in (("alpha", "buoyancy_density"), ("beta", "buoyancy_heat")):
         if p.get(key) is not None:
             try:
                 setattr(ds, attr, float(p[key]))

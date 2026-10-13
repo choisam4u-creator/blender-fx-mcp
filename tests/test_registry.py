@@ -2,9 +2,8 @@
 # 네트워크 없이 도는 점검만 한다. 스키마 전체 검증은 docs/registry.md 의 명령으로.
 import json
 import re
+import tomllib
 from pathlib import Path
-
-import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 SERVER = json.loads((ROOT / "server.json.example").read_text(encoding="utf-8"))
@@ -70,7 +69,6 @@ def test_package_version_matches_pyproject():
 
 
 def _pyproject():
-    tomllib = pytest.importorskip("tomllib")  # 3.11+
     return tomllib.loads(PYPROJECT)["project"]
 
 

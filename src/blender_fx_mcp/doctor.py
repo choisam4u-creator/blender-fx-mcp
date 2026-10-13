@@ -15,13 +15,14 @@ import re
 import shutil
 import subprocess
 import sys
+import urllib.request
 from importlib import metadata
 
 from . import __version__, bridge, disk
 from .headless import find_blender
 from .i18n import is_en, lang_source, t
 
-SERVER_CMD = "uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-mcp"
+SERVER_CMD = "uvx blender-fx-mcp"
 
 
 # 등록했는데도 클라이언트에 도구가 안 보일 때 볼 절. 절 제목이 바뀌면 tests/test_troubleshooting.py 가 알려 준다
@@ -134,7 +135,7 @@ def registered_clients() -> list[str]:
         except OSError:
             continue
         if path.endswith(".toml"):
-            # 파이썬 3.10 에는 tomllib 가 없어 표 이름·명령만 본다
+            # 설정 파일 문법이 깨져 있어도 찾도록 tomllib 로 읽지 않고 표 이름·명령만 본다
             hit = "[mcp_servers.blender_fx]" in text or "[mcp_servers.blender-fx]" in text or "blender-fx-mcp" in text
         else:
             try:
@@ -146,16 +147,57 @@ def registered_clients() -> list[str]:
     return found
 
 
-def run_checks(clients: bool = True) -> list[dict]:
-    """준비물 항목들. clients=False 면 MCP 클라이언트 등록 항목을 뺀다(MCP doctor 도구에서)."""
+PYPI_JSON = "https://pypi.org/pypi/blender-fx-mcp/json"
+
+
+def latest_version(timeout: float = 2.0) -> str | None:
+    """PyPI 의 최신 판. 끔(BLENDER_FX_NO_UPDATE_CHECK=1)·네트워크 없음·느림·이상한 응답이면 None."""
+    if os.environ.get("BLENDER_FX_NO_UPDATE_CHECK", "").strip() not in ("", "0"):
+        return None
+    try:
+        with urllib.request.urlopen(PYPI_JSON, timeout=timeout) as resp:
+            version = json.loads(resp.read().decode("utf-8"))["info"]["version"]
+    except Exception:
+        return None
+    return version if isinstance(version, str) and re.fullmatch(r"\d+(\.\d+)*", version) else None
+
+
+def _version_key(version: str) -> tuple[int, ...]:
+    return tuple(int(n) for n in re.findall(r"\d+", version.split("+")[0])[:3])
+
+
+def _update_check() -> dict | None:
+    """새 판 알림(선택 항목). uvx 는 처음 받은 판을 계속 써서, 고친 판이 나와도 사용자가 모른다."""
+    latest = latest_version()
+    if latest is None:
+        return None
+    name = t("새 판", "newer release")
+    if _version_key(latest) <= _version_key(__version__):
+        return _check(name, True, t(f"최신(PyPI {latest})", f"up to date (PyPI {latest})"), "update", optional=True)
+    return _check(name, False, t(f"PyPI 에 {latest} 이 있음(지금 {__version__})", f"{latest} is on PyPI (you run {__version__})"),
+                  "update",
+                  t(f"새 판 받기: uv cache clean blender-fx-mcp 뒤 MCP 클라이언트 앱을 껐다 켜기(uvx 가 {latest} 을 받음). "
+                    "pip 로 깔았으면 pip install -U blender-fx-mcp. 이 확인을 끄려면 BLENDER_FX_NO_UPDATE_CHECK=1",
+                    f"Get it: uv cache clean blender-fx-mcp, then fully restart your MCP client (uvx fetches {latest}). "
+                    "If you installed with pip: pip install -U blender-fx-mcp. To skip this check: BLENDER_FX_NO_UPDATE_CHECK=1"),
+                  optional=True)
+
+
+def run_checks(clients: bool = True, updates: bool | None = None) -> list[dict]:
+    """준비물 항목들. clients=False 면 MCP 클라이언트 등록 항목을 뺀다(MCP doctor 도구에서).
+    updates(기본은 clients 와 같음)면 PyPI 에 새 판이 있는지도 묻는다(2초 제한, 실패하면 줄 없이 건너뜀)."""
     out: list[dict] = []
     v = sys.version_info
-    out.append(_check("python", v >= (3, 10), f"{v.major}.{v.minor}.{v.micro} ({platform.system()} {platform.machine()})",
-                      "python", t("Python 3.10 이상으로 실행: uvx 가 알아서 고른다(uv python install 3.13)",
-                                  "Run with Python 3.10+: uvx picks one for you (uv python install 3.13)")))
+    out.append(_check("python", v >= (3, 11), f"{v.major}.{v.minor}.{v.micro} ({platform.system()} {platform.machine()})",
+                      "python", t("Python 3.11 이상으로 실행: uvx 가 알아서 고른다(uv python install 3.13)",
+                                  "Run with Python 3.11+: uvx picks one for you (uv python install 3.13)")))
 
     # 이슈에 붙인 결과만 보고 어느 판인지 알 수 있게 맨 위에 둔다
     out.append(_check("blender-fx-mcp", True, __version__, "blender-fx-mcp"))
+    if clients if updates is None else updates:
+        update = _update_check()
+        if update:
+            out.append(update)
 
     name_mcp = t("mcp 라이브러리", "mcp library")
     try:
@@ -261,13 +303,39 @@ def _space_check(root: str) -> dict:
     used = disk.folder_bytes(root)
     detail = t(f"남은 {disk.gb(free)}, 이 폴더가 쓰는 {disk.gb(used)}", f"{disk.gb(free)} free, this folder uses {disk.gb(used)}")
     ok = free >= disk.DOCTOR_WARN_BYTES
-    if not ok:
-        detail += t(f" — 물·연기 굽기에는 {disk.gb(disk.DOCTOR_WARN_BYTES)} 이상 권장",
-                    f" — {disk.gb(disk.DOCTOR_WARN_BYTES)} or more recommended for water and smoke bakes")
-    return _check(name, ok, detail, "space",
-                  t("AI 에게 clear_caches 를 시켜 구운 캐시를 지우거나, BLENDER_FX_OUT 을 여유 있는 디스크의 폴더로 지정",
-                    "Ask the AI to run clear_caches (deletes baked caches), or point BLENDER_FX_OUT to a folder on a disk with more space"),
-                  optional=True)
+    if ok:
+        return _check(name, ok, detail, "space", optional=True)
+    detail += t(f" — 물·연기 굽기에는 {disk.gb(disk.DOCTOR_WARN_BYTES)} 이상 권장",
+                f" — {disk.gb(disk.DOCTOR_WARN_BYTES)} or more recommended for water and smoke bakes")
+    groups = [g for g in disk.usage_groups(root) if g[1] >= GROUP_MIN_BYTES]
+    if groups:
+        detail += t(". 큰 것: ", ". Largest: ") + ", ".join(f"{_GROUP_LABEL[k]()} {disk.gb(b)}" for k, b, _ in groups)
+        # 큰 묶음부터 지울 방법을 짝지어 말한다(무엇을 지워야 할지 바로 보이게)
+        steps = [_GROUP_FIX[k](c) for k, _, c in groups]
+    else:
+        steps = [t("출력 폴더는 작아서 지워도 소용없음: 디스크의 다른 큰 파일을 정리",
+                   "The output folder is small, so clearing it will not help: free space elsewhere on the disk")]
+    steps.append(t("또는 BLENDER_FX_OUT 을 여유 있는 디스크의 폴더로 지정", "or point BLENDER_FX_OUT to a folder on a disk with more space"))
+    return _check(name, ok, detail, "space", " / ".join(steps), optional=True)
+
+
+GROUP_MIN_BYTES = 100 * 1024**2  # 이보다 작은 묶음은 지워도 체감이 없어 안내하지 않는다
+_GROUP_LABEL = {
+    "caches": lambda: t("구운 캐시(cache_*)", "baked caches (cache_*)"),
+    "snapshots": lambda: t("스냅샷(snapshots)", "snapshots"),
+    "runs": lambda: t("렌더·미리보기 결과", "render and preview results"),
+    "files": lambda: t("폴더 바로 아래 파일(내보낸 모델 등)", "loose files (exported models, ...)"),
+}
+_GROUP_FIX = {
+    "caches": lambda c: t("AI 에게 clear_caches 를 시켜 구운 캐시를 지움", "Ask the AI to run clear_caches (deletes baked caches)"),
+    "snapshots": lambda c: t(f"AI 에게 clear_snapshots 를 시켜 오래된 스냅샷 {c}개를 지움(최근 {disk.SNAPSHOT_KEEP}개·before_restore 는 남김)",
+                             f"Ask the AI to run clear_snapshots to delete {c} old snapshots "
+                             f"(keeps the newest {disk.SNAPSHOT_KEEP} and before_restore)"),
+    "runs": lambda c: t(f"출력 폴더의 날짜 이름 폴더({c}개) 중 필요 없는 렌더 결과를 직접 지움",
+                        f"Delete render results you no longer need from the date-named folders ({c}) by hand"),
+    "files": lambda c: t(f"출력 폴더 바로 아래 파일 {c}개(내보낸 모델 등)를 다른 곳으로 옮기거나 지움",
+                         f"Move or delete the {c} files directly in the output folder (exported models, ...)"),
+}
 
 
 def format_report(checks: list[dict]) -> str:
@@ -289,6 +357,12 @@ def format_report(checks: list[dict]) -> str:
     return "\n".join(lines)
 
 
+def check_rows(checks: list[dict]) -> list[dict]:
+    """점검 항목을 바깥에 보이는 모양으로(--json·MCP doctor 도구의 구조화 출력이 같은 모양을 쓴다)."""
+    return [{"id": c["id"], "name": c["name"], "ok": c["ok"], "optional": c.get("optional", False),
+             "detail": c["detail"], "fix": c.get("fix", "")} for c in checks]
+
+
 def format_json(checks: list[dict]) -> str:
     """버그 신고에 붙여 그대로 비교·재현할 수 있는 JSON. 항목·결과는 format_report 와 같다."""
     bad = [c["id"] for c in failed(checks)]
@@ -302,12 +376,11 @@ def format_json(checks: list[dict]) -> str:
         "port": bridge.port(),
         # 등록이 보인 클라이언트(버그 양식의 클라이언트 선택지와 같은 이름). 신고마다 "어떤 클라이언트?"를 되묻지 않게
         "clients": registered_clients(),
-        "checks": [{"id": c["id"], "name": c["name"], "ok": c["ok"], "optional": c.get("optional", False),
-                    "detail": c["detail"], "fix": c.get("fix", "")} for c in checks],
+        "checks": check_rows(checks),
         "failed": bad,
         "help": bridge.TROUBLESHOOTING_URL if bad else None,
     }
-    return json.dumps(report, ensure_ascii=False, indent=2)
+    return mask_home(json.dumps(report, ensure_ascii=False, indent=2))  # 버그 신고용이라 집 폴더(사용자 이름)를 가린다
 
 
 def mask_home(text: str) -> str:
@@ -315,9 +388,12 @@ def mask_home(text: str) -> str:
     home = os.path.expanduser("~").rstrip("/\\")
     if len(home) <= 1:
         return text
-    for form in sorted({home, home.replace("\\", "/"), home.replace("/", "\\")}, key=len, reverse=True):
+    # JSON 안에서는 역슬래시가 두 번(\\) 쓰여 그 표기도 가린다
+    forms = {home, home.replace("\\", "/"), home.replace("/", "\\"), home.replace("\\", "\\\\")}
+    for form in sorted(forms, key=len, reverse=True):
         # 경로 경계에서만(/home/sam 이 /home/samuel 의 앞부분을 먹지 않게)
-        text = re.sub(re.escape(form) + r"(?=[/\\\s'\")\]]|$)", "~", text)
+        # 뒤가 이름 글자(문자·숫자·_·-)가 아니면 경계: /home/sam: /home/sam, /home/sam. 도 가린다
+        text = re.sub(re.escape(form) + r"(?![\w-])", "~", text)
     return text
 
 

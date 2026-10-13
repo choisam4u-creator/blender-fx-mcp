@@ -5,7 +5,7 @@ From the terminal to a first render: start the server with the official `mcp` Py
 ping_blender → make_demo_building → destroy → render_preview in order and print the preview PNG paths.
 
     uv run python examples/first_render.py                  # 이 저장소의 서버 / the server in this checkout
-    uv run python examples/first_render.py uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-mcp
+    uv run python examples/first_render.py uvx blender-fx-mcp
 
 블렌더를 켜고 BlenderMCP 탭에서 Connect 를 눌러 둔 뒤 돌린다. 연결이 안 되면 다음 할 일을 출력하고 종료 코드 2.
 Open Blender and click Connect in the BlenderMCP tab first. If it cannot connect, it prints the next steps and exits with code 2.

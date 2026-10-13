@@ -48,7 +48,10 @@ RECIPE_SIDE = {
 
 
 def test_every_server_range_has_a_recipe_source():
-    assert {(r, n) for r, d in server.RANGES.items() for n in d} == set(RECIPE_SIDE)
+    """레시피가 자르는 범위는 레시피와 비교하고, 서버에서만 막는 범위(렌더 크기)는 따로 적어 둔다."""
+    every = {(r, n) for r, d in server.RANGES.items() for n in d}
+    assert every == set(RECIPE_SIDE) | server.SERVER_ONLY_RANGES
+    assert not set(RECIPE_SIDE) & server.SERVER_ONLY_RANGES
 
 
 @pytest.mark.parametrize("key", sorted(RECIPE_SIDE), ids=lambda k: f"{k[0]}.{k[1]}")
@@ -66,6 +69,10 @@ TOOL_RECIPES = {
     "smoke": ["emit"],
     "particles": ["particles"],
     "set_render": ["set_render"],
+    "render_preview": ["render"],
+    "render_video": ["render_video"],
+    "set_timing": ["set_timing"],
+    "set_physics": ["set_physics"],
 }
 
 
@@ -108,6 +115,20 @@ def test_out_of_range_is_caught_before_blender(no_blender, monkeypatch, lang, ex
     (lambda: server.smoke(at=[0, 0, 0], resolution=8), "resolution 8"),
     (lambda: server.particles(frames=3), "frames 3"),
     (lambda: server.set_render(samples=-4), "samples -4 is out of range. Allowed: at least 1."),
+    (lambda: server.set_render(width=-1920), "width -1920 is out of range. Allowed: 16 ~ 7680. 1280×720"),
+    (lambda: server.render_preview(width=-640), "width -640 is out of range. Allowed: 16 ~ 7680."),
+    (lambda: server.render_preview(height=8), "height 8 is out of range."),
+    (lambda: server.render_video(width=15360, height=8640), "width 15360 is out of range. Allowed: 16 ~ 7680."),
+    (lambda: server.render_video(height=10000), "0 uses the set_render size"),
+    (lambda: server.set_render(fps=-24), "fps -24 is out of range. Allowed: 1 ~ 240. 24 (film look), 30"),
+    (lambda: server.render_video(fps=1000), "fps 1000 is out of range. Allowed: 1 ~ 240."),
+    (lambda: server.render_video(frame_start=-10), "frame_start -10 is out of range. Allowed: 1 ~ 1048574. Frame numbers"),
+    (lambda: server.render_video(frame_end=-1), "frame_end -1 is out of range."),
+    (lambda: server.set_timing(fps=-30), "fps -30 is out of range."),
+    (lambda: server.set_timing(frame_start=-5), "frame_start -5 is out of range."),
+    (lambda: server.set_timing(frame_end=2_000_000), "frame_end 2000000 is out of range."),
+    (lambda: server.set_timing(slow_from=-3, slow_to=40), "slow_from -3 is out of range."),
+    (lambda: server.set_physics(fps=500), "fps 500 is out of range. Allowed: 1 ~ 240."),
 ])
 def test_each_tool_checks_ranges_before_blender(no_blender, monkeypatch, tmp_path, call, text):
     monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path))
@@ -127,3 +148,55 @@ def test_boundaries_and_auto_values_reach_blender(monkeypatch):
     server.run_recipe("emit", {"resolution": None, "frames": 72})
     server.run_recipe("destroy", {"focus": True})
     assert len(sent) == 2 * len(server.RANGES) + 2
+
+
+@pytest.mark.parametrize("bad", [dict(resolution=500), dict(frames=3), dict(material="titanium"), dict(pieces=5000)])
+def test_explode_checks_every_argument_before_fracturing(monkeypatch, tmp_path, bad):
+    """폭발은 조각내기(destroy) → 굽기(explode) 두 단계다. 굽기 인자가 틀렸으면 조각내기 전에 멈춰야 장면이 반쯤 바뀌지 않는다."""
+    from blender_fx_mcp import bridge, server
+    monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path))
+    monkeypatch.setenv("BLENDER_FX_LANG", "en")
+    monkeypatch.setattr(bridge, "run_python", lambda code, timeout=None: pytest.fail("블렌더로 보내면 안 됨"))
+    out = server.explode(target="Building", **bad)
+    out = out if isinstance(out, str) else out[0]
+    assert out.startswith("Failed: ") and next(iter(bad)) in out, out
+
+
+@pytest.mark.parametrize("call", [
+    "destroy(target='Building', time_scale=float('inf'))",
+    "destroy(target='Building', impact_power=float('nan'))",
+    "water(mode='drop', at=[0.0, float('nan'), 1.0])",
+    "wind(strength=float('-inf'))",
+])
+def test_nan_and_inf_are_refused_before_blender(monkeypatch, tmp_path, call):
+    """nan·inf 는 블렌더로 보내는 코드에서 NameError('inf' 정의 안 됨)가 되어 원인 모를 오류가 났다. 서버가 미리 막는다."""
+    from blender_fx_mcp import bridge, server
+    monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path))
+    monkeypatch.setenv("BLENDER_FX_LANG", "en")
+    monkeypatch.setattr(bridge, "run_python", lambda code, timeout=None: pytest.fail("블렌더로 보내면 안 됨"))
+    out = eval(call, vars(server))
+    out = out if isinstance(out, str) else out[0]
+    assert out.startswith("Failed: ") and "must be a finite number" in out, out
+
+
+@pytest.mark.parametrize("lang,expect", [
+    ("ko", "fps 값 -24 은(는) 범위 밖입니다. 가능한 범위: 1 ~ 240. 24(영화 느낌)·30(보통 영상)·60(부드러운 움직임) 권장. 0 이면"),
+    ("en", "fps -24 is out of range. Allowed: 1 ~ 240. 24 (film look), 30 (regular video) or 60 (smooth motion) recommended; 0 keeps"),
+])
+def test_fps_error_says_what_to_use_in_both_languages(no_blender, monkeypatch, lang, expect):
+    """fps 는 레시피가 자르지 않아 음수가 블렌더까지 갔다. 권장 값(24·30·60)과 0 의 뜻을 한/영으로 알려 준다."""
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    assert expect in server.set_render(fps=-24)
+
+
+def test_valid_fps_and_frames_reach_blender(monkeypatch, tmp_path):
+    """흔한 값(24·30·60, 프레임 1~250)과 0(그대로)은 막지 않는다."""
+    monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path))
+    sent = []
+    monkeypatch.setattr(bridge, "run_python", lambda code, timeout=None: sent.append(code) or 'FX_RESULT {"ok": false, "error": "x"}')
+    for fps in (0, 24, 30, 60, 240):
+        server.set_render(fps=fps)
+        server.set_physics(fps=fps)
+    server.set_timing(frame_start=1, frame_end=250, fps=30, slow_from=40, slow_to=60)
+    server.render_video(frame_start=1, frame_end=48, fps=60)
+    assert len(sent) == 12

@@ -13,8 +13,8 @@ def main():
         lo, _hi = fx_bbox(None)
         g = ensure_ground(lo.z if z is None else float(z))
     if g is None:
-        raise FxError(L("바다가 바닥을 대신하고 있어 바닥 재질을 바꿀 수 없습니다. 먼저 reset 하세요.",
-                        "The ocean is acting as the ground, so the ground material cannot be changed. Reset first."))
+        raise FxError(L("바다가 바닥을 대신하고 있어 바닥 재질을 바꿀 수 없습니다. 먼저 reset_destroy 로 바다를 지운 뒤 다시 시키세요.",
+                        "The ocean is acting as the ground, so the ground material cannot be changed. Run reset_destroy first to remove the ocean, then ask again."))
     unhide(g)
     if z is not None:
         g.location.z = float(z)

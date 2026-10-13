@@ -32,8 +32,37 @@ def host() -> str:
 DEFAULT_PORT = 9876  # blender-mcp 수신기 애드온의 기본 포트
 
 
+def _env_number(name: str, kind: type, default: float, low: float, high: float | None = None):
+    """숫자 환경변수. 비었으면 기본값, 숫자가 아니거나 범위 밖이면 고칠 곳을 말하는 BlenderError."""
+    raw = os.environ.get(name, "").strip()
+    if not raw:
+        return default
+    try:
+        value = kind(raw)
+    except ValueError:
+        value = None
+    if value is None or value != value or value < low or (high is not None and value > high):  # value != value: NaN
+        span = (t(f"{low:g}~{high:g} 의 숫자", f"a number, {low:g}-{high:g}") if high is not None
+                else t(f"{low:g} 이상의 숫자", f"a number, at least {low:g}"))
+        raise BlenderError(t(
+            f"환경변수 {name}={raw!r} 은(는) 쓸 수 없습니다({span}). MCP 설정에서 고치거나 지운 뒤 클라이언트를 다시 시작하세요.",
+            f"The environment variable {name}={raw!r} is not valid ({span}). "
+            "Fix or remove it in your MCP config and restart the client."))
+    return value
+
+
+def check_env() -> None:
+    """연결에 쓰는 숫자 환경변수를 미리 본다. 잘못됐으면 BlenderError(모든 도구가 같은 문장을 낸다)."""
+    _env_number("BLENDER_FX_PORT", int, DEFAULT_PORT, 1, 65535)
+    _env_number("BLENDER_FX_TIMEOUT", float, 600.0, 1)
+
+
 def port() -> int:
-    return int(os.environ.get("BLENDER_FX_PORT", str(DEFAULT_PORT)))
+    # 화면에 보이는 값. 잘못된 값이면 기본값을 보이고, 실제 연결은 check_env 가 막는다
+    try:
+        return _env_number("BLENDER_FX_PORT", int, DEFAULT_PORT, 1, 65535)
+    except BlenderError:
+        return DEFAULT_PORT
 
 
 # 수신기 애드온(blender-mcp)이 설치되는 곳. doctor 의 "수신기 애드온 파일" 줄과 연결 거부 안내가 같이 쓴다
@@ -85,14 +114,35 @@ def connect_steps() -> str:
 
 
 def default_timeout() -> float:
-    # 굽기·렌더는 몇 분 걸릴 수 있어 기본 10분
-    return float(os.environ.get("BLENDER_FX_TIMEOUT", "600"))
+    # 굽기·렌더는 몇 분 걸릴 수 있어 기본 10분. 0·음수·숫자가 아니면 기본값(연결 전에 check_env 가 알린다)
+    try:
+        return _env_number("BLENDER_FX_TIMEOUT", float, 600.0, 1)
+    except BlenderError:
+        return 600.0
+
+
+def _decode(buf: bytes) -> dict | None:
+    """받은 바이트에서 JSON 객체 하나. 아직 덜 왔으면 None. 객체 뒤의 군더더기는 무시한다."""
+    try:
+        text = buf.decode("utf-8")
+    except UnicodeDecodeError:
+        return None  # 여러 바이트 글자가 반쯤 온 것
+    try:
+        obj, _ = json.JSONDecoder().raw_decode(text.lstrip())
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(obj, dict):
+        raise BlenderError(t(f"블렌더 수신기가 알 수 없는 응답을 보냈습니다: {text[:200]!r}. 수신기 애드온(blender-mcp)이 맞는지 확인하세요.",
+                             f"The Blender receiver sent an unexpected response: {text[:200]!r}. "
+                             "Check that the receiver is the blender-mcp add-on."))
+    return obj
 
 
 def send_command(cmd_type: str, params: dict | None = None, timeout: float | None = None) -> dict:
+    check_env()
     payload = json.dumps({"type": cmd_type, "params": params or {}}).encode("utf-8")
-    timeout = timeout or default_timeout()
-    buf = b""
+    timeout = default_timeout() if timeout is None else timeout
+    chunks = bytearray()
     resp: dict | None = None
     connected = False  # 연결 단계(10초 고정)의 시간 초과는 BLENDER_FX_TIMEOUT 과 무관하다
     try:
@@ -104,13 +154,12 @@ def send_command(cmd_type: str, params: dict | None = None, timeout: float | Non
                 chunk = s.recv(65536)
                 if not chunk:
                     break
-                buf += chunk
-                try:
-                    resp = json.loads(buf.decode("utf-8"))
-                    break
-                except (json.JSONDecodeError, UnicodeDecodeError):
-                    # 아직 덜 온 것. 더 받는다
-                    continue
+                chunks += chunk
+                # 큰 응답을 조각마다 처음부터 다시 풀지 않게, 객체가 끝났을 법할 때(마지막 글자가 }) 만 풀어 본다
+                if chunk.rstrip().endswith(b"}"):
+                    resp = _decode(bytes(chunks))
+                    if resp is not None:
+                        break
     except (ConnectionRefusedError, OSError) as e:
         if connected and isinstance(e, socket.timeout):
             raise BlenderError(t(
@@ -123,6 +172,15 @@ def send_command(cmd_type: str, params: dict | None = None, timeout: float | Non
                 "BLENDER_FX_TIMEOUT (seconds) higher in your MCP config and restart. "
                 f"Help: {TROUBLESHOOTING_URL}#timeout",
             )) from e
+        if connected:  # 연결은 됐는데 명령 도중 끊김: 설치·Connect 안내는 틀린 말이다
+            raise BlenderError(t(
+                f"명령 도중 블렌더와의 연결이 끊겼습니다({e.__class__.__name__}). 블렌더가 멈추거나 꺼졌을 수 있고, 명령이 일부 실행됐을 수 있습니다. "
+                "블렌더 창을 확인하고, 꺼졌다면 다시 켜서 Connect 한 뒤 restore 로 직전 스냅샷을 불러오세요. "
+                f"해결법: {TROUBLESHOOTING_URL}#empty-response-blender-error",
+                f"The connection to Blender dropped during the command ({e.__class__.__name__}). Blender may have frozen or quit, "
+                "and the command may have partly run. Check the Blender window; if it closed, reopen it, click Connect and "
+                f"restore the last snapshot. Help: {TROUBLESHOOTING_URL}#empty-response-blender-error",
+            )) from e
         raise BlenderError(t(
             f"블렌더에 연결할 수 없습니다({host()}:{port()}). {connect_steps()} "
             f"해결법: {TROUBLESHOOTING_URL}#connection-refused",
@@ -130,12 +188,23 @@ def send_command(cmd_type: str, params: dict | None = None, timeout: float | Non
             f"Help: {TROUBLESHOOTING_URL}#connection-refused",
         )) from e
 
+    if resp is None and chunks:
+        resp = _decode(bytes(chunks))  # 끝이 } 가 아니었어도(뒤에 공백·군더더기) 연결이 닫혔으면 한 번 더
+    if resp is None and chunks:
+        raise BlenderError(t(
+            f"블렌더 응답이 중간에 끊겼습니다({len(chunks)}바이트 받음). 블렌더가 응답 도중 멈췄거나 꺼졌을 수 있습니다. 블렌더 창을 확인하세요. "
+            f"해결법: {TROUBLESHOOTING_URL}#empty-response-blender-error",
+            f"Blender's response was cut off ({len(chunks)} bytes received). Blender may have frozen or quit while answering. "
+            f"Check the Blender window. Help: {TROUBLESHOOTING_URL}#empty-response-blender-error"))
     if resp is None:
         raise BlenderError(t("블렌더가 빈 응답을 보냈습니다. 수신기 애드온이 켜져 있는지 확인하세요.",
                              "Blender sent an empty response. Check that the receiver add-on is running."))
     if resp.get("status") != "success":
-        raise BlenderError(t(f"블렌더 오류: {resp.get('message', '(메시지 없음)')}",
-                             f"Blender error: {resp.get('message', '(no message)')}"))
+        # 레시피 오류는 FX_RESULT 로 오므로, 여기까지 왔으면 수신기 쪽 실패 — 버그일 가능성이 커서 신고 방법을 알려 준다
+        raise BlenderError(t(f"블렌더 오류: {resp.get('message', '(메시지 없음)')}. 버그일 수 있습니다. "
+                             f"uvx --from blender-fx-mcp blender-fx-doctor --issue 결과를 붙여 신고해 주세요. 해결법: {TROUBLESHOOTING_URL}#empty-response-blender-error",
+                             f"Blender error: {resp.get('message', '(no message)')}. This may be a bug; please report it with "
+                             f"the output of uvx --from blender-fx-mcp blender-fx-doctor --issue. Help: {TROUBLESHOOTING_URL}#empty-response-blender-error"))
     return resp.get("result") or {}
 
 

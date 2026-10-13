@@ -29,6 +29,10 @@
 [MCP 클라이언트]  결과 문장(한/영) + 미리보기 이미지
 ```
 
+목록형 도구(`list_objects`·`inspect_mesh`·`list_snapshots`)는 같은 내용을 구조화 값(`structuredContent`)으로도 준다(`_with_data`).
+AI 가 문장을 다시 파싱하지 않고 이름·크기를 집는다. 실패는 다른 도구처럼 문장만.
+`doctor` 도 점검 항목마다 `ok`·`fix`(다음 할 일)와 `failed`(고쳐야 할 항목 id)를 준다(`--json` 과 같은 항목 모양, `doctor.check_rows`).
+
 AI 는 블렌더 코드를 짜지 않습니다. 검증된 레시피와 값만 고릅니다.
 
 ### 파일별 역할
@@ -37,7 +41,7 @@ AI 는 블렌더 코드를 짜지 않습니다. 검증된 레시피와 값만 �
 |---|---|
 | `src/blender_fx_mcp/server.py` | MCP 도구 정의, 인자 미리 검사(`CHOICES`·`RANGES`), 레시피 조립(`build_code`), 결과 문장, 긴 작업 진행 알림(`FxServer`·`_progress`) |
 | `src/blender_fx_mcp/bridge.py` | 수신기와 소켓 통신, 연결 거부·시간 초과 오류 문장 |
-| `src/blender_fx_mcp/disk.py` | 출력 폴더 디스크 여유(doctor 선택 항목, 굽기 전 1GB 아래면 멈춤) |
+| `src/blender_fx_mcp/disk.py` | 출력 폴더 디스크 여유(doctor 선택 항목, 굽기 전 1GB 아래면 멈춤)와 지울 수 있는 묶음(캐시·스냅샷·실행 결과)별 크기 |
 | `src/blender_fx_mcp/i18n.py` | `t(한국어, 영어)` — `BLENDER_FX_LANG`, 없으면 로캘로 언어 고르기 |
 | `src/blender_fx_mcp/doctor.py` | `blender-fx-doctor` 준비물 점검 |
 | `src/blender_fx_mcp/headless.py` | `blender-fx-headless` — 소켓 없이 블렌더를 백그라운드로 띄워 레시피 실행(개발·시험용) |
@@ -56,12 +60,13 @@ AI 는 블렌더 코드를 짜지 않습니다. 검증된 레시피와 값만 �
 ### 시험 경로
 
 ```
-블렌더 없이 (CI server-tests, 3.10·3.11·3.12·3.13·3.14)
+블렌더 없이 (CI server-tests, 3.11·3.12·3.13·3.14)
   tests/test_server*.py · test_doctor.py · test_headless.py · …
   가짜 소켓·가짜 레시피 결과·가짜 실행 파일로 server/bridge/doctor/headless 를 시험
 
-bpy 모듈로 (CI recipe-tests-bpy)
+bpy 모듈로 (CI recipe-tests-bpy: Linux · recipe-tests-bpy-macos: macOS arm64, 같은 bpy 판)
   tests/test_recipes*.py → headless.run_steps → BLENDER_FX_BLENDER(파이썬+bpy) 로 레시피 실행
+  macOS 러너(가상 머신)에서도 Metal 렌더가 됨(2026-10-12 첫 실행 1098 통과). 두 작업 모두 PR 을 막음
   Mantaflow 유체는 bpy 휠에서 깨져 @pytest.mark.app_only 로 건너뜀 (tests/conftest.py)
 
 블렌더 앱으로 (Mac · 손 실행 app-tests 워크플로)
@@ -98,6 +103,10 @@ bpy 모듈로 (CI recipe-tests-bpy)
 [MCP client]  result sentence (Korean or English) + preview images
 ```
 
+The list tools (`list_objects`, `inspect_mesh`, `list_snapshots`) also return the same content as `structuredContent` (`_with_data`),
+so the AI picks names and sizes without re-parsing text. Failures stay plain sentences like every other tool.
+`doctor` also returns each check's `ok` and `fix` (the next step) plus `failed` (ids to fix), in the same row shape as `--json` (`doctor.check_rows`).
+
 The AI never writes Blender code. It only picks a tested recipe and its values.
 
 ### Files
@@ -106,7 +115,7 @@ The AI never writes Blender code. It only picks a tested recipe and its values.
 |---|---|
 | `src/blender_fx_mcp/server.py` | MCP tools, argument checks (`CHOICES`, `RANGES`), recipe assembly (`build_code`), result sentences, progress notifications for long work (`FxServer`, `_progress`) |
 | `src/blender_fx_mcp/bridge.py` | Socket talk with the receiver; connection-refused and timeout messages |
-| `src/blender_fx_mcp/disk.py` | Output folder free space (optional doctor check; bakes stop below 1GB before reaching Blender) |
+| `src/blender_fx_mcp/disk.py` | Output folder free space (optional doctor check; bakes stop below 1GB before reaching Blender) and size per clearable group (caches, snapshots, run results) |
 | `src/blender_fx_mcp/i18n.py` | `t(korean, english)`, picks the language from `BLENDER_FX_LANG`, else the locale |
 | `src/blender_fx_mcp/doctor.py` | `blender-fx-doctor` setup check |
 | `src/blender_fx_mcp/headless.py` | `blender-fx-headless`: runs recipes in background Blender without the socket (development, tests) |
@@ -125,12 +134,13 @@ The AI never writes Blender code. It only picks a tested recipe and its values.
 ### Test paths
 
 ```
-Without Blender (CI server-tests, Python 3.10, 3.11, 3.12, 3.13, 3.14)
+Without Blender (CI server-tests, Python 3.11, 3.12, 3.13, 3.14)
   tests/test_server*.py, test_doctor.py, test_headless.py, ...
   fake socket, fake recipe results and fake executables test server/bridge/doctor/headless
 
-With the bpy module (CI recipe-tests-bpy)
+With the bpy module (CI recipe-tests-bpy: Linux; recipe-tests-bpy-macos: macOS arm64, same bpy version)
   tests/test_recipes*.py → headless.run_steps → recipes run by BLENDER_FX_BLENDER (python + bpy)
+  Metal rendering works on the macOS runner VM (first run 2026-10-12: 1098 passed); both jobs block PRs
   Mantaflow fluids are broken in bpy wheels, so @pytest.mark.app_only tests are skipped (tests/conftest.py)
 
 With the Blender app (Mac, manual app-tests workflow)

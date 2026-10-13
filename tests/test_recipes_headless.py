@@ -1,5 +1,6 @@
 # 레시피 실제 검증. 블렌더를 백그라운드로 띄워 건물 생성 → 파괴 → 렌더까지 돌린다.
 import os
+from pathlib import Path
 
 import pytest
 
@@ -51,7 +52,7 @@ def test_explode_building(tmp_path):
     paths = render["paths"]
     assert len(paths) == 3 and all(os.path.getsize(p) > 1000 for p in paths)
     # 터지기 전(2프레임)과 터진 뒤(18프레임) 그림이 달라야 한다
-    assert open(paths[0], "rb").read() != open(paths[1], "rb").read()
+    assert Path(paths[0]).read_bytes() != Path(paths[1]).read_bytes()
 
 
 @pytest.mark.app_only
@@ -70,7 +71,7 @@ def test_water_drop_on_building(tmp_path):
     assert w["drift"][2] < 0, w  # 떨어졌으니 z 가 내려가야 한다
     paths = results[2]["paths"]
     assert len(paths) == 3 and all(os.path.getsize(p) > 1000 for p in paths)
-    assert open(paths[0], "rb").read() != open(paths[1], "rb").read()
+    assert Path(paths[0]).read_bytes() != Path(paths[1]).read_bytes()
 
 
 def test_video_and_save(tmp_path):

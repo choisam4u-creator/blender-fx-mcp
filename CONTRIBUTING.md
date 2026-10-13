@@ -1,6 +1,6 @@
 # 기여 안내 / Contributing
 
-**English:** Every effect is one recipe file in `src/blender_fx_mcp/recipes/` plus one tool in `server.py`. Recipes run inside Blender with `PARAMS` prepended by the server and must end with `run_guarded(main)`, printing one `FX_RESULT` JSON line. Lint with `uvx ruff check .`. Server-side coverage (recipes excluded, same command as CI): `uv run pytest -q tests --ignore=tests/test_asset_robustness.py --ignore=tests/test_recipes_fx_extra.py --ignore=tests/test_recipes_headless.py --ignore=tests/test_recipes_v05.py --ignore=tests/test_recipes_v06.py --cov --cov-report=term` (99% on 2026-10-08; CI fails below the 95% floor, `--cov-fail-under=95`); only the Blender-only recipe test files are ignored, so new test files join CI automatically. The fake Blender in tests is `fake_blender` from `tests/conftest.py` (a Python body behind a `/bin/sh` or `.cmd` wrapper), so the failure, timeout and trimming branches also run on Windows CI; only 1 `@posix_only` test (the segfault signal in `tests/test_headless.py`) is skipped there. Test headlessly with `uv run pytest -q` (needs Blender on this machine) and, with Blender open, `uv run python scripts/e2e_socket.py`. For a new tool, add a row to both README tool tables: `uv run python scripts/gen_tool_table.py --draft` prints draft rows from the docstrings, and running it without arguments lists rows or `a/b/c` value lists that disagree with the server. Keep error messages human-readable; the AI shows them to a non-technical user. Start with [docs/architecture.md](docs/architecture.md) for the call path and test paths, or pick a small task from [Good first contributions](#good-first-contributions).
+**English:** Every effect is one recipe file in `src/blender_fx_mcp/recipes/` plus one tool in `server.py`. Recipes run inside Blender with `PARAMS` prepended by the server and must end with `run_guarded(main)`, printing one `FX_RESULT` JSON line. Lint with `uvx ruff check .`. Server-side coverage (recipes excluded, same command as CI): `uv run pytest -q tests --ignore=tests/test_asset_robustness.py --ignore=tests/test_recipes_fx_extra.py --ignore=tests/test_recipes_headless.py --ignore=tests/test_recipes_v05.py --ignore=tests/test_recipes_v06.py --cov --cov-report=term` (100% on 2026-10-11; CI fails below the 99% floor, `--cov-fail-under=99`, so a new error branch needs its own test); only the Blender-only recipe test files are ignored, so new test files join CI automatically. The fake Blender in tests is `fake_blender` from `tests/conftest.py` (a Python body behind a `/bin/sh` or `.cmd` wrapper), so the failure, timeout and trimming branches also run on Windows CI; only 1 `@posix_only` test (the segfault signal in `tests/test_headless.py`) is skipped there. Test headlessly with `uv run pytest -q` (needs Blender on this machine) and, with Blender open, `uv run python scripts/e2e_socket.py`. For a new tool, add a row to both README tool tables: `uv run python scripts/gen_tool_table.py --draft` prints draft rows from the docstrings, and running it without arguments lists rows or `a/b/c` value lists that disagree with the server. Keep error messages human-readable; the AI shows them to a non-technical user (see [Error message rules](#error-message-rules)). Start with [docs/architecture.md](docs/architecture.md) for the call path and test paths, or pick a small task from [Good first contributions](#good-first-contributions).
 
 ## 구조
 
@@ -38,7 +38,7 @@ src/blender_fx_mcp/
    - 서버 쪽 커버리지(CI 와 같은 명령): `uv run pytest -q tests --ignore=tests/test_asset_robustness.py --ignore=tests/test_recipes_fx_extra.py --ignore=tests/test_recipes_headless.py --ignore=tests/test_recipes_v05.py --ignore=tests/test_recipes_v06.py --cov --cov-report=term`.
      블렌더가 있어야 하는 레시피 시험 파일만 `--ignore` 로 빼므로 새 시험 파일은 저절로 CI 에 들어간다. 레시피 시험 파일을 새로 만들면 이 목록과 `ci.yml` 에 함께 더한다.
      레시피는 블렌더 안에서 문자열로 실행돼 잴 수 없으므로 뺀다(`[tool.coverage.run] omit`). CI 는 이 표를 작업 요약에 남긴다.
-     2026-10-08 기준 **99%**(i18n·bridge 100%, server·doctor·headless 99%. 같은 날 앞 회차에는 95%, 10-07 에는 94%, 10-06 에는 84%, 도구 성공 갈래 시험 전에는 59%). CI 는 **95% 아래면 실패**한다(`--cov-fail-under=95`). 줄면 PR 에 이유를 적는다.
+     2026-10-11 기준 **100%**(모든 파일. 10-08 에는 99%, 그 앞 회차 95%, 10-07 에는 94%, 10-06 에는 84%, 도구 성공 갈래 시험 전에는 59%). CI 는 **99% 아래면 실패**한다(`--cov-fail-under=99`). 새 오류 갈래를 넣으면 그 갈래 시험도 함께 넣는다. 줄면 PR 에 이유를 적는다.
    - 블렌더 앱이 없으면 `pip install bpy` 한 파이썬 3.11 로도 레시피 시험 대부분이 돈다:
      `uv pip install bpy==5.0.1` 뒤 `BLENDER_FX_BLENDER=.venv/bin/python uv run pytest -q`.
      Linux 에서 렌더하려면 `libegl1 libegl-mesa0 libgl1-mesa-dri` 가 있어야 한다.
@@ -46,6 +46,7 @@ src/blender_fx_mcp/
      bpy 모듈은 Mantaflow(연기·불·물)가 깨져 있어 `@pytest.mark.app_only` 시험은 건너뛴다.
      이런 기능을 쓰는 새 시험에는 `@pytest.mark.app_only` 를 붙인다.
      bpy 4.2·4.5 LTS 휠도 같은 결함이 있다(2026-10 확인). 이 시험은 Actions 의 **app-tests** 작업(손으로 실행, 공식 블렌더 Linux 빌드)으로 돌린다.
+   - Mac 실측: `uv run python scripts/mac_report.py` 가 `docs/test-reports/CLOUD-NOTES.md` 맨 위 명령을 돌려 `docs/test-reports/latest.md` 를 새로 쓴다(집 폴더는 `~`). 클라우드 회차가 그 결과부터 읽는다.
    - Windows: CI `server-tests-os` 가 Windows 에서도 서버 시험을 돌린다. 가짜 블렌더는 `tests/conftest.py` 의 `fake_blender`(본문은 파이썬,
      POSIX 는 `/bin/sh` 감싸개, Windows 는 `.cmd` 감싸개)라 실행 실패·시간 초과·출력 자르기 갈래도 Windows 에서 돈다.
      건너뛰는 것은 세그폴트 흉내(시그널) `@posix_only` 1개(`tests/test_headless.py`)뿐이다.
@@ -57,7 +58,7 @@ src/blender_fx_mcp/
 
 | 할 일 | 고칠 파일 | 확인 명령 |
 |---|---|---|
-| 오류 문장의 영어·한국어 다듬기 | `src/blender_fx_mcp/recipes/_common.py` 같은 레시피의 `L()`, `src/blender_fx_mcp/server.py`·`src/blender_fx_mcp/bridge.py` 의 `t()`. 같은 문장이 `docs/troubleshooting.md` 에도 있으면 함께 | `uv run pytest -q tests/test_recipe_messages.py tests/test_server_messages.py tests/test_troubleshooting.py` |
+| 오류 문장의 영어·한국어 다듬기 | `src/blender_fx_mcp/recipes/_common.py` 같은 레시피의 `L()`, `src/blender_fx_mcp/server.py`·`src/blender_fx_mcp/bridge.py` 의 `t()`. 같은 문장이 `docs/troubleshooting.md` 에도 있으면 함께 | `uv run pytest -q tests/test_recipe_messages.py tests/test_recipe_next_steps.py tests/test_server_messages.py tests/test_server_next_steps.py tests/test_troubleshooting.py` |
 | 자연어 명령 예시 추가(한/영 같은 번호로) | `docs/recipes.md` | `uv run pytest -q tests/test_repo_files.py -k recipes` |
 | 오류별 해결법 절 추가 | `docs/troubleshooting.md` | `uv run pytest -q tests/test_troubleshooting.py` |
 | 새 바닥 재질 값(예: `gravel`) | `src/blender_fx_mcp/recipes/_common.py` 의 `GROUND_MATERIALS`, `src/blender_fx_mcp/server.py` 의 `CHOICES`, `set_ground`·`make_demo_building` 도구 설명 | `uv run pytest -q tests/test_server_choices.py tests/test_server_tools.py` (블렌더가 있으면 `uv run pytest -q tests/test_recipes_v05.py -k ground`) |
@@ -76,7 +77,7 @@ Blender by the command in the last column (a new ground material is worth one ex
 
 | Task | Files | Check |
 |---|---|---|
-| Polish an error message (English or Korean) | `L()` in recipes such as `src/blender_fx_mcp/recipes/_common.py`, `t()` in `src/blender_fx_mcp/server.py` and `src/blender_fx_mcp/bridge.py`; update `docs/troubleshooting.md` if it quotes the sentence | `uv run pytest -q tests/test_recipe_messages.py tests/test_server_messages.py tests/test_troubleshooting.py` |
+| Polish an error message (English or Korean) | `L()` in recipes such as `src/blender_fx_mcp/recipes/_common.py`, `t()` in `src/blender_fx_mcp/server.py` and `src/blender_fx_mcp/bridge.py`; update `docs/troubleshooting.md` if it quotes the sentence | `uv run pytest -q tests/test_recipe_messages.py tests/test_recipe_next_steps.py tests/test_server_messages.py tests/test_server_next_steps.py tests/test_troubleshooting.py` |
 | Add a natural-language example (same number in both languages) | `docs/recipes.md` | `uv run pytest -q tests/test_repo_files.py -k recipes` |
 | Add a troubleshooting section for an error | `docs/troubleshooting.md` | `uv run pytest -q tests/test_troubleshooting.py` |
 | Add a ground material value (e.g. `gravel`) | `GROUND_MATERIALS` in `src/blender_fx_mcp/recipes/_common.py`, `CHOICES` in `src/blender_fx_mcp/server.py`, the `set_ground` and `make_demo_building` descriptions | `uv run pytest -q tests/test_server_choices.py tests/test_server_tools.py` (with Blender: `uv run pytest -q tests/test_recipes_v05.py -k ground`) |
@@ -98,6 +99,48 @@ Always run `uvx ruff check .` and the check command before opening a PR.
 - 주석은 한국어, 코드 식별자는 영어. 사용자에게 보이는 문장은 `L()`(레시피) 또는 `t()`(서버, `i18n.py`) 로 한국어·영어 둘 다 쓴다.
 - 사용자 오브젝트에 모디파이어를 붙일 때는 이름을 `FX_` 로 시작한다. `cleanup_fx` 가 그 이름만 떼어 낸다.
 - 되돌리기 어려운 동작(파일 열기, 물리 굽기 적용)을 넣을 때는 `snapshot` 을 먼저 권하는 문구를 도구 설명에 넣는다.
+
+## 오류 문장 규칙
+
+AI 는 오류 문장을 그대로 사용자(대개 개발자가 아님)에게 보여 줍니다. 그래서 오류 하나가 아래 네 가지를 모두 말해야 합니다.
+
+1. **무엇이 틀렸나** — 받은 값을 그대로 넣는다(`fps 값 -24 은(는) 범위 밖입니다`, `파일이 없습니다: tower.glb`).
+2. **다음 할 일** — 시키는 말(`…다시 시키세요`, `…확인하세요`) 또는 고를 값 목록(`가능한 값: …`, 권장 값, 비슷한 파일 이름). 고칠 길이 없으면 신고 방법이나 해결법 링크.
+3. **실제 이름** — 문장 속 도구·인자 이름은 실제로 있는 것만(`reset_destroy`, `pieces`). AI 가 그 이름 그대로 부른다.
+4. **한/영 짝** — 레시피는 `L("한국어", "English")`, 서버는 `t("한국어", "English")`. 두 문장이 같은 다음 할 일을 말한다.
+
+이 규칙은 아래 시험이 지킵니다. 새 오류를 넣고 이 명령이 통과하면 규칙을 지킨 것입니다.
+`uv run pytest -q tests/test_recipe_messages.py tests/test_recipe_next_steps.py tests/test_server_next_steps.py tests/test_server_ranges.py tests/test_server_prompts.py tests/test_troubleshooting.py`
+
+| 시험 파일 | 보는 것 |
+|---|---|
+| `tests/test_recipe_messages.py` | 레시피 `FxError` 가 모두 `L()` 한/영 짝인지 |
+| `tests/test_recipe_next_steps.py` | 레시피 오류의 한/영 다음 할 일 표지, 실제 도구·인자 이름 |
+| `tests/test_server_next_steps.py` | 서버·연결 오류(`BlenderError`)의 한/영 다음 할 일 표지, 실제 이름, 범위 오류의 권장 값 |
+| `tests/test_server_ranges.py` | 숫자 인자 범위를 블렌더에 보내기 전에 막고 권장 값을 말하는지 |
+| `tests/test_server_prompts.py` | 프롬프트·문서가 말하는 도구·인자 이름이 실제인지 |
+| `tests/test_troubleshooting.py` | 연결 오류 문장이 `docs/troubleshooting.md` 에 있고 링크가 맞는 절을 가리키는지 |
+
+### Error message rules
+
+The AI shows an error message to the user (usually not a developer) as it is, so each error says all four things below.
+
+1. **What was wrong**: include the value received (`fps -24 is out of range`, `File not found: tower.glb`).
+2. **What to do next**: an instruction (`...ask again`, `Check ...`) or the values to pick from (`Choose one of: ...`, recommended values, similar file names). If there is no fix, say how to report it or link the troubleshooting section.
+3. **Real names**: tool and argument names in the sentence must exist (`reset_destroy`, `pieces`); the AI calls them by that name.
+4. **Korean/English pair**: `L("Korean", "English")` in recipes, `t("Korean", "English")` in the server. Both say the same next step.
+
+The tests below enforce these rules. If you add an error and this command passes, the rules are kept:
+`uv run pytest -q tests/test_recipe_messages.py tests/test_recipe_next_steps.py tests/test_server_next_steps.py tests/test_server_ranges.py tests/test_server_prompts.py tests/test_troubleshooting.py`
+
+| Test file | Checks |
+|---|---|
+| `tests/test_recipe_messages.py` | every recipe `FxError` is an `L()` Korean/English pair |
+| `tests/test_recipe_next_steps.py` | next-step markers in both languages for recipe errors, real tool and argument names |
+| `tests/test_server_next_steps.py` | the same for server and connection errors (`BlenderError`), and recommended values in range errors |
+| `tests/test_server_ranges.py` | number arguments are checked before reaching Blender, with recommended values |
+| `tests/test_server_prompts.py` | tool and argument names in prompts and docs are real |
+| `tests/test_troubleshooting.py` | connection errors are quoted in `docs/troubleshooting.md` and link to the right section |
 
 ## 이슈 올리기 전에
 

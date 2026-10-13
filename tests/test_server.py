@@ -192,6 +192,21 @@ def test_client_launch_prints_nothing(monkeypatch, capsys):
     assert capsys.readouterr() == ("", "")
 
 
+@pytest.mark.parametrize("stdin", [None, "closed"])
+def test_missing_or_closed_stdin_is_treated_as_client(monkeypatch, capsys, stdin):
+    """표준 입력이 없거나(pythonw·일부 창 앱) 닫혀 있어도 서버는 안내 없이 그대로 뜬다."""
+    import io
+    import sys
+    if stdin == "closed":
+        stdin = io.StringIO()
+        stdin.close()  # isatty() 가 ValueError
+    monkeypatch.setattr(sys, "stdin", stdin)
+    ran = []
+    monkeypatch.setattr(server.mcp, "run", lambda *a, **k: ran.append(1))
+    server.main()
+    assert ran == [1] and capsys.readouterr() == ("", "")
+
+
 def test_piped_server_stays_quiet():
     # 실제 프로세스: 클라이언트처럼 파이프로 띄우면(입력 즉시 끝) 안내 없이 끝나야 한다
     import subprocess

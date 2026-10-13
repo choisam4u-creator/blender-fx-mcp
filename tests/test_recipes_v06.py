@@ -165,3 +165,84 @@ def test_import_resize_reports_scaled_volume(tmp_path):
     assert imp["ok"] and insp["ok"], (imp, insp)
     assert abs(imp["volume_m3"] - 18.0) < 0.1, imp["volume_m3"]
     assert abs(imp["volume_m3"] - insp["volume_m3"]) < 0.1, (imp["volume_m3"], insp["volume_m3"])
+
+
+def test_renders_keep_user_render_settings(tmp_path):
+    """set_render 로 정한 샘플·크기를 미리보기·영상 렌더가 덮어쓰지 않고, 영상은 그 크기와 실제 fps 를 보고한다.
+    미리보기가 중간에 실패해도 장면의 출력 설정이 바뀐 채 남지 않는다."""
+    results = run_steps([
+        ("demo_scene", {}),
+        ("set_render", {"samples": 2, "width": 320, "height": 180, "fps": 24}),  # 2: 어느 프리셋(16·32·64)과도 다르고 빠름
+        ("render", {"out_dir": str(tmp_path / "prev"), "frames": [1], "quality": "smoke"}),
+        ("set_render", {}),
+        ("render", {"out_dir": str(tmp_path / "bad"), "frames": ["x"], "quality": "smoke"}),  # 렌더 도중 실패
+        ("set_render", {}),
+        ("render_video", {"out_path": str(tmp_path / "clip.mp4"), "quality": "final", "fps": 30,
+                          "frame_start": 1, "frame_end": 2}),
+        ("set_render", {}),
+    ], blender=BLENDER)
+    after_preview, after_failure, video, after_video = results[3], results[5], results[6], results[7]
+    assert after_preview["samples"] == 2 and after_preview["resolution"] == [320, 180], after_preview
+    assert results[4]["ok"] is False, results[4]
+    assert after_failure["samples"] == 2 and after_failure["resolution"] == [320, 180], after_failure
+    assert after_failure["file_format"] == after_preview["file_format"], after_failure
+    assert video["ok"], video
+    assert video["size"] == [320, 180] and video["fps"] == 30, video
+    assert after_video["fps"] == 24 and after_video["samples"] == 2, after_video
+
+
+def test_destroy_and_reset_with_target_keep_other_effects(tmp_path):
+    """대상을 정해 부수기·되돌리기를 하면 그 대상의 것만 지운다. 바다 같은 다른 효과와 다른 건물의 조각은 남는다.
+    (전에는 destroy(target=B) 가 바다·물·연기·깃발·바람·다른 건물의 접착까지 지웠다)"""
+    results = run_steps([
+        ("demo_scene", {}),
+        ("demo_scene", {"name": "Tower", "width": 2.0, "depth": 2.0}),
+        ("ocean", {"size": 30, "frames": 24}),
+        ("destroy", {"target": "Building", "pieces": 12, "glue": "weak", "frames": 24, "dust": "none"}),
+        ("destroy", {"target": "Tower", "pieces": 12, "frames": 24, "dust": "none"}),
+        ("list_objects", {}),
+        ("reset", {"target": "Tower"}),
+        ("list_objects", {}),
+        ("reset", {}),
+        ("list_objects", {}),
+    ], blender=BLENDER)
+    assert all(r["ok"] for r in results), [r for r in results if not r["ok"]]
+    roles = lambda r: {o["fx_role"] for o in r["objects"]}  # noqa: E731
+    both, after_tower, after_all = results[5], results[7], results[9]
+    assert "ocean" in roles(both) and both["chunk_count"] >= 20, both
+    assert "ocean" in roles(after_tower) and 8 <= after_tower["chunk_count"] < both["chunk_count"], after_tower
+    tower = next(o for o in after_tower["objects"] if o["name"] == "Tower")
+    assert not tower["hidden"], tower  # 되돌린 대상은 다시 보임
+    assert after_all["chunk_count"] == 0 and "ocean" not in roles(after_all), after_all
+
+
+def test_preview_render_keeps_workbench_shading(tmp_path):
+    """빠른 미리보기(워크벤치)가 바꾸는 셰이딩(그림자·캐비티·조명)은 렌더 뒤 원래대로. 사용자의 블렌더 렌더 설정을 바꾸지 않는다."""
+    results = run_steps([
+        ("demo_scene", {}),
+        ("set_render", {}),
+        ("render", {"out_dir": str(tmp_path / "prev"), "frames": [1], "quality": "preview"}),
+        ("set_render", {}),
+    ], blender=BLENDER)
+    before, after = results[1], results[3]
+    assert results[2]["ok"] and results[2]["engine"] == "BLENDER_WORKBENCH", results[2]
+    assert after["shading"] == before["shading"], (before["shading"], after["shading"])
+
+
+def test_preview_follows_set_render_aspect(tmp_path):
+    """크기를 안 준 미리보기는 set_render 로 정한 비율(세로 영상)을 긴 변 640 으로 줄여 렌더하고, 장면 크기는 그대로 둔다.
+    (전에는 어떤 크기를 정해도 미리보기가 늘 640×360 이라 세로 구도를 확인할 수 없었다)"""
+    results = run_steps([
+        ("demo_scene", {}),
+        ("set_render", {"width": 1080, "height": 1920}),
+        ("render", {"out_dir": str(tmp_path / "tall"), "frames": [1], "quality": "preview"}),
+        ("set_render", {}),
+    ], blender=BLENDER)
+    assert all(r["ok"] for r in results), results
+    rend = results[2]
+    assert rend["size"] == [360, 640], rend
+    with open(rend["paths"][0], "rb") as f:
+        head = f.read(24)  # PNG 서명 8 + IHDR 길이·이름 8 + 폭·높이 8
+    assert head[:8] == b"\x89PNG\r\n\x1a\n", head
+    assert (int.from_bytes(head[16:20], "big"), int.from_bytes(head[20:24], "big")) == (360, 640), head
+    assert results[3]["resolution"] == [1080, 1920], results[3]

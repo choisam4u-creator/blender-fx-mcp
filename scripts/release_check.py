@@ -4,6 +4,7 @@
   uv run python scripts/release_check.py           # 파일만 점검 (몇 초)
   uv run python scripts/release_check.py --build   # uv build 로 휠을 만들어 METADATA 까지
   uv run python scripts/release_check.py --dist dist   # 이미 만든 휠·sdist 의 METADATA 만 (CI 패키징 점검)
+  uv run python scripts/release_check.py --tag v0.7.0  # 파일 점검 + 밀 태그가 pyproject 판과 같은지 (release.yml 과 같은 규칙)
 
 `--dist` 는 판 번호·CHANGELOG 의 "미출시" 점검을 하지 않아 출시 전 PR 에서도 통과한다.
 실패한 줄마다 고칠 곳을 적는다. 모두 통과하면 종료 코드 0, 하나라도 실패하면 1.
@@ -22,7 +23,7 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-# CHANGELOG 의 판 절 제목: "## [0.7.0] - 2026-10-13"(Keep a Changelog), 옛 "## 0.6.3 — 2026-09-21", 또는 "## 0.8.0 — 미출시 (준비 중)"
+# CHANGELOG 의 판 절 제목: "## [0.7.0] - 2026-10-11"(Keep a Changelog), 옛 "## 0.6.3 — 2026-09-21", 또는 "## 0.8.0 — 미출시 (준비 중)"
 HEADING = re.compile(r"^## \[?(\d+\.\d+\.\d+)\]? (?:—|-) (.+)$", re.M)
 DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
 # PyPI 가 받는 Metadata-Version. hatchling 은 2026-10 기준 2.5 를 쓰며, 2.5 를 받는 twine 은 7.0.0 부터다(6.x check 는 거부).
@@ -36,7 +37,7 @@ def project_version(root: Path) -> str:
 
 
 def project_urls(root: Path) -> dict[str, str]:
-    """pyproject.toml 의 [project.urls] (3.10 에도 돌도록 tomllib 없이 읽는다)."""
+    """pyproject.toml 의 [project.urls] (tomllib 없이 정규식으로 읽는다. 시험이 tomllib 결과와 같은지 본다)."""
     text = (root / "pyproject.toml").read_text(encoding="utf-8")
     m = re.search(r"^\[project\.urls\]\n(.*?)(?:^\[|\Z)", text, re.M | re.S)
     if not m:
@@ -91,6 +92,19 @@ def check_files(root: Path) -> list[tuple[bool, str]]:
     return out
 
 
+def check_tag(tag: str, version: str) -> list[tuple[bool, str]]:
+    """태그는 'v' + pyproject 판이어야 한다. release.yml 의 build 잡도 이 함수로 본다(규칙이 한 곳)."""
+    want = f"v{version}"
+    if tag == want:
+        return [(True, f"태그 {tag} = pyproject 판 {version}")]
+    if tag == version:
+        hint = f"앞에 v 가 빠짐 → {want} 로 단다(release.yml 은 v* 태그에만 돈다)"
+    else:
+        hint = (f"pyproject 판({version})과 다름 → 버전 네 곳을 {tag.lstrip('v')} 로 올린 커밋에 태그를 달거나, "
+                f"태그를 {want} 로 고친다. 이미 밀었으면 `git push --delete origin {tag}` 뒤 다시")
+    return [(False, f"태그 {tag or '(빈 값)'}: {hint}")]
+
+
 def project_license(root: Path) -> str:
     m = re.search(r'^license = "([^"]+)"', (root / "pyproject.toml").read_text(encoding="utf-8"), re.M)
     return m.group(1) if m else ""
@@ -140,7 +154,7 @@ def check_package(meta: str, label: str, license: str, readme: str) -> list[tupl
     ctype = m.group(1).strip() if m else "(없음)"
     ok = ctype.startswith("text/markdown")
     out.append((ok, f"{label} README 형식 = {ctype}" + ("" if ok else " → pyproject 의 readme 가 README.md 인지 확인")))
-    head, sep, body = meta.partition("\n\n")
+    _head, sep, body = meta.partition("\n\n")
     first = readme.strip().splitlines()[0] if readme.strip() else ""
     ok = bool(sep) and bool(first) and body.lstrip().startswith(first)
     out.append((ok, f"{label} README 본문" + ("" if ok else " → 패키지 설명에 README.md 가 들어가지 않음(pyproject 의 readme 확인)")))
@@ -212,6 +226,12 @@ def main(argv: list[str] | None = None, root: Path = ROOT) -> int:
         results = check_dist(Path(argv[i + 1]), root)
         return _report(results, "패키지 점검 통과")
     results = check_files(root)
+    if "--tag" in argv:
+        i = argv.index("--tag")
+        if i + 1 >= len(argv) or argv[i + 1].startswith("--"):
+            print("FAIL --tag 뒤에 밀 태그를 적는다 (예: --tag v0.7.0)")
+            return 1
+        results += check_tag(argv[i + 1], project_version(root))
     if "--build" in argv:
         with tempfile.TemporaryDirectory() as tmp:
             try:

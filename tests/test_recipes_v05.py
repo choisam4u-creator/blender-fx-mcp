@@ -25,7 +25,7 @@ def test_snapshot_and_restore(tmp_path):
     ], blender=BLENDER)
     for r in results:
         assert r["ok"], r
-    saved, destroyed, after_destroy, restored, after_restore = results[1:]
+    saved, _destroyed, after_destroy, restored, after_restore = results[1:]
     assert os.path.getsize(snap) > 10000 and "before.blend" in saved["snapshots"]
     assert after_destroy["chunk_count"] == 25, after_destroy
     # 되돌린 뒤에는 조각이 사라지고 원본 건물이 보여야 한다
@@ -55,11 +55,11 @@ def test_glue_holds_the_building(tmp_path):
 def test_windows_building_and_ground(tmp_path):
     plain = run_steps([
         ("demo_scene", {"style": "plain"}),
-        ("render", {"out_dir": str(tmp_path / "plain"), "frames": [1], "quality": "smoke"}),
+        ("render", {"out_dir": str(tmp_path / "plain"), "frames": [1], "quality": "smoke", "width": 320, "height": 180}),
     ], blender=BLENDER)
     fancy = run_steps([
         ("demo_scene", {"style": "windows", "ground": "grass"}),
-        ("render", {"out_dir": str(tmp_path / "windows"), "frames": [1], "quality": "smoke"}),
+        ("render", {"out_dir": str(tmp_path / "windows"), "frames": [1], "quality": "smoke", "width": 320, "height": 180}),
     ], blender=BLENDER)
     for r in plain + fancy:
         assert r["ok"], r
@@ -73,9 +73,9 @@ def test_ground_materials_differ(tmp_path):
     results = run_steps([
         ("demo_scene", {}),
         ("set_ground", {"material": "asphalt"}),
-        ("render", {"out_dir": str(tmp_path / "a"), "frames": [1], "quality": "smoke"}),
+        ("render", {"out_dir": str(tmp_path / "a"), "frames": [1], "quality": "smoke", "width": 320, "height": 180}),
         ("set_ground", {"material": "snow", "size": 30.0}),
-        ("render", {"out_dir": str(tmp_path / "b"), "frames": [1], "quality": "smoke"}),
+        ("render", {"out_dir": str(tmp_path / "b"), "frames": [1], "quality": "smoke", "width": 320, "height": 180}),
     ], blender=BLENDER)
     for r in results:
         assert r["ok"], r
@@ -88,9 +88,9 @@ def test_sky_procedural_and_hdri_error(tmp_path):
     results = run_steps([
         ("demo_scene", {}),
         ("set_look", {"preset": "day", "sky": "flat"}),
-        ("render", {"out_dir": str(tmp_path / "flat"), "frames": [1], "quality": "smoke"}),
+        ("render", {"out_dir": str(tmp_path / "flat"), "frames": [1], "quality": "smoke", "width": 320, "height": 180}),
         ("set_look", {"preset": "day", "sky": "procedural"}),
-        ("render", {"out_dir": str(tmp_path / "proc"), "frames": [1], "quality": "smoke"}),
+        ("render", {"out_dir": str(tmp_path / "proc"), "frames": [1], "quality": "smoke", "width": 320, "height": 180}),
         ("set_look", {"preset": "day", "hdri": str(tmp_path / "missing.hdr")}),
     ], blender=BLENDER)
     for r in results[:5]:

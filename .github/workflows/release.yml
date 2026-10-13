@@ -21,16 +21,10 @@ jobs:
         with:
           persist-credentials: false
       - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5.4.2
-      # 태그 v0.7.0 이면 pyproject 판도 0.7.0 이어야 한다(다른 판을 잘못 올리지 않게).
-      - name: 태그와 pyproject 판 일치 확인
-        run: |
-          version="$(sed -n 's/^version = "\(.*\)"$/\1/p' pyproject.toml | head -n 1)"
-          if [ "v${version}" != "${GITHUB_REF_NAME}" ]; then
-            echo "::error::태그 ${GITHUB_REF_NAME} 와 pyproject.toml 판 ${version} 이 다름 → 판을 맞춘 커밋에 태그를 다시 단다"
-            exit 1
-          fi
-      # 버전 네 곳·CHANGELOG 날짜·README mcp-name (출시 상태가 아니면 실패)
-      - run: uv run --no-project --python 3.13 python scripts/release_check.py
+      # 태그 v0.7.0 이면 pyproject 판도 0.7.0 이어야 한다(다른 판을 잘못 올리지 않게) + 버전 네 곳·CHANGELOG 날짜·README mcp-name.
+      # 태그 이름은 표현식 대신 환경 변수로 읽는다. Mac 에서 태그를 밀기 전에 같은 명령을 돌린다(--tag v0.7.0).
+      - name: 태그와 pyproject 판 일치, 출시 상태 확인
+        run: uv run --no-project --python 3.13 python scripts/release_check.py --tag "${GITHUB_REF_NAME}"
       - run: uv build
       # 만든 휠·sdist 의 METADATA·라이선스 파일, PyPI 와 같은 검사기(twine 7.0.0 부터 Metadata-Version 2.5)
       - run: uv run --no-project --python 3.13 python scripts/release_check.py --dist dist

@@ -184,17 +184,53 @@ def strip_fx_modifiers(obj):
     return n
 
 
+# 대상 하나를 다시 부술 때 지울 역할. 바다·물·연기·불·파티클·바람·깃발 같은 다른 효과는 남긴다(그 도구들이 각자 정리한다)
+TARGET_ROLES = ("chunk", "glue", "impactor", "cell")
+
+
+def _glue_of(o, target_name):
+    """접착 빈 객체가 target 의 조각끼리 묶는지. 묶은 조각을 모르면(깨진 제약) 지워도 되는 것으로 본다."""
+    c = getattr(o, "rigid_body_constraint", None)
+    ends = [x for x in ((c.object1, c.object2) if c else ()) if x is not None]
+    return not ends or any(x.get("fx_chunk_of") == target_name for x in ends)
+
+
 def cleanup_fx(target_name=None):
-    """이 도구가 만든 것을 지우고 원본을 되살린다. target_name 을 주면 그 대상의 조각만 지운다."""
+    """이 도구가 만든 것을 지우고 원본을 되살린다.
+    target_name 을 주면 그 대상의 조각·접착과 충격체만 지우고, 다른 대상의 조각과 다른 효과(바다·물·연기 등)는 남긴다."""
     removed = 0
+    doomed = []
     for o in list(bpy.data.objects):
         role = o.get(FX_TAG)
         if role not in FX_CLEANUP_ROLES:
             continue
-        if role == "chunk" and target_name and o.get("fx_chunk_of") != target_name:
-            continue
+        if target_name:
+            if role not in TARGET_ROLES:
+                continue
+            if role == "chunk" and o.get("fx_chunk_of") != target_name:
+                continue
+            if role == "glue" and not _glue_of(o, target_name):
+                continue
+        doomed.append(o)
+    # 접착 제약을 먼저 떼고 장면을 한 번 갱신한 뒤 객체를 지운다. 제약과 조각을 한꺼번에 지우면 의존 그래프가
+    # 평가본을 정리하면서 이미 사라진 조각의 물리 몸체를 건드려 블렌더가 가끔 세그폴트로 죽는다(bpy 5.0,
+    # 두 건물을 부순 뒤 전체 reset 에서 btRigidBody::removeConstraintRef)
+    glue = [o for o in doomed if getattr(o, "rigid_body_constraint", None) is not None]
+    rbw = scene().rigidbody_world
+    coll = rbw.constraints if rbw is not None else None
+    for o in glue:
+        if coll is not None and o.name in coll.objects:
+            coll.objects.unlink(o)
+    if glue:
+        view_layer_update()
+    for o in doomed:
         remove_object(o)
         removed += 1
+    if target_name and not any(o.get(FX_TAG) == "chunk" for o in bpy.data.objects):
+        # 조각이 하나도 안 남으면 먼지 알갱이 원본도 쓸 데가 없다
+        for o in [x for x in bpy.data.objects if x.get(FX_TAG) == "dust"]:
+            remove_object(o)
+            removed += 1
     if target_name:
         t = bpy.data.objects.get(target_name)
         if t is not None:
@@ -963,8 +999,52 @@ def set_engine(candidates):
     return r.engine
 
 
+# set_render 가 사용자가 정한 값을 장면에 표시해 둔다. 렌더 도구는 이 표시가 있으면 그 값을 따른다
+USER_SAMPLES_TAG = "fx_user_samples"
+USER_RES_TAG = "fx_user_resolution"
+
+
+# 품질 프리셋(apply_render_quality)이 바꾸는 장면 값. (장면에서 가는 길, 속성 이름)
+RENDER_STATE_ATTRS = (
+    ("eevee", "taa_render_samples"), ("eevee", "volumetric_tile_size"), ("eevee", "volumetric_samples"),
+    ("cycles", "samples"),
+    # 미리보기(워크벤치) 셰이딩: 사용자가 블렌더 화면에서 쓰는 렌더 셰이딩이라 렌더 뒤 되돌린다
+    ("display.shading", "color_type"), ("display.shading", "light"), ("display.shading", "show_shadows"),
+    ("display.shading", "show_cavity"), ("display.shading", "show_object_outline"),
+)
+
+
+def _owner(sc, path):
+    for part in path.split("."):
+        sc = getattr(sc, part, None)
+        if sc is None:
+            return None
+    return sc
+
+
+def render_state():
+    """렌더 품질 프리셋이 바꾸는 값들. 렌더가 끝나면(실패해도) restore_render_state 로 되돌린다."""
+    sc = scene()
+    state = {}
+    for path, attr in RENDER_STATE_ATTRS:
+        owner = _owner(sc, path)
+        if owner is not None and hasattr(owner, attr):
+            state[(path, attr)] = getattr(owner, attr)
+    return state
+
+
+def restore_render_state(state):
+    sc = scene()
+    for (path, attr), value in state.items():
+        try:
+            setattr(_owner(sc, path), attr, value)
+        except Exception:
+            pass
+
+
 def apply_render_quality(quality):
-    """preview: 워크벤치(빠름, 연기·물 안 보임) / smoke: EEVEE 저샘플(빠르고 볼륨 보임) / final: 고화질. 엔진 이름을 돌려준다."""
+    """preview: 워크벤치(빠름, 연기·물 안 보임) / smoke: EEVEE 저샘플(빠르고 볼륨 보임) / final: 고화질. 엔진 이름을 돌려준다.
+    final 은 set_render 로 샘플을 정했으면 그 값을 쓴다. 바꾼 값은 render_state/restore_render_state 로 되돌린다."""
     sc = scene()
     if quality == "preview":
         engine = set_engine(["BLENDER_WORKBENCH"])
@@ -979,15 +1059,17 @@ def apply_render_quality(quality):
         sh.show_object_outline = not any(o.particle_systems for o in bpy.data.objects if o.get(FX_TAG) == "particles")
         return engine
     fast = quality == "smoke"
+    user_samples = not fast and bool(sc.get(USER_SAMPLES_TAG))
     engine = set_engine(["BLENDER_EEVEE", "BLENDER_EEVEE_NEXT", "CYCLES", "BLENDER_WORKBENCH"])
     if hasattr(sc, "eevee"):
-        sc.eevee.taa_render_samples = 16 if fast else 32
+        if not user_samples:
+            sc.eevee.taa_render_samples = 16 if fast else 32
         for attr, val in (("volumetric_tile_size", "8" if fast else "4"), ("volumetric_samples", 32 if fast else 64)):
             try:
                 setattr(sc.eevee, attr, val)
             except Exception:
                 pass
-    if engine == "CYCLES" and hasattr(sc, "cycles"):
+    if engine == "CYCLES" and hasattr(sc, "cycles") and not user_samples:
         sc.cycles.samples = 16 if fast else 64
     return engine
 

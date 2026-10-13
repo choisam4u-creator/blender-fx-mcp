@@ -1,6 +1,7 @@
 # MCP 프롬프트(first_demo·undo_last) 시험. 클라이언트의 `/` 메뉴에 뜨고, 문장이 실제 도구 이름만 쓰는지 본다. 블렌더 없이 돈다.
 import asyncio
 import re
+from pathlib import Path
 
 import pytest
 
@@ -107,3 +108,34 @@ def test_my_model_wrong_argument(monkeypatch, lang, bad, shown):
     text = _text("my_model", {"path": "a.glb", **bad})
     assert text.startswith("/my_model") or text.startswith("Wrong /my_model")
     assert shown in text and "import_model" not in text
+
+
+# 문서가 사용자·AI 에게 부르라고 적은 이름. 도구·인자가 아닌 것(결과 칸·스냅샷 이름·시험 이름·프롬프트)은 이유와 함께 여기에
+DOC_NAMES_OK = {
+    "before_restore": "restore 가 자동으로 남기는 스냅샷 이름",
+    "volume_kept": "destroy 결과 칸", "moved_ratio": "결과 칸", "cache_files": "결과 칸",
+    "first_demo": "프롬프트(/ 메뉴)",
+    "test_explode_building": "recipes.md 가 가리키는 bpy 시험", "test_water_direction_and_viscosity": "위와 같음",
+}
+
+
+@pytest.mark.parametrize("doc", ["README.md", "docs/troubleshooting.md", "docs/recipes.md", "docs/demo-script.md"])
+def test_docs_name_only_real_tools_and_arguments(doc):
+    """문서의 `코드` 안 snake_case 이름과 `이름(…)` 꼴 호출은 실제 도구·인자여야 한다.
+    (README 가 destroy 에 없는 인자 glue_neighbors·glue_max 로 줄이라고 하던 것을 이 시험이 찾음)"""
+    from test_recipe_next_steps import _tools_and_args
+    tools, args = _tools_and_args()
+    text = (Path(__file__).parent.parent / doc).read_text(encoding="utf-8")
+    bad = []
+    for code in re.findall(r"`([^`\n]+)`", text):
+        names = re.findall(r"\b([a-z][a-z0-9]*(?:_[a-z0-9]+)+)\s*\(", code)
+        if re.fullmatch(r"[a-z][a-z0-9]*(?:_[a-z0-9]+)+", code.strip()):
+            names.append(code.strip())
+        bad += [n for n in names if n not in tools | args | set(DOC_NAMES_OK)]
+    assert not bad, f"{doc} 에 없는 도구·인자 이름: {sorted(set(bad))}"
+
+
+def test_doc_name_exceptions_are_still_used():
+    docs = "".join((Path(__file__).parent.parent / d).read_text(encoding="utf-8")
+                   for d in ("README.md", "docs/troubleshooting.md", "docs/recipes.md"))
+    assert all(f"`{n}`" in docs for n in DOC_NAMES_OK), "이제 문서에 없는 예외는 지운다"

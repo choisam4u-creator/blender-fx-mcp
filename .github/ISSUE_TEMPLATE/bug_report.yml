@@ -13,7 +13,7 @@ body:
     attributes:
       label: blender-fx-doctor --issue 출력 / doctor --issue output
       description: |
-        `uv run blender-fx-doctor --issue` 결과를 그대로 붙여 주세요. 표로 보이고, 집 폴더(사용자 이름)는 `~` 로 가려집니다. uvx 로 설치했다면 `uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-doctor --issue`.
+        `uv run blender-fx-doctor --issue` 결과를 그대로 붙여 주세요. 표로 보이고, 집 폴더(사용자 이름)는 `~` 로 가려집니다. uvx 로 설치했다면 `uvx --from blender-fx-mcp blender-fx-doctor --issue`.
         Paste the output of `uv run blender-fx-doctor --issue` as is. It shows as a table, with your home folder masked as `~`.
         `--json` 출력은 아래 선택 칸에 / The `--json` output goes in the optional field below.
     validations:

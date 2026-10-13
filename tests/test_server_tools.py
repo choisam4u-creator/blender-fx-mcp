@@ -8,6 +8,7 @@ import pytest
 from blender_fx_mcp import server
 from blender_fx_mcp.bridge import BlenderError
 from mcp.server.mcpserver import Image
+from conftest import tool_text
 
 HANGUL = re.compile(r"[가-힣]")
 
@@ -123,7 +124,7 @@ def _without_paths(text, *dirs):
 
 
 def _text(out):
-    return out[0] if isinstance(out, list) else out
+    return tool_text(out)
 
 
 @pytest.mark.parametrize("name", sorted(CALLS))
@@ -237,7 +238,7 @@ def test_list_snapshots_lists_files(monkeypatch, tmp_path):
     monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path))
     monkeypatch.setenv("BLENDER_FX_LANG", "en")
     (server.snapshot_dir() / "a.blend").write_bytes(b"x" * 2_000_000)
-    text = server.list_snapshots()
+    text = tool_text(server.list_snapshots())
     assert text.startswith("Snapshots:\n- a (2.0MB, ")
 
 
@@ -276,9 +277,10 @@ def test_ping_blender(monkeypatch, lang, ok, bad):
 def test_doctor_tool_returns_report(monkeypatch):
     from blender_fx_mcp import doctor
 
-    monkeypatch.setattr(doctor, "run_checks", lambda clients=True: [("python", True, "3.11")])
-    monkeypatch.setattr(doctor, "format_report", lambda rows: f"report:{rows[0][0]}")
-    assert server.doctor() == "report:python"
+    row = dict(id="python", name="python", ok=True, detail="3.11", fix="")
+    monkeypatch.setattr(doctor, "run_checks", lambda clients=True: [row])
+    monkeypatch.setattr(doctor, "format_report", lambda rows: f"report:{rows[0]['id']}")
+    assert tool_text(server.doctor()) == "report:python"
 
 
 @pytest.mark.parametrize("lang", ["ko", "en"])
@@ -291,7 +293,7 @@ def test_doctor_tool_does_not_suggest_registering(monkeypatch, tmp_path, lang):
     monkeypatch.setattr(doctor, "client_configs", lambda: [])  # 어느 설정에도 등록이 안 보임
     monkeypatch.setattr(server.bridge, "ping", lambda: None)
     monkeypatch.setattr(server.bridge, "blender_version", lambda: "5.2.0 LTS")
-    report = server.doctor()
+    report = tool_text(server.doctor())
     assert "claude mcp add" not in report
     assert ("MCP 클라이언트 등록" if lang == "ko" else "MCP client registration") not in report
     # 터미널의 blender-fx-doctor 에는 그대로 있다
@@ -329,7 +331,80 @@ def test_restore_without_snapshots_says_save_first(monkeypatch, tmp_path):
 
 
 def test_restore_remote_blender_skips_local_check(fake, monkeypatch, tmp_path):
-    """다른 컴퓨터의 블렌더면 스냅샷이 그쪽 디스크에 있으니 이 컴퓨터에서 막지 않는다."""
+    """다른 컴퓨터의 블렌더면 스냅샷이 그쪽 디스크에 있으니 이 컴퓨터에서 막지 않고, 블렌더에 있는지 물은 뒤 되돌린다."""
     monkeypatch.setenv("BLENDER_FX_HOST", "studio-mac.local")
+    asked = []
+    monkeypatch.setattr(server.bridge, "run_python", lambda code, timeout=None: asked.append(code) or "True\n")
     server.restore("only_on_the_other_machine")
     assert [r for r, _ in fake] == ["snapshot", "restore"]
+    assert "only_on_the_other_machine.blend" in asked[0] and "os.path.exists" in asked[0]
+
+
+@pytest.mark.parametrize("answer", ["False\n", ""])
+def test_restore_remote_missing_name_keeps_before_restore(fake, monkeypatch, answer):
+    """원격 블렌더에도 이름이 틀리면 자동 저장(before_restore 덮어쓰기) 전에 멈춘다."""
+    monkeypatch.setenv("BLENDER_FX_HOST", "studio-mac.local")
+    monkeypatch.setenv("BLENDER_FX_LANG", "en")
+    monkeypatch.setattr(server.bridge, "run_python", lambda code, timeout=None: answer)
+    text = server.restore("typo_name")
+    assert fake == [] and text.startswith("Failed: ") and "no snapshot 'typo_name'" in text and "untouched" in text
+
+
+def test_restore_remote_query_failure_is_reported(fake, monkeypatch):
+    monkeypatch.setenv("BLENDER_FX_HOST", "studio-mac.local")
+
+    def down(code, timeout=None):
+        raise BlenderError("down")
+
+    monkeypatch.setattr(server.bridge, "run_python", down)
+    assert server.restore("x").endswith("down") and fake == []
+
+
+def test_restore_before_restore_swaps_instead_of_losing_it(fake, monkeypatch, tmp_path):
+    """'되돌리기를 되돌리기': before_restore 로 되돌릴 때 지금 장면 저장이 그 파일을 덮어쓰면 기록을 잃는다.
+    원본을 .swap 으로 옮겨 그것을 열고, 지금 장면이 새 before_restore 가 된다(두 번 하면 처음으로 돌아옴)."""
+    monkeypatch.setenv("BLENDER_FX_LANG", "en")
+    snaps = tmp_path / "snapshots"
+    (snaps / "before_restore.blend").write_bytes(b"S0")
+    text = server.restore("before_restore")
+    (r1, p1), (r2, p2) = fake
+    assert (r1, r2) == ("snapshot", "restore")
+    assert p1["path"] == str(snaps / "before_restore.blend")  # 지금 장면(S1)을 저장
+    assert p2["path"] == str(snaps / ".swap" / "before_restore.blend")  # 연 것은 옮겨 둔 원본(S0)
+    assert (snaps / ".swap" / "before_restore.blend").read_bytes() == b"S0"
+    assert text.endswith("The previous state was saved as before_restore.")
+
+
+def test_restore_before_restore_refused_for_remote_blender(fake, monkeypatch, tmp_path):
+    monkeypatch.setenv("BLENDER_FX_HOST", "studio-mac.local")
+    monkeypatch.setenv("BLENDER_FX_LANG", "en")
+    text = server.restore("before_restore")
+    assert fake == [] and text.startswith("Failed: ") and "remote Blender" in text
+
+
+@pytest.mark.parametrize("name", ["before_restore", "before restore"])
+def test_snapshot_reserves_before_restore(fake, monkeypatch, name):
+    monkeypatch.setenv("BLENDER_FX_LANG", "en")
+    text = server.snapshot(name)
+    assert fake == [] and text.startswith("Failed: ") and "another name" in text
+
+
+@pytest.mark.parametrize("name, want", [("/tmp/x", "tmp_x"), ("../../escape", "escape"), ("a:b?c", "a_b_c"), ("", None)])
+def test_save_blend_and_video_names_stay_in_output_folder(fake, tmp_path, name, want):
+    """name 이 파일 이름에 그대로 들어가 `/tmp/x`·`../x` 가 출력 폴더 밖으로 나가거나 Windows 에서 깨지던 문제."""
+    from pathlib import Path
+
+    server.save_blend(name)
+    server.render_video(name=name)
+    blend = Path(next(p for r, p in fake if r == "save_blend")["path"])
+    video = Path(next(p for r, p in fake if r == "render_video")["out_path"])
+    for path, default in ((blend, "fx_scene.blend"), (video, "fx.mp4")):
+        assert path.resolve().is_relative_to(tmp_path.resolve()), path
+        assert path.name == (f"{want}{path.suffix}" if want else default)
+
+
+def test_snapshot_says_when_it_replaces_one(fake, monkeypatch, tmp_path):
+    monkeypatch.setenv("BLENDER_FX_LANG", "en")
+    assert "replaced" not in server.snapshot("fresh_name")
+    _snapshots(tmp_path, "a_b")
+    assert "replaced the earlier snapshot 'a_b'" in server.snapshot("a b")  # 이름 정리 뒤 같아짐

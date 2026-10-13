@@ -4,7 +4,7 @@ AI가 보여 준 오류 문장을 아래에서 찾으세요(`Ctrl+F` 로 문장 
 Search this page for the error sentence the AI showed you. Running `blender-fx-doctor` first usually names the cause.
 
 ```bash
-uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-doctor
+uvx --from blender-fx-mcp blender-fx-doctor
 ```
 
 여기 없는 문제는 [버그 신고](https://github.com/choisam4u-creator/blender-fx-mcp/issues/new?template=bug_report.yml)에 doctor 출력과 함께 올려 주세요.
@@ -16,6 +16,26 @@ For an issue, paste `blender-fx-doctor --issue` (version, OS, Blender, clients a
 
 ---
 
+## uv not found
+
+**uv 를 찾을 수 없음**
+
+> zsh: command not found: uvx
+> 'uvx' is not recognized as an internal or external command
+
+원인: uv(파이썬 실행기)가 없거나, 설치한 뒤 터미널을 새로 열지 않았습니다. doctor 도 uv 로 돌기 때문에 이 단계는 doctor 없이 합니다.
+
+1. 설치합니다. macOS `brew install uv`(Homebrew 가 없으면 아래 Linux 줄), Linux·macOS `curl -LsSf https://astral.sh/uv/install.sh | sh`,
+   Windows PowerShell `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`.
+2. 터미널을 **새로** 열고 `uv --version` 이 판 번호를 내는지 봅니다. 그다음 `uvx --from blender-fx-mcp blender-fx-doctor`.
+3. 터미널에서는 되는데 클로드 데스크톱·커서에서만 도구가 안 보이면 [클라이언트에 도구가 안 보임](#tools-not-visible-in-the-client)의 4번(전체 경로).
+
+Cause: uv (the Python runner) is not installed, or the terminal was opened before installing it. doctor itself runs through uv, so do this step without it.
+1. Install: macOS `brew install uv` (without Homebrew, use the Linux line), Linux and macOS `curl -LsSf https://astral.sh/uv/install.sh | sh`,
+   Windows PowerShell `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`.
+2. Open a **new** terminal and check that `uv --version` prints a version, then run `uvx --from blender-fx-mcp blender-fx-doctor`.
+3. If it works in the terminal but the tools do not show up in Claude Desktop or Cursor, see step 4 of [Tools not visible in the client](#tools-not-visible-in-the-client) (full path).
+
 ## Tools not visible in the client
 
 **클라이언트에 도구가 안 보임**
@@ -24,7 +44,7 @@ For an issue, paste `blender-fx-doctor --issue` (version, OS, Blender, clients a
 doctor 의 "MCP 클라이언트 등록" 줄이 `-` 이면 아래 1번부터, 클라이언트 이름이 보이면 2번부터 합니다.
 
 1. 등록을 확인합니다. Claude Code 는 `claude mcp list` 에 `blender-fx` 가 있어야 합니다. 없으면
-   `claude mcp add -s user blender-fx -- uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-mcp`
+   `claude mcp add -s user blender-fx -- uvx blender-fx-mcp`
 2. 앱을 **완전히** 껐다 켭니다(창 닫기가 아니라 종료: macOS 는 `Cmd+Q`, Windows 는 트레이 아이콘에서 종료). Claude Code 는 새 세션을 엽니다.
 3. 설정 파일을 직접 고쳤다면 위치와 JSON 문법을 확인합니다(쉼표 하나로 파일 전체가 무시됩니다).
 
@@ -78,13 +98,13 @@ Edit → Preferences → Add-ons. If you changed `BLENDER_FX_HOST`/`BLENDER_FX_P
 - 일부러 무거운 장면이면: MCP 설정의 환경변수 `BLENDER_FX_TIMEOUT`(초)을 크게(예: `3600`) 주고 MCP 서버를 다시 시작합니다.
   굽기·렌더 도구는 최소 1800초(`render_video` 3600초)를 기다리고, 이 값이 더 크면 따라 늘어납니다.
 - 블렌더 창이 응답 없음이면 블렌더를 다시 켜고 `restore` 로 직전 스냅샷을 불러옵니다.
-- 굽기·렌더 도구는 5초마다 MCP 진행 알림("블렌더에서 작업 중 — 45초")을 보냅니다. 이를 보여 주는 클라이언트라면 숫자가 늘고 있는 동안은 멈춘 것이 아닙니다.
+- 굽기·렌더 도구는 5초마다 MCP 진행 알림("물 굽는 중 — 45초 지남(블렌더에서 작업 중)")을 보냅니다. 이를 보여 주는 클라이언트라면 숫자가 늘고 있는 동안은 멈춘 것이 아닙니다.
 
 Cause: a bake or render took longer than the wait, or Blender froze. Lower `pieces`, `frames` or `resolution`;
 for an intentionally heavy scene set `BLENDER_FX_TIMEOUT` (seconds, e.g. `3600`) in your MCP config and restart the server.
 Bake and render tools wait at least 1800 s (`render_video` 3600 s) and grow with this value.
 If Blender is frozen, restart it and `restore` the last snapshot. Bake and render tools send an MCP progress notification every 5 s
-("working in Blender — 45s"); in clients that show it, a growing number means the tool is still working.
+("Baking the liquid — 45s so far (Blender is working)"); in clients that show it, a growing number means the tool is still working.
 
 ## Empty response, Blender error
 
@@ -97,6 +117,29 @@ If Blender is frozen, restart it and `restore` the last snapshot. Bake and rende
 하나만 켜고, 블렌더에서 **Connect to MCP server** 를 다시 누릅니다.
 The receiver dropped the request. Another MCP server sharing the same receiver (e.g. blender-mcp itself) can cut it off;
 keep only one running and click **Connect to MCP server** again.
+
+> 명령 도중 블렌더와의 연결이 끊겼습니다(ConnectionResetError).
+> The connection to Blender dropped during the command (ConnectionResetError).
+
+> 블렌더 응답이 중간에 끊겼습니다(1234바이트 받음).
+> Blender's response was cut off (1234 bytes received).
+
+연결은 됐는데 블렌더가 명령을 처리하다 멈추거나 꺼진 경우입니다(무거운 굽기 중 메모리 부족이 흔함). 명령이 일부 실행됐을 수 있습니다.
+블렌더 창을 확인하고, 꺼졌으면 다시 켜서 **Connect to MCP server** 를 누른 뒤 `restore` 로 직전 스냅샷을 불러옵니다. 같은 명령이면 `resolution`·`pieces` 를 줄여 다시 시킵니다.
+Blender froze or quit while handling the command (often out of memory during a heavy bake), and the command may have partly run.
+Check the Blender window; if it closed, reopen it, click **Connect to MCP server** and `restore` the last snapshot. Retry with a lower `resolution` or `pieces`.
+
+> 블렌더 수신기가 알 수 없는 응답을 보냈습니다
+> The Blender receiver sent an unexpected response
+
+9876 포트에서 다른 프로그램이 답하고 있거나 수신기가 blender-mcp 애드온이 아닙니다. 블렌더 쪽 애드온과 포트를 확인합니다.
+Another program answers on the port, or the receiver is not the blender-mcp add-on. Check the add-on and the port.
+
+> 환경변수 BLENDER_FX_TIMEOUT='0' 은(는) 쓸 수 없습니다
+> The environment variable BLENDER_FX_TIMEOUT='0' is not valid (a number, at least 1).
+
+`BLENDER_FX_PORT`(1~65535)·`BLENDER_FX_TIMEOUT`(1 이상, 초)은 숫자여야 합니다. MCP 설정에서 고치거나 지우고 클라이언트를 다시 시작합니다.
+`BLENDER_FX_PORT` (1-65535) and `BLENDER_FX_TIMEOUT` (1 or more, seconds) must be numbers. Fix or remove them in your MCP config and restart the client.
 
 > 블렌더 오류: …
 > Blender error: …
@@ -144,9 +187,9 @@ Lower `resolution` or `frames` and try again; free disk space with `clear_caches
 > Only 0.4GB of disk space is left, so the bake was not started (water and smoke caches take several GB).
 
 굽기 전에 서버가 멈춘 것이라 장면은 바뀌지 않았습니다. AI 에게 `clear_caches` 를 시켜 구운 캐시를 지우고(오래된 스냅샷은 `clear_snapshots`), 그래도 모자라면 MCP 설정의 `BLENDER_FX_OUT` 을
-여유 있는 디스크의 폴더로 바꾼 뒤 다시 시킵니다. `blender-fx-doctor` 의 "출력 폴더 여유 공간" 줄이 남은 공간과 이 폴더가 쓰는 공간을 보여 줍니다.
+여유 있는 디스크의 폴더로 바꾼 뒤 다시 시킵니다. `blender-fx-doctor` 의 "출력 폴더 여유 공간" 줄이 남은 공간과 이 폴더가 쓰는 공간을, 5GB 아래면 큰 것(구운 캐시·스냅샷·렌더 결과)과 크기, 그것을 지울 도구를 큰 것부터 보여 줍니다.
 The server stopped before baking, so the scene is unchanged. Ask the AI to run `clear_caches` (and `clear_snapshots` for old snapshots); if that is not enough, point `BLENDER_FX_OUT` to a folder on a
-disk with more space, then ask again. The "output folder free space" line of `blender-fx-doctor` shows free space and what this folder uses.
+disk with more space, then ask again. The "output folder free space" line of `blender-fx-doctor` shows free space and what this folder uses; below 5GB it also lists the largest parts (baked caches, snapshots, render results) with their size and the tool that clears each, largest first.
 
 ## Black preview, effect not visible
 
@@ -199,3 +242,17 @@ Paths are on the computer running Blender; give an absolute path.
 
 이 블렌더 빌드에서 FFmpeg 출력이 안 될 수 있습니다. `render_preview` 로 프레임을 받거나 공식 블렌더 빌드를 씁니다.
 FFmpeg output may be missing from this Blender build; use `render_preview` for frames, or the official Blender build.
+
+## Still on the old version
+
+**새 판이 나왔는데 예전 판이 돎**
+
+`uvx blender-fx-mcp` 는 처음 받은 판을 캐시에 두고 계속 씁니다. doctor 는 PyPI 에 새 판이 있으면 "새 판" 줄로 알려 줍니다(2초 안에 답이 없거나 `BLENDER_FX_NO_UPDATE_CHECK=1` 이면 그 줄 없이 건너뜀). doctor 의 `blender-fx-mcp` 줄에 보이는 판이 [PyPI](https://pypi.org/project/blender-fx-mcp/) 의 최신 판보다 낮으면
+아래 한 줄로 캐시를 비운 뒤(다음 실행 때 최신 판을 받음) 클라이언트 앱을 완전히 껐다 켭니다. 아직 출시되지 않은 `main` 의 변경을 시험하려면 `uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-mcp` 로 등록합니다.
+
+`uvx blender-fx-mcp` keeps the version it first downloaded. doctor shows a "newer release" line when PyPI has one (skipped without a line if PyPI does not answer within 2 s or `BLENDER_FX_NO_UPDATE_CHECK=1`). If the version on doctor's `blender-fx-mcp` line is older than the latest on PyPI,
+clear the cache with the line below (the next run downloads the latest) and fully restart the client app. To try unreleased changes on `main`, register `uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-mcp` instead.
+
+```bash
+uv cache clean blender-fx-mcp
+```

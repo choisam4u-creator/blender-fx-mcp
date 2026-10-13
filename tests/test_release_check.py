@@ -3,6 +3,7 @@ import importlib.util
 import re
 import shutil
 import tarfile
+import tomllib
 import zipfile
 from pathlib import Path
 
@@ -41,14 +42,16 @@ def _fails(results):
 
 
 def test_current_repo_state():
-    """준비 중(맨 위 절이 '미출시', 버전은 아직 이전 판)이면 정확히 '판 다름'과 '미출시' 두 줄만 실패하고,
-    출시 순서를 마친 뒤(날짜가 붙음)에는 모두 통과해야 한다."""
+    """준비 중(맨 위 절이 '미출시', 버전은 아직 이전 판)이면 정확히 '판 다름'과 '미출시' 두 줄만,
+    판을 올리고 날짜만 기다리면 '미출시' 한 줄만 실패하고, 출시 순서를 마친 뒤(날짜가 붙음)에는 모두 통과해야 한다."""
     fails = _fails(rc.check_files(ROOT))
     top_version, when = rc.HEADING.search((ROOT / "CHANGELOG.md").read_text(encoding="utf-8")).groups()
     if rc.DATE.fullmatch(when.strip()):
         assert fails == []
         return
-    assert top_version != rc.project_version(ROOT), "미출시 절인데 버전을 이미 올렸으면 날짜도 붙인다"
+    if top_version == rc.project_version(ROOT):  # 판은 올렸고 출시 날짜만 기다림: '미출시' 한 줄만
+        assert len(fails) == 1 and "미출시" in fails[0] and "YYYY-MM-DD" in fails[0], fails
+        return
     assert len(fails) == 2, fails
     assert "CHANGELOG.md 맨 위 절 판" in fails[0] and "pyproject 판" in fails[0]
     assert "미출시" in fails[1] and "YYYY-MM-DD" in fails[1]
@@ -92,7 +95,6 @@ def test_missing_mcp_name_and_changelog_heading(repo):
 def test_project_urls_read_without_tomllib():
     urls = rc.project_urls(ROOT)
     assert set(urls) == {"Homepage", "Documentation", "Issues", "Changelog", "Security"}
-    tomllib = pytest.importorskip("tomllib")
     assert urls == tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]["urls"]
 
 
@@ -242,7 +244,6 @@ def test_metadata_versions_cover_current_build():
 # ---------- scripts/license_check.py ----------
 
 def _license_check():
-    pytest.importorskip("tomllib")  # 3.11+
     import importlib.util
 
     spec = importlib.util.spec_from_file_location("license_check", ROOT / "scripts" / "license_check.py")
@@ -257,7 +258,7 @@ def test_license_check_passes_on_this_lock():
     assert results and all(ok for ok, _ in results), [line for ok, line in results if not ok]
     packages = lc.runtime_packages()
     # extra(`mcp[cli]` → typer·rich)와 플랫폼 조건 패키지까지 따라가는지
-    assert {"mcp", "typer", "rich", "pywin32", "exceptiongroup"} <= set(packages)
+    assert {"mcp", "typer", "rich", "pywin32"} <= set(packages)
     assert "pytest" not in packages and "blender-fx-mcp" not in packages, "개발 의존성·자기 자신은 빼야 함"
 
 
@@ -323,3 +324,118 @@ def test_dist_requires_license_files(repo, tmp_path):
     fails = [line for ok, line in rc.check_dist(dist, repo) if not ok]
     assert fails == ["휠 x-1.0-py3-none-any.whl 에 LICENSE 포함 → pyproject 의 license-files·sdist 포함 목록 확인",
                      "sdist x-1.0.tar.gz 에 docs/third-party-licenses.md 포함 → pyproject 의 license-files·sdist 포함 목록 확인"]
+
+
+def test_tag_matches_version():
+    """release.yml 과 Mac 이 같은 규칙: 태그는 'v' + pyproject 판."""
+    assert _fails(rc.check_tag("v9.9.9", "9.9.9")) == []
+    missing_v = _fails(rc.check_tag("9.9.9", "9.9.9"))
+    assert len(missing_v) == 1 and "v 가 빠짐" in missing_v[0] and "v9.9.9" in missing_v[0]
+    other = _fails(rc.check_tag("v9.9.8", "9.9.9"))
+    assert len(other) == 1 and "pyproject 판(9.9.9)과 다름" in other[0] and "git push --delete origin v9.9.8" in other[0]
+
+
+def test_main_with_tag(repo, capsys):
+    _release(repo)
+    assert rc.main(["--tag", "v9.9.9"], root=repo) == 0
+    assert "OK   태그 v9.9.9 = pyproject 판 9.9.9" in capsys.readouterr().out
+    assert rc.main(["--tag", "v1.0.0"], root=repo) == 1
+    assert "고칠 곳 1개" in capsys.readouterr().out
+    assert rc.main(["--tag"], root=repo) == 1
+    assert "--tag 뒤에 밀 태그" in capsys.readouterr().out
+
+
+# ---------- scripts/release_notes.py ----------
+
+def _release_notes():
+    spec = importlib.util.spec_from_file_location("release_notes", ROOT / "scripts" / "release_notes.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_release_notes_for_released_version(capsys):
+    rn = _release_notes()
+    assert rn.main(["v0.7.0"]) == 0
+    out = capsys.readouterr().out
+    assert out.startswith("**English summary**")
+    assert out.index("*Fixes*") < out.index("**고침**"), "영어 요약이 한국어 상세보다 먼저"
+    assert "버전 네 곳(`pyproject.toml`·" not in out, "절 맨 앞 관리자용 메모가 들어감"
+    assert "## [0.6.3]" not in out and "0.6.3 —" not in out, "다음 절까지 들어감"
+    assert out.rstrip().endswith("`uvx blender-fx-mcp@0.7.0`") and "pypi.org/project/blender-fx-mcp/0.7.0/" in out
+    assert rn.main(["0.7.0"]) == 0 and capsys.readouterr().out == out  # v 없이도 같다
+
+
+@pytest.mark.parametrize("arg, code, says", [
+    ("v9.9.9", 1, "no 9.9.9 section"), ("v0.8.0", 1, "use --draft"), ("latest", 2, "usage"),
+])
+def test_release_notes_refuses_missing_or_unreleased(capsys, arg, code, says):
+    assert _release_notes().main([arg]) == code
+    captured = capsys.readouterr()
+    assert captured.out == "" and says in captured.err
+
+
+def test_release_procedure_uses_release_notes_script():
+    text = (ROOT / "docs" / "maintenance.md").read_text(encoding="utf-8")
+    assert text.count("scripts/release_notes.py vX.Y.Z") >= 2, "출시 절차 한/영 8단계가 이 명령을 써야 함"
+
+
+def test_release_notes_draft_previews_unreleased(capsys):
+    rn = _release_notes()
+    assert rn.main(["--draft", "v0.8.0"]) == 0
+    out = capsys.readouterr().out
+    assert out.startswith("> 초안 / Draft") and "**English summary**" in out
+    assert "pypi.org" not in out and "uvx blender-fx-mcp@" not in out, "아직 PyPI 에 없는 판에 설치 줄"
+    assert "## [0.7.0]" not in out
+    assert rn.main(["v0.7.0", "--draft"]) == 0  # 출시된 판은 --draft 여도 평소와 같다
+    assert capsys.readouterr().out.rstrip().endswith("`uvx blender-fx-mcp@0.7.0`")
+
+
+# ---------- scripts/mac_report.py ----------
+
+def _mac_report():
+    spec = importlib.util.spec_from_file_location("mac_report", ROOT / "scripts" / "mac_report.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_mac_report_reads_the_commands_in_cloud_notes():
+    mr = _mac_report()
+    cmds = mr.mac_commands((ROOT / "docs" / "test-reports" / "CLOUD-NOTES.md").read_text(encoding="utf-8"))
+    assert 1 <= len(cmds) <= 5 and all(cmd and not cmd.startswith("#") for cmd, _ in cmds), cmds
+    assert all(note for _, note in cmds), "명령마다 '확인할 것' 주석"
+
+
+def test_mac_report_writes_latest_md(tmp_path, monkeypatch, capsys):
+    """가짜 명령 셋(통과·실패·주석)으로 돌려 latest.md 모양·종료 코드·집 폴더 가리기를 본다."""
+    import sys
+    mr = _mac_report()
+    home = str(tmp_path / "home" / "sam")
+    monkeypatch.setattr(mr, "mask_home", lambda text: text.replace(home, "~"))
+    monkeypatch.setattr(mr, "blender_version", lambda: "Blender 5.2.0 LTS")
+    py = sys.executable
+    notes = tmp_path / "NOTES.md"
+    notes.write_text(f"""# 기록
+
+## 맥에서 돌릴 명령 (블렌더 필요)
+
+```sh
+"{py}" -c "print('3 passed in 1.0s')"     # 통과해야 함
+"{py}" -c "import sys; print('{home}/x'); sys.exit(1)"   # 실패 예시
+```
+""", encoding="utf-8")
+    out = tmp_path / "latest.md"
+    assert mr.main(["--notes", str(notes), "--out", str(out), "--timeout", "60"]) == 1
+    text = out.read_text(encoding="utf-8")
+    assert text.startswith("# Mac 시험 결과 (최신)") and "**FAIL** — 1개 실패" in text
+    assert "| PASS (" in text and "3 passed in 1.0s" in text
+    assert "| 통과해야 함 |" in text and "## 실패 핵심" in text and "~/x" in text and home not in text
+    assert mr.main(["--notes", str(notes), "--dry-run"]) == 0
+    assert capsys.readouterr().out.count("print(") >= 2
+
+
+def test_mac_report_without_command_block(tmp_path):
+    notes = tmp_path / "n.md"
+    notes.write_text("# 비어 있음\n", encoding="utf-8")
+    assert _mac_report().main(["--notes", str(notes), "--dry-run"]) == 2
