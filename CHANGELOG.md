@@ -50,6 +50,7 @@
 - README (both languages) has a three-line "Getting help": `doctor --issue` → the matching form → reply targets.
 - `docs/maintenance.md` has an eight-step release procedure (bump, check, tag, build, approve, PyPI, registry, release notes), tested against `release.yml`.
 - `docs/registry.md` and `docs/maintenance.md` say to run `release_check.py --tag` before pushing a tag.
+- CONTRIBUTING (both languages) has "Error message rules": what was wrong, the next step, real tool names, a Korean/English pair, and the tests that enforce them.
 
 **동작 변화**
 - ⚠️ Python 3.11 이상이 필요합니다. Python 3.10 은 2026-10 에 지원이 끝나(EOL) 약속대로 뺐습니다(0.7.0 이 3.10 을 지원한 마지막 판).

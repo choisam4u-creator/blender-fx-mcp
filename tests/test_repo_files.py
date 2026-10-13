@@ -1220,3 +1220,25 @@ def test_readme_getting_help_matches_forms_and_support():
         assert "SECURITY.md" in block
         assert (f"{bug}일" in block and f"{question}일" in block) or (f"{bug} days" in block and f"{question} days" in block)
     assert '"--issue"' in (ROOT / "src" / "blender_fx_mcp" / "doctor.py").read_text(encoding="utf-8")
+
+
+ERROR_RULES_KO = ("## 오류 문장 규칙", "### Error message rules")
+ERROR_RULES_EN = ("### Error message rules", "\n## 이슈 올리기 전에")
+
+
+@pytest.mark.parametrize("bounds", [ERROR_RULES_KO, ERROR_RULES_EN])
+def test_error_message_rules_name_real_tests(bounds):
+    """CONTRIBUTING 의 '오류 문장 규칙' 절: 규칙 네 가지, 그 규칙을 지키는 시험 파일이 실제로 있고 확인 명령이 표의 파일을 모두 돌린다."""
+    sec = _contributing_section(*bounds)
+    assert len(re.findall(r"^[1-4]\. \*\*", sec, re.M)) == 4, "규칙 네 가지(무엇이 틀렸나·다음 할 일·실제 이름·한/영 짝)"
+    listed = re.findall(r"^\| `(tests/\w+\.py)` \|", sec, re.M)
+    assert len(listed) >= 5
+    for f in listed:
+        assert (ROOT / f).is_file(), f
+    command = re.search(r"`(uv run pytest -q [^`]+)`", sec).group(1)
+    assert re.findall(r"tests/\w+\.py", command) == listed, "확인 명령과 표의 시험 파일이 다름"
+    for name in ("test_recipe_next_steps.py", "test_server_next_steps.py"):
+        assert name in sec
+    if bounds is ERROR_RULES_EN:
+        assert not HANGUL_RE.search(sec), "영어 절에 한글이 섞임"
+        assert "(#error-message-rules)" in (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8").split("\n## ")[0]
