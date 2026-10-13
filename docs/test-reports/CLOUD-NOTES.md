@@ -5,10 +5,28 @@
 한 번에 돌려 `latest.md` 를 새로 쓰려면 `uv run python scripts/mac_report.py`(결과 확인 뒤 커밋). 클라우드 회차는 그 FAIL 부터 고친다.
 
 ```sh
-uv sync && uv run pytest -q                        # 블렌더 앱으로 전체 통과(새: 렌더 크기 검사·doctor 구조화·instructions 예산·오류 문장 도구 이름)
-uv run python examples/first_render.py             # Connect 뒤 끝까지. 그다음 Claude 에 "render_preview width=-640" → 블렌더에 가기 전 범위·권장 크기 안내인지
+uv sync && uv run pytest -q                        # 블렌더 앱으로 전체 통과(새: fps·프레임 범위, 서버 오류 다음 할 일, 문서 도구 이름, 빠른 시작 5단계)
+uv run python examples/first_render.py             # Connect 뒤 끝까지. 그다음 Claude 에 "set_render fps=-24" → 블렌더에 가기 전 1~240·권장 24/30/60 안내인지
 uv run blender-fx-doctor --issue                   # 블렌더를 끈 채 Claude 에 "doctor" → 실패 항목(connection)과 고칠 방법을 정확히 집는지
 ```
+
+## 2026-10-13 (16회차)
+
+- 시작 확인: 저장된 지시의 최우선 F1·F3(0.7.0 판·release.yml)는 9회차(10/11)에 끝나 PR #13 으로 병합(`ff7555e`·`4eb778f`), 태그 `v0.7.0` 도 있음. 다시 할 것 없음 → 일반 규칙.
+  main 은 `claude/cloud-work` 보다 앞서 있지 않음. `latest.md`(10/1)의 FAIL 2건은 main 에 고쳐져 있음(재확인). 열린 PR #15 를 갱신.
+- 한 일(백로그 위에서부터, 굽기 시간 어림은 Mac 실측 필요라 건너뜀):
+  1. **fps·프레임 범위 검사** (`8d50d5b`) — fps 1~240(`set_render`·`render_video`·`set_timing`·`set_physics`), 프레임 번호 1 이상(`frame_start`·`frame_end`·`slow_from`·`slow_to`)을 블렌더에 보내기 전에. 권장 24·30·60, 0 의 뜻을 한/영으로.
+  2. **서버 쪽 오류의 다음 할 일** (`bb37b09`) — `tests/test_server_next_steps.py` 가 `BlenderError(t(...))` 18곳+`_missing_snapshot` 을 훑음. 찾아 고친 4곳: 수신기 실패·결과 줄 없음 → 버그일 수 있음 + `doctor --issue` 신고 안내, `samples` 권장 값, `/my_model size` 한국어에 시키는 말.
+  3. **문서의 도구·인자 이름** (`3156f92`) — 프롬프트는 이미 시험 중(재확인). README·troubleshooting·recipes·demo-script 시험 추가 → README 한계 절이 `destroy` 에 없는 인자 `glue_neighbors`·`glue_max` 로 줄이라던 것을 `pieces`·`glue="none"` 으로.
+  4. **CONTRIBUTING 오류 문장 규칙** (`324cb71`) — 한/영 절(규칙 4가지·지키는 시험 6개·한 줄 확인 명령) + 절이 실제 시험을 가리키는지 시험.
+  5. **빠른 시작 단계 수** (`90aaea4`) — 첫 렌더까지 5단계(준비 4 + 첫 명령) 상한 시험, 단계마다 해결법 링크. 하다가 찾음: uv 단계가 "Windows·Linux 명령은 doctor 가 알려 줌" 이었는데 doctor 도 uvx 로 돌아 uv 없이는 못 봄 → OS 별 명령을 직접 + 새 절 `uv not found`.
+  - 덧: CHANGELOG 0.8.0 Docs 요약이 7줄이 돼 6줄로 합침, 범위 안내 없는 이름 시험으로 서버 커버리지 100% 유지 (`8f36187`).
+  - 남은 `[ ]` 1개(Mac 실측)라 새 항목 5개 추가(`da6becf`: set_timing 순서 검사, doctor 항목별 해결법 링크, 문서 이름 시험 확대, dependabot 3개 재검토, 결과에 길이(초)).
+- 돌린 시험: `uv run pytest -q`(3.11) **1191 통과·39 건너뜀**(블렌더 필요), CI 서버 명령 `--cov --cov-fail-under=99` **100%**, **`scripts/bpy_tests.sh`(bpy 5.0.1) → 1224 통과·6 건너뜀(2분 11초)**(유체 `app_only` 5개·실제 캐릭터 파일 1개 — 블렌더 앱·개인 파일 필요), `uvx ruff@0.15.20 check .` 통과, `gen_tool_table.py` 일치.
+  변이 확인: 항목 1·2·3·5 의 고침을 되돌리면 새 시험이 각각 13·9·1·4개 실패.
+- 막힌 것: 없음.
+- 완료 수·추가 수: **완료 5** / **추가 5** (완료 ≥ 추가). 남은 `[ ]` 6개(그중 1개 Mac 실측).
+- Mac에서 확인할 것: 맨 위 명령 3줄(또는 `uv run python scripts/mac_report.py` 한 번).
 
 ## 2026-10-12 (15회차)
 
