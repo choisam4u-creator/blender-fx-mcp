@@ -24,6 +24,9 @@
   (a negative size used to fail inside Blender with an unclear error).
   The same goes for `fps` (1-240, recommended 24/30/60) in `set_render`, `render_video`, `set_timing` and `set_physics`, and for
   `frame_start`/`frame_end`/`slow_from`/`slow_to` (frame numbers start at 1; 0 keeps the scene value).
+  `set_timing(fps=…)` always failed after already changing the scene (a duplicate `fps` key in the result); fixed.
+  `set_timing` and `render_video` stop a reversed pair (`frame_end` before `frame_start`, `slow_to` not after `slow_from`) before anything reaches Blender,
+  with the swapped values to use, and `set_timing` checks the order and the slow-motion target before changing the length or fps.
   A receiver failure (`Blender error: …`) and a missing result line now say it may be a bug and how to report it (`blender-fx-doctor --issue`);
   out-of-range `samples` gets recommended values like the other numbers. A test keeps every server-side error telling the next step in Korean and English.
   The README no longer tells you to lower `glue_neighbors`/`glue_max` (not `destroy` arguments); it says to lower `pieces` or use `glue="none"`.
@@ -60,6 +63,8 @@
   간접 의존성 `exceptiongroup` 이 빠져 제3자 라이선스 표도 39개. 시험의 `importorskip("tomllib")` 는 보통 import 로
 
 **고침**
+- `set_timing(fps=…)` 가 결과에 `fps` 가 겹쳐 늘 실패하던 문제(장면은 이미 바뀐 뒤). 거꾸로 준 쌍(`frame_end` < `frame_start`, `slow_to` ≤ `slow_from`)은
+  서버가 블렌더에 보내기 전에 바꿔 줄 값과 함께 막고, 레시피도 순서·슬로모션 대상 검사를 길이·fps 를 바꾸기 전에 한다(실패했는데 장면이 반쯤 바뀐 채 남던 문제)
 - `snapshot` 이 같은 이름(이름 정리 뒤 같아지는 `a b`·`a_b` 포함)의 이전 스냅샷을 덮어쓰면 그렇다고 알려 준다
 - ruff 에 실제 결함을 잡는 규칙(bugbear `B`, 닫히지 않는 파일 `SIM115`, 쓰지 않는 변수 `RUF059`)을 더하고 걸린 9곳을 고침
 - `destroy(target=B)`·`reset_destroy(target=B)` 가 그 대상과 상관없는 효과(바다·물·연기·불·파티클·바람·깃발)와 다른 건물의 접착까지 지우던 문제.

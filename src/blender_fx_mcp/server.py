@@ -350,6 +350,28 @@ def check_ranges(recipe: str, params: dict) -> None:
         raise BlenderError(msg + (" " + hint if hint else ""))
 
 
+# 함께 주면 순서가 맞아야 하는 인자 쌍(앞, 뒤, 같아도 되는지). 레시피는 앞의 값을 먼저 장면에 넣은 뒤 순서 오류를 내
+# 실패했는데 장면이 반쯤 바뀐 채 남았다. 한쪽만 주면 지금 장면 값과의 비교는 레시피가 바꾸기 전에 한다.
+ORDERS: dict[str, list[tuple[str, str, bool]]] = {
+    "set_timing": [("frame_start", "frame_end", True), ("slow_from", "slow_to", False)],
+    "render_video": [("frame_start", "frame_end", True)],
+}
+
+
+def check_order(recipe: str, params: dict) -> None:
+    """앞뒤가 있는 두 인자를 거꾸로 주면 바꿔 줄 값을 알려 주는 BlenderError 를 낸다."""
+    for first, second, equal_ok in ORDERS.get(recipe, []):
+        a, b = params.get(first), params.get(second)
+        if a is None or b is None or b > a or (equal_ok and b == a):
+            continue
+        rule = t("같거나 커야", "at least") if equal_ok else t("커야", "greater than")
+        raise BlenderError(t(
+            f"{second}({b}) 는 {first}({a}) 보다 {rule} 합니다. 장면은 바꾸지 않았습니다. "
+            f"{first}={b}, {second}={a} 처럼 두 값을 바꿔 다시 시키세요.",
+            f"{second}({b}) must be {rule} {first}({a}). The scene was not changed. "
+            f"Swap the two values ({first}={b}, {second}={a}) and ask again."))
+
+
 # 진행 알림에 보일 사람 말(레시피 파일 이름 대신). 레시피를 새로 만들면 여기에도 더한다(tests/test_server_progress.py 가 확인).
 def recipe_labels() -> dict[str, str]:
     """레시피 이름 → 지금 언어의 사람 말."""
@@ -436,6 +458,7 @@ def run_recipe(recipe: str, params: dict, timeout: float | None = None) -> dict:
     check_finite(params)
     check_choices(recipe, params)
     check_ranges(recipe, params)
+    check_order(recipe, params)
     params.setdefault("_lang", "en" if is_en() else "ko")
     if params.get("cache_dir"):
         _check_bake_space()

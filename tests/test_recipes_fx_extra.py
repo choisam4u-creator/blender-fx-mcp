@@ -77,3 +77,20 @@ def test_particles_ocean_flag(tmp_path):
     assert sparks["count"] == 600 and sparks["frames"] == [3, 9]
     assert flag["pinned"] > 0 and flag["tip_moved_m"] > 0.05, flag
     assert _differ(*render["paths"])
+
+
+def test_set_timing_errors_leave_the_scene_unchanged():
+    """순서가 거꾸로이거나 슬로모션 대상이 없으면 길이·fps 를 바꾸기 전에 멈춘다(반쯤 바뀐 장면을 남기지 않음)."""
+    results = run_steps([
+        ("set_timing", {"frame_start": 1, "frame_end": 48, "fps": 24}),
+        ("set_timing", {"frame_start": 90, "frame_end": 30, "fps": 60}),
+        ("set_timing", {"frame_end": 120, "fps": 30, "slow_from": 40, "slow_to": 20}),
+        ("set_timing", {"frame_end": 120, "fps": 30, "slow_from": 10, "slow_to": 20}),
+        ("set_timing", {}),
+    ], blender=BLENDER)
+    first, reversed_frames, reversed_slow, no_sim, after = results
+    assert first["ok"]
+    assert not reversed_frames["ok"] and "frame_end(30)" in reversed_frames["error"]
+    assert not reversed_slow["ok"] and "slow_to(20)" in reversed_slow["error"]
+    assert not no_sim["ok"]
+    assert after["frame_range"] == [1, 48] and after["fps"] == 24, after

@@ -7,6 +7,28 @@ def main():
     p = PARAMS
     sc = scene()
     changed = {}
+    # 순서·대상 검사는 장면을 바꾸기 전에 한다(실패했는데 길이·fps 가 바뀐 채 남지 않게)
+    # 한쪽만 주면 블렌더가 다른 쪽을 따라 옮긴다(시작을 끝 뒤로 주면 끝도 밀림). 둘 다 줬는데 거꾸로면 멈춘다
+    f0, f1 = int(p.get("frame_start") or 0), int(p.get("frame_end") or 0)
+    if f0 and f1 and f1 < f0:
+        raise FxError(L(f"frame_end({f1}) 가 frame_start({f0}) 보다 작습니다. 장면은 바꾸지 않았습니다. 두 값을 바꿔 다시 시키세요.",
+                        f"frame_end({f1}) is smaller than frame_start({f0}). The scene was not changed. "
+                        "Swap the two values and ask again."))
+    slow_from = int(p.get("slow_from") or 0)
+    slow_to = int(p.get("slow_to") or 0)
+    factor = float(p.get("slow_factor") or 0.25)
+    targets = []
+    if slow_from and slow_to:
+        if slow_to <= slow_from:
+            raise FxError(L(f"slow_to({slow_to}) 는 slow_from({slow_from}) 보다 커야 합니다. 두 값을 바꿔 다시 시키세요.",
+                            f"slow_to({slow_to}) must be greater than slow_from({slow_from}). Swap the two values and ask again."))
+        if sc.rigidbody_world is not None:
+            targets.append(("rigidbody_world", sc.rigidbody_world))
+        for dom, ds in fluid_domains():
+            targets.append((dom.name, ds))
+        if not targets:
+            raise FxError(L("슬로모션을 걸 시뮬레이션이 없습니다. 먼저 destroy / explode / splash 를 하세요.",
+                            "There is no simulation to slow down. Run destroy / explode / splash first."))
     if p.get("frame_start"):
         sc.frame_start = int(p["frame_start"])
         changed["frame_start"] = sc.frame_start
@@ -19,12 +41,12 @@ def main():
 
     # 전체 슬로모션: 장면 시간을 늘린다. 파티클까지 전부 느려지는 대신 길이가 늘어난다
     if p.get("global_slow"):
-        factor = max(0.05, min(float(p["global_slow"]), 1.0))
+        g = max(0.05, min(float(p["global_slow"]), 1.0))
         r = sc.render
         r.frame_map_old = 100
-        r.frame_map_new = int(round(100 / factor))
-        sc.frame_end = int(round(sc.frame_end / factor))
-        changed["global_slow"] = dict(factor=factor, frame_map=[r.frame_map_old, r.frame_map_new],
+        r.frame_map_new = int(round(100 / g))
+        sc.frame_end = int(round(sc.frame_end / g))
+        changed["global_slow"] = dict(factor=g, frame_map=[r.frame_map_old, r.frame_map_new],
                                       new_frame_end=sc.frame_end)
         if p.get("rebake", True):
             free_bake()
@@ -33,22 +55,8 @@ def main():
                 bake_fluid(dom)
             changed["rebaked"] = True
 
-    slow_from = int(p.get("slow_from") or 0)
-    slow_to = int(p.get("slow_to") or 0)
-    factor = float(p.get("slow_factor") or 0.25)
     keyed = []
-    if slow_from and slow_to:
-        if slow_to <= slow_from:
-            raise FxError(L(f"slow_to({slow_to}) 는 slow_from({slow_from}) 보다 커야 합니다. 두 값을 바꿔 다시 시키세요.",
-                            f"slow_to({slow_to}) must be greater than slow_from({slow_from}). Swap the two values and ask again."))
-        targets = []
-        if sc.rigidbody_world is not None:
-            targets.append(("rigidbody_world", sc.rigidbody_world))
-        for dom, ds in fluid_domains():
-            targets.append((dom.name, ds))
-        if not targets:
-            raise FxError(L("슬로모션을 걸 시뮬레이션이 없습니다. 먼저 destroy / explode / splash 를 하세요.",
-                            "There is no simulation to slow down. Run destroy / explode / splash first."))
+    if targets:
         for name, obj in targets:
             try:
                 obj.time_scale = 1.0
@@ -69,8 +77,9 @@ def main():
                 bake_fluid(dom)
             changed["rebaked"] = True
     sc.frame_set(sc.frame_start)
-    return dict(frame_range=[sc.frame_start, sc.frame_end], fps=sc.render.fps,
-                frame_map=[sc.render.frame_map_old, sc.render.frame_map_new], **changed)
+    # changed 에 fps 가 있어도 겹치지 않게 합친다(전에는 fps 를 주면 늘 TypeError — 장면은 이미 바뀐 뒤)
+    return {**changed, "frame_range": [sc.frame_start, sc.frame_end], "fps": sc.render.fps,
+            "frame_map": [sc.render.frame_map_old, sc.render.frame_map_new]}
 
 
 run_guarded(main)
