@@ -115,27 +115,51 @@ DOC_NAMES_OK = {
     "before_restore": "restore 가 자동으로 남기는 스냅샷 이름",
     "volume_kept": "destroy 결과 칸", "moved_ratio": "결과 칸", "cache_files": "결과 칸",
     "first_demo": "프롬프트(/ 메뉴)",
+    "first_render_before": "examples/first_render.py 가 남기는 스냅샷 이름",
     "test_explode_building": "recipes.md 가 가리키는 bpy 시험", "test_water_direction_and_viscosity": "위와 같음",
 }
 
 
-@pytest.mark.parametrize("doc", ["README.md", "docs/troubleshooting.md", "docs/recipes.md", "docs/demo-script.md"])
+DOCS_WITH_NAMES = ["README.md", "docs/troubleshooting.md", "docs/recipes.md", "docs/demo-script.md",
+                   "examples/README.md", "docs/architecture.md", "CONTRIBUTING.md"]
+# 기여자 문서는 내부 함수 이름(run_guarded·cleanup_fx 등)도 적는다. 그 이름은 코드에 실제로 있어야 한다(지우거나 바꾸면 걸림)
+DEV_DOCS = {"docs/architecture.md", "CONTRIBUTING.md"}
+
+
+def _code_names() -> set[str]:
+    root = Path(__file__).parent.parent
+    files = [*root.glob("src/**/*.py"), *root.glob("tests/*.py"), *root.glob("scripts/*.py"), *root.glob("examples/*.py")]
+    files = [f for f in files if f.name != Path(__file__).name]  # 이 파일은 일부러 없는 이름(glue_neighbors)을 적는다
+    return {n for f in files for n in re.findall(r"\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b", f.read_text(encoding="utf-8"))}
+
+
+@pytest.mark.parametrize("doc", DOCS_WITH_NAMES)
 def test_docs_name_only_real_tools_and_arguments(doc):
     """문서의 `코드` 안 snake_case 이름과 `이름(…)` 꼴 호출은 실제 도구·인자여야 한다.
     (README 가 destroy 에 없는 인자 glue_neighbors·glue_max 로 줄이라고 하던 것을 이 시험이 찾음)"""
     from test_recipe_next_steps import _tools_and_args
     tools, args = _tools_and_args()
+    known = tools | args | set(DOC_NAMES_OK) | (_code_names() if doc in DEV_DOCS else set())
     text = (Path(__file__).parent.parent / doc).read_text(encoding="utf-8")
     bad = []
     for code in re.findall(r"`([^`\n]+)`", text):
         names = re.findall(r"\b([a-z][a-z0-9]*(?:_[a-z0-9]+)+)\s*\(", code)
+        # 도구 호출 안의 인자 이름(`destroy(glue_max=3)` 의 glue_max)도. 환경변수(대문자)·비교(==)는 빼고
+        names += [n for call in re.findall(r"\b[a-z][a-z0-9_]*\(([^)]*)\)", code)
+                  for n in re.findall(r"\b([a-z][a-z0-9]*(?:_[a-z0-9]+)+)\s*=(?!=)", call)]
         if re.fullmatch(r"[a-z][a-z0-9]*(?:_[a-z0-9]+)+", code.strip()):
             names.append(code.strip())
-        bad += [n for n in names if n not in tools | args | set(DOC_NAMES_OK)]
+        bad += [n for n in names if n not in known]
     assert not bad, f"{doc} 에 없는 도구·인자 이름: {sorted(set(bad))}"
 
 
 def test_doc_name_exceptions_are_still_used():
-    docs = "".join((Path(__file__).parent.parent / d).read_text(encoding="utf-8")
-                   for d in ("README.md", "docs/troubleshooting.md", "docs/recipes.md"))
+    docs = "".join((Path(__file__).parent.parent / d).read_text(encoding="utf-8") for d in DOCS_WITH_NAMES)
     assert all(f"`{n}`" in docs for n in DOC_NAMES_OK), "이제 문서에 없는 예외는 지운다"
+
+
+def test_dev_doc_names_catch_a_removed_function():
+    """기여자 문서 허용 목록이 아무 이름이나 통과시키지 않는다(코드에 없는 이름은 걸림)."""
+    names = _code_names()
+    assert {"run_guarded", "cleanup_fx", "fx_role", "build_code", "fake_blender"} <= names
+    assert "run_guarded_v2" not in names and "make_fireworks" not in names

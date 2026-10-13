@@ -30,7 +30,7 @@
   A receiver failure (`Blender error: …`) and a missing result line now say it may be a bug and how to report it (`blender-fx-doctor --issue`);
   out-of-range `samples` gets recommended values like the other numbers. A test keeps every server-side error telling the next step in Korean and English.
   The README no longer tells you to lower `glue_neighbors`/`glue_max` (not `destroy` arguments); it says to lower `pieces` or use `glue="none"`.
-  A test checks that tool and argument names in the README, troubleshooting, recipes and demo docs are real.
+  A test checks that tool and argument names (including `name=` inside calls) in the README, troubleshooting, recipes, demo, examples, architecture and CONTRIBUTING docs are real.
   Changing the ground while an ocean replaces it now says to run `reset_destroy` (it named a `reset` tool that does not exist).
   A dropped connection mid-command, a cut-off reply and invalid `BLENDER_FX_TIMEOUT`/`BLENDER_FX_PORT` values now each get their own message.
 - Install commands now use the PyPI package: `uvx blender-fx-mcp` (and `uvx --from blender-fx-mcp blender-fx-doctor`); git is no longer needed.
@@ -65,6 +65,8 @@
   간접 의존성 `exceptiongroup` 이 빠져 제3자 라이선스 표도 39개. 시험의 `importorskip("tomllib")` 는 보통 import 로
 
 **고침**
+- 문서 도구·인자 이름 시험을 `examples/README.md`·`docs/architecture.md`·`CONTRIBUTING.md` 까지 넓히고(기여자 문서의 내부 함수 이름은 코드에 있어야 함),
+  호출 안 인자 이름(`destroy(glue_max=3)` 꼴)도 본다. recipes.md 가 `destroy` 도구에 없는 `hold_until` 을 도구 호출처럼 적던 것을 "서버 안쪽 값"으로
 - `blender-fx-doctor` 의 "해결법:" 줄이 문서 첫머리 대신 실패 항목의 절로 바로(uv → `#uv-not-found`, 애드온·연결 → `#connection-refused`,
   클라이언트 → `#tools-not-visible-in-the-client`, 디스크 → `#fluid-bake-failed`). `--json`·MCP `doctor` 도구는 항목마다 `help` 로. 앵커가 실제 절 제목인지 시험
 - `set_timing(fps=…)` 가 결과에 `fps` 가 겹쳐 늘 실패하던 문제(장면은 이미 바뀐 뒤). 거꾸로 준 쌍(`frame_end` < `frame_start`, `slow_to` ≤ `slow_from`)은
