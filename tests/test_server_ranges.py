@@ -71,6 +71,8 @@ TOOL_RECIPES = {
     "set_render": ["set_render"],
     "render_preview": ["render"],
     "render_video": ["render_video"],
+    "set_timing": ["set_timing"],
+    "set_physics": ["set_physics"],
 }
 
 
@@ -118,6 +120,15 @@ def test_out_of_range_is_caught_before_blender(no_blender, monkeypatch, lang, ex
     (lambda: server.render_preview(height=8), "height 8 is out of range."),
     (lambda: server.render_video(width=15360, height=8640), "width 15360 is out of range. Allowed: 16 ~ 7680."),
     (lambda: server.render_video(height=10000), "0 uses the set_render size"),
+    (lambda: server.set_render(fps=-24), "fps -24 is out of range. Allowed: 1 ~ 240. 24 (film look), 30"),
+    (lambda: server.render_video(fps=1000), "fps 1000 is out of range. Allowed: 1 ~ 240."),
+    (lambda: server.render_video(frame_start=-10), "frame_start -10 is out of range. Allowed: 1 ~ 1048574. Frame numbers"),
+    (lambda: server.render_video(frame_end=-1), "frame_end -1 is out of range."),
+    (lambda: server.set_timing(fps=-30), "fps -30 is out of range."),
+    (lambda: server.set_timing(frame_start=-5), "frame_start -5 is out of range."),
+    (lambda: server.set_timing(frame_end=2_000_000), "frame_end 2000000 is out of range."),
+    (lambda: server.set_timing(slow_from=-3, slow_to=40), "slow_from -3 is out of range."),
+    (lambda: server.set_physics(fps=500), "fps 500 is out of range. Allowed: 1 ~ 240."),
 ])
 def test_each_tool_checks_ranges_before_blender(no_blender, monkeypatch, tmp_path, call, text):
     monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path))
@@ -166,3 +177,26 @@ def test_nan_and_inf_are_refused_before_blender(monkeypatch, tmp_path, call):
     out = eval(call, vars(server))
     out = out if isinstance(out, str) else out[0]
     assert out.startswith("Failed: ") and "must be a finite number" in out, out
+
+
+@pytest.mark.parametrize("lang,expect", [
+    ("ko", "fps 값 -24 은(는) 범위 밖입니다. 가능한 범위: 1 ~ 240. 24(영화 느낌)·30(보통 영상)·60(부드러운 움직임) 권장. 0 이면"),
+    ("en", "fps -24 is out of range. Allowed: 1 ~ 240. 24 (film look), 30 (regular video) or 60 (smooth motion) recommended; 0 keeps"),
+])
+def test_fps_error_says_what_to_use_in_both_languages(no_blender, monkeypatch, lang, expect):
+    """fps 는 레시피가 자르지 않아 음수가 블렌더까지 갔다. 권장 값(24·30·60)과 0 의 뜻을 한/영으로 알려 준다."""
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    assert expect in server.set_render(fps=-24)
+
+
+def test_valid_fps_and_frames_reach_blender(monkeypatch, tmp_path):
+    """흔한 값(24·30·60, 프레임 1~250)과 0(그대로)은 막지 않는다."""
+    monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path))
+    sent = []
+    monkeypatch.setattr(bridge, "run_python", lambda code, timeout=None: sent.append(code) or 'FX_RESULT {"ok": false, "error": "x"}')
+    for fps in (0, 24, 30, 60, 240):
+        server.set_render(fps=fps)
+        server.set_physics(fps=fps)
+    server.set_timing(frame_start=1, frame_end=250, fps=30, slow_from=40, slow_to=60)
+    server.render_video(frame_start=1, frame_end=48, fps=60)
+    assert len(sent) == 12

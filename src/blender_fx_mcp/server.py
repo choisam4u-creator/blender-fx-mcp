@@ -289,14 +289,22 @@ RANGES: dict[str, dict[str, tuple[float, float | None]]] = {
     "water": {"frames": (12, None), "resolution": (16, 320)},
     "emit": {"frames": (12, None), "resolution": (16, 256)},
     "particles": {"frames": (12, None)},
-    "set_render": {"samples": (1, None), "width": (16, 7680), "height": (16, 7680)},
+    "set_render": {"samples": (1, None), "width": (16, 7680), "height": (16, 7680), "fps": (1, 240)},
     # 렌더 크기는 레시피가 자르지 않는다(음수는 블렌더까지 가서 원인 모를 오류). 8K(7680) 넘게는 메모리·시간이 감당 안 된다.
     "render": {"width": (16, 7680), "height": (16, 7680)},
-    "render_video": {"width": (16, 7680), "height": (16, 7680)},
+    "render_video": {"width": (16, 7680), "height": (16, 7680), "fps": (1, 240),
+                     "frame_start": (1, 1048574), "frame_end": (1, 1048574)},
+    # fps·프레임 번호도 레시피가 그대로 블렌더에 넣는다(fps=-24 는 원인 모를 오류). 1048574 는 블렌더의 마지막 프레임 번호.
+    "set_timing": {"fps": (1, 240), "frame_start": (1, 1048574), "frame_end": (1, 1048574),
+                   "slow_from": (1, 1048574), "slow_to": (1, 1048574)},
+    "set_physics": {"fps": (1, 240)},
 }
 
 # RANGES 중 레시피가 자르지 않아 서버에서만 막는 것(tests/test_server_ranges.py 가 레시피 비교에서 뺀다)
-SERVER_ONLY_RANGES = {(r, n) for r in ("set_render", "render", "render_video") for n in ("width", "height")}
+SERVER_ONLY_RANGES = ({(r, n) for r in ("set_render", "render", "render_video") for n in ("width", "height")}
+                      | {(r, "fps") for r in ("set_render", "render_video", "set_timing", "set_physics")}
+                      | {(r, n) for r in ("render_video", "set_timing") for n in ("frame_start", "frame_end")}
+                      | {("set_timing", "slow_from"), ("set_timing", "slow_to")})
 
 def _range_hint(name: str) -> str:
     """범위 오류에 덧붙이는 권장 값."""
@@ -313,6 +321,12 @@ def _range_hint(name: str) -> str:
         return t("가로 1280×720·1920×1080, 세로 1080×1920 권장. 0 이면 set_render 로 정한 크기(미리보기는 긴 변 640)를 씁니다.",
                  "1280×720 or 1920×1080 (landscape), 1080×1920 (portrait) recommended; "
                  "0 uses the set_render size (preview: 640 on the long side).")
+    if name == "fps":
+        return t("24(영화 느낌)·30(보통 영상)·60(부드러운 움직임) 권장. 0 이면 지금 장면 값을 그대로 씁니다.",
+                 "24 (film look), 30 (regular video) or 60 (smooth motion) recommended; 0 keeps the scene's current fps.")
+    if name in ("frame_start", "frame_end", "slow_from", "slow_to"):
+        return t("프레임 번호는 1 부터입니다. 0 이면 지금 장면 값을 그대로 씁니다. 장면 길이는 list_objects 로 확인하세요.",
+                 "Frame numbers start at 1; 0 keeps the scene's current value. Check the scene length with list_objects.")
     return ""
 
 
