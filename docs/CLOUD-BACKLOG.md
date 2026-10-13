@@ -231,7 +231,7 @@
 ### 2026-10-12 (15회차 끝) 추가 — 사용자 체감 우선(오픈소스 지원 기준: 활발한 유지보수·문서·시험·이슈 대응)
 
 - [x] `fps`(`set_render`·`render_video`, 1~240)와 `frame_start`·`frame_end`(음수) 범위도 서버에서 먼저 검사 + 권장 값(24·30·60) + 시험 (근거: 이번 회차에 width/height 를 막으며 보니 `fps=-24` 는 레시피가 그대로 블렌더에 넣음 — 같은 종류의 원인 모를 오류) — `server.RANGES` 에 fps 1~240(`set_render`·`render_video`·`set_timing`·`set_physics`), 프레임 번호 1~1048574(`render_video`·`set_timing` 의 frame_start/frame_end, `set_timing` 의 slow_from/slow_to). 모두 `SERVER_ONLY_RANGES`. 권장 값(24·30·60)·0 의 뜻·`list_objects` 로 장면 길이 확인을 한/영으로. 시험 13개(범위 밖 9·한/영 2·흔한 값 통과 1·기본값 검사에 두 도구), 서버 고침을 되돌리면 13개 실패
-- [ ] 서버 쪽 오류 문장(`check_*`·`bridge` 의 `BlenderError`·`_missing_snapshot` 등)도 한/영 다음 할 일 표지 시험 (근거: 이번 회차 시험은 레시피 `FxError` 만 훑음. 사용자 체감: 연결·경로 오류가 가장 흔함)
+- [x] 서버 쪽 오류 문장(`check_*`·`bridge` 의 `BlenderError`·`_missing_snapshot` 등)도 한/영 다음 할 일 표지 시험 (근거: 이번 회차 시험은 레시피 `FxError` 만 훑음. 사용자 체감: 연결·경로 오류가 가장 흔함) — `tests/test_server_next_steps.py`: bridge·server 의 `BlenderError(t(...))` 18곳+`_missing_snapshot` 을 AST 로 훑어 한/영 표지(레시피 표지 + 해결법 링크·신고 안내), snake_case 이름이 실제 도구·인자인지, `RANGES` 의 모든 인자가 권장 값을 말하는지, 목록 오류가 값을 늘어놓는지. 시험이 찾은 4곳 고침: 수신기 실패 `블렌더 오류:`·결과 줄 없음 → 버그일 수 있음 + `doctor --issue` 신고 안내, `samples` 범위 밖에 권장 값 없음, `/my_model size` 한국어에 시키는 말 없음. 서버 고침을 되돌리면 9개 실패
 - [ ] 프롬프트(`first_demo`·`my_model`·`undo_last`)와 README·`docs/troubleshooting` 에 적힌 도구 이름이 실제 도구인지 시험 (근거: 이번 회차에 오류 문장이 없는 도구 `reset` 을 시키던 것을 찾음. 예제가 그대로 도는지)
 - [ ] CONTRIBUTING 한/영에 "오류 문장 규칙" 절(무엇이 틀렸나 + 다음 할 일 + 실제 도구·인자 이름 + 한/영 짝) 과 그 규칙을 지키는 시험 파일 목록 (오픈소스 지원 기준: 문서·새 기여자가 리뷰 없이 규칙을 앎)
 - [ ] README 빠른 시작이 첫 렌더까지 몇 단계인지 시험으로 세어 상한(지금 수)을 두고, 단계마다 실패 시 볼 troubleshooting 절 링크 (사용자 체감: 첫 설치~첫 렌더 단계 수가 늘지 않게)

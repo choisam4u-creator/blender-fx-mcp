@@ -200,8 +200,11 @@ def send_command(cmd_type: str, params: dict | None = None, timeout: float | Non
         raise BlenderError(t("블렌더가 빈 응답을 보냈습니다. 수신기 애드온이 켜져 있는지 확인하세요.",
                              "Blender sent an empty response. Check that the receiver add-on is running."))
     if resp.get("status") != "success":
-        raise BlenderError(t(f"블렌더 오류: {resp.get('message', '(메시지 없음)')}",
-                             f"Blender error: {resp.get('message', '(no message)')}"))
+        # 레시피 오류는 FX_RESULT 로 오므로, 여기까지 왔으면 수신기 쪽 실패 — 버그일 가능성이 커서 신고 방법을 알려 준다
+        raise BlenderError(t(f"블렌더 오류: {resp.get('message', '(메시지 없음)')}. 버그일 수 있습니다. "
+                             f"uvx --from blender-fx-mcp blender-fx-doctor --issue 결과를 붙여 신고해 주세요. 해결법: {TROUBLESHOOTING_URL}#empty-response-blender-error",
+                             f"Blender error: {resp.get('message', '(no message)')}. This may be a bug; please report it with "
+                             f"the output of uvx --from blender-fx-mcp blender-fx-doctor --issue. Help: {TROUBLESHOOTING_URL}#empty-response-blender-error"))
     return resp.get("result") or {}
 
 

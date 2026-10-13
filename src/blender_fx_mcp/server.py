@@ -215,8 +215,10 @@ def parse_result(stdout: str) -> dict:
     if not results:
         tail = stdout.strip()[-600:]
         raise BlenderError(t(
-            "블렌더가 결과 줄(FX_RESULT)을 돌려주지 않았습니다. 출력 끝부분: ",
-            "Blender returned no FX_RESULT line. End of output: ",
+            "블렌더가 결과 줄(FX_RESULT)을 돌려주지 않았습니다. 같은 일이 계속되면 uvx --from blender-fx-mcp blender-fx-doctor --issue 결과와 아래 출력을 붙여 신고해 주세요. "
+            "출력 끝부분: ",
+            "Blender returned no FX_RESULT line. If it keeps happening, please report it with the output of uvx --from blender-fx-mcp blender-fx-doctor --issue "
+            "and the text below. End of output: ",
         ) + (tail or t("(비어 있음)", "(empty)")))
     return results[-1]
 
@@ -315,6 +317,9 @@ def _range_hint(name: str) -> str:
                  "32 fast / 64 normal / 128 high quality; higher values can take tens of minutes.")
     if name == "frames":
         return t("24fps 기준 72 = 3초.", "72 frames = 3 seconds at 24 fps.")
+    if name == "samples":
+        return t("미리보기 16~32, 최종 64~128 권장. 높을수록 깨끗하고 느립니다.",
+                 "16-32 for previews, 64-128 for final renders recommended; higher is cleaner and slower.")
     if name == "focus":
         return t("1 이면 맞은 곳만 아주 잘게, 0 이면 고르게.", "1 = only the hit area is finely broken, 0 = even.")
     if name in ("width", "height"):
@@ -1395,7 +1400,7 @@ def my_model(
             raise ValueError(size)
     except (BlenderError, ValueError) as e:
         if isinstance(e, ValueError):
-            e = BlenderError(t(f"size 값 '{size}' 은(는) 0 이상의 숫자(m)여야 합니다. 원래 크기면 0.",
+            e = BlenderError(t(f"size 값 '{size}' 은(는) 0 이상의 숫자(m)여야 합니다. 원래 크기면 0 을 주세요.",
                                f"size '{size}' must be a number of meters, 0 or more. Use 0 to keep the size."))
         return t(f"/my_model 인자가 틀렸어: {e} 아무 도구도 부르지 말고 이 문장을 나에게 그대로 보여 줘.",
                  f"Wrong /my_model argument: {e} Do not call any tool; show me this message as it is.")
