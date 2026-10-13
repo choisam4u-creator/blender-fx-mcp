@@ -26,6 +26,8 @@
   `frame_start`/`frame_end`/`slow_from`/`slow_to` (frame numbers start at 1; 0 keeps the scene value).
   A receiver failure (`Blender error: …`) and a missing result line now say it may be a bug and how to report it (`blender-fx-doctor --issue`);
   out-of-range `samples` gets recommended values like the other numbers. A test keeps every server-side error telling the next step in Korean and English.
+  The README no longer tells you to lower `glue_neighbors`/`glue_max` (not `destroy` arguments); it says to lower `pieces` or use `glue="none"`.
+  A test checks that tool and argument names in the README, troubleshooting, recipes and demo docs are real.
   Changing the ground while an ocean replaces it now says to run `reset_destroy` (it named a `reset` tool that does not exist).
   A dropped connection mid-command, a cut-off reply and invalid `BLENDER_FX_TIMEOUT`/`BLENDER_FX_PORT` values now each get their own message.
 - Install commands now use the PyPI package: `uvx blender-fx-mcp` (and `uvx --from blender-fx-mcp blender-fx-doctor`); git is no longer needed.
