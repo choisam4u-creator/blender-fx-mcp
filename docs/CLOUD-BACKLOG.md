@@ -238,8 +238,16 @@
 
 ### 2026-10-13 (16회차 끝) 추가 — 사용자 체감 우선(오픈소스 지원 기준: 활발한 유지보수·문서·시험·이슈 대응)
 
-- [x] `set_timing` 의 `frame_end < frame_start`·`slow_to <= slow_from` 를 서버에서 먼저 검사 (근거: 이번 회차에 fps·프레임 범위를 막으며 보니 레시피는 frame_start·frame_end·fps 를 먼저 바꾼 뒤 slow 순서 오류를 내 장면이 반쯤 바뀐 채 남음 — explode 때와 같은 종류. 사용자 체감: 실패했는데 길이가 바뀌어 있음)
-- [x] `blender-fx-doctor` 의 실패 항목마다 맞는 해결법 절 링크(uv → `#uv-not-found`, addon·connection → `#connection-refused`, client → `#tools-not-visible-in-the-client`) + 시험 (근거: 이번 회차에 README 단계마다 링크를 달았지만 doctor 는 문서 첫머리만 가리킴. 사용자 체감: 오류 메시지가 다음 할 일을 말하는지)
-- [x] 문서 도구·인자 이름 시험을 `examples/README.md`·`docs/architecture.md`·`CONTRIBUTING.md` 까지 넓히기 (근거: 이번 회차 시험은 4개 문서만 훑었는데 README 한계 절에서 없는 인자 2개가 나옴. 예제가 그대로 도는지)
+- [x] `set_timing` 의 `frame_end < frame_start`·`slow_to <= slow_from` 를 서버에서 먼저 검사 (근거: 이번 회차에 fps·프레임 범위를 막으며 보니 레시피는 frame_start·frame_end·fps 를 먼저 바꾼 뒤 slow 순서 오류를 내 장면이 반쯤 바뀐 채 남음 — explode 때와 같은 종류. 사용자 체감: 실패했는데 길이가 바뀌어 있음) — `server.ORDERS`·`check_order`: 둘 다 준 쌍이 거꾸로면(`frame_end < frame_start`, `slow_to ≤ slow_from`, `render_video` 도) 블렌더에 보내기 전에 "장면은 바꾸지 않았습니다" + 바꿔 줄 값(`frame_start=50, frame_end=100`)을 한/영으로. 레시피도 순서·슬로모션 대상 검사를 길이·fps 를 바꾸기 전으로. **하다가 찾은 결함**: `set_timing(fps=…)` 가 결과 dict 에 `fps` 키가 겹쳐 늘 `TypeError`(장면은 이미 바뀐 뒤) → 고침. bpy 시험(거꾸로·대상 없음 뒤 길이·fps 그대로) + 서버 시험 9개
+- [x] `blender-fx-doctor` 의 실패 항목마다 맞는 해결법 절 링크(uv → `#uv-not-found`, addon·connection → `#connection-refused`, client → `#tools-not-visible-in-the-client`) + 시험 (근거: 이번 회차에 README 단계마다 링크를 달았지만 doctor 는 문서 첫머리만 가리킴. 사용자 체감: 오류 메시지가 다음 할 일을 말하는지) — `doctor.HELP_ANCHORS`·`help_url`: 마지막 "해결법:" 줄이 실패 항목의 절로(설치 순서, 겹치면 한 번: `#uv-not-found · #connection-refused`), mcp → uv 절, update → still-on-the-old-version, space → fluid-bake-failed. `--json`·MCP `doctor` 도구는 항목마다 `help`, 맨 위 `help` 는 먼저 고칠 항목의 절. 시험: 앵커가 해결법 문서의 실제 제목인지·키가 실제 점검 id 인지·항목별 주소
+- [x] 문서 도구·인자 이름 시험을 `examples/README.md`·`docs/architecture.md`·`CONTRIBUTING.md` 까지 넓히기 (근거: 이번 회차 시험은 4개 문서만 훑었는데 README 한계 절에서 없는 인자 2개가 나옴. 예제가 그대로 도는지) — 7개 문서로. 기여자 문서(architecture·CONTRIBUTING)는 내부 함수 이름도 코드(src·tests·scripts·examples)에 실제로 있어야 통과. 호출 안 인자 이름(`destroy(glue_max=3)` 꼴)도 보게 넓힘 → recipes.md 가 `destroy` 도구에 없는 `hold_until` 을 도구 호출처럼 적던 것을 "서버 안쪽 값"으로. 예외에 `first_render_before`(예제 스냅샷). 없는 이름을 넣으면 실패 확인
 - [ ] 열린 dependabot PR 3개(#11 setup-uv 10.2.0·#12 checkout 7.0.1·#14 stale 11.0.0)를 다시 검토해 바뀐 입력·Node 판을 확인하고, 맞으면 SHA·판 주석 그대로 `claude/cloud-work` 에 옮겨 CI 로 확인 + 결과를 maintenance 에 (오픈소스 지원 기준: 의존성 갱신을 쌓아 두지 않음. 병합은 사람)
-- [x] `set_timing`·`render_video` 결과 문장에 길이를 초로("72프레임 = 24fps 로 3초") (사용자 체감: 프레임 수만으로는 영상 길이를 모름. 이번 회차에 fps 안내를 넣으며 결과 쪽은 그대로인 것을 봄)
+- [x] `set_timing`·`render_video` 결과 문장에 길이를 초로("72프레임 = 24fps 로 3초") (사용자 체감: 프레임 수만으로는 영상 길이를 모름. 이번 회차에 fps 안내를 넣으며 결과 쪽은 그대로인 것을 봄) — `server._length`: "타이밍: 프레임 1~288, 288프레임 = 24fps 로 12초." / "Video: … frames 1-72 — 72 frames = 3s at 24fps". 1초 아래는 소수 둘째 자리, 영어 단수(1 frame). 시험 8개
+
+### 2026-10-13 (17회차 끝) 추가 — 사용자 체감 우선(오픈소스 지원 기준: 활발한 유지보수·문서·시험·이슈 대응)
+
+- [ ] `set_timing(global_slow=…)` 를 다시 시키면 이미 늘린 길이를 또 늘림(`frame_end` 를 매번 나눔) — 지금 `frame_map` 으로 원래 길이를 되살려 계산 + bpy 시험 (근거: 이번 회차에 set_timing 레시피를 고치며 읽음. 사용자 체감: "조금 더 느리게" 를 두 번 시키면 길이가 4배)
+- [ ] `set_timing` 에 한쪽만 준 값(`frame_start=500` 만)으로 블렌더가 다른 쪽을 따라 옮기면 결과 문장에 알림("끝 프레임도 500 으로 옮겨짐") + bpy 시험 (근거: 이번 회차에 순서 검사를 넣으며 한쪽만 준 값은 블렌더가 조용히 옮기는 것을 봄. 오류 메시지·결과가 무엇이 바뀌었는지 말하는지)
+- [ ] 레시피 "실패 = 장면 그대로" 점검: bpy 로 레시피마다 대표 잘못된 인자를 넣고 장면 요약(객체 수·프레임 범위·fps·렌더 크기)이 그대로인지 시험, 어긋나는 레시피는 검사를 앞으로 (근거: explode·set_timing 에서 같은 종류가 두 번 나옴. 시험)
+- [ ] 서버가 새로 막는 오류 문장(범위·순서·선택지)의 앞부분이 `docs/troubleshooting.md` 에서 검색되는지 시험 + 없으면 "인자 값이 거부됨" 절 하나로 묶기 (근거: 해결법 문서 첫머리가 "오류 문장을 Ctrl+F 로 찾으세요" 인데 서버 쪽 새 문장은 없음. 문서·이슈 대응)
+- [ ] 0.8.0 출시 준비 점검: `release_check.py` 가 날짜 줄 말고 실패가 없는지, `release_notes.py --draft v0.8.0` 초안을 PR 본문에 붙여 사람이 읽고 출시 결정을 하게 (오픈소스 지원 기준: 활발한 유지보수 — 0.7.0 뒤 고침이 많이 쌓임. 태그·게시는 사람)
