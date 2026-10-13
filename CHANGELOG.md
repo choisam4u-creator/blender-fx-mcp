@@ -39,6 +39,8 @@
   and the tool that clears each, largest first; if the folder is small it says clearing it will not help.
 - Progress notifications use plain words ("Baking the liquid — 45s so far") instead of internal recipe names.
 - `blender-fx-doctor` says when PyPI has a newer release and how to get it (`uv cache clean blender-fx-mcp`); quiet when offline or with `BLENDER_FX_NO_UPDATE_CHECK=1`.
+  It links the troubleshooting section for each failed check (uv → "uv not found", add-on and connection → "Connection refused",
+  client → "Tools not visible in the client") instead of the top of the page; `--json` and the `doctor` tool give it per check as `help`.
 - Maintainer scripts: `release_notes.py vX.Y.Z` prints a CHANGELOG section as GitHub release notes (`--draft` for an unreleased one),
   and `release_check.py --tag vX.Y.Z` checks a tag before it is pushed, with the same rule the release workflow uses.
 
@@ -63,6 +65,8 @@
   간접 의존성 `exceptiongroup` 이 빠져 제3자 라이선스 표도 39개. 시험의 `importorskip("tomllib")` 는 보통 import 로
 
 **고침**
+- `blender-fx-doctor` 의 "해결법:" 줄이 문서 첫머리 대신 실패 항목의 절로 바로(uv → `#uv-not-found`, 애드온·연결 → `#connection-refused`,
+  클라이언트 → `#tools-not-visible-in-the-client`, 디스크 → `#fluid-bake-failed`). `--json`·MCP `doctor` 도구는 항목마다 `help` 로. 앵커가 실제 절 제목인지 시험
 - `set_timing(fps=…)` 가 결과에 `fps` 가 겹쳐 늘 실패하던 문제(장면은 이미 바뀐 뒤). 거꾸로 준 쌍(`frame_end` < `frame_start`, `slow_to` ≤ `slow_from`)은
   서버가 블렌더에 보내기 전에 바꿔 줄 값과 함께 막고, 레시피도 순서·슬로모션 대상 검사를 길이·fps 를 바꾸기 전에 한다(실패했는데 장면이 반쯤 바뀐 채 남던 문제)
 - `snapshot` 이 같은 이름(이름 정리 뒤 같아지는 `a b`·`a_b` 포함)의 이전 스냅샷을 덮어쓰면 그렇다고 알려 준다

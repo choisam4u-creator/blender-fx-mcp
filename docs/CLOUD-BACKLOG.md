@@ -239,7 +239,7 @@
 ### 2026-10-13 (16회차 끝) 추가 — 사용자 체감 우선(오픈소스 지원 기준: 활발한 유지보수·문서·시험·이슈 대응)
 
 - [x] `set_timing` 의 `frame_end < frame_start`·`slow_to <= slow_from` 를 서버에서 먼저 검사 (근거: 이번 회차에 fps·프레임 범위를 막으며 보니 레시피는 frame_start·frame_end·fps 를 먼저 바꾼 뒤 slow 순서 오류를 내 장면이 반쯤 바뀐 채 남음 — explode 때와 같은 종류. 사용자 체감: 실패했는데 길이가 바뀌어 있음)
-- [ ] `blender-fx-doctor` 의 실패 항목마다 맞는 해결법 절 링크(uv → `#uv-not-found`, addon·connection → `#connection-refused`, client → `#tools-not-visible-in-the-client`) + 시험 (근거: 이번 회차에 README 단계마다 링크를 달았지만 doctor 는 문서 첫머리만 가리킴. 사용자 체감: 오류 메시지가 다음 할 일을 말하는지)
+- [x] `blender-fx-doctor` 의 실패 항목마다 맞는 해결법 절 링크(uv → `#uv-not-found`, addon·connection → `#connection-refused`, client → `#tools-not-visible-in-the-client`) + 시험 (근거: 이번 회차에 README 단계마다 링크를 달았지만 doctor 는 문서 첫머리만 가리킴. 사용자 체감: 오류 메시지가 다음 할 일을 말하는지)
 - [ ] 문서 도구·인자 이름 시험을 `examples/README.md`·`docs/architecture.md`·`CONTRIBUTING.md` 까지 넓히기 (근거: 이번 회차 시험은 4개 문서만 훑었는데 README 한계 절에서 없는 인자 2개가 나옴. 예제가 그대로 도는지)
 - [ ] 열린 dependabot PR 3개(#11 setup-uv 10.2.0·#12 checkout 7.0.1·#14 stale 11.0.0)를 다시 검토해 바뀐 입력·Node 판을 확인하고, 맞으면 SHA·판 주석 그대로 `claude/cloud-work` 에 옮겨 CI 로 확인 + 결과를 maintenance 에 (오픈소스 지원 기준: 의존성 갱신을 쌓아 두지 않음. 병합은 사람)
 - [ ] `set_timing`·`render_video` 결과 문장에 길이를 초로("72프레임 = 24fps 로 3초") (사용자 체감: 프레임 수만으로는 영상 길이를 모름. 이번 회차에 fps 안내를 넣으며 결과 쪽은 그대로인 것을 봄)
