@@ -27,6 +27,7 @@
   `set_timing(fps=…)` always failed after already changing the scene (a duplicate `fps` key in the result); fixed.
   `set_timing` and `render_video` stop a reversed pair (`frame_end` before `frame_start`, `slow_to` not after `slow_from`) before anything reaches Blender,
   with the swapped values to use, and `set_timing` checks the order and the slow-motion target before changing the length or fps.
+  Both now say the length in seconds ("72 frames = 3s at 24fps"), not only the frame range.
   A receiver failure (`Blender error: …`) and a missing result line now say it may be a bug and how to report it (`blender-fx-doctor --issue`);
   out-of-range `samples` gets recommended values like the other numbers. A test keeps every server-side error telling the next step in Korean and English.
   The README no longer tells you to lower `glue_neighbors`/`glue_max` (not `destroy` arguments); it says to lower `pieces` or use `glue="none"`.
@@ -65,6 +66,7 @@
   간접 의존성 `exceptiongroup` 이 빠져 제3자 라이선스 표도 39개. 시험의 `importorskip("tomllib")` 는 보통 import 로
 
 **고침**
+- `set_timing`·`render_video` 결과 문장에 영상 길이를 초로("72프레임 = 24fps 로 3초"). 프레임 수만으로는 몇 초짜리인지 몰랐다
 - 문서 도구·인자 이름 시험을 `examples/README.md`·`docs/architecture.md`·`CONTRIBUTING.md` 까지 넓히고(기여자 문서의 내부 함수 이름은 코드에 있어야 함),
   호출 안 인자 이름(`destroy(glue_max=3)` 꼴)도 본다. recipes.md 가 `destroy` 도구에 없는 `hold_until` 을 도구 호출처럼 적던 것을 "서버 안쪽 값"으로
 - `blender-fx-doctor` 의 "해결법:" 줄이 문서 첫머리 대신 실패 항목의 절로 바로(uv → `#uv-not-found`, 애드온·연결 → `#connection-refused`,

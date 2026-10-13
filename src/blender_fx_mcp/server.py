@@ -1064,8 +1064,9 @@ def set_timing(frame_start: int = 0, frame_end: int = 0, fps: int = 0, slow_from
                                             slow_factor=slow_factor, global_slow=global_slow or None), timeout=long_timeout())
     except BlenderError as e:
         return _fail(e)
-    text = t(f"타이밍: 프레임 {res['frame_range'][0]}~{res['frame_range'][1]}, {res['fps']}fps.",
-             f"Timing: frames {res['frame_range'][0]}-{res['frame_range'][1]}, {res['fps']}fps.")
+    first, last = res["frame_range"]
+    text = t(f"타이밍: 프레임 {first}~{last}, {_length(first, last, res['fps'])}.",
+             f"Timing: frames {first}-{last}, {_length(first, last, res['fps'])}.")
     if res.get("slow_motion"):
         sm = res["slow_motion"]
         text += t(f" 구간 슬로모션 {sm['frames'][0]}~{sm['frames'][1]} ×{sm['factor']} ({sm['applied_to']}).",
@@ -1075,6 +1076,16 @@ def set_timing(frame_start: int = 0, frame_end: int = 0, fps: int = 0, slow_from
         text += t(f" 전체 슬로모션 ×{g['factor']} (파티클 포함), 길이 {g['new_frame_end']}프레임.",
                   f" Global slow motion ×{g['factor']} (particles included), length now {g['new_frame_end']} frames.")
     return text
+
+
+def _length(first: int, last: int, fps: int) -> str:
+    """프레임 범위를 영상 길이로: "72프레임 = 24fps 로 3초". 프레임 수만으로는 몇 초짜리인지 모른다."""
+    frames = last - first + 1
+    secs = "?"
+    if fps > 0:  # 1초 아래는 소수 둘째 자리까지(1프레임 60fps 가 "0초" 로 보이지 않게)
+        secs = f"{frames / fps:.{1 if frames >= fps else 2}f}".rstrip("0").rstrip(".")
+    return t(f"{frames}프레임 = {fps}fps 로 {secs}초",
+             f"{frames} frame{'s' if frames != 1 else ''} = {secs}s at {fps}fps")
 
 
 @mcp.tool(annotations=SETTING)
@@ -1321,11 +1332,12 @@ def render_video(quality: str = "smoke", width: int = 0, height: int = 0, fps: i
     except BlenderError as e:
         return _fail(e)
     mb = res["size_bytes"] / 1_000_000
+    first, last = res["frames"]
     return t(
-        f"영상: {res['path']} ({mb:.1f}MB, {res['size'][0]}×{res['size'][1]}, {res['fps']}fps, "
-        f"프레임 {res['frames'][0]}~{res['frames'][1]}, {res['engine']})",
-        f"Video: {res['path']} ({mb:.1f}MB, {res['size'][0]}×{res['size'][1]}, {res['fps']}fps, "
-        f"frames {res['frames'][0]}-{res['frames'][1]}, {res['engine']})",
+        f"영상: {res['path']} ({mb:.1f}MB, {res['size'][0]}×{res['size'][1]}, "
+        f"프레임 {first}~{last} — {_length(first, last, res['fps'])}, {res['engine']})",
+        f"Video: {res['path']} ({mb:.1f}MB, {res['size'][0]}×{res['size'][1]}, "
+        f"frames {first}-{last} — {_length(first, last, res['fps'])}, {res['engine']})",
     )
 
 
