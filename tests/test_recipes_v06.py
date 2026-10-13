@@ -138,6 +138,25 @@ def test_global_slow_motion_changes_length(tmp_path):
     assert t["frame_map"] == [100, 200], t
 
 
+def test_global_slow_is_relative_to_the_original_speed():
+    """두 번 시키면 길이만 또 늘고(48→96→192) 시간 배율은 2배 그대로여서 뒤 절반이 빈 화면이던 문제.
+    배율은 늘 원래 속도 기준이고 1.0 이면 되돌린다. 같은 호출의 frame_end 는 원래 길이로 본다."""
+    results = run_steps([
+        ("set_timing", {"frame_start": 1, "frame_end": 48}),
+        ("set_timing", {"global_slow": 0.5, "rebake": False}),
+        ("set_timing", {"global_slow": 0.5, "rebake": False}),
+        ("set_timing", {"global_slow": 0.25, "rebake": False}),
+        ("set_timing", {"global_slow": 1.0, "rebake": False}),
+        ("set_timing", {"frame_end": 60, "global_slow": 0.5, "rebake": False}),
+    ], blender=BLENDER)
+    for r in results:
+        assert r["ok"], r
+    ends = [r["frame_range"][1] for r in results]
+    maps = [r["frame_map"][1] for r in results]
+    assert ends == [48, 96, 96, 192, 48, 120], ends
+    assert maps == [100, 200, 200, 400, 100, 200], maps
+
+
 def test_alembic_export(tmp_path):
     abc = tmp_path / "scene.abc"
     results = run_steps([

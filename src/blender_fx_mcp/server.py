@@ -1057,7 +1057,7 @@ def set_timing(frame_start: int = 0, frame_end: int = 0, fps: int = 0, slow_from
     """Frame range, fps and slow motion.
     프레임 범위·fps·슬로모션. 0 은 '그대로'.
     slow_from~slow_to 구간 슬로모션은 리지드바디·연기·물에만 걸린다(파티클 제외).
-    global_slow(0.25 = 4배 느리게)는 장면 전체 시간을 늘려 파티클까지 전부 느려진다. 대신 길이가 늘어난다."""
+    global_slow(0.25 = 4배 느리게, 원래 속도 기준이라 다시 시켜도 겹치지 않고 1 이면 되돌림)는 장면 전체 시간을 늘려 파티클까지 전부 느려진다. 대신 길이가 늘어난다."""
     try:
         res = run_recipe("set_timing", dict(frame_start=frame_start or None, frame_end=frame_end or None,
                                             fps=fps or None, slow_from=slow_from or None, slow_to=slow_to or None,
