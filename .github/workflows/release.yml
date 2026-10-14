@@ -1,4 +1,4 @@
-# 태그(v*)를 밀면 sdist·휠을 만들어 PyPI 에 올린다. 태그는 사람이 승인한 뒤 Mac 에서 민다(docs/registry.md).
+# 태그(v*)를 밀면 sdist·휠을 만들어 PyPI 에 올리고 GitHub 릴리스 초안을 만든다. 태그는 사람이 승인한 뒤 Mac 에서 민다(docs/registry.md).
 # build 와 publish 를 나눈다: 저장소 코드는 읽기 권한만 가진 build 에서만 돌고,
 # publish 는 build 가 올린 파일만 내려받아 신뢰 게시(Trusted Publishing, OIDC)로 올린다. PyPI 토큰 비밀 값은 쓰지 않는다.
 name: release
@@ -34,6 +34,16 @@ jobs:
           name: dist
           path: dist/
           if-no-files-found: error
+      # 릴리스 본문(CHANGELOG 의 그 절)도 읽기 권한인 여기서 만든다. dist 와 다른 artifact 라 PyPI 에는 올라가지 않는다.
+      - name: 릴리스 노트 만들기
+        run: |
+          mkdir notes
+          uv run --no-project --python 3.13 python scripts/release_notes.py "${GITHUB_REF_NAME}" > notes/notes.md
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-notes
+          path: notes/
+          if-no-files-found: error
 
   # 저장소 코드를 받지도, 빌드하지도 않는다. build 의 결과물만 올린다.
   # PyPI 쪽에 이 저장소·release.yml·환경 pypi 를 신뢰 게시자로 등록해 둬야 한다(docs/registry.md).
@@ -49,3 +59,26 @@ jobs:
           name: dist
           path: dist/
       - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
+
+  # PyPI 게시 뒤 GitHub 릴리스 초안(draft)만 만든다. 공개(Publish release)는 사람이 Releases 화면에서 본 뒤 누른다.
+  # 저장소 코드는 받지도 실행하지도 않는다: build 가 만든 노트·파일만 내려받아 gh 로 초안을 연다. 릴리스를 만드는 권한은 이 잡에만.
+  release-draft:
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-notes
+          path: notes/
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dist
+          path: dist/
+      - name: 릴리스 초안(게시는 사람이)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --draft --verify-tag
+          --title "${GITHUB_REF_NAME}" --notes-file notes/notes.md dist/*

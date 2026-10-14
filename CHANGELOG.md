@@ -43,6 +43,7 @@
   server-side error telling the next step in Korean and English, and tool and argument names in the docs real.
 - Maintainer scripts: `release_notes.py vX.Y.Z` prints a CHANGELOG section as GitHub release notes (`--draft` for an unreleased one),
   and `release_check.py --tag vX.Y.Z` checks a tag before it is pushed, with the same rule the release workflow uses.
+  After PyPI publishing, the release workflow opens a draft GitHub release with these notes and the packages (only that job can create releases; a person publishes it).
   SECURITY and SUPPORT list 0.7.x (the latest on PyPI) as supported until 0.8.0 ships; `release_check.py` asks to trim them to the new series once the release is dated.
 
 *Docs*

@@ -320,8 +320,9 @@ JOB_WRITE_PERMISSIONS = {
     "stale.yml": {"issues: write"},
     "scorecard.yml": {"security-events: write", "id-token: write"},
     "greet.yml": {"issues: write", "pull-requests: write"},
-    # PyPI 신뢰 게시(OIDC). publish 잡에만 — test_release_workflow_publish_only_uploads_artifact 가 잡 단위로 본다
-    "release.yml": {"id-token: write"},
+    # PyPI 신뢰 게시(OIDC)는 publish 잡에만, 릴리스 초안은 release-draft 잡에만
+    # — test_release_workflow_publish_only_uploads_artifact 가 잡 단위로 본다
+    "release.yml": {"id-token: write", "contents: write"},
 }
 
 
@@ -356,7 +357,7 @@ def test_release_workflow_publish_only_uploads_artifact():
     on = re.search(r"^on:\n((?:[ \t]+.*\n)+)", text, re.M).group(1)
     assert re.fullmatch(r'  push:\n    tags: \["v\*"\]\n', on), f"진입점은 tag push 'v*' 만: {on!r}"
     jobs = _job_bodies(text)
-    assert set(jobs) == {"build", "publish"}, sorted(jobs)
+    assert set(jobs) == {"build", "publish", "release-draft"}, sorted(jobs)
 
     build = jobs["build"]
     assert re.search(r"^    permissions:\n      contents: read\n    steps:", build, re.M), "build 권한은 contents: read 만"
@@ -364,8 +365,11 @@ def test_release_workflow_publish_only_uploads_artifact():
     # 태그와 pyproject 판 일치는 release_check.py --tag 한 곳의 규칙으로(Mac 에서 태그 전에 같은 명령)
     assert 'scripts/release_check.py --tag "${GITHUB_REF_NAME}"\n' in build, "태그와 pyproject 판 일치 확인"
     assert "${{" not in build, "run 에 표현식을 넣지 않는다(태그 이름 주입 방지, 환경 변수로 읽음)"
-    for step in ("uv build", "scripts/release_check.py --dist dist", "actions/upload-artifact@"):
+    for step in ("uv build", "scripts/release_check.py --dist dist", "actions/upload-artifact@",
+                 'scripts/release_notes.py "${GITHUB_REF_NAME}" > notes/notes.md'):
         assert step in build, f"build 에 {step.strip()} 단계가 없음"
+    # 노트는 dist 와 다른 artifact(dist/ 의 모든 파일이 PyPI 로 가므로)
+    assert re.findall(r"name: ([\w-]+)\n          path: ([\w/]+)", build) == [("dist", "dist/"), ("release-notes", "notes/")]
 
     publish = jobs["publish"]
     assert "    needs: build\n" in publish and "    environment: pypi\n" in publish
@@ -374,6 +378,19 @@ def test_release_workflow_publish_only_uploads_artifact():
     uses = re.findall(r"uses: ([\w-]+/[\w-]+)@", publish)
     assert uses == ["actions/download-artifact", "pypa/gh-action-pypi-publish"], uses
     assert "run:" not in publish and "checkout" not in publish, "publish 는 저장소 코드를 받거나 실행하지 않는다"
+
+    # 릴리스 초안: 게시 뒤, contents: write 하나만, 저장소 코드 없이 build 의 노트·파일로 초안(--draft)만
+    draft = jobs["release-draft"]
+    assert "    needs: publish\n" in draft and "environment:" not in draft
+    m = re.search(r"^    permissions:\n((?:      .*\n)+)", draft, re.M)
+    assert m and m.group(1) == "      contents: write\n", "release-draft 권한은 contents: write 하나만"
+    uses = re.findall(r"uses: ([\w-]+/[\w-]+)@", draft)
+    assert uses == ["actions/download-artifact", "actions/download-artifact"], uses
+    assert "checkout" not in draft and "uv " not in draft and "python" not in draft, "release-draft 는 저장소 코드를 받거나 실행하지 않는다"
+    run = draft.split("run: >-\n", 1)[1]
+    assert "gh release create" in run and "--draft" in run and "--verify-tag" in run and "${{" not in run
+    assert "--notes-file notes/notes.md" in run
+    assert "    permissions:\n      contents: read\n" in build and "contents: write" not in build + publish
 
 
 @pytest.mark.parametrize("path", sorted((ROOT / ".github" / "workflows").glob("*.yml")), ids=lambda p: p.name)

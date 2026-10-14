@@ -3,7 +3,7 @@
 
   uv run python scripts/release_notes.py v0.7.0 > notes.md
   uv run python scripts/release_notes.py --draft v0.8.0   # 아직 날짜가 없는(미출시) 절을 미리 읽기
-  gh release create v0.7.0 --notes-file notes.md      # 사람이 Mac 에서(쓰기 권한이 필요해 자동 게시는 하지 않는다)
+  # 태그 push 뒤 release.yml 의 release-draft 잡이 이 출력으로 릴리스 초안을 만든다(공개는 사람이 Releases 화면에서)
 
 영어 요약(**English summary**)을 먼저, 그다음 한국어 상세를 낸다. 절 맨 앞의 관리자용 메모(버전을 어디서 올렸는지 등)는 뺀다.
 없는 판이나 아직 날짜가 없는(미출시) 판이면 이유를 stderr 에 쓰고 종료 코드 1(`--draft` 면 미출시 판도 맨 위에 초안 표시를 달아 낸다).

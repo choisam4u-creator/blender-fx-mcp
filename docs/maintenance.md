@@ -62,8 +62,8 @@ setup-uv 는 입력을 주지 않으며, v10 의 캐시 기본값 `auto` 는 태
 5. **승인** — `publish` 잡은 환경 `pypi` 를 쓴다. 저장소 Settings → Environments → `pypi` 에 필수 검토자(관리자)를 두면 여기서 멈추고, Actions 화면에서 빌드 기록을 본 뒤 **Approve** 한다(두지 않으면 바로 게시된다).
 6. **PyPI 확인** — `https://pypi.org/project/blender-fx-mcp/X.Y.Z/` 가 열리고 `uvx --refresh --from blender-fx-mcp==X.Y.Z blender-fx-doctor` 가 돈다.
 7. **레지스트리** — [docs/registry.md](registry.md) 의 등록 순서 3~7(`mcp-publisher publish`).
-8. **릴리스 노트** — `uv run python scripts/release_notes.py vX.Y.Z > notes.md` 가 CHANGELOG 의 그 절(영어 요약 먼저, 관리자 메모 빼고, 끝에 PyPI 주소)을 만든다.
-   GitHub Releases 에서 태그 `vX.Y.Z` 로 새 릴리스를 만들며 본문에 붙이거나 `gh release create vX.Y.Z --notes-file notes.md`.
+8. **릴리스 노트** — 게시가 끝나면 `release-draft` 잡이 GitHub 릴리스 **초안**(본문 = `scripts/release_notes.py vX.Y.Z` 출력: CHANGELOG 의 그 절, 영어 요약 먼저, 관리자 메모 빼고, 끝에 PyPI 주소. 휠·sdist 첨부)을 만든다.
+   Releases 화면에서 초안을 읽고 **Publish release** 를 누른다(공개는 사람). 잡이 실패했으면 Mac 에서 `uv run python scripts/release_notes.py vX.Y.Z > notes.md` 뒤 `gh release create vX.Y.Z --notes-file notes.md`.
    출시 전에 문장을 미리 보려면 `--draft vX.Y.Z`(미출시 절도 초안 표시를 달아 출력).
 
 태그를 잘못 밀었으면(빌드 잡이 빨감) `git push --delete origin vX.Y.Z` 로 지우고 고친 커밋에 다시 단다. PyPI 에 올라간 판은 지울 수 없으니 판을 올린다.
@@ -127,8 +127,9 @@ Every release follows these steps, so it does not depend on one person's memory.
 5. **Approve**: the `publish` job uses the `pypi` environment. With a required reviewer (the maintainer) set in Settings → Environments → `pypi`, it waits here: review the build in the Actions page and **Approve** it (without one it publishes right away).
 6. **Check PyPI**: `https://pypi.org/project/blender-fx-mcp/X.Y.Z/` opens and `uvx --refresh --from blender-fx-mcp==X.Y.Z blender-fx-doctor` runs.
 7. **Registry**: steps 3 to 7 of the registration order in [docs/registry.md](registry.md) (`mcp-publisher publish`).
-8. **Release notes**: `uv run python scripts/release_notes.py vX.Y.Z > notes.md` prints that CHANGELOG section (English summary first,
-   maintainer notes dropped, PyPI link at the end). Create a GitHub release from tag `vX.Y.Z` with it as the body, or `gh release create vX.Y.Z --notes-file notes.md`.
+8. **Release notes**: after publishing, the `release-draft` job opens a **draft** GitHub release whose body is the output of `scripts/release_notes.py vX.Y.Z`
+   (that CHANGELOG section, English summary first, maintainer notes dropped, PyPI link at the end), with the wheel and sdist attached. Read it under Releases and click
+   **Publish release** (a person makes it public). If the job failed, run `uv run python scripts/release_notes.py vX.Y.Z > notes.md` and `gh release create vX.Y.Z --notes-file notes.md` on the Mac.
    To read the notes before the release, use `--draft vX.Y.Z` (prints the unreleased section with a draft marker).
 
 If a wrong tag was pushed (the build job is red), delete it with `git push --delete origin vX.Y.Z` and tag the fixed commit. A version already on PyPI cannot be replaced, so bump the version instead.
