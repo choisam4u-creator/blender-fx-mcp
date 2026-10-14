@@ -140,8 +140,8 @@ def main():
     os.makedirs(cache_dir, exist_ok=True)
 
     sc = scene()
+    center, radius, lo, hi, ground_z = blast_geometry(p)  # 대상 이름이 틀렸으면 지난 폭발을 지우기 전에 멈춘다
     cleanup_explosion()
-    center, radius, lo, hi, ground_z = blast_geometry(p)
     ensure_ground(ground_z)
     ensure_camera(lo, hi)
     ensure_light()

@@ -29,6 +29,10 @@
   with the swapped values to use, and `set_timing` checks the order and the slow-motion target before changing the length or fps.
   Both now say the length in seconds ("72 frames = 3s at 24fps"), not only the frame range.
   When only one end is given and Blender moves the other one to follow (`frame_start=500` alone pushes `frame_end` too), `set_timing` says so.
+  A failed call now leaves the scene as it was: a misspelled target no longer deletes the previous explosion or fire (`explode`, `emit`),
+  `water` no longer deletes the previous water and resets the frame range before its checks, `destroy` stops on a mesh without faces
+  before touching the scene, `export_model` checks the format before `bake_physics` turns the pieces into keyframes, and `import_model`
+  removes what it imported when no part matches `parts`. A Blender test fails every recipe once and compares the scene before and after.
   `set_timing(global_slow=…)` is relative to the original speed: asking twice no longer stretches the length again (48 → 192 frames at 2× timing), and 1.0 undoes it.
   A receiver failure (`Blender error: …`) and a missing result line now say it may be a bug and how to report it (`blender-fx-doctor --issue`);
   out-of-range `samples` gets recommended values like the other numbers. A test keeps every server-side error telling the next step in Korean and English.
