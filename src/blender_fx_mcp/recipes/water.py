@@ -77,7 +77,6 @@ def main():
     pitch_deg = float(p.get("pitch_deg", -90.0 if mode == "drop" else 0.0))
     gravity_scale = float(p.get("gravity_scale", 1.0))
     cache_dir = p.get("cache_dir") or os.path.join(os.path.expanduser("~"), "blender-fx-output", "cache_liquid")
-    os.makedirs(cache_dir, exist_ok=True)
 
     use_visc, visc, tension, color, alpha = LIQUIDS[liquid]
     if p.get("viscosity") is not None:
@@ -181,6 +180,7 @@ def main():
     ds.cache_type = "ALL"
     ds.cache_frame_start = 1
     ds.cache_frame_end = frames
+    os.makedirs(cache_dir, exist_ok=True)  # 인자·장면 검사를 다 통과한 뒤에(실패한 호출이 빈 캐시 폴더를 남기지 않게)
     ds.cache_directory = cache_dir
     ds.use_mesh = True
     ds.use_collision_border_top = False

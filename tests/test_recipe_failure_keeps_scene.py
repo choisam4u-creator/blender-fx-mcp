@@ -95,3 +95,15 @@ def test_failed_recipes_leave_the_scene_unchanged(tmp_path):
                 diff["objects"] = dict(gone=sorted(bo - ao), new=sorted(ao - bo))
             changed.append((recipe, params, diff))
     assert not changed, "실패했는데 장면이 바뀌었거나 오류가 다른 레시피:\n" + "\n".join(map(str, changed))
+
+
+def test_failed_fluid_recipes_leave_no_cache_folder(tmp_path):
+    """물·연기·폭발이 인자·장면 검사에서 실패하면 캐시 폴더도 만들지 않는다(doctor 의 폴더 크기 안내가 빈 폴더를 세지 않게)."""
+    code = CLEAN_SCENE + build_code("demo_scene", {})
+    calls = [(recipe, params) for recipe, params, _ in BAD_CALLS if recipe in ("water", "emit", "explode")]
+    for i, (recipe, params) in enumerate(calls):
+        code += build_code(recipe, dict(params, cache_dir=str(tmp_path / f"cache_{i}_{recipe}")))
+    results, proc = _run(code)
+    assert len(results) == 1 + len(calls), proc.stdout[-2000:] + proc.stderr[-2000:]
+    assert all(not r["ok"] for r in results[1:]), results[1:]
+    assert sorted(p.name for p in tmp_path.iterdir()) == [], "실패한 호출이 남긴 캐시 폴더"
