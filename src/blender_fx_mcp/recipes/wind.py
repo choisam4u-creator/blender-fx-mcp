@@ -4,15 +4,17 @@
 
 def main():
     p = PARAMS
-    for o in list(bpy.data.objects):
-        if o.get(FX_TAG) in ("wind", "turbulence"):
-            remove_object(o)
+    # 인자를 모두 읽은 뒤에 옛 바람을 지운다(잘못된 값이면 옛 바람이 그대로 남게)
     strength = float(p.get("strength", 3.0))
     turb = float(p.get("turbulence", 0.0))
     deg = float(p.get("direction_deg", 90.0))
-    lo, hi = fx_bbox(None)
     a = p.get("at")
-    center = Vector((float(a[0]), float(a[1]), float(a[2]))) if a else Vector(((lo.x + hi.x) / 2, (lo.y + hi.y) / 2, (lo.z + hi.z) / 2))
+    at = point(a, "at") if a else None
+    for o in list(bpy.data.objects):
+        if o.get(FX_TAG) in ("wind", "turbulence"):
+            remove_object(o)
+    lo, hi = fx_bbox(None)
+    center = at if at is not None else Vector(((lo.x + hi.x) / 2, (lo.y + hi.y) / 2, (lo.z + hi.z) / 2))
 
     d = Vector((math.sin(math.radians(deg)), math.cos(math.radians(deg)), 0.0))
     wind = make_force_field("FX_Wind", "wind", "WIND", center - d * 5.0)

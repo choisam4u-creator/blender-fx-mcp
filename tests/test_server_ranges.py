@@ -142,8 +142,14 @@ def test_boundaries_and_auto_values_reach_blender(monkeypatch):
     sent = []
     monkeypatch.setattr(bridge, "run_python", lambda code, timeout=None: sent.append(code) or 'FX_RESULT {"ok": true}')
     for recipe, names in server.RANGES.items():
-        server.run_recipe(recipe, {n: lo for n, (lo, hi) in names.items()})
-        server.run_recipe(recipe, {n: (hi if hi is not None else lo * 100) for n, (lo, hi) in names.items()})
+        low = {n: lo for n, (lo, hi) in names.items()}
+        high = {n: (hi if hi is not None else lo * 100) for n, (lo, hi) in names.items()}
+        for first, second, equal_ok in server.ORDERS.get(recipe, []):
+            if not equal_ok:  # 끝이 시작보다 커야 하는 쌍(slow_from < slow_to)은 경계에서 한 칸 띄운다
+                low[second] += 1
+                high[first] -= 1
+        server.run_recipe(recipe, low)
+        server.run_recipe(recipe, high)
     # 0 → None 으로 바뀌는 자동 값, 숫자가 아닌 값(레시피가 알아서 다룸)은 막지 않는다
     server.run_recipe("emit", {"resolution": None, "frames": 72})
     server.run_recipe("destroy", {"focus": True})
@@ -200,3 +206,66 @@ def test_valid_fps_and_frames_reach_blender(monkeypatch, tmp_path):
     server.set_timing(frame_start=1, frame_end=250, fps=30, slow_from=40, slow_to=60)
     server.render_video(frame_start=1, frame_end=48, fps=60)
     assert len(sent) == 12
+
+
+@pytest.mark.parametrize("call,expect", [
+    (lambda: server.set_timing(frame_start=100, frame_end=50),
+     "frame_end(50) must be at least frame_start(100). The scene was not changed. Swap the two values (frame_start=50, frame_end=100)"),
+    (lambda: server.set_timing(slow_from=40, slow_to=40), "slow_to(40) must be greater than slow_from(40)."),
+    (lambda: server.set_timing(fps=30, slow_from=60, slow_to=20), "Swap the two values (slow_from=20, slow_to=60)"),
+    (lambda: server.render_video(frame_start=48, frame_end=1), "frame_end(1) must be at least frame_start(48)."),
+])
+def test_reversed_pairs_stop_before_blender(no_blender, monkeypatch, call, expect):
+    """레시피는 frame_start·fps 를 먼저 넣은 뒤 순서 오류를 내 장면이 반쯤 바뀐 채 남았다. 서버가 보내기 전에 막는다."""
+    monkeypatch.setenv("BLENDER_FX_LANG", "en")
+    assert expect in call()
+
+
+def test_reversed_pair_message_in_korean(no_blender, monkeypatch):
+    monkeypatch.setenv("BLENDER_FX_LANG", "ko")
+    text = server.set_timing(frame_start=100, frame_end=50)
+    assert "frame_end(50) 는 frame_start(100) 보다 같거나 커야 합니다. 장면은 바꾸지 않았습니다." in text
+    assert "frame_start=50, frame_end=100 처럼 두 값을 바꿔 다시 시키세요." in text
+
+
+def test_ordered_or_one_sided_pairs_reach_blender(monkeypatch, tmp_path):
+    """같은 프레임(1프레임 길이)·한쪽만 준 값은 막지 않는다(한쪽만이면 블렌더가 다른 쪽을 따라 옮긴다)."""
+    monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path))
+    sent = []
+    monkeypatch.setattr(bridge, "run_python", lambda code, timeout=None: sent.append(code) or 'FX_RESULT {"ok": false, "error": "x"}')
+    server.set_timing(frame_start=10, frame_end=10)
+    server.set_timing(frame_start=500)
+    server.set_timing(slow_to=5)
+    server.render_video(frame_start=12, frame_end=12)
+    assert len(sent) == 4
+
+
+def test_every_order_pair_names_real_arguments():
+    for recipe, pairs in server.ORDERS.items():
+        tool = getattr(server, recipe)
+        names = set(inspect.signature(tool).parameters)
+        for first, second, _ in pairs:
+            assert {first, second} <= names, (recipe, first, second)
+
+
+@pytest.mark.parametrize("call", [
+    lambda: server.cloth_flag(at=[1.0, 2.0]),
+    lambda: server.fire(at=[0.0, 0.0, 0.0, 1.0]),
+    lambda: server.explode(at=[1.0]),
+    lambda: server.water(domain_at=[0.0, 0.0]),
+])
+def test_points_need_three_numbers_before_blender(monkeypatch, tmp_path, call):
+    """[x, y, z] 가 아닌 위치는 블렌더에 보내기 전에 막는다(레시피가 옛 깃발을 지운 뒤 IndexError 로 멈추던 것)."""
+    monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path))
+    monkeypatch.setenv("BLENDER_FX_LANG", "en")
+    monkeypatch.setattr(bridge, "run_python", lambda code, timeout=None: pytest.fail("블렌더로 보내면 안 됨"))
+    out = call()
+    out = out if isinstance(out, str) else out[0]
+    assert out.startswith("Failed: Give ") and "three numbers [x, y, z]" in out and "The scene was not changed." in out, out
+
+
+def test_points_korean(monkeypatch):
+    monkeypatch.setenv("BLENDER_FX_LANG", "ko")
+    with pytest.raises(bridge.BlenderError, match=r"at 은\(는\) \[x, y, z\] 숫자 세 개로 주세요\(지금 \[1, 2\]\)"):
+        server.check_points({"at": [1, 2]})
+    server.check_points({"at": [1, 2, 3], "domain_at": None})  # 맞으면 조용히

@@ -408,3 +408,38 @@ def test_snapshot_says_when_it_replaces_one(fake, monkeypatch, tmp_path):
     assert "replaced" not in server.snapshot("fresh_name")
     _snapshots(tmp_path, "a_b")
     assert "replaced the earlier snapshot 'a_b'" in server.snapshot("a b")  # 이름 정리 뒤 같아짐
+
+
+@pytest.mark.parametrize("lang,timing,video", [
+    ("en", "Timing: frames 1-288, 288 frames = 12s at 24fps.", "frames 1-72 — 72 frames = 3s at 24fps, EEVEE)"),
+    ("ko", "타이밍: 프레임 1~288, 288프레임 = 24fps 로 12초.", "프레임 1~72 — 72프레임 = 24fps 로 3초, EEVEE)"),
+])
+def test_timing_and_video_say_the_length_in_seconds(fake, monkeypatch, lang, timing, video):
+    """프레임 수만으로는 영상이 몇 초인지 모른다. 결과 문장에 초로 적는다."""
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    assert _text(server.set_timing()).startswith(timing)
+    assert _text(server.render_video()).endswith(video)
+
+
+@pytest.mark.parametrize("first,last,fps,expect", [
+    (1, 72, 24, "72 frames = 3s at 24fps"), (1, 100, 30, "100 frames = 3.3s at 30fps"),
+    (10, 10, 60, "1 frame = 0.02s at 60fps"), (1, 12, 24, "12 frames = 0.5s at 24fps"), (1, 240, 24, "240 frames = 10s at 24fps"), (1, 48, 0, "48 frames = ?s at 0fps"),
+])
+def test_length_rounds_to_a_tenth(monkeypatch, first, last, fps, expect):
+    monkeypatch.setenv("BLENDER_FX_LANG", "en")
+    assert server._length(first, last, fps) == expect
+
+
+@pytest.mark.parametrize("lang,moved,expect", [
+    ("en", {"frame_end": [250, 500]}, "Note: Blender also moved frame_end from 250 to 500 to follow frame_start. "
+                                      "If that is not the length you want, give frame_start and frame_end together."),
+    ("ko", {"frame_start": [10, 5]}, "알림: frame_end 에 맞춰 블렌더가 frame_start 도 10 → 5 로 옮겼습니다. "
+                                     "원하는 길이가 아니면 frame_start·frame_end 를 함께 주세요."),
+])
+def test_timing_says_when_blender_moved_the_other_end(fake, monkeypatch, lang, moved, expect):
+    """한쪽만 준 값(frame_start=500)으로 블렌더가 다른 쪽을 조용히 옮기면 길이가 1프레임이 되는 것을 사용자가 모른다."""
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    monkeypatch.setitem(RESULTS, "set_timing", {**RESULTS["set_timing"], "moved": moved})
+    assert expect in _text(server.set_timing(frame_start=500))
+    monkeypatch.setitem(RESULTS, "set_timing", {k: v for k, v in RESULTS["set_timing"].items() if k != "moved"})
+    assert "moved" not in _text(server.set_timing(frame_start=500)) and "옮겼" not in _text(server.set_timing())

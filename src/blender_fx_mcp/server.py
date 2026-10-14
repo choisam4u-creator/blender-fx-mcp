@@ -350,6 +350,28 @@ def check_ranges(recipe: str, params: dict) -> None:
         raise BlenderError(msg + (" " + hint if hint else ""))
 
 
+# 함께 주면 순서가 맞아야 하는 인자 쌍(앞, 뒤, 같아도 되는지). 레시피는 앞의 값을 먼저 장면에 넣은 뒤 순서 오류를 내
+# 실패했는데 장면이 반쯤 바뀐 채 남았다. 한쪽만 주면 지금 장면 값과의 비교는 레시피가 바꾸기 전에 한다.
+ORDERS: dict[str, list[tuple[str, str, bool]]] = {
+    "set_timing": [("frame_start", "frame_end", True), ("slow_from", "slow_to", False)],
+    "render_video": [("frame_start", "frame_end", True)],
+}
+
+
+def check_order(recipe: str, params: dict) -> None:
+    """앞뒤가 있는 두 인자를 거꾸로 주면 바꿔 줄 값을 알려 주는 BlenderError 를 낸다."""
+    for first, second, equal_ok in ORDERS.get(recipe, []):
+        a, b = params.get(first), params.get(second)
+        if a is None or b is None or b > a or (equal_ok and b == a):
+            continue
+        rule = t("같거나 커야", "at least") if equal_ok else t("커야", "greater than")
+        raise BlenderError(t(
+            f"{second}({b}) 는 {first}({a}) 보다 {rule} 합니다. 장면은 바꾸지 않았습니다. "
+            f"{first}={b}, {second}={a} 처럼 두 값을 바꿔 다시 시키세요.",
+            f"{second}({b}) must be {rule} {first}({a}). The scene was not changed. "
+            f"Swap the two values ({first}={b}, {second}={a}) and ask again."))
+
+
 # 진행 알림에 보일 사람 말(레시피 파일 이름 대신). 레시피를 새로 만들면 여기에도 더한다(tests/test_server_progress.py 가 확인).
 def recipe_labels() -> dict[str, str]:
     """레시피 이름 → 지금 언어의 사람 말."""
@@ -431,11 +453,27 @@ def _check_bake_space() -> None:
         f"Run clear_caches to delete baked caches, or point BLENDER_FX_OUT to a folder on a disk with more space, then ask again. (folder: {root})"))
 
 
+# [x, y, z] 위치 인자. 길이가 틀리면 레시피가 옛 효과를 지운 뒤 IndexError 로 멈추던 것을 서버에서 먼저 막는다
+POINT_PARAMS = ("at", "domain_at")
+
+
+def check_points(params: dict) -> None:
+    for name in POINT_PARAMS:
+        value = params.get(name)
+        if isinstance(value, (list, tuple)) and len(value) != 3:
+            raise BlenderError(t(f"{name} 은(는) [x, y, z] 숫자 세 개로 주세요(지금 {list(value)}). 예: {name}=[0, 0, 1]. "
+                                 "장면은 바꾸지 않았습니다.",
+                                 f"Give {name} as three numbers [x, y, z] (got {list(value)}), e.g. {name}=[0, 0, 1], "
+                                 "and ask again. The scene was not changed."))
+
+
 def run_recipe(recipe: str, params: dict, timeout: float | None = None) -> dict:
     params = {k: v for k, v in params.items() if v is not None}
     check_finite(params)
+    check_points(params)
     check_choices(recipe, params)
     check_ranges(recipe, params)
+    check_order(recipe, params)
     params.setdefault("_lang", "en" if is_en() else "ko")
     if params.get("cache_dir"):
         _check_bake_space()
@@ -495,14 +533,14 @@ def _cache_dirs() -> dict:
 def doctor() -> CallToolResult:
     """Check prerequisites (python, mcp, uv, Blender, receiver add-on, connection, output folder).
     준비물 점검. 뭔가 안 될 때 먼저 부른다."""
-    from .doctor import check_rows, failed, format_report, run_checks
+    from .doctor import check_rows, failed, format_report, help_urls, run_checks
     # 이 도구를 부른 클라이언트가 곧 등록돼 있다는 증거라 클라이언트 등록 항목은 뺀다(엉뚱한 등록 명령을 권하지 않게)
     checks = run_checks(clients=False)
     text = format_report(checks)
     # 항목마다 ok·다음 할 일(fix)을 구조화 값으로도 준다. AI 가 실패한 항목과 고칠 방법을 문장에서 다시 찾지 않는다
     bad = [c["id"] for c in failed(checks)]
     return _with_data(text, dict(ok=not bad, failed=bad, checks=check_rows(checks),
-                                 help=bridge.TROUBLESHOOTING_URL if bad else None, summary=text))
+                                 help=help_urls(checks)[0] if bad else None, summary=text))
 
 
 @mcp.tool(annotations=READ_ONLY)
@@ -1034,15 +1072,22 @@ def set_timing(frame_start: int = 0, frame_end: int = 0, fps: int = 0, slow_from
     """Frame range, fps and slow motion.
     프레임 범위·fps·슬로모션. 0 은 '그대로'.
     slow_from~slow_to 구간 슬로모션은 리지드바디·연기·물에만 걸린다(파티클 제외).
-    global_slow(0.25 = 4배 느리게)는 장면 전체 시간을 늘려 파티클까지 전부 느려진다. 대신 길이가 늘어난다."""
+    global_slow(0.25 = 4배 느리게, 원래 속도 기준이라 다시 시켜도 겹치지 않고 1 이면 되돌림)는 장면 전체 시간을 늘려 파티클까지 전부 느려진다. 대신 길이가 늘어난다."""
     try:
         res = run_recipe("set_timing", dict(frame_start=frame_start or None, frame_end=frame_end or None,
                                             fps=fps or None, slow_from=slow_from or None, slow_to=slow_to or None,
                                             slow_factor=slow_factor, global_slow=global_slow or None), timeout=long_timeout())
     except BlenderError as e:
         return _fail(e)
-    text = t(f"타이밍: 프레임 {res['frame_range'][0]}~{res['frame_range'][1]}, {res['fps']}fps.",
-             f"Timing: frames {res['frame_range'][0]}-{res['frame_range'][1]}, {res['fps']}fps.")
+    first, last = res["frame_range"]
+    text = t(f"타이밍: 프레임 {first}~{last}, {_length(first, last, res['fps'])}.",
+             f"Timing: frames {first}-{last}, {_length(first, last, res['fps'])}.")
+    for name, (old, new) in (res.get("moved") or {}).items():
+        other = "frame_start" if name == "frame_end" else "frame_end"
+        text += t(f" 알림: {other} 에 맞춰 블렌더가 {name} 도 {old} → {new} 로 옮겼습니다. "
+                  f"원하는 길이가 아니면 frame_start·frame_end 를 함께 주세요.",
+                  f" Note: Blender also moved {name} from {old} to {new} to follow {other}. "
+                  f"If that is not the length you want, give frame_start and frame_end together.")
     if res.get("slow_motion"):
         sm = res["slow_motion"]
         text += t(f" 구간 슬로모션 {sm['frames'][0]}~{sm['frames'][1]} ×{sm['factor']} ({sm['applied_to']}).",
@@ -1052,6 +1097,16 @@ def set_timing(frame_start: int = 0, frame_end: int = 0, fps: int = 0, slow_from
         text += t(f" 전체 슬로모션 ×{g['factor']} (파티클 포함), 길이 {g['new_frame_end']}프레임.",
                   f" Global slow motion ×{g['factor']} (particles included), length now {g['new_frame_end']} frames.")
     return text
+
+
+def _length(first: int, last: int, fps: int) -> str:
+    """프레임 범위를 영상 길이로: "72프레임 = 24fps 로 3초". 프레임 수만으로는 몇 초짜리인지 모른다."""
+    frames = last - first + 1
+    secs = "?"
+    if fps > 0:  # 1초 아래는 소수 둘째 자리까지(1프레임 60fps 가 "0초" 로 보이지 않게)
+        secs = f"{frames / fps:.{1 if frames >= fps else 2}f}".rstrip("0").rstrip(".")
+    return t(f"{frames}프레임 = {fps}fps 로 {secs}초",
+             f"{frames} frame{'s' if frames != 1 else ''} = {secs}s at {fps}fps")
 
 
 @mcp.tool(annotations=SETTING)
@@ -1298,11 +1353,12 @@ def render_video(quality: str = "smoke", width: int = 0, height: int = 0, fps: i
     except BlenderError as e:
         return _fail(e)
     mb = res["size_bytes"] / 1_000_000
+    first, last = res["frames"]
     return t(
-        f"영상: {res['path']} ({mb:.1f}MB, {res['size'][0]}×{res['size'][1]}, {res['fps']}fps, "
-        f"프레임 {res['frames'][0]}~{res['frames'][1]}, {res['engine']})",
-        f"Video: {res['path']} ({mb:.1f}MB, {res['size'][0]}×{res['size'][1]}, {res['fps']}fps, "
-        f"frames {res['frames'][0]}-{res['frames'][1]}, {res['engine']})",
+        f"영상: {res['path']} ({mb:.1f}MB, {res['size'][0]}×{res['size'][1]}, "
+        f"프레임 {first}~{last} — {_length(first, last, res['fps'])}, {res['engine']})",
+        f"Video: {res['path']} ({mb:.1f}MB, {res['size'][0]}×{res['size'][1]}, "
+        f"frames {first}-{last} — {_length(first, last, res['fps'])}, {res['engine']})",
     )
 
 

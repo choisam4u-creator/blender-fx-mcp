@@ -28,14 +28,13 @@ def main():
     power = max(0.1, float(p.get("power", 1.0)))
     resolution = int(p.get("resolution", 0) or 0)  # 0 이면 대상 크기에 맞춰 자동
     cache_dir = p.get("cache_dir") or os.path.join(os.path.expanduser("~"), "blender-fx-output", "cache_emit")
-    os.makedirs(cache_dir, exist_ok=True)
 
     sc = scene()
-    cleanup_emit()
     target_name = p.get("target")
+    t = get_target(target_name) if target_name else None  # 이름이 틀렸으면 지난 불·연기를 지우기 전에 멈춘다
+    cleanup_emit()
     radius = float(p.get("radius") or 0.0)
     if target_name:
-        t = get_target(target_name)
         unhide(t)
         lo, hi = world_bbox(t)
         size = hi - lo
@@ -118,6 +117,7 @@ def main():
     ds.cache_type = "ALL"
     ds.cache_frame_start = 1
     ds.cache_frame_end = frames
+    os.makedirs(cache_dir, exist_ok=True)  # 인자·장면 검사를 다 통과한 뒤에(실패한 호출이 빈 캐시 폴더를 남기지 않게)
     ds.cache_directory = cache_dir
     ds.use_noise = bool(p.get("noise", False))
     ds.vorticity = float(p.get("vorticity", 0.35))
