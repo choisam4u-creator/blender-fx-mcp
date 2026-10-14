@@ -94,3 +94,20 @@ def test_set_timing_errors_leave_the_scene_unchanged():
     assert not reversed_slow["ok"] and "slow_to(20)" in reversed_slow["error"]
     assert not no_sim["ok"]
     assert after["frame_range"] == [1, 48] and after["fps"] == 24, after
+
+
+def test_set_timing_reports_the_end_blender_moved():
+    """한쪽만 준 값으로 블렌더가 다른 쪽을 따라 옮기면 결과 `moved` 에 옛 값·새 값을 남긴다(서버가 알림 문장으로)."""
+    results = run_steps([
+        ("set_timing", {"frame_start": 1, "frame_end": 48}),
+        ("set_timing", {"frame_start": 100}),
+        ("set_timing", {"frame_end": 20}),
+        ("set_timing", {"frame_start": 5, "frame_end": 60}),
+        ("set_timing", {"frame_start": 10}),
+    ], blender=BLENDER)
+    for r in results:
+        assert r["ok"], r
+    _, start_only, end_only, both, inside = results
+    assert start_only["moved"] == {"frame_end": [48, 100]} and start_only["frame_range"] == [100, 100]
+    assert end_only["moved"] == {"frame_start": [100, 20]} and end_only["frame_range"] == [20, 20]
+    assert "moved" not in both and "moved" not in inside and inside["frame_range"] == [10, 60]

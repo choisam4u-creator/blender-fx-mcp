@@ -1067,6 +1067,12 @@ def set_timing(frame_start: int = 0, frame_end: int = 0, fps: int = 0, slow_from
     first, last = res["frame_range"]
     text = t(f"타이밍: 프레임 {first}~{last}, {_length(first, last, res['fps'])}.",
              f"Timing: frames {first}-{last}, {_length(first, last, res['fps'])}.")
+    for name, (old, new) in (res.get("moved") or {}).items():
+        other = "frame_start" if name == "frame_end" else "frame_end"
+        text += t(f" 알림: {other} 에 맞춰 블렌더가 {name} 도 {old} → {new} 로 옮겼습니다. "
+                  f"원하는 길이가 아니면 frame_start·frame_end 를 함께 주세요.",
+                  f" Note: Blender also moved {name} from {old} to {new} to follow {other}. "
+                  f"If that is not the length you want, give frame_start and frame_end together.")
     if res.get("slow_motion"):
         sm = res["slow_motion"]
         text += t(f" 구간 슬로모션 {sm['frames'][0]}~{sm['frames'][1]} ×{sm['factor']} ({sm['applied_to']}).",

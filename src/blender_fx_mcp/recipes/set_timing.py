@@ -29,12 +29,21 @@ def main():
         if not targets:
             raise FxError(L("슬로모션을 걸 시뮬레이션이 없습니다. 먼저 destroy / explode / splash 를 하세요.",
                             "There is no simulation to slow down. Run destroy / explode / splash first."))
+    before = (sc.frame_start, sc.frame_end)
     if p.get("frame_start"):
         sc.frame_start = int(p["frame_start"])
         changed["frame_start"] = sc.frame_start
     if p.get("frame_end"):
         sc.frame_end = int(p["frame_end"])
         changed["frame_end"] = sc.frame_end
+    # 한쪽만 줬는데 블렌더가 다른 쪽을 따라 옮겼으면 알린다(조용히 길이가 1프레임이 되는 것을 사용자가 모름)
+    moved = {}
+    if f0 and not f1 and sc.frame_end != before[1]:
+        moved["frame_end"] = [before[1], sc.frame_end]
+    if f1 and not f0 and sc.frame_start != before[0]:
+        moved["frame_start"] = [before[0], sc.frame_start]
+    if moved:
+        changed["moved"] = moved
     if p.get("fps"):
         sc.render.fps = int(p["fps"])
         changed["fps"] = sc.render.fps
