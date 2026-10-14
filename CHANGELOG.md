@@ -22,6 +22,7 @@
 - **Timing.** `set_timing(fps=…)` always failed after already changing the scene (duplicate result key); fixed. `global_slow` is relative to the
   original speed (asking twice no longer stretches 48 → 192 frames; 1.0 undoes it). `set_timing` and `render_video` say the length in seconds
   ("72 frames = 3s at 24fps"), and `set_timing` says when Blender moved the other end of the range (`frame_start=500` alone pushes `frame_end`).
+  `render_video` with only `frame_start` after the scene's end (or only `frame_end` before its start) says to give both, not to swap them.
 - **Rendering.** Renders keep the samples and size set with `set_render` (`render_video` uses them by default); `render_preview` without a size
   follows that aspect at 640 on the long side (a 1080×1920 scene previews at 360×640).
 - **Smaller tool list, structured results, clearer errors.** The tool list each client loads is 24% smaller (33,015 → 25,093 characters) and the server

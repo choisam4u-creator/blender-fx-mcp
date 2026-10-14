@@ -223,6 +223,24 @@ def test_renders_keep_user_render_settings(tmp_path):
     assert after_video["fps"] == 24 and after_video["samples"] == 2, after_video
 
 
+def test_render_video_one_sided_frames_say_give_both(tmp_path):
+    """render_video 에 한쪽 프레임만 줘서 장면의 다른 쪽과 순서가 어긋나면 "바꿔라"가 아니라 "함께 주라"고 하고 장면은 그대로다."""
+    out = str(tmp_path / "clip.mp4")
+    results = run_steps([
+        ("demo_scene", {}),
+        ("set_timing", {"frame_start": 1, "frame_end": 72}),
+        ("render_video", {"out_path": out, "quality": "preview", "frame_start": 100}),
+        ("set_timing", {"frame_start": 50, "frame_end": 72}),
+        ("render_video", {"out_path": out, "quality": "preview", "frame_end": 10, "_lang": "en"}),
+        ("set_timing", {}),
+    ], blender=BLENDER)
+    late, end_first, after = results[2], results[4], results[5]
+    assert late["ok"] is False and "frame_end 도 함께 주어" in late["error"] and "frame_end=171" in late["error"], late
+    assert end_first["ok"] is False and "Give frame_start too" in end_first["error"], end_first
+    assert "Swap" not in end_first["error"], end_first
+    assert after["frame_range"] == [50, 72], after
+
+
 def test_destroy_and_reset_with_target_keep_other_effects(tmp_path):
     """대상을 정해 부수기·되돌리기를 하면 그 대상의 것만 지운다. 바다 같은 다른 효과와 다른 건물의 조각은 남는다.
     (전에는 destroy(target=B) 가 바다·물·연기·깃발·바람·다른 건물의 접착까지 지웠다)"""
