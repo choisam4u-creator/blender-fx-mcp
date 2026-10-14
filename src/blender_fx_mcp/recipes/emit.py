@@ -31,11 +31,11 @@ def main():
     os.makedirs(cache_dir, exist_ok=True)
 
     sc = scene()
-    cleanup_emit()
     target_name = p.get("target")
+    t = get_target(target_name) if target_name else None  # 이름이 틀렸으면 지난 불·연기를 지우기 전에 멈춘다
+    cleanup_emit()
     radius = float(p.get("radius") or 0.0)
     if target_name:
-        t = get_target(target_name)
         unhide(t)
         lo, hi = world_bbox(t)
         size = hi - lo

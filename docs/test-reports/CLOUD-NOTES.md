@@ -5,10 +5,51 @@
 한 번에 돌려 `latest.md` 를 새로 쓰려면 `uv run python scripts/mac_report.py`(결과 확인 뒤 커밋). 클라우드 회차는 그 FAIL 부터 고친다.
 
 ```sh
-uv sync && uv run pytest -q                        # 블렌더 앱으로 전체 통과(새: fps·프레임 범위, 서버 오류 다음 할 일, 문서 도구 이름, 빠른 시작 5단계)
-uv run python examples/first_render.py             # Connect 뒤 끝까지. 그다음 Claude 에 "set_render fps=-24" → 블렌더에 가기 전 1~240·권장 24/30/60 안내인지
-uv run blender-fx-doctor --issue                   # 블렌더를 끈 채 Claude 에 "doctor" → 실패 항목(connection)과 고칠 방법을 정확히 집는지
+uv sync && uv run pytest -q                        # 블렌더 앱으로 전체 통과(새: 실패 = 장면 그대로 17개, set_timing 옮김 알림, 해결법 '인자 값이 거부됨')
+uv run python examples/first_render.py             # Connect 뒤 끝까지. 그다음 Claude 에 "set_timing frame_start=500" → "알림: … frame_end 도 … 옮겼습니다" 인지
+uv run pytest -q tests/test_recipe_failure_keeps_scene.py  # 실제 앱으로 통과하는지. 손으로: 물을 만든 뒤 Claude 에 "water mode=object source_object=없는물체" → 지난 물·프레임 범위 그대로인지
 ```
+
+## 2026-10-14 (18회차)
+
+- 시작 확인: 저장된 지시의 최우선 F1·F3(0.7.0 판·release.yml)는 9회차(10/11)에 끝나 PR #13 으로 병합(`ff7555e`·`4eb778f`), 태그 `v0.7.0` 도 있음. 다시 할 것 없음 → 일반 규칙.
+  main 은 `claude/cloud-work` 보다 앞서 있지 않음. `latest.md`(10/1)의 FAIL 2건은 main 에 고쳐져 있음(재확인).
+  이 세션은 `claude/cloud-work-9gw4mg` 에만 푸시할 수 있어 17회차(PR #16, `claude/cloud-work-n6i9g1`) 끝 `89fb921` 에서 이어 작업했다.
+- 한 일(백로그 위에서부터, 굽기 시간 어림은 Mac 실측 필요라 건너뜀):
+  1. **set_timing 옮김 알림** (`5b8668d`) — 한쪽만 준 프레임으로 블렌더가 다른 쪽을 옮기면 결과에 옛 값→새 값과 "함께 주세요".
+  2. **실패 = 장면 그대로** (`c94c8ef`) — 새 bpy 시험 `tests/test_recipe_failure_keeps_scene.py`(레시피 11종·잘못된 호출 17개 앞뒤 장면 비교).
+     찾아 고친 6곳: `explode`·`emit` 이름 틀리면 지난 효과 삭제, `water` 검사 전 지난 물 삭제·프레임 범위 변경, `destroy` 면 없는 메시에서 다른 효과 삭제,
+     `export_model` 형식 검사 전에 물리를 키프레임으로 굽기, `import_model` parts 불일치 때 부품이 남음.
+  3. **해결법 '인자 값이 거부됨'** (`6e90759`) — 범위·선택지·순서·유한한 숫자 문장. 시험이 빠져 있던 `check_finite` 를 찾음.
+  4. **0.8.0 출시 준비 점검** (`c0cab3b`) — `release_check.py` 는 날짜 줄만 실패. 영어 요약 Fixes 29줄 한 덩어리를 주제별 6개로 + 항목 6줄 상한 시험(미출시 절만).
+  5. **dependabot 3개 옮김** (`fd8696f`) — checkout v7.0.1·setup-uv v10.3.0·stale v11.0.0. SHA=태그 커밋, node24, 쓰는 입력 그대로, setup-uv 캐시는 태그 push 에서 꺼짐.
+  - 새 백로그 5개 + CHANGELOG 한국어 고침 줄 (`0ac1810`).
+- 돌린 시험: `uv run pytest -q`(3.11) **1231 통과·44 건너뜀**(블렌더 필요), CI 서버 명령 `--cov --cov-fail-under=99` **100%**,
+  **`scripts/bpy_tests.sh`(bpy 5.0.1) → 1269 통과·6 건너뜀(2분 5초)**(유체 `app_only` 5개·실제 캐릭터 파일 1개 — 블렌더 앱·개인 파일 필요), `uvx ruff@0.15.20 check .` 통과, 도구 표 일치.
+  변이 확인: 항목 2 의 고침을 되돌리면 새 시험이 6곳 모두 잡음. 항목 4 의 상한 시험은 옛 CHANGELOG 에서 실패.
+- 막힌 것: 없음. (`claude/cloud-work` 에 직접 못 미는 것은 17회차와 같음 → PR 을 `claude/cloud-work` 로 엶, #16 뒤에 병합)
+- 완료 수·추가 수: **완료 5** / **추가 5** (완료 ≥ 추가). 남은 `[ ]` 6개(그중 1개 Mac 실측).
+- Mac에서 확인할 것: 맨 위 명령 3줄(또는 `uv run python scripts/mac_report.py` 한 번).
+
+## 2026-10-13 (17회차)
+
+- 시작 확인: 저장된 지시의 최우선 F1·F3(0.7.0 판·release.yml)는 9회차(10/11)에 끝나 PR #13 으로 병합, 태그 `v0.7.0` 도 있음. 다시 할 것 없음 → 일반 규칙.
+  main 은 `claude/cloud-work` 보다 앞서 있지 않음. `latest.md`(10/1)의 FAIL 2건은 고쳐져 있음(재확인).
+  이 세션의 푸시 브랜치는 `claude/cloud-work-n6i9g1`(`claude/cloud-work` 끝 9603f30 에서 이어 감, 앞으로 감기 가능).
+- 한 일(백로그 위에서부터, 굽기 시간 어림은 Mac 실측 필요·dependabot 3개는 CI 판단이 필요해 건너뜀):
+  1. **set_timing 순서 검사** (`1983ced`) — 거꾸로 준 쌍(`frame_end<frame_start`, `slow_to≤slow_from`, `render_video` 도)을 서버가 보내기 전에 바꿔 줄 값과 함께 막음, 레시피도 바꾸기 전에 검사.
+     **하다가 찾은 결함**: `set_timing(fps=…)` 가 결과 키 `fps` 가 겹쳐 늘 TypeError(장면은 이미 바뀐 뒤) → 고침.
+  2. **doctor 항목별 해결법 링크** (`24db12a`) — "해결법:" 줄이 실패 항목의 절로, `--json`·`doctor` 도구는 항목마다 `help`. 앵커가 실제 절인지 시험.
+  3. **문서 이름 시험 확대** (`8e17ec6`) — 7개 문서 + 호출 안 인자 이름. recipes.md 의 `hold_until` 을 "서버 안쪽 값"으로.
+  4. **결과에 길이(초)** (`09f2c3c`) — "288프레임 = 24fps 로 12초" / "72 frames = 3s at 24fps".
+  5. (새 항목 첫째) **global_slow 두 번** (`48cfbc8`) — 두 번 시키면 길이만 48→96→192 로 늘고 배율은 2배 그대로이던 결함. 원래 속도 기준·1 이면 되돌림.
+  - 남은 `[ ]` 2개라 새 항목 5개 추가(`436d6b2`: global_slow 두 번, 한쪽만 준 프레임 알림, 레시피 실패 = 장면 그대로 점검, 서버 오류 문장 해결법 검색, 0.8.0 출시 준비 점검).
+- 돌린 시험: `uv run pytest -q`(3.11) **1221 통과·41 건너뜀**(블렌더 필요), CI 서버 명령 `--cov --cov-fail-under=99` **100%**,
+  **`scripts/bpy_tests.sh`(bpy 5.0.1) → 1256 통과·6 건너뜀(2분 4초)**(유체 `app_only` 5개·실제 캐릭터 파일 1개 — 블렌더 앱·개인 파일 필요), `uvx ruff@0.15.20 check .` 통과, `gen_tool_table.py` 일치.
+  확인: 고치기 전 레시피로 bpy 재현(fps → TypeError, global_slow 두 번 → 192), 문서에 없는 이름을 넣으면 시험 실패.
+- 막힌 것: 없음.
+- 완료 수·추가 수: **완료 5** / **추가 5** (완료 ≥ 추가). 남은 `[ ]` 6개(그중 1개 Mac 실측).
+- Mac에서 확인할 것: 맨 위 명령 3줄(또는 `uv run python scripts/mac_report.py` 한 번).
 
 ## 2026-10-13 (16회차)
 

@@ -111,9 +111,9 @@ def test_doctor_report_links_doc_only_when_something_is_wrong(monkeypatch):
     from blender_fx_mcp.doctor import format_report
     monkeypatch.setenv("BLENDER_FX_LANG", "en")
     ok = [{"name": "python", "ok": True, "detail": "3.13"}]
-    bad = ok + [{"name": "receiver connection", "ok": False, "detail": "refused"}]
+    bad = ok + [{"id": "connection", "name": "receiver connection", "ok": False, "detail": "refused"}]
     assert bridge.TROUBLESHOOTING_URL not in format_report(ok)
-    assert format_report(bad).endswith(f"Help: {bridge.TROUBLESHOOTING_URL}")
+    assert format_report(bad).endswith(f"Help: {bridge.TROUBLESHOOTING_URL}#connection-refused")
 
 
 def test_readme_links_troubleshooting():
@@ -180,3 +180,35 @@ def test_uv_step_does_not_need_doctor(lang):
     uv_step = _first_render_steps(section)[0]
     assert "brew install uv" in uv_step and "astral.sh/uv/install.sh" in uv_step and "doctor" not in uv_step
     assert 'install.ps1 | iex"' in _doc().split("## uv not found", 1)[1].split("\n## ", 1)[0]
+
+
+# 서버가 블렌더에 보내기 전에 막는 오류(범위·선택지·순서). 실제로 만든 문장의 값이 아닌 부분이 문서에서 검색돼야 한다
+# (문서 첫머리가 "오류 문장 앞부분을 Ctrl+F 로 찾으세요" 이므로)
+REJECTIONS = [
+    (lambda s: s.check_ranges("set_timing", {"fps": -24}), "은(는) 범위 밖입니다. 가능한 범위:", "is out of range. Allowed:"),
+    (lambda s: s.check_choices("destroy", {"material": "rubber"}), "은(는) 쓸 수 없습니다. 가능한 값:", "is not allowed. Choose one of:"),
+    (lambda s: s.check_order("set_timing", {"frame_start": 100, "frame_end": 50}),
+     "보다 같거나 커야 합니다. 장면은 바꾸지 않았습니다.", "The scene was not changed."),
+    (lambda s: s.check_order("set_timing", {"slow_from": 40, "slow_to": 20}), "보다 커야 합니다.", "must be greater than"),
+    (lambda s: s.check_finite({"power": float("nan")}), "에 유한한 숫자를 주세요", "must be a finite number"),
+]
+
+
+@pytest.mark.parametrize("call,ko,en", REJECTIONS, ids=[en for _, _, en in REJECTIONS])
+def test_server_rejections_are_searchable_in_the_doc(monkeypatch, call, ko, en):
+    from blender_fx_mcp import server
+    for lang, stem in (("ko", ko), ("en", en)):
+        monkeypatch.setenv("BLENDER_FX_LANG", lang)
+        with pytest.raises(bridge.BlenderError) as err:
+            call(server)
+        assert stem in str(err.value), f"서버 문장이 바뀜({lang}): {err.value}"
+        assert stem in _doc(), f"troubleshooting.md 에서 찾을 수 없는 서버 오류 문장: {stem}"
+    assert "argument-value-rejected" in _anchors(_doc())
+
+
+def test_every_server_check_has_a_documented_rejection():
+    """새 검사 함수(check_*)를 더하면 위 REJECTIONS 에도 문장을 더한다."""
+    from blender_fx_mcp import server
+    checks = {n for n in dir(server) if n.startswith("check_") and callable(getattr(server, n))}
+    src = (ROOT / "tests" / "test_troubleshooting.py").read_text(encoding="utf-8")
+    assert checks <= {n for n in checks if f"s.{n}(" in src}, checks

@@ -204,6 +204,10 @@ def main():
     bounce = float(p.get("bounce")) if p.get("bounce") is not None else m["restitution"]
 
     sc = scene()
+    # 면이 없는 메시는 지난 효과를 지우고 바닥·카메라를 만들기 전에 멈춘다(모디파이어를 거친 모양 기준)
+    if len(target.evaluated_get(bpy.context.evaluated_depsgraph_get()).data.polygons) == 0:
+        raise FxError(L(f"'{target.name}' 에 면이 없어 조각낼 수 없습니다. inspect_mesh 로 면 수를 확인하고, 면이 있는 오브젝트를 고르세요.",
+                        f"'{target.name}' has no faces, so it cannot be fractured. Check its face count with inspect_mesh and pick an object that has faces."))
     cleanup_fx(target.name)
     unhide(target)
     view_layer_update()
