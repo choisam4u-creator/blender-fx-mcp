@@ -583,6 +583,10 @@ def test_changelog_unreleased_sections_have_english_summary():
             m = re.search(rf"^\*{part}\*\n((?:- .*\n(?:  .*\n)*)+)", summary, re.M)
             assert m, f"{version}: 영어 요약에 *{part}* 목록이 없음"
             assert 1 <= len(re.findall(r"^- ", m.group(1), re.M)) <= 6, f"{version} {part}: 1~6줄로 요약"
+            # 6개 상한을 맞추려 한 항목에 몰아 쓰면 릴리스 노트에서 읽히지 않는다(0.8.0 Fixes 첫 항목이 29줄이던 적이 있음).
+            # 이미 나간 판의 노트는 고치지 않으므로 미출시 절만 본다
+            for item in re.findall(r"^- .*\n(?:  .*\n)*", m.group(1), re.M) if unreleased else []:
+                assert item.count("\n") <= 6, f"{version} {part}: 한 항목이 {item.count(chr(10))}줄 — 6줄 안으로 나누거나 줄인다: {item[:80]}"
         checked += 1
     assert checked >= 1
 

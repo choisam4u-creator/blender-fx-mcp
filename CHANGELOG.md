@@ -11,50 +11,37 @@
 - Python 3.11 or newer is required. Python 3.10 reached end of life in 2026-10; 0.7.0 is the last release that supports it.
 
 *Fixes*
-- `restore("before_restore")` (undoing an undo) no longer overwrites the state it goes back to; the two states swap.
-  `destroy`/`reset_destroy` with a target no longer delete unrelated effects (ocean, water, smoke, flag, wind) or other buildings' glue.
-  Renders keep the samples and size set with `set_render` (previews no longer overwrite them; `render_video` uses them by default).
-  The tool list every client loads into each conversation is 24% smaller (33,015 → 25,093 characters): no per-argument `title`, no `{"result": string}` output schema
-  on text tools (and no duplicate of the sentence in `structuredContent`), no docstring indentation. A test keeps it under a budget.
-  The server instructions drop the glosses already in each tool's description (Korean 656 → 515, English 994 → 819 characters) and are part of the same budget test.
-  `list_objects`, `inspect_mesh` and `list_snapshots` also return MCP structured content (`structuredContent`), so the AI reads names and sizes without re-parsing text.
-  The `doctor` tool does too: each check with `ok` and `fix` (the next step), and `failed` with the ids to fix, so the AI names the broken step and its fix.
-  `render_preview` without a size follows the aspect set with `set_render`, scaled to 640 on the long side (a 1080×1920 scene previews at 360×640, not 640×360).
-  `render_preview`, `render_video` and `set_render` reject a `width`/`height` outside 16-7680 before anything reaches Blender, with the recommended sizes
-  (a negative size used to fail inside Blender with an unclear error).
-  The same goes for `fps` (1-240, recommended 24/30/60) in `set_render`, `render_video`, `set_timing` and `set_physics`, and for
-  `frame_start`/`frame_end`/`slow_from`/`slow_to` (frame numbers start at 1; 0 keeps the scene value).
-  `set_timing(fps=…)` always failed after already changing the scene (a duplicate `fps` key in the result); fixed.
-  `set_timing` and `render_video` stop a reversed pair (`frame_end` before `frame_start`, `slow_to` not after `slow_from`) before anything reaches Blender,
-  with the swapped values to use, and `set_timing` checks the order and the slow-motion target before changing the length or fps.
-  Both now say the length in seconds ("72 frames = 3s at 24fps"), not only the frame range.
-  When only one end is given and Blender moves the other one to follow (`frame_start=500` alone pushes `frame_end` too), `set_timing` says so.
-  A failed call now leaves the scene as it was: a misspelled target no longer deletes the previous explosion or fire (`explode`, `emit`),
-  `water` no longer deletes the previous water and resets the frame range before its checks, `destroy` stops on a mesh without faces
-  before touching the scene, `export_model` checks the format before `bake_physics` turns the pieces into keyframes, and `import_model`
-  removes what it imported when no part matches `parts`. A Blender test fails every recipe once and compares the scene before and after.
-  `set_timing(global_slow=…)` is relative to the original speed: asking twice no longer stretches the length again (48 → 192 frames at 2× timing), and 1.0 undoes it.
-  A receiver failure (`Blender error: …`) and a missing result line now say it may be a bug and how to report it (`blender-fx-doctor --issue`);
-  out-of-range `samples` gets recommended values like the other numbers. A test keeps every server-side error telling the next step in Korean and English.
-  The README no longer tells you to lower `glue_neighbors`/`glue_max` (not `destroy` arguments); it says to lower `pieces` or use `glue="none"`.
-  A test checks that tool and argument names (including `name=` inside calls) in the README, troubleshooting, recipes, demo, examples, architecture and CONTRIBUTING docs are real.
-  Changing the ground while an ocean replaces it now says to run `reset_destroy` (it named a `reset` tool that does not exist).
-  A dropped connection mid-command, a cut-off reply and invalid `BLENDER_FX_TIMEOUT`/`BLENDER_FX_PORT` values now each get their own message.
-- Install commands now use the PyPI package: `uvx blender-fx-mcp` (and `uvx --from blender-fx-mcp blender-fx-doctor`); git is no longer needed.
-  The README, `examples/`, doctor, the connection-refused error and the bug form all use it. Troubleshooting explains how to get a newer release.
-- When less than 5GB is free, doctor names the largest parts of the output folder (baked caches, snapshots `clear_snapshots` would delete, render results, loose files) with their size
-  and the tool that clears each, largest first; if the folder is small it says clearing it will not help.
-- Progress notifications use plain words ("Baking the liquid — 45s so far") instead of internal recipe names.
-- `blender-fx-doctor` says when PyPI has a newer release and how to get it (`uv cache clean blender-fx-mcp`); quiet when offline or with `BLENDER_FX_NO_UPDATE_CHECK=1`.
-  It links the troubleshooting section for each failed check (uv → "uv not found", add-on and connection → "Connection refused",
-  client → "Tools not visible in the client") instead of the top of the page; `--json` and the `doctor` tool give it per check as `help`.
-- Maintainer scripts: `release_notes.py vX.Y.Z` prints a CHANGELOG section as GitHub release notes (`--draft` for an unreleased one),
-  and `release_check.py --tag vX.Y.Z` checks a tag before it is pushed, with the same rule the release workflow uses.
+- **A failed call leaves the scene as it was.** A misspelled target no longer deletes the previous explosion or fire (`explode`, `emit`);
+  `water` no longer deletes the previous water and resets the frame range before its checks; `destroy` stops on a mesh without faces before touching
+  the scene; `export_model` checks the format before `bake_physics` turns the pieces into keyframes; `import_model` removes what it imported when no
+  part matches `parts`. `restore("before_restore")` (undoing an undo) swaps the two states instead of overwriting one, and `destroy`/`reset_destroy`
+  with a target no longer delete unrelated effects (ocean, water, smoke, flag, wind) or other buildings' glue.
+- **Bad values stop before Blender, with the values to use.** `width`/`height` 16-7680, `fps` 1-240 (24/30/60 recommended) and frame numbers from 1
+  in `render_preview`, `render_video`, `set_render`, `set_timing` and `set_physics`; a reversed pair (`frame_end` before `frame_start`,
+  `slow_to` not after `slow_from`) gets the swapped values. `samples` out of range gets recommended values like the other numbers.
+- **Timing.** `set_timing(fps=…)` always failed after already changing the scene (duplicate result key); fixed. `global_slow` is relative to the
+  original speed (asking twice no longer stretches 48 → 192 frames; 1.0 undoes it). `set_timing` and `render_video` say the length in seconds
+  ("72 frames = 3s at 24fps"), and `set_timing` says when Blender moved the other end of the range (`frame_start=500` alone pushes `frame_end`).
+- **Rendering.** Renders keep the samples and size set with `set_render` (`render_video` uses them by default); `render_preview` without a size
+  follows that aspect at 640 on the long side (a 1080×1920 scene previews at 360×640).
+- **Smaller tool list, structured results, clearer errors.** The tool list each client loads is 24% smaller (33,015 → 25,093 characters) and the server
+  instructions shorter (Korean 656 → 515, English 994 → 819), both under a tested budget. `list_objects`, `inspect_mesh`, `list_snapshots` and `doctor`
+  return MCP structured content (`doctor`: `ok`, `fix` and `help` per check). A receiver failure or a missing result line says how to report it
+  (`blender-fx-doctor --issue`); a dropped connection, a cut-off reply and invalid `BLENDER_FX_TIMEOUT`/`BLENDER_FX_PORT` each get their own message;
+  `set_ground` under an ocean names `reset_destroy` (it named a `reset` tool that does not exist). Docs no longer mention `destroy` arguments that do not exist.
+- **Install and doctor.** Install commands use the PyPI package (`uvx blender-fx-mcp`, `uvx --from blender-fx-mcp blender-fx-doctor`); git is no longer
+  needed. doctor says when PyPI has a newer release (quiet offline or with `BLENDER_FX_NO_UPDATE_CHECK=1`), links the troubleshooting section for each
+  failed check, and when less than 5GB is free names the largest parts of the output folder and the tool that clears each. Progress notifications use
+  plain words ("Baking the liquid — 45s so far").
 
 *Tests and CI*
 - `examples/first_render.py` runs end to end in tests against the real server and a fake Blender receiver socket
   (five progress lines, exit 0 and the PNG paths; a recipe failure exits 1 with the error and the way back).
 - The release workflow checks the tag through `release_check.py --tag`, so the rule lives in one place and is tested.
+- A Blender test fails every recipe once with a representative bad argument and compares the scene before and after; tests keep every
+  server-side error telling the next step in Korean and English, and tool and argument names in the docs real.
+- Maintainer scripts: `release_notes.py vX.Y.Z` prints a CHANGELOG section as GitHub release notes (`--draft` for an unreleased one),
+  and `release_check.py --tag vX.Y.Z` checks a tag before it is pushed, with the same rule the release workflow uses.
 
 *Docs*
 - Troubleshooting: "Still on the old version" (clear the uv cache; use the `git+` address only to try unreleased `main`), and "Argument value rejected"
