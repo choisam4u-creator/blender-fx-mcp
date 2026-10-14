@@ -5,10 +5,33 @@
 한 번에 돌려 `latest.md` 를 새로 쓰려면 `uv run python scripts/mac_report.py`(결과 확인 뒤 커밋). 클라우드 회차는 그 FAIL 부터 고친다.
 
 ```sh
-uv sync && uv run pytest -q                        # 블렌더 앱으로 전체 통과(새: 실패 = 장면 그대로 17개, set_timing 옮김 알림, 해결법 '인자 값이 거부됨')
-uv run python examples/first_render.py             # Connect 뒤 끝까지. 그다음 Claude 에 "set_timing frame_start=500" → "알림: … frame_end 도 … 옮겼습니다" 인지
-uv run pytest -q tests/test_recipe_failure_keeps_scene.py  # 실제 앱으로 통과하는지. 손으로: 물을 만든 뒤 Claude 에 "water mode=object source_object=없는물체" → 지난 물·프레임 범위 그대로인지
+uv sync && uv run pytest -q                        # 블렌더 앱으로 전체 통과(새: 바다·바람·깃발 실패 = 장면 그대로, render_video 한쪽 프레임, 캐시 폴더 안 남김)
+uv run python examples/first_render.py             # Connect 뒤 끝까지. 그다음 Claude 에 "cloth_flag at=[1,2]" → 블렌더에 가기 전 "[x, y, z] 숫자 세 개" 안내인지
+uv run python scripts/release_check.py             # '미출시' 한 줄만 실패해야 함. 0.8.0 출시 때 SECURITY·SUPPORT 의 0.7.x 줄을 지우라고 알리는지는 날짜를 붙인 뒤
 ```
+
+## 2026-10-14 (19회차)
+
+- 시작 확인: 저장된 지시의 최우선 F1·F3(0.7.0 판·release.yml)는 9회차(10/11)에 끝나 PR #13 으로 병합, 태그 `v0.7.0` 도 있음. 다시 할 것 없음 → 일반 규칙.
+  `latest.md`(10/1)의 FAIL 2건은 main 에 고쳐져 있음(재확인). main 은 앞서 있지 않음.
+  ⚠️ 처음에 `claude/cloud-work`(16회차 끝)에서 시작해 백로그 5개를 했는데, 17·18회차가 PR #16·#18 로 같은 5개를 이미 해 둔 것을 늦게 봄 →
+  그 커밋은 푸시하지 않고 버림. 이 세션은 `claude/cloud-work-knktdu` 에만 푸시할 수 있어 18회차 끝 `ab0ad68`(#18) 위에서 다시 작업했다.
+  다음 회차는 시작할 때 열린 `claude/cloud-work-*` PR 중 가장 위 것부터 이어 가야 함.
+- 한 일(백로그 위에서부터, 굽기 시간 어림은 Mac 실측 필요라 건너뜀):
+  1. **render_video 한쪽 프레임** (`690f4e1`) — 확인해 보니 조용히 옮기지 않고 "두 값을 바꿔" 오류를 냈음(한쪽은 장면 값이라 틀린 안내). 한쪽만 주면 "함께 주어(예: …) 다시 시키세요".
+  2. **캐시 폴더 안 남김** (`21b8e9b`) — 물·연기·폭발이 `cache_*` 폴더를 검사 통과 뒤에 만듦. bpy 시험(실패 6개 호출이 폴더를 하나도 안 남김).
+  3. **지원 판 표** (`065dc92`) — SECURITY·SUPPORT 에 "0.7.x (PyPI 최신) — 0.8.0 이 나올 때까지". `release_check.py` 가 출시(날짜) 뒤 표를 새 판 하나로 정리하라고 알림. 출시 절차 1단계 한/영.
+  4. **릴리스 초안 잡** (`0752ea9`) — release.yml 에 `release-draft`(needs publish, `contents: write` 하나만, build 가 만든 노트·파일 artifact 만 받아 `gh release create --draft`, 저장소 코드 실행 없음).
+     노트는 dist 와 다른 artifact(dist/ 전부가 PyPI 로 가므로). 허용목록에 `contents: write` 추가, 기존 거절 시험 그대로 + 잡 단위 시험. 실제 동작은 다음 태그 때.
+  5. **실패 = 장면 그대로 확대** (`0557f05`) — 바다·바람·깃발이 있는 장면에서 시험. 찾아 고친 4곳: ocean 이 인자를 다 읽기 전에 옛 바다를 지우고 장면 길이 변경,
+     wind·cloth_flag 가 `at=[1, 2]` 에서 옛 효과를 지운 뒤 IndexError, set_ground 가 바다 밑 숨은 바닥을 다시 보이게 함. 서버 `check_points`(at·domain_at 숫자 셋) + 해결법 문장.
+  - 남은 `[ ]` 1개(Mac 실측)라 새 항목 5개 추가(`aa2d2a1`).
+- 돌린 시험: `uv run pytest -q`(3.11) **1244 통과·47 건너뜀**(블렌더 필요), CI 서버 명령 `--cov --cov-fail-under=99` **100%**,
+  **`scripts/bpy_tests.sh`(bpy 5.0.1) → 1285 통과·6 건너뜀(2분 34초)**(유체 `app_only` 5개·실제 캐릭터 파일 1개 — 블렌더 앱·개인 파일 필요), `uvx ruff@0.15.20 check .` 통과.
+  변이 확인: 항목 1·2·5 의 레시피 고침을 되돌리면 새 시험이 실패(항목 5 는 7줄).
+- 막힌 것: 없음(버린 중복 작업은 위 ⚠️).
+- 완료 수·추가 수: **완료 5** / **추가 5** (완료 ≥ 추가). 남은 `[ ]` 6개(그중 1개 Mac 실측).
+- Mac에서 확인할 것: 맨 위 명령 3줄(또는 `uv run python scripts/mac_report.py` 한 번).
 
 ## 2026-10-14 (18회차)
 
