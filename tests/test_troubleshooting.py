@@ -191,6 +191,7 @@ REJECTIONS = [
      "보다 같거나 커야 합니다. 장면은 바꾸지 않았습니다.", "The scene was not changed."),
     (lambda s: s.check_order("set_timing", {"slow_from": 40, "slow_to": 20}), "보다 커야 합니다.", "must be greater than"),
     (lambda s: s.check_finite({"power": float("nan")}), "에 유한한 숫자를 주세요", "must be a finite number"),
+    (lambda s: s.check_points({"at": [1, 2]}), "은(는) [x, y, z] 숫자 세 개로 주세요", "as three numbers [x, y, z]"),
 ]
 
 

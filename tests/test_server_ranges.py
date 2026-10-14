@@ -246,3 +246,26 @@ def test_every_order_pair_names_real_arguments():
         names = set(inspect.signature(tool).parameters)
         for first, second, _ in pairs:
             assert {first, second} <= names, (recipe, first, second)
+
+
+@pytest.mark.parametrize("call", [
+    lambda: server.cloth_flag(at=[1.0, 2.0]),
+    lambda: server.fire(at=[0.0, 0.0, 0.0, 1.0]),
+    lambda: server.explode(at=[1.0]),
+    lambda: server.water(domain_at=[0.0, 0.0]),
+])
+def test_points_need_three_numbers_before_blender(monkeypatch, tmp_path, call):
+    """[x, y, z] 가 아닌 위치는 블렌더에 보내기 전에 막는다(레시피가 옛 깃발을 지운 뒤 IndexError 로 멈추던 것)."""
+    monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path))
+    monkeypatch.setenv("BLENDER_FX_LANG", "en")
+    monkeypatch.setattr(bridge, "run_python", lambda code, timeout=None: pytest.fail("블렌더로 보내면 안 됨"))
+    out = call()
+    out = out if isinstance(out, str) else out[0]
+    assert out.startswith("Failed: Give ") and "three numbers [x, y, z]" in out and "The scene was not changed." in out, out
+
+
+def test_points_korean(monkeypatch):
+    monkeypatch.setenv("BLENDER_FX_LANG", "ko")
+    with pytest.raises(bridge.BlenderError, match=r"at 은\(는\) \[x, y, z\] 숫자 세 개로 주세요\(지금 \[1, 2\]\)"):
+        server.check_points({"at": [1, 2]})
+    server.check_points({"at": [1, 2, 3], "domain_at": None})  # 맞으면 조용히

@@ -244,6 +244,12 @@ The name is not in the fixed list (`material`, `preset`, `liquid`, …). A close
 `frame_start`·`frame_end` 나 `slow_from`·`slow_to` 를 거꾸로 줬습니다. 문장에 적힌 대로 두 값을 바꿔 다시 시킵니다(`slow_to` 는 `slow_from` 보다 커야 합니다).
 A pair such as `frame_start`/`frame_end` or `slow_from`/`slow_to` was given in reverse. Swap the two values as the message shows (`slow_to` must be greater than `slow_from`).
 
+> at 은(는) [x, y, z] 숫자 세 개로 주세요(지금 [1, 2]).
+> Give at as three numbers [x, y, z] (got [1, 2]).
+
+위치(`at`·`domain_at`)는 미터 단위 숫자 세 개입니다. 높이(z)를 빠뜨린 경우가 많으니 `at=[x, y, 0]` 처럼 셋을 다 적어 다시 시킵니다.
+A position (`at`, `domain_at`) is three numbers in metres. The height (z) is the one usually missing; ask again with all three, such as `at=[x, y, 0]`.
+
 > … 에 유한한 숫자를 주세요(지금 nan).
 > … must be a finite number (got nan).
 

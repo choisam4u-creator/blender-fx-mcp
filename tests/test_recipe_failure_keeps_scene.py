@@ -19,7 +19,7 @@ import bpy as _bpy, json as _json
 _sc = _bpy.context.scene
 print("FX_RESULT " + _json.dumps(dict(summary=dict(
     objects=sorted([o.name, str(o.get("fx_role", "")), sorted(m.name for m in o.modifiers),
-                    o.rigid_body is not None] for o in _bpy.data.objects),
+                    o.rigid_body is not None, o.hide_render] for o in _bpy.data.objects),
     frames=[_sc.frame_start, _sc.frame_end], fps=_sc.render.fps,
     size=[_sc.render.resolution_x, _sc.render.resolution_y]))))
 '''
@@ -107,3 +107,35 @@ def test_failed_fluid_recipes_leave_no_cache_folder(tmp_path):
     assert len(results) == 1 + len(calls), proc.stdout[-2000:] + proc.stderr[-2000:]
     assert all(not r["ok"] for r in results[1:]), results[1:]
     assert sorted(p.name for p in tmp_path.iterdir()) == [], "실패한 호출이 남긴 캐시 폴더"
+
+
+# 바다·바람·깃발이 이미 있는 장면에서 나머지 레시피를 실패시킨다(BAD_CALLS 와 같은 규칙, 18회차에 남긴 8종)
+EFFECT_BAD_CALLS = [
+    ("ocean", {"size": 20, "wave_scale": "x"}, "'x'"),  # 도구는 숫자만 넘기지만, 인자를 다 읽기 전에 장면 길이를 바꾸던 순서를 본다
+    ("wind", {"strength": 2, "at": [1, 2]}, "[x, y, z]"),
+    ("cloth_flag", {"at": [1, 2]}, "[x, y, z]"),
+    ("set_ground", {"material": "grass"}, "reset_destroy"),  # 바다가 숨긴 바닥을 다시 보이게 하지 않는다
+    ("restore", {"path": "OUT/snapshots/없는것.blend"}, "없는것"),
+]
+
+
+def test_failed_effect_recipes_leave_the_scene_unchanged(tmp_path):
+    code = CLEAN_SCENE + build_code("demo_scene", {}) + build_code("ocean", {"size": 20, "frames": 24}) \
+        + build_code("wind", {"strength": 2}) + build_code("cloth_flag", {"frames": 24}) \
+        + build_code("set_timing", {"frame_start": 5, "frame_end": 40, "fps": 24})
+    for recipe, params, _ in EFFECT_BAD_CALLS:
+        params = {k: (v.replace("OUT", str(tmp_path)) if isinstance(v, str) else v) for k, v in params.items()}
+        code += SUMMARY + build_code(recipe, params) + SUMMARY
+    results, proc = _run(code)
+    assert len(results) == 5 + 3 * len(EFFECT_BAD_CALLS), proc.stdout[-2000:] + proc.stderr[-2000:]
+    assert all(r["ok"] for r in results[:5]), results[:5]
+    rest = results[5:]
+    changed = []
+    for i, (recipe, params, word) in enumerate(EFFECT_BAD_CALLS):
+        before, res, after = rest[3 * i:3 * i + 3]
+        if res.get("ok") or word not in res.get("error", ""):
+            changed.append((recipe, params, "오류가 기대와 다름", str(res.get("error", res))[:300]))
+        if before != after:
+            b, a = before["summary"], after["summary"]
+            changed.append((recipe, params, {k: (b[k], a[k]) for k in b if b[k] != a[k]}))
+    assert not changed, "실패했는데 장면이 바뀌었거나 오류가 다른 레시피:\n" + "\n".join(map(str, changed))

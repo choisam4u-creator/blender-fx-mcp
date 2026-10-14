@@ -453,9 +453,24 @@ def _check_bake_space() -> None:
         f"Run clear_caches to delete baked caches, or point BLENDER_FX_OUT to a folder on a disk with more space, then ask again. (folder: {root})"))
 
 
+# [x, y, z] 위치 인자. 길이가 틀리면 레시피가 옛 효과를 지운 뒤 IndexError 로 멈추던 것을 서버에서 먼저 막는다
+POINT_PARAMS = ("at", "domain_at")
+
+
+def check_points(params: dict) -> None:
+    for name in POINT_PARAMS:
+        value = params.get(name)
+        if isinstance(value, (list, tuple)) and len(value) != 3:
+            raise BlenderError(t(f"{name} 은(는) [x, y, z] 숫자 세 개로 주세요(지금 {list(value)}). 예: {name}=[0, 0, 1]. "
+                                 "장면은 바꾸지 않았습니다.",
+                                 f"Give {name} as three numbers [x, y, z] (got {list(value)}), e.g. {name}=[0, 0, 1], "
+                                 "and ask again. The scene was not changed."))
+
+
 def run_recipe(recipe: str, params: dict, timeout: float | None = None) -> dict:
     params = {k: v for k, v in params.items() if v is not None}
     check_finite(params)
+    check_points(params)
     check_choices(recipe, params)
     check_ranges(recipe, params)
     check_order(recipe, params)
