@@ -57,7 +57,8 @@
 - The release workflow checks the tag through `release_check.py --tag`, so the rule lives in one place and is tested.
 
 *Docs*
-- Troubleshooting: "Still on the old version" (clear the uv cache; use the `git+` address only to try unreleased `main`).
+- Troubleshooting: "Still on the old version" (clear the uv cache; use the `git+` address only to try unreleased `main`), and "Argument value rejected"
+  (the range, choice, order and finite-number errors the server stops before Blender; a test keeps each sentence searchable on the page).
 - README shows a PyPI version badge, and (both languages) a three-line "Getting help": `doctor --issue` → the matching form → reply targets.
 - `docs/maintenance.md` has an eight-step release procedure (bump, check, tag, build, approve, PyPI, registry, release notes), tested against `release.yml`.
 - `docs/registry.md` and `docs/maintenance.md` say to run `release_check.py --tag` before pushing a tag.

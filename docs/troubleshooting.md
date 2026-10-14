@@ -217,6 +217,39 @@ object (`camera(preset="wide")`); or exposure was lowered too far (`set_render(e
 장면이 비어 있습니다. `make_demo_building` 이나 `import_model` 로 먼저 물체를 만듭니다.
 The scene is empty. Create something first with `make_demo_building` or `import_model`.
 
+## Argument value rejected
+
+**인자 값이 거부됨**
+
+서버가 블렌더에 보내기 전에 막은 값입니다. 장면은 바뀌지 않았습니다. 문장에 가능한 값·권장 값이 함께 나오니 그 안에서 다시 시킵니다.
+The server stopped the value before anything reached Blender, so the scene is unchanged. The message lists the allowed or recommended values; ask again with one of them.
+
+> … 은(는) 범위 밖입니다. 가능한 범위: …
+> … is out of range. Allowed: …
+
+숫자가 범위 밖입니다(예: `fps` 1~240, `width`·`height` 16~7680, 프레임 번호 1 이상). 대부분 0 은 "지금 장면 값 그대로" 입니다.
+A number is outside its range (for example `fps` 1-240, `width`/`height` 16-7680, frame numbers from 1). For most of them, 0 keeps the scene's current value.
+
+> … 은(는) 쓸 수 없습니다. 가능한 값: …
+> … is not allowed. Choose one of: …
+
+정해진 목록 밖의 이름입니다(`material`·`preset`·`liquid` 등). 비슷한 값이 있으면 "혹시 … 인가요?" 로 함께 알려 줍니다.
+The name is not in the fixed list (`material`, `preset`, `liquid`, …). A close match is suggested with "Did you mean …?".
+
+> … 보다 같거나 커야 합니다. 장면은 바꾸지 않았습니다.
+> … must be at least … The scene was not changed.
+> … 보다 커야 합니다. 장면은 바꾸지 않았습니다.
+> … must be greater than … The scene was not changed.
+
+`frame_start`·`frame_end` 나 `slow_from`·`slow_to` 를 거꾸로 줬습니다. 문장에 적힌 대로 두 값을 바꿔 다시 시킵니다(`slow_to` 는 `slow_from` 보다 커야 합니다).
+A pair such as `frame_start`/`frame_end` or `slow_from`/`slow_to` was given in reverse. Swap the two values as the message shows (`slow_to` must be greater than `slow_from`).
+
+> … 에 유한한 숫자를 주세요(지금 nan).
+> … must be a finite number (got nan).
+
+`nan`·`inf` 같은 값은 물리·렌더에 쓸 수 없습니다. 보통 AI 가 계산을 잘못 넘긴 것이니 숫자를 직접 적어 다시 시킵니다.
+Values like `nan` or `inf` cannot be used for physics or rendering. The AI usually passed a broken calculation; ask again with a plain number.
+
 ## Fracture or import failed
 
 **부수기·가져오기 실패**
