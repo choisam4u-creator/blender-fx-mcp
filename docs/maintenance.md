@@ -40,6 +40,10 @@ gh label create "stale" --color ededed --description "needs-info 마감 7일 전
    - SHA 와 주석이 함께 바뀌었는지 본다. 주석만 바뀌거나 SHA 만 바뀐 PR 은 병합하지 않는다.
 3. 같은 액션의 PR 이 여러 개면 가장 새 판 하나만 남기고 나머지는 닫는다.
 
+검토 기록(2026-10-14): checkout v4.4.0 → v7.0.1(#12), setup-uv v5.4.2 → v10.3.0(#17, #11 을 대신함), stale v10.4.0 → v11.0.0(#14).
+SHA 가 각 태그 커밋과 같음(`git ls-remote`), 셋 다 `node24`(GitHub 호스트 러너는 됨), 우리가 쓰는 입력(`persist-credentials`, stale 의 `only-labels` 등 7개)이 모두 남아 있음.
+setup-uv 는 입력을 주지 않으며, v10 의 캐시 기본값 `auto` 는 태그 push 에서 꺼져 release.yml 이 캐시를 쓰지 않는다. 클라우드 정비 브랜치에 옮겨 CI 로 확인.
+
 ### 판 번호와 출시
 
 - 판 번호는 `메이저.마이너.패치` 이다. 1.0 전에는 **마이너** 가 새 도구·인자·동작 변화(예: 범위 밖 값을 오류로 바꾼 것), **패치** 가 고침만이다.
@@ -100,6 +104,10 @@ Labels are defined in [`.github/labels.yml`](../.github/labels.yml). Every label
    - **Major versions** (e.g. `actions/checkout` v4 to v7, `astral-sh/setup-uv` v5 to v10): check the action's changelog for breaking changes (input names, defaults, runner requirements) before merging.
    - Check that the SHA and the comment changed together. Do not merge a PR that changes only one of them.
 3. If several PRs update the same action, keep the newest one and close the rest.
+
+Review log (2026-10-14): checkout v4.4.0 → v7.0.1 (#12), setup-uv v5.4.2 → v10.3.0 (#17, supersedes #11), stale v10.4.0 → v11.0.0 (#14).
+Each SHA matches its tag commit (`git ls-remote`); all three run on `node24` (fine on GitHub-hosted runners); every input we pass (`persist-credentials`, the seven stale inputs) still exists.
+We pass no inputs to setup-uv, and its v10 cache default `auto` is off for tag pushes, so release.yml stays cache-free. Ported to the cloud maintenance branch and checked by CI.
 
 ### Versions and releases
 
