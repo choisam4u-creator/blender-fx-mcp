@@ -483,6 +483,24 @@ def test_support_package_line_matches_version_and_security():
     assert f"| {series}.x" in (ROOT / "SECURITY.md").read_text(encoding="utf-8")
 
 
+def test_unreleased_support_tables_keep_latest_pypi_series():
+    """CHANGELOG 맨 위가 미출시면 PyPI 에 있는 최신 판(맨 위 다음의 날짜 붙은 절) 계열도 SECURITY·SUPPORT 에서 지원이다.
+    (다음 판만 '예' 로 적으면 PyPI 의 유일한 판 사용자가 '그 이전 — 아니오' 를 읽는다)"""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("release_check", ROOT / "scripts" / "release_check.py")
+    rc = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(rc)
+    heads = rc.HEADING.findall((ROOT / "CHANGELOG.md").read_text(encoding="utf-8"))
+    series = lambda v: ".".join(v.split(".")[:2])  # noqa: E731
+    current = series(rc.project_version(ROOT))
+    if rc.DATE.fullmatch(heads[0][1].strip()):
+        want = [current]
+    else:
+        released = next(v for v, when in heads[1:] if rc.DATE.fullmatch(when.strip()))
+        want = [current] + ([series(released)] if series(released) != current else [])
+    assert rc.supported_series(ROOT) == {"SECURITY.md": want, "SUPPORT.md": want}
+
+
 def test_support_links_and_reply_target():
     text, _ = _support_rows()
     for rel in re.findall(r"\]\(((?!https?:)[^)#]+)\)", text):

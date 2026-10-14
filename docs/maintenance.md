@@ -55,7 +55,7 @@ setup-uv 는 입력을 주지 않으며, v10 의 캐시 기본값 `auto` 는 태
 
 한 번의 출시를 사람의 기억이 아니라 이 순서로 재현한다. 0.7.0 은 2026-10-11 태그 push 로 release.yml 첫 실행(성공, 44초)이 PyPI 에 올렸다.
 
-1. **판 올리기** — 버전 네 곳과 `uv.lock` 루트 판, CHANGELOG 맨 위 절 제목을 `## [X.Y.Z] - YYYY-MM-DD` 로(PR 로 main 에 병합).
+1. **판 올리기** — 버전 네 곳과 `uv.lock` 루트 판, CHANGELOG 맨 위 절 제목을 `## [X.Y.Z] - YYYY-MM-DD` 로SECURITY·SUPPORT 의 지원 판 표에서 지난 판 줄을 지워 X.Y.x 하나로(출시 전에는 PyPI 최신 판도 지원으로 적어 둠, `release_check.py` 가 확인)(PR 로 main 에 병합).
 2. **점검** — main 에서 `uv run python scripts/release_check.py --build --tag vX.Y.Z` 가 모두 OK.
 3. **태그** — `git tag vX.Y.Z && git push origin vX.Y.Z`. 태그 push 만이 [`.github/workflows/release.yml`](../.github/workflows/release.yml) 을 띄운다.
 4. **빌드** — `build` 잡(읽기 권한)이 같은 `release_check.py --tag`, `uv build`, `--dist dist`, twine 점검 뒤 artifact `dist` 를 올린다.
@@ -120,7 +120,7 @@ We pass no inputs to setup-uv, and its v10 cache default `auto` is off for tag p
 
 Every release follows these steps, so it does not depend on one person's memory. 0.7.0 was published to PyPI by the first release.yml run (2026-10-11, success, 44 s) after its tag push.
 
-1. **Bump**: the four version fields, the root package in `uv.lock`, and the top CHANGELOG heading as `## [X.Y.Z] - YYYY-MM-DD` (merged to main through a PR).
+1. **Bump**: the four version fields, the root package in `uv.lock`, the top CHANGELOG heading as `## [X.Y.Z] - YYYY-MM-DD`, and the supported-version tables in SECURITY and SUPPORT trimmed to X.Y.x (before a release they also list the latest PyPI series; `release_check.py` checks this) (merged to main through a PR).
 2. **Check**: on main, `uv run python scripts/release_check.py --build --tag vX.Y.Z` is all OK.
 3. **Tag**: `git tag vX.Y.Z && git push origin vX.Y.Z`. Only a tag push starts [`.github/workflows/release.yml`](../.github/workflows/release.yml).
 4. **Build**: the `build` job (read-only) runs the same `release_check.py --tag`, `uv build`, `--dist dist` and twine checks, then uploads the `dist` artifact.
