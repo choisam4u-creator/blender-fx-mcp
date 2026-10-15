@@ -267,3 +267,11 @@
 - [x] doctor 의 `output`(출력 폴더에 쓸 수 없음)에도 troubleshooting 절과 `HELP_ANCHORS` (근거: 이번 회차에 보니 output 만 해결법 절이 없어 문서 첫머리로 감. 오류 메시지가 다음 할 일을 말하는지)
 - [x] 워크플로 정적 검사: CI lint 에 SHA 고정 `actionlint`(또는 `zizmor`) 단계 + 시험이 그 단계를 확인 (근거: 이번 회차에 release.yml 에 잡을 더했는데 다음 태그 전까지는 문법·표현식 오류를 알 길이 없음. 유지보수·보안)
 - [x] `examples/*.py` 의 docstring·`print` 안내 문장에 나오는 도구·인자 이름도 이름 시험에 (근거: 17회차에 문서 7개로 넓혔지만 예제 파일 안 문장은 빠짐. 예제가 그대로 도는지)
+
+### 2026-10-15 (20회차) 추가 — 사용자 체감 우선(오픈소스 지원 기준: 시험·보안·유지보수)
+
+- [ ] `particles(target="없는이름")` 이 지난 같은 종류 파티클을 지우고 장면 길이를 바꾼 뒤 실패함 → `fx_bbox(target)` 를 `cleanup_kind` 앞으로 + `BAD_CALLS` 에 한 줄 (근거: 이번 회차에 particles `at` 을 고치며 보니 `target` 은 아직 정리 뒤에 읽음. 실패 = 장면 그대로)
+- [ ] `water` "물 덩어리가 격자 한 칸보다 작음" 오류가 권하는 `resolution` 값이 상한 320 을 넘으면 그 값은 못 쓰므로 `size` 를 키우라고만(또는 둘 다 되는 값) + 시험 (근거: 이번 회차에 water 를 읽으며 `need` 를 상한과 비교하지 않는 것을 봄. 오류가 권하는 다음 할 일이 진짜 되는지)
+- [ ] `zizmor`(판 고정) 지적 정리: `greet.yml` 의 `pull_request_target`(high, 코드 체크아웃 없음 확인 후 근거 주석 또는 `issues`·`pull_request` 로), checkout `persist-credentials: false` 누락(medium 6) → 고친 뒤 CI lint 에 zizmor 단계 + 시험 (근거: 이번 회차에 `uvx zizmor@1.30.1 --offline .github/workflows` 로 7건. 오픈소스 지원 기준의 보안 점수(Scorecard)와 겹침)
+- [ ] `actionlint-py` 는 sdist 를 빌드하며 actionlint 바이너리를 내려받음 → 받는 주소·체크섬 검증 여부를 확인해 SECURITY 공급망 표에 적고, 검증이 없으면 SHA 고정 공식 다운로드+체크섬으로 바꾸기 (근거: 이번 회차에 CI 에 넣으며 "Building actionlint-py" 를 봄. 공급망)
+- [ ] `examples/README.md` 의 명령 줄(코드 블록)을 시험에서 실제 진입점·스크립트 이름과 맞추기(`uv run python examples/…`·`uvx …` 가 가리키는 파일·`[project.scripts]` 가 있는지) (근거: 이번 회차에 예제 .py 이름 시험을 넣으며 README 쪽 명령은 파일 존재를 안 보는 것을 봄. 예제가 그대로 도는지)
