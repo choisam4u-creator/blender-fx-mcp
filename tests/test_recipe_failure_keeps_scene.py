@@ -146,3 +146,24 @@ def test_failed_effect_recipes_leave_the_scene_unchanged(tmp_path):
             b, a = before["summary"], after["summary"]
             changed.append((recipe, params, {k: (b[k], a[k]) for k in b if b[k] != a[k]}))
     assert not changed, "실패했는데 장면이 바뀌었거나 오류가 다른 레시피:\n" + "\n".join(map(str, changed))
+
+
+def test_set_ground_advice_under_ocean_actually_works():
+    """바다 밑 set_ground 오류가 권하는 reset_destroy 가 정말 바다를 지워, 같은 set_ground 가 다음에 되는지 본다."""
+    ground = '''
+import bpy as _bpy, json as _json
+_g = [o for o in _bpy.data.objects if o.get("fx_role") == "ground"]
+print("FX_RESULT " + _json.dumps(dict(ok=True, result=dict(
+    ocean=any(o.get("fx_role") == "ocean" for o in _bpy.data.objects),
+    ground=[[o.hide_viewport, o.hide_render, o.get("fx_ground_material")] for o in _g]))))
+'''
+    code = CLEAN_SCENE + build_code("demo_scene", {}) + build_code("ocean", {"size": 20, "frames": 24}) \
+        + build_code("set_ground", {"material": "grass"}) + build_code("reset", {}) \
+        + build_code("set_ground", {"material": "grass"}) + ground
+    results, proc = _run(code)
+    assert len(results) == 6, proc.stdout[-2000:] + proc.stderr[-2000:]
+    assert all(r["ok"] for r in results[:2]), results[:2]
+    assert not results[2]["ok"] and "reset_destroy" in results[2]["error"], results[2]
+    assert results[3]["ok"], results[3]
+    assert results[4]["ok"], f"안내대로 reset_destroy 를 했는데 set_ground 가 또 실패: {results[4]}"
+    assert results[5]["result"] == dict(ocean=False, ground=[[False, False, "grass"]]), results[5]

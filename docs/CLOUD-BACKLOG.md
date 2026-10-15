@@ -263,7 +263,7 @@
 ### 2026-10-14 (19회차) 추가 — 사용자 체감 우선(오픈소스 지원 기준: 시험·이슈 대응·유지보수)
 
 - [x] 남은 레시피(`emit`·`explode`·`water`·`particles`)의 `at`·`domain_at` 읽기를 `_common.point()` 하나로 + bpy 시험(숫자 셋이 아니면 장면 그대로) (근거: 이번 회차에 wind·cloth_flag 만 바꿈. 서버 `check_points` 가 막지만 레시피를 직접 부르는 시험·헤드리스 경로는 아직 IndexError. 오류 메시지가 다음 할 일을 말하는지)
-- [ ] `set_ground` 가 바다 밑에서 권하는 `reset_destroy` 가 실제로 바다를 지워 다음 `set_ground` 가 되는지 bpy 시험(바다 → reset_destroy → set_ground 성공), 안 되면 안내를 실제 되는 방법으로 (근거: 이번 회차에 바다 밑 바닥을 막으며 안내 문장을 그대로 씀. 오류가 권하는 다음 할 일이 진짜 되는지)
+- [x] `set_ground` 가 바다 밑에서 권하는 `reset_destroy` 가 실제로 바다를 지워 다음 `set_ground` 가 되는지 bpy 시험(바다 → reset_destroy → set_ground 성공), 안 되면 안내를 실제 되는 방법으로 (근거: 이번 회차에 바다 밑 바닥을 막으며 안내 문장을 그대로 씀. 오류가 권하는 다음 할 일이 진짜 되는지)
 - [ ] doctor 의 `output`(출력 폴더에 쓸 수 없음)에도 troubleshooting 절과 `HELP_ANCHORS` (근거: 이번 회차에 보니 output 만 해결법 절이 없어 문서 첫머리로 감. 오류 메시지가 다음 할 일을 말하는지)
 - [ ] 워크플로 정적 검사: CI lint 에 SHA 고정 `actionlint`(또는 `zizmor`) 단계 + 시험이 그 단계를 확인 (근거: 이번 회차에 release.yml 에 잡을 더했는데 다음 태그 전까지는 문법·표현식 오류를 알 길이 없음. 유지보수·보안)
 - [ ] `examples/*.py` 의 docstring·`print` 안내 문장에 나오는 도구·인자 이름도 이름 시험에 (근거: 17회차에 문서 7개로 넓혔지만 예제 파일 안 문장은 빠짐. 예제가 그대로 도는지)
