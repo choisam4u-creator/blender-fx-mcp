@@ -46,10 +46,10 @@ def main():
     sc = scene()
     a = p.get("at")
     at = point(a, "at") if a else None  # 숫자 셋이 아니면 지난 파티클을 지우기 전에 멈춘다
+    lo, hi = fx_bbox(p.get("target") or None)  # 없는 대상도 지우기·장면 길이 바꾸기 전에 멈춘다
     cleanup_kind(kind)
     set_frame_end(frames)
 
-    lo, hi = fx_bbox(p.get("target") or None)
     size = hi - lo
     center = at if at is not None else Vector(((lo.x + hi.x) / 2, (lo.y + hi.y) / 2, lo.z))
     area = float(p.get("area") or max(size.x, size.y, 4.0) * 3.0)
