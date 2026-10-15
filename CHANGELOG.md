@@ -39,7 +39,7 @@
 *Tests and CI*
 - `examples/first_render.py` runs end to end in tests against the real server and a fake Blender receiver socket
   (five progress lines, exit 0 and the PNG paths; a recipe failure exits 1 with the error and the way back).
-- The release workflow checks the tag through `release_check.py --tag`, so the rule lives in one place and is tested.
+- The release workflow checks the tag through `release_check.py --tag`, so the rule lives in one place and is tested; CI lints every workflow with a pinned actionlint.
 - A Blender test fails every recipe once with a representative bad argument and compares the scene before and after; tests keep every
   server-side error telling the next step in Korean and English, and tool and argument names in the docs real.
 - Maintainer scripts: `release_notes.py vX.Y.Z` prints a CHANGELOG section as GitHub release notes (`--draft` for an unreleased one),
@@ -72,6 +72,7 @@
 - 해결법 문서에 "인자 값이 거부됨" 절(범위·선택지·순서·유한한 숫자). 서버가 실제로 만든 한/영 문장이 문서에서 검색되는지, 서버의 검사 함수가 모두 시험에 드는지 시험
 - 영어 요약 *Fixes* 를 주제별 6개로 다시 묶음(첫 항목이 29줄 한 덩어리였음) + 미출시 절 요약 항목 6줄 상한 시험
 - CI 액션: `actions/checkout` v7.0.1, `astral-sh/setup-uv` v10.3.0, `actions/stale` v11.0.0(dependabot #12·#17·#14 검토 뒤, SHA·입력·node24 확인)
+- CI lint 잡이 판을 고정한 actionlint(`actionlint-py` 1.7.12.25)로 워크플로 전체를 검사. 태그 때만 도는 release.yml 의 문법·표현식 오류를 PR 단계에서 잡는다 + 시험
 - `set_timing(global_slow=0.5)` 를 두 번 시키면 시간 배율은 2배 그대로인데 길이만 또 늘어(48 → 96 → 192프레임) 뒤 절반이 멈춘 화면이던 문제.
   배율은 늘 원래 속도 기준(다시 시켜도 겹치지 않음), `global_slow=1` 이면 되돌림. 같은 호출의 `frame_end` 는 원래 길이로 본다
 - `set_timing`·`render_video` 결과 문장에 영상 길이를 초로("72프레임 = 24fps 로 3초"). 프레임 수만으로는 몇 초짜리인지 몰랐다

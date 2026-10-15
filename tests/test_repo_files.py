@@ -350,6 +350,15 @@ def _job_bodies(text):
     return {parts[i]: parts[i + 1] for i in range(1, len(parts), 2)}
 
 
+def test_ci_lint_checks_workflows_with_pinned_actionlint():
+    """CI lint 잡이 판을 고정한 actionlint 로 .github/workflows 를 모두 본다(release.yml 은 태그 때만 돌아 그전에 오류를 알 길이 없음)."""
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    lint = _job_bodies(ci)["lint"]
+    runs = re.findall(r"^      - run: (.*actionlint.*)$", lint, re.M)
+    assert runs, "ci.yml lint 잡에 actionlint 단계가 없음"
+    assert all(re.search(r"actionlint-py@\d+\.\d+\.\d+\.\d+ actionlint$", r) for r in runs), f"판 고정·경로 인자 없이(전체 워크플로): {runs}"
+
+
 def test_release_workflow_publish_only_uploads_artifact():
     """release.yml: 태그 v* 로만 돌고, build 는 읽기 권한으로 점검·빌드하고, publish 는 id-token 만 받아
     build 의 결과물만 올린다(저장소 코드를 받거나 실행하지 않음)."""
