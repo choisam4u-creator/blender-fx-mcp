@@ -5,10 +5,31 @@
 한 번에 돌려 `latest.md` 를 새로 쓰려면 `uv run python scripts/mac_report.py`(결과 확인 뒤 커밋). 클라우드 회차는 그 FAIL 부터 고친다.
 
 ```sh
-uv sync && uv run pytest -q                        # 블렌더 앱으로 전체 통과(새: emit·explode·water·particles 의 at=[1,2] = 장면 그대로, 바다 → reset_destroy → set_ground)
-uvx --from actionlint-py@1.7.12.25 actionlint      # CI lint 와 같은 워크플로 검사(출력 없이 끝나면 통과)
-BLENDER_FX_OUT=/nonexistent/x uv run blender-fx-doctor   # 출력 폴더 줄 실패 + 마지막 "해결법:" 이 #output-folder-not-writable 인지
+uv sync && uv run pytest -q                        # 블렌더 앱으로 전체 통과(새: particles 없는 target·water 격자 안내가 320 을 넘지 않음)
+uvx zizmor@1.30.1 --offline .github/workflows      # CI lint 와 같은 워크플로 보안 검사("No findings", 1 ignored = greet 한 줄)
+uv run python -c "from blender_fx_mcp import server; print(server.water(size=0.01, resolution=16))"   # Connect 뒤: 'size 를 X 이상' 안내, 320 넘는 resolution 을 권하지 않음
 ```
+
+## 2026-10-15 (21회차)
+
+- 시작 확인: 저장된 지시의 최우선 F1·F3(0.7.0 판·release.yml)는 9회차(10/11)에 끝나 PR #13 으로 병합됐고 태그 `v0.7.0` 도 있음. 다시 할 것 없음 → 일반 규칙.
+  `latest.md`(10/1)의 FAIL 2건은 main 에 고쳐져 있음(재확인). main 은 앞서 있지 않음.
+  열린 `claude/cloud-work-*` PR 중 가장 위(#20, `9044ba9`)에서 이어 감. 이 세션은 `claude/cloud-work-8fnkl3` 에 푸시 → **PR #21**(#20 위에 쌓음).
+- 한 일(백로그 위에서부터, 굽기 시간 어림은 Mac 실측 필요라 건너뜀):
+  1. **particles 없는 target** (`f872074`): `fx_bbox(target)` 을 정리·장면 길이 바꾸기 앞으로 옮김. BAD_CALLS 에 한 줄 추가. 고침을 되돌리면 실패하는 것을 확인함.
+  2. **water 격자 안내 상한** (`b6a7669`, `c02ccad`): 권할 resolution 이 320 을 넘으면 되는 size 를 대신 권함. 지금 resolution 의 값과 320 일 때 값을 함께 주고, object 모드면 더 큰 물체나 domain 을 권함.
+     도메인 계산을 `domain_box(size)` 로 묶었음. bpy 시험은 권한 size 로 다시 부르면 격자 검사를 지나는지 봄. 굽기는 bpy 에서 mantaflow 가 죽어서, 캐시 폴더를 일부러 막아 굽기 전에 멈추게 함.
+  3. **zizmor** (`3c3dd7e`): CI lint 에 `uvx zizmor@1.30.1 --offline .github/workflows` 를 넣음. checkout 6곳에 `persist-credentials: false`. greet `pull_request_target` 은 근거 주석과 함께 그 줄에서만 끔. 지금 0건.
+  4. **examples/README 명령 시험** (`1f9daed`): 스크립트 파일이 있는지, `uv run python` 으로 부르는지, uvx·uv run 이 띄우는 이름이 진입점인지 봄.
+  5. **actionlint-py 공급망** (`2821f9a`): sdist 를 열어 확인함. 공식 릴리스 바이너리를 받아 SHA-256 이 맞을 때만 씀(공식 checksums.txt 와 같음). 바꿀 것은 없어 SECURITY 표에 두 줄로 적음.
+  - 남은 `[ ]` 가 1개(Mac 실측)라 새 항목 5개를 추가함(`7edc39b`): 정리 전 읽기 ast 시험, uvx 판 고정 도구 표, bpy_tests 설치 안내, 해결법 인용 문장 시험, water 결과에 격자 크기.
+- 돌린 시험:
+  - `uv run pytest -q`(3.11) **1252 통과·49 건너뜀**(블렌더 필요). `uvx ruff@0.15.20 check .`·actionlint·zizmor 통과.
+  - **`scripts/bpy_tests.sh`(bpy 5.0.1) → 1295 통과·6 건너뜀(3분 7초)**. 건너뛴 것은 유체 `app_only` 5개와 실제 캐릭터 파일 1개(블렌더 앱·개인 파일 필요).
+  - 환경 메모: libEGL 설치와 bpy 휠 받기에 약 35분이 걸림(새 백로그 항목의 근거).
+- 막힌 것: 없음.
+- 완료 수·추가 수: **완료 5** / **추가 5** (완료 ≥ 추가). 남은 `[ ]` 6개(그중 1개는 Mac 실측).
+- Mac에서 확인할 것: 맨 위 명령 3줄(또는 `uv run python scripts/mac_report.py` 한 번).
 
 ## 2026-10-15 (20회차)
 
