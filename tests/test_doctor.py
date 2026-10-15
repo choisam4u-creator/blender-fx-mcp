@@ -147,7 +147,9 @@ def test_report_numbers_next_steps_in_install_order(env, monkeypatch, lang):
     assert steps[3].split(". ", 1)[1].startswith(("(선택) ", "(optional) ")) and "claude mcp add" in steps[3]
     assert "uv" in steps[0] and "addon.py" in steps[1] and "Connect to MCP server" in steps[2]
     assert "Install from Disk" in steps[1]
-    assert lines[-1].endswith(bridge.TROUBLESHOOTING_URL)
+    # 해결법 줄은 실패 항목의 절로 바로(uv → addon·connection 은 한 절), 설치 순서대로
+    url = bridge.TROUBLESHOOTING_URL
+    assert lines[-1].split(": ", 1)[1] == f"{url}#uv-not-found · {url}#connection-refused"
     if lang == "en":
         assert not re.search(r"[가-힣]", "\n".join(lines[head:])), lines[head:]
 
@@ -322,7 +324,9 @@ def test_json_matches_text_report(monkeypatch, capsys, tmp_path, lang):
     assert {"addon", "connection"} <= set(data["failed"]) and "blender" not in data["failed"]
     assert next(c for c in data["checks"] if c["id"] == "blender")["optional"] is True
     assert all(c["fix"] for c in data["checks"] if c["id"] in data["failed"])
-    assert data["ok"] is False and data["help"] == bridge.TROUBLESHOOTING_URL and data["help"] in text[-1]
+    assert data["ok"] is False and data["help"] == f"{bridge.TROUBLESHOOTING_URL}#connection-refused" and data["help"] in text[-1]
+    rows = {c["id"]: c for c in data["checks"]}
+    assert rows["connection"]["help"] == rows["addon"]["help"] == data["help"] and rows["output"]["help"] == ""
     assert data["lang"] == lang and data["blender"] is None
     assert data["blender_fx_mcp"] == __version__
     assert (data["host"], data["port"]) == (bridge.host(), bridge.port())
@@ -584,3 +588,24 @@ def test_mask_home_skips_root_home(monkeypatch):
     """집 폴더가 / 이면(컨테이너 root 등) 모든 경로를 ~ 로 바꾸지 않게 그대로 둔다."""
     monkeypatch.setattr(doctor.os.path, "expanduser", lambda p: "/" if p == "~" else p)
     assert doctor.mask_home("/usr/bin/blender") == "/usr/bin/blender"
+
+
+def test_every_help_anchor_is_a_troubleshooting_heading():
+    """doctor 가 실패 항목마다 가리키는 절(#앵커)이 해결법 문서에 실제로 있다. 절 제목을 바꾸면 여기서 걸린다."""
+    from test_docs_links import anchors
+    doc = Path(__file__).resolve().parents[1] / "docs" / "troubleshooting.md"
+    assert set(doctor.HELP_ANCHORS.values()) <= anchors(doc)
+    assert doctor.CLIENT_HELP == doctor.help_url("client")
+
+
+def test_help_anchors_name_real_check_ids(env, monkeypatch):
+    """앵커 표의 키가 실제 점검 id(+ 새 판 알림 update)다. 오타 난 id 는 조용히 문서 첫머리로 떨어진다."""
+    monkeypatch.setattr(bridge, "ping", lambda: None)
+    ids = {c["id"] for c in doctor.run_checks(updates=False)} | {"update"}
+    assert set(doctor.HELP_ANCHORS) <= ids
+
+
+@pytest.mark.parametrize("cid,anchor", [("uv", "#uv-not-found"), ("client", "#tools-not-visible-in-the-client"),
+                                        ("output", "#output-folder-not-writable"), ("python", "")])
+def test_help_url_per_check(cid, anchor):
+    assert doctor.help_url(cid) == bridge.TROUBLESHOOTING_URL + anchor

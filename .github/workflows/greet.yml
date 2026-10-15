@@ -1,11 +1,12 @@
 # 처음 이슈·PR 을 연 사람에게 한/영 길잡이 댓글을 단다(응답 목표 7~14일보다 먼저 닿게).
-# pull_request_target 은 포크 PR 에도 댓글을 달 수 있게 하려는 것이다. 이 작업은 PR 의 코드를 체크아웃하거나 실행하지 않는다.
+# pull_request_target 은 포크 PR 에도 댓글을 달 수 있게 하려는 것이다. 이 작업은 PR 의 코드를 체크아웃하거나 실행하지 않는다
+# (checkout·run 단계 없음, tests/test_repo_files.py 가 지킨다). 그래서 zizmor 의 dangerous-triggers 를 이 줄에서만 끈다.
 name: greet
 
 on:
   issues:
     types: [opened]
-  pull_request_target:
+  pull_request_target:  # zizmor: ignore[dangerous-triggers]
     types: [opened]
 
 # 기본 토큰은 읽기만. 댓글을 다는 작업만 issues·pull-requests 쓰기를 받는다.

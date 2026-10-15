@@ -10,9 +10,9 @@ uvx --from blender-fx-mcp blender-fx-doctor
 여기 없는 문제는 [버그 신고](https://github.com/choisam4u-creator/blender-fx-mcp/issues/new?template=bug_report.yml)에 doctor 출력과 함께 올려 주세요.
 If your problem is not here, open a [bug report](https://github.com/choisam4u-creator/blender-fx-mcp/issues/new?template=bug_report.yml) with the doctor output.
 이슈에는 `blender-fx-doctor --issue` 를 붙이면 됩니다(판·OS·블렌더·클라이언트·언어 표와 점검 전체, 집 폴더는 `~` 로 가림).
-`blender-fx-doctor --json` 은 같은 결과를 JSON 으로 냅니다(항목 id: `python`·`blender-fx-mcp`·`mcp`·`uv`·`blender`·`addon`·`connection`·`client`·`output`·`space`), `clients` 에는 등록이 보인 MCP 클라이언트가 들어갑니다.
+`blender-fx-doctor --json` 은 같은 결과를 JSON 으로 냅니다(항목 id: `python`·`blender-fx-mcp`·`mcp`·`uv`·`blender`·`addon`·`connection`·`client`·`output`·`space`), `clients` 에는 등록이 보인 MCP 클라이언트가, 실패한 항목의 `help` 에는 이 문서에서 볼 절 주소가 들어갑니다(사람이 읽는 출력의 마지막 "해결법:" 줄도 같은 절).
 For an issue, paste `blender-fx-doctor --issue` (version, OS, Blender, clients and language table plus all checks, home folder masked as `~`).
-`blender-fx-doctor --json` prints the same result as JSON, with language-independent check ids; `clients` lists the MCP clients where it is registered.
+`blender-fx-doctor --json` prints the same result as JSON, with language-independent check ids; `clients` lists the MCP clients where it is registered, and each failed check's `help` is the section of this page to read (the last "Help:" line of the plain output links the same sections).
 
 ---
 
@@ -162,6 +162,26 @@ Symptom: **Connect to MCP server** does nothing and the Blender console shows `A
 (or another Blender window) holds port 9876. Keep one Blender window open, or change the port in the add-on panel
 (e.g. `9877`) and set `BLENDER_FX_PORT=9877` in your MCP config. Keep `BLENDER_FX_HOST` on `localhost`; the receiver has no authentication.
 
+## Output folder not writable
+
+**출력 폴더에 쓸 수 없음**
+
+> 출력 폴더 … 에 쓸 수 없음
+> output folder … cannot write to
+
+렌더·영상·스냅샷·캐시는 모두 출력 폴더(기본 `~/blender-fx-output`, MCP 설정의 `BLENDER_FX_OUT`)에 씁니다. doctor 가 이 줄을 실패로 보이면:
+
+- 폴더가 외장 디스크·네트워크 드라이브에 있으면 연결돼 있는지 봅니다.
+- 내 계정이 쓸 수 있는 폴더로 바꿉니다. MCP 설정의 `env` 에 `"BLENDER_FX_OUT": "~/blender-fx-output"` 처럼 집 폴더 아래를 주고 클라이언트 앱을 완전히 껐다 켭니다(폴더는 없으면 만듭니다).
+- macOS 에서 `Documents`·`Desktop` 아래를 골랐다면 시스템 설정 → 개인정보 보호 및 보안 → 파일 및 폴더에서 클라이언트 앱에 접근을 허용하거나, 그 밖의 폴더를 씁니다.
+- 고친 뒤 `blender-fx-doctor` 를 다시 돌려 출력 폴더 줄이 `[OK]` 인지 확인합니다.
+
+Renders, videos, snapshots and caches all go to the output folder (default `~/blender-fx-output`, or `BLENDER_FX_OUT` in your MCP config).
+If doctor shows this line as failed: check that an external or network drive holding the folder is connected; point `BLENDER_FX_OUT`
+in the `env` of your MCP config to a folder your account can write, e.g. `"BLENDER_FX_OUT": "~/blender-fx-output"`, and fully restart the
+client app (the folder is created if missing); on macOS, for a folder under `Documents` or `Desktop`, allow the client app in System
+Settings → Privacy & Security → Files and Folders, or use another folder. Run `blender-fx-doctor` again and check the line is `[OK]`.
+
 ## Fluid bake failed
 
 **물·연기 굽기 실패**
@@ -169,8 +189,10 @@ Symptom: **Connect to MCP server** does nothing and the Blender console shows `A
 > 물 덩어리(0.10m)가 계산 격자 한 칸(0.25m)보다 작아 물이 생기지 않습니다.
 > The water source (0.10m) is smaller than one simulation cell (0.25m), so no liquid forms.
 
-`size` 를 키우거나, 문장에 나온 값 이상으로 `resolution` 을 올립니다.
-Increase `size`, or raise `resolution` to at least the value in the message.
+`size` 를 키우거나, 문장에 나온 값 이상으로 `resolution` 을 올립니다. 그 값이 상한 320 을 넘으면 문장이 대신 되는 `size` 를 알려 줍니다
+(`mode="object"` 면 더 큰 `source_object` 나 `domain_at`·`domain_size` 로 물 공간 줄이기).
+Increase `size`, or raise `resolution` to at least the value in the message. When that would exceed the limit of 320, the message gives a `size` that works instead
+(for `mode="object"`, use a larger `source_object` or shrink the space with `domain_at` and `domain_size`).
 
 > 물 굽기 결과가 비어 있습니다.
 > The liquid bake produced nothing.
@@ -216,6 +238,45 @@ object (`camera(preset="wide")`); or exposure was lowered too far (`set_render(e
 
 장면이 비어 있습니다. `make_demo_building` 이나 `import_model` 로 먼저 물체를 만듭니다.
 The scene is empty. Create something first with `make_demo_building` or `import_model`.
+
+## Argument value rejected
+
+**인자 값이 거부됨**
+
+서버가 블렌더에 보내기 전에 막은 값입니다. 장면은 바뀌지 않았습니다. 문장에 가능한 값·권장 값이 함께 나오니 그 안에서 다시 시킵니다.
+The server stopped the value before anything reached Blender, so the scene is unchanged. The message lists the allowed or recommended values; ask again with one of them.
+
+> … 은(는) 범위 밖입니다. 가능한 범위: …
+> … is out of range. Allowed: …
+
+숫자가 범위 밖입니다(예: `fps` 1~240, `width`·`height` 16~7680, 프레임 번호 1 이상). 대부분 0 은 "지금 장면 값 그대로" 입니다.
+A number is outside its range (for example `fps` 1-240, `width`/`height` 16-7680, frame numbers from 1). For most of them, 0 keeps the scene's current value.
+
+> … 은(는) 쓸 수 없습니다. 가능한 값: …
+> … is not allowed. Choose one of: …
+
+정해진 목록 밖의 이름입니다(`material`·`preset`·`liquid` 등). 비슷한 값이 있으면 "혹시 … 인가요?" 로 함께 알려 줍니다.
+The name is not in the fixed list (`material`, `preset`, `liquid`, …). A close match is suggested with "Did you mean …?".
+
+> … 보다 같거나 커야 합니다. 장면은 바꾸지 않았습니다.
+> … must be at least … The scene was not changed.
+> … 보다 커야 합니다. 장면은 바꾸지 않았습니다.
+> … must be greater than … The scene was not changed.
+
+`frame_start`·`frame_end` 나 `slow_from`·`slow_to` 를 거꾸로 줬습니다. 문장에 적힌 대로 두 값을 바꿔 다시 시킵니다(`slow_to` 는 `slow_from` 보다 커야 합니다).
+A pair such as `frame_start`/`frame_end` or `slow_from`/`slow_to` was given in reverse. Swap the two values as the message shows (`slow_to` must be greater than `slow_from`).
+
+> at 은(는) [x, y, z] 숫자 세 개로 주세요(지금 [1, 2]).
+> Give at as three numbers [x, y, z] (got [1, 2]).
+
+위치(`at`·`domain_at`)는 미터 단위 숫자 세 개입니다. 높이(z)를 빠뜨린 경우가 많으니 `at=[x, y, 0]` 처럼 셋을 다 적어 다시 시킵니다.
+A position (`at`, `domain_at`) is three numbers in metres. The height (z) is the one usually missing; ask again with all three, such as `at=[x, y, 0]`.
+
+> … 에 유한한 숫자를 주세요(지금 nan).
+> … must be a finite number (got nan).
+
+`nan`·`inf` 같은 값은 물리·렌더에 쓸 수 없습니다. 보통 AI 가 계산을 잘못 넘긴 것이니 숫자를 직접 적어 다시 시킵니다.
+Values like `nan` or `inf` cannot be used for physics or rendering. The AI usually passed a broken calculation; ask again with a plain number.
 
 ## Fracture or import failed
 
