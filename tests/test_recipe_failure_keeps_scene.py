@@ -180,8 +180,11 @@ def test_water_cell_advice_stays_within_resolution_limit(tmp_path):
     assert "320" in err and "resolution 을" not in err, err  # 쓸 수 없는 resolution 값을 권하지 않는다
     m = re.search(r"size (?:를 |to at least )([\d.]+)", err)
     assert m, err
-    good = dict(bad, size=float(m.group(1)), cache_dir=str(tmp_path / "c2"))
+    # 굽기까지 가면 bpy 가 죽는다(유체는 app_only). 캐시 폴더를 파일 밑에 두어 격자 검사 뒤 makedirs 에서 멈추게 한다
+    blocker = tmp_path / "file"
+    blocker.write_text("x")
+    good = dict(bad, size=float(m.group(1)), cache_dir=str(blocker / "c2"))
     results, proc = _run(CLEAN_SCENE + build_code("demo_scene", {}) + build_code("water", good))
     assert len(results) == 2, proc.stdout[-2000:] + proc.stderr[-2000:]
-    # bpy 에서는 굽기가 비어 실패할 수 있다(유체는 app_only). 권한 값이 격자 검사를 지났는지만 본다
-    assert "격자 한 칸" not in results[1].get("error", "") and "simulation cell" not in results[1].get("error", ""), results[1]
+    err = results[1].get("error", "")
+    assert not results[1]["ok"] and "격자 한 칸" not in err and "simulation cell" not in err, results[1]
