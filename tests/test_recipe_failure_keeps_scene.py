@@ -51,6 +51,7 @@ BAD_CALLS = [
     ("set_look", {"preset": "day", "sky": "없는하늘"}, "sky"),
     ("camera", {"preset": "없는각도"}, "preset"),
     ("particles", {"kind": "없는종류"}, "kind"),
+    ("particles", {"kind": "snow", "target": "없는건물"}, "없는건물"),  # 지난 snow 를 지우기 전에 대상을 찾는다
     # at·domain_at 이 숫자 셋이 아니면 지난 효과를 지우기 전에 _common.point() 가 멈춘다(도구는 check_points 로 먼저 막지만 레시피를 직접 부르는 경로)
     ("explode", {"at": [1, 2]}, "[x, y, z]"),
     ("emit", {"at": [1, 2]}, "[x, y, z]"),
@@ -167,3 +168,20 @@ print("FX_RESULT " + _json.dumps(dict(ok=True, result=dict(
     assert results[3]["ok"], results[3]
     assert results[4]["ok"], f"안내대로 reset_destroy 를 했는데 set_ground 가 또 실패: {results[4]}"
     assert results[5]["result"] == dict(ocean=False, ground=[[False, False, "grass"]]), results[5]
+
+
+def test_water_cell_advice_stays_within_resolution_limit(tmp_path):
+    """권할 resolution 이 상한 320 을 넘으면 그 값 대신 size 를 권하고, 권한 size 로 다시 부르면 같은 검사를 지나는지 본다."""
+    import re
+    bad = {"size": 0.01, "resolution": 16, "frames": 12, "cache_dir": str(tmp_path / "c1")}
+    results, proc = _run(CLEAN_SCENE + build_code("demo_scene", {}) + build_code("water", bad))
+    assert len(results) == 2, proc.stdout[-2000:] + proc.stderr[-2000:]
+    err = results[1]["error"]
+    assert "320" in err and "resolution 을" not in err, err  # 쓸 수 없는 resolution 값을 권하지 않는다
+    m = re.search(r"size (?:를 |to at least )([\d.]+)", err)
+    assert m, err
+    good = dict(bad, size=float(m.group(1)), cache_dir=str(tmp_path / "c2"))
+    results, proc = _run(CLEAN_SCENE + build_code("demo_scene", {}) + build_code("water", good))
+    assert len(results) == 2, proc.stdout[-2000:] + proc.stderr[-2000:]
+    # bpy 에서는 굽기가 비어 실패할 수 있다(유체는 app_only). 권한 값이 격자 검사를 지났는지만 본다
+    assert "격자 한 칸" not in results[1].get("error", "") and "simulation cell" not in results[1].get("error", ""), results[1]

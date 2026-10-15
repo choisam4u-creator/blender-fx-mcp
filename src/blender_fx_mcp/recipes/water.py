@@ -124,41 +124,74 @@ def main():
 
     if size <= 0:
         size = max(0.25, min((ob_hi - ob_lo).x, (ob_hi - ob_lo).y) * 0.25)
-    if at is None:
-        if mode == "pool":
-            at = Vector(((ob_lo.x + ob_hi.x) / 2, (ob_lo.y + ob_hi.y) / 2, ob_lo.z))
-        else:
-            at = Vector(((ob_lo.x + ob_hi.x) / 2, (ob_lo.y + ob_hi.y) / 2, ob_hi.z + size * 2.0))
-
-    # 3) 물이 살 공간(도메인): 장애물 + 출발점 + 날아갈 거리를 모두 담는다
+    given_at = at
+    fixed = None
+    if p.get("domain_at") and p.get("domain_size"):
+        fixed = (point(p["domain_at"], "domain_at"), float(p["domain_size"]))
     d = direction_vector(direction_deg, pitch_deg)
     travel = max(0.0, speed) * (frames / float(sc.render.fps)) * 0.6
-    end = at + d * travel
-    pts = [ob_lo, ob_hi, at, end, at + Vector((size, size, size)), at - Vector((size, size, size))]
-    lo = Vector((min(v.x for v in pts), min(v.y for v in pts), min(v.z for v in pts)))
-    hi = Vector((max(v.x for v in pts), max(v.y for v in pts), max(v.z for v in pts)))
-    pad = max(size * 2.0, (hi - lo).length * 0.12, 0.5)
-    lo -= Vector((pad, pad, 0.0))
-    hi += Vector((pad, pad, pad))
-    ground_z = min(lo.z, ob_lo.z)
-    lo.z = ground_z
-    if p.get("domain_at") and p.get("domain_size"):
-        da = p["domain_at"]
-        dsz = float(p["domain_size"])
-        c = point(da, "domain_at")
-        lo = Vector((c.x - dsz / 2, c.y - dsz / 2, c.z))
-        hi = Vector((c.x + dsz / 2, c.y + dsz / 2, c.z + dsz))
+
+    def domain_box(size):
+        """물 덩어리 크기 size 일 때의 (출발점, 도메인 아래, 위). size 를 바꿔 보는 안내 계산도 같은 식을 쓴다."""
+        at = given_at
+        if at is None:
+            if mode == "pool":
+                at = Vector(((ob_lo.x + ob_hi.x) / 2, (ob_lo.y + ob_hi.y) / 2, ob_lo.z))
+            else:
+                at = Vector(((ob_lo.x + ob_hi.x) / 2, (ob_lo.y + ob_hi.y) / 2, ob_hi.z + size * 2.0))
+        # 3) 물이 살 공간(도메인): 장애물 + 출발점 + 날아갈 거리를 모두 담는다(바닥 높이는 domain_at 을 줘도 이 상자에서)
+        end = at + d * travel
+        pts = [ob_lo, ob_hi, at, end, at + Vector((size, size, size)), at - Vector((size, size, size))]
+        lo = Vector((min(v.x for v in pts), min(v.y for v in pts), min(v.z for v in pts)))
+        hi = Vector((max(v.x for v in pts), max(v.y for v in pts), max(v.z for v in pts)))
+        pad = max(size * 2.0, (hi - lo).length * 0.12, 0.5)
+        lo -= Vector((pad, pad, 0.0))
+        hi += Vector((pad, pad, pad))
+        lo.z = min(lo.z, ob_lo.z)
+        ground_z = lo.z
+        if fixed is not None:
+            c, dsz = fixed
+            lo = Vector((c.x - dsz / 2, c.y - dsz / 2, c.z))
+            hi = Vector((c.x + dsz / 2, c.y + dsz / 2, c.z + dsz))
+        return at, lo, hi, ground_z
+
+    def longest(size):
+        _at, lo, hi, _g = domain_box(size)
+        return max(hi - lo)
+
+    def size_needed(res):
+        """resolution res 에서 물이 생기는 가장 작은 size(도메인이 size 와 함께 커지므로 고정점까지 되풀이, 5% 여유)."""
+        s = size
+        for _ in range(60):
+            s = max(s, longest(s) * 1.5 / res)
+        return s * 1.05
+
+    at, lo, hi, ground_z = domain_box(size)
     dsize = hi - lo
 
     # 물 덩어리가 격자 한 칸보다 작으면 물이 아예 안 생긴다
     voxel = max(dsize.x, dsize.y, dsize.z) / float(resolution)
     if mode != "pool" and size < voxel * 1.5:
         need = int(math.ceil(max(dsize.x, dsize.y, dsize.z) / (size / 1.5)))
+        if need <= 320:
+            raise FxError(L(
+                f"물 덩어리({size:.2f}m)가 계산 격자 한 칸({voxel:.2f}m)보다 작아 물이 생기지 않습니다. "
+                f"size 를 키우거나 resolution 을 {need} 이상으로 올리세요.",
+                f"The water source ({size:.2f}m) is smaller than one simulation cell ({voxel:.2f}m), so no liquid forms. "
+                f"Increase size, or raise resolution to at least {need}."))
+        # 권할 resolution 이 상한 320 을 넘으면 그 값은 쓸 수 없다: 지금 resolution 과 상한에서 되는 size 를 알려 준다
+        if mode == "object":
+            raise FxError(L(
+                f"물 덩어리({size:.2f}m)가 계산 격자 한 칸({voxel:.2f}m)보다 작아 물이 생기지 않고, resolution 은 320 까지라 올려서는 안 됩니다. "
+                f"source_object 를 더 큰 물체로 바꾸거나, domain_at·domain_size 로 물 공간을 줄이세요.",
+                f"The water source ({size:.2f}m) is smaller than one simulation cell ({voxel:.2f}m), so no liquid forms, "
+                f"and resolution only goes up to 320. Use a larger source_object, or set domain_at and domain_size to shrink the liquid space."))
+        now, top = size_needed(resolution), size_needed(320)
         raise FxError(L(
-            f"물 덩어리({size:.2f}m)가 계산 격자 한 칸({voxel:.2f}m)보다 작아 물이 생기지 않습니다. "
-            f"size 를 키우거나 resolution 을 {need} 이상으로 올리세요.",
-            f"The water source ({size:.2f}m) is smaller than one simulation cell ({voxel:.2f}m), so no liquid forms. "
-            f"Increase size, or raise resolution to at least {need}."))
+            f"물 덩어리({size:.2f}m)가 계산 격자 한 칸({voxel:.2f}m)보다 작아 물이 생기지 않고, resolution 은 320 까지라 올려서는 안 됩니다. "
+            f"size 를 {now:.2f} 이상으로 키우세요(resolution=320 이면 size {top:.2f} 이상).",
+            f"The water source ({size:.2f}m) is smaller than one simulation cell ({voxel:.2f}m), so no liquid forms, "
+            f"and resolution only goes up to 320. Increase size to at least {now:.2f} (or {top:.2f} with resolution=320)."))
 
     cleanup_liquid()
     set_frame_end(frames)

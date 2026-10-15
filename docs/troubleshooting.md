@@ -189,8 +189,10 @@ Settings → Privacy & Security → Files and Folders, or use another folder. Ru
 > 물 덩어리(0.10m)가 계산 격자 한 칸(0.25m)보다 작아 물이 생기지 않습니다.
 > The water source (0.10m) is smaller than one simulation cell (0.25m), so no liquid forms.
 
-`size` 를 키우거나, 문장에 나온 값 이상으로 `resolution` 을 올립니다.
-Increase `size`, or raise `resolution` to at least the value in the message.
+`size` 를 키우거나, 문장에 나온 값 이상으로 `resolution` 을 올립니다. 그 값이 상한 320 을 넘으면 문장이 대신 되는 `size` 를 알려 줍니다
+(`mode="object"` 면 더 큰 `source_object` 나 `domain_at`·`domain_size` 로 물 공간 줄이기).
+Increase `size`, or raise `resolution` to at least the value in the message. When that would exceed the limit of 320, the message gives a `size` that works instead
+(for `mode="object"`, use a larger `source_object` or shrink the space with `domain_at` and `domain_size`).
 
 > 물 굽기 결과가 비어 있습니다.
 > The liquid bake produced nothing.
