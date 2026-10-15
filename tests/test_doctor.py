@@ -606,6 +606,6 @@ def test_help_anchors_name_real_check_ids(env, monkeypatch):
 
 
 @pytest.mark.parametrize("cid,anchor", [("uv", "#uv-not-found"), ("client", "#tools-not-visible-in-the-client"),
-                                        ("python", "")])
+                                        ("output", "#output-folder-not-writable"), ("python", "")])
 def test_help_url_per_check(cid, anchor):
     assert doctor.help_url(cid) == bridge.TROUBLESHOOTING_URL + anchor

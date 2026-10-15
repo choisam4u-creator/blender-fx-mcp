@@ -36,6 +36,7 @@ HELP_ANCHORS = {
     "addon": "connection-refused",
     "connection": "connection-refused",
     "client": "tools-not-visible-in-the-client",
+    "output": "output-folder-not-writable",
     "update": "still-on-the-old-version",
     "space": "fluid-bake-failed",
 }

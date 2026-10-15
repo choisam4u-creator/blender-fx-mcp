@@ -162,6 +162,26 @@ Symptom: **Connect to MCP server** does nothing and the Blender console shows `A
 (or another Blender window) holds port 9876. Keep one Blender window open, or change the port in the add-on panel
 (e.g. `9877`) and set `BLENDER_FX_PORT=9877` in your MCP config. Keep `BLENDER_FX_HOST` on `localhost`; the receiver has no authentication.
 
+## Output folder not writable
+
+**출력 폴더에 쓸 수 없음**
+
+> 출력 폴더 … 에 쓸 수 없음
+> output folder … cannot write to
+
+렌더·영상·스냅샷·캐시는 모두 출력 폴더(기본 `~/blender-fx-output`, MCP 설정의 `BLENDER_FX_OUT`)에 씁니다. doctor 가 이 줄을 실패로 보이면:
+
+- 폴더가 외장 디스크·네트워크 드라이브에 있으면 연결돼 있는지 봅니다.
+- 내 계정이 쓸 수 있는 폴더로 바꿉니다. MCP 설정의 `env` 에 `"BLENDER_FX_OUT": "~/blender-fx-output"` 처럼 집 폴더 아래를 주고 클라이언트 앱을 완전히 껐다 켭니다(폴더는 없으면 만듭니다).
+- macOS 에서 `Documents`·`Desktop` 아래를 골랐다면 시스템 설정 → 개인정보 보호 및 보안 → 파일 및 폴더에서 클라이언트 앱에 접근을 허용하거나, 그 밖의 폴더를 씁니다.
+- 고친 뒤 `blender-fx-doctor` 를 다시 돌려 출력 폴더 줄이 `[OK]` 인지 확인합니다.
+
+Renders, videos, snapshots and caches all go to the output folder (default `~/blender-fx-output`, or `BLENDER_FX_OUT` in your MCP config).
+If doctor shows this line as failed: check that an external or network drive holding the folder is connected; point `BLENDER_FX_OUT`
+in the `env` of your MCP config to a folder your account can write, e.g. `"BLENDER_FX_OUT": "~/blender-fx-output"`, and fully restart the
+client app (the folder is created if missing); on macOS, for a folder under `Documents` or `Desktop`, allow the client app in System
+Settings → Privacy & Security → Files and Folders, or use another folder. Run `blender-fx-doctor` again and check the line is `[OK]`.
+
 ## Fluid bake failed
 
 **물·연기 굽기 실패**
