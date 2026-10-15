@@ -23,8 +23,7 @@ def blast_geometry(p):
         center = Vector((lo.x + size.x / 2, lo.y + size.y / 2, lo.z + size.z * 0.4))
         radius = radius or max(0.5, 0.45 * min(size.x, size.y))
         return center, radius, lo, hi, lo.z
-    at = p.get("at") or [0.0, 0.0, 1.0]
-    center = Vector((float(at[0]), float(at[1]), float(at[2])))
+    center = point(p.get("at") or [0.0, 0.0, 1.0], "at")
     radius = radius or 1.0
     ground_z = 0.0 if center.z >= 0.0 else center.z - radius
     lo = Vector((center.x - radius * 4, center.y - radius * 4, ground_z))
@@ -51,6 +50,7 @@ def make_domain(center, radius, ground_z, frames, resolution, cache_dir, fire, s
     ds.cache_type = "ALL"
     ds.cache_frame_start = 1
     ds.cache_frame_end = int(frames)
+    os.makedirs(cache_dir, exist_ok=True)  # 인자·장면 검사를 다 통과한 뒤에(실패한 호출이 빈 캐시 폴더를 남기지 않게)
     ds.cache_directory = cache_dir
     ds.use_noise = False
     ds.vorticity = 0.3
@@ -137,11 +137,10 @@ def main():
     fire = bool(p.get("fire", True))
     resolution = max(16, min(int(p.get("resolution", 48)), 256))
     cache_dir = p.get("cache_dir") or os.path.join(os.path.expanduser("~"), "blender-fx-output", "cache_fluid")
-    os.makedirs(cache_dir, exist_ok=True)
 
     sc = scene()
+    center, radius, lo, hi, ground_z = blast_geometry(p)  # 대상 이름이 틀렸으면 지난 폭발을 지우기 전에 멈춘다
     cleanup_explosion()
-    center, radius, lo, hi, ground_z = blast_geometry(p)
     ensure_ground(ground_z)
     ensure_camera(lo, hi)
     ensure_light()

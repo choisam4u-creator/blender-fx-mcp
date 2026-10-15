@@ -320,8 +320,9 @@ JOB_WRITE_PERMISSIONS = {
     "stale.yml": {"issues: write"},
     "scorecard.yml": {"security-events: write", "id-token: write"},
     "greet.yml": {"issues: write", "pull-requests: write"},
-    # PyPI 신뢰 게시(OIDC). publish 잡에만 — test_release_workflow_publish_only_uploads_artifact 가 잡 단위로 본다
-    "release.yml": {"id-token: write"},
+    # PyPI 신뢰 게시(OIDC)는 publish 잡에만, 릴리스 초안은 release-draft 잡에만
+    # — test_release_workflow_publish_only_uploads_artifact 가 잡 단위로 본다
+    "release.yml": {"id-token: write", "contents: write"},
 }
 
 
@@ -349,6 +350,15 @@ def _job_bodies(text):
     return {parts[i]: parts[i + 1] for i in range(1, len(parts), 2)}
 
 
+def test_ci_lint_checks_workflows_with_pinned_actionlint():
+    """CI lint 잡이 판을 고정한 actionlint 로 .github/workflows 를 모두 본다(release.yml 은 태그 때만 돌아 그전에 오류를 알 길이 없음)."""
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    lint = _job_bodies(ci)["lint"]
+    runs = re.findall(r"^      - run: (.*actionlint.*)$", lint, re.M)
+    assert runs, "ci.yml lint 잡에 actionlint 단계가 없음"
+    assert all(re.search(r"actionlint-py@\d+\.\d+\.\d+\.\d+ actionlint$", r) for r in runs), f"판 고정·경로 인자 없이(전체 워크플로): {runs}"
+
+
 def test_release_workflow_publish_only_uploads_artifact():
     """release.yml: 태그 v* 로만 돌고, build 는 읽기 권한으로 점검·빌드하고, publish 는 id-token 만 받아
     build 의 결과물만 올린다(저장소 코드를 받거나 실행하지 않음)."""
@@ -356,7 +366,7 @@ def test_release_workflow_publish_only_uploads_artifact():
     on = re.search(r"^on:\n((?:[ \t]+.*\n)+)", text, re.M).group(1)
     assert re.fullmatch(r'  push:\n    tags: \["v\*"\]\n', on), f"진입점은 tag push 'v*' 만: {on!r}"
     jobs = _job_bodies(text)
-    assert set(jobs) == {"build", "publish"}, sorted(jobs)
+    assert set(jobs) == {"build", "publish", "release-draft"}, sorted(jobs)
 
     build = jobs["build"]
     assert re.search(r"^    permissions:\n      contents: read\n    steps:", build, re.M), "build 권한은 contents: read 만"
@@ -364,8 +374,11 @@ def test_release_workflow_publish_only_uploads_artifact():
     # 태그와 pyproject 판 일치는 release_check.py --tag 한 곳의 규칙으로(Mac 에서 태그 전에 같은 명령)
     assert 'scripts/release_check.py --tag "${GITHUB_REF_NAME}"\n' in build, "태그와 pyproject 판 일치 확인"
     assert "${{" not in build, "run 에 표현식을 넣지 않는다(태그 이름 주입 방지, 환경 변수로 읽음)"
-    for step in ("uv build", "scripts/release_check.py --dist dist", "actions/upload-artifact@"):
+    for step in ("uv build", "scripts/release_check.py --dist dist", "actions/upload-artifact@",
+                 'scripts/release_notes.py "${GITHUB_REF_NAME}" > notes/notes.md'):
         assert step in build, f"build 에 {step.strip()} 단계가 없음"
+    # 노트는 dist 와 다른 artifact(dist/ 의 모든 파일이 PyPI 로 가므로)
+    assert re.findall(r"name: ([\w-]+)\n          path: ([\w/]+)", build) == [("dist", "dist/"), ("release-notes", "notes/")]
 
     publish = jobs["publish"]
     assert "    needs: build\n" in publish and "    environment: pypi\n" in publish
@@ -374,6 +387,19 @@ def test_release_workflow_publish_only_uploads_artifact():
     uses = re.findall(r"uses: ([\w-]+/[\w-]+)@", publish)
     assert uses == ["actions/download-artifact", "pypa/gh-action-pypi-publish"], uses
     assert "run:" not in publish and "checkout" not in publish, "publish 는 저장소 코드를 받거나 실행하지 않는다"
+
+    # 릴리스 초안: 게시 뒤, contents: write 하나만, 저장소 코드 없이 build 의 노트·파일로 초안(--draft)만
+    draft = jobs["release-draft"]
+    assert "    needs: publish\n" in draft and "environment:" not in draft
+    m = re.search(r"^    permissions:\n((?:      .*\n)+)", draft, re.M)
+    assert m and m.group(1) == "      contents: write\n", "release-draft 권한은 contents: write 하나만"
+    uses = re.findall(r"uses: ([\w-]+/[\w-]+)@", draft)
+    assert uses == ["actions/download-artifact", "actions/download-artifact"], uses
+    assert "checkout" not in draft and "uv " not in draft and "python" not in draft, "release-draft 는 저장소 코드를 받거나 실행하지 않는다"
+    run = draft.split("run: >-\n", 1)[1]
+    assert "gh release create" in run and "--draft" in run and "--verify-tag" in run and "${{" not in run
+    assert "--notes-file notes/notes.md" in run
+    assert "    permissions:\n      contents: read\n" in build and "contents: write" not in build + publish
 
 
 @pytest.mark.parametrize("path", sorted((ROOT / ".github" / "workflows").glob("*.yml")), ids=lambda p: p.name)
@@ -483,6 +509,24 @@ def test_support_package_line_matches_version_and_security():
     assert f"| {series}.x" in (ROOT / "SECURITY.md").read_text(encoding="utf-8")
 
 
+def test_unreleased_support_tables_keep_latest_pypi_series():
+    """CHANGELOG 맨 위가 미출시면 PyPI 에 있는 최신 판(맨 위 다음의 날짜 붙은 절) 계열도 SECURITY·SUPPORT 에서 지원이다.
+    (다음 판만 '예' 로 적으면 PyPI 의 유일한 판 사용자가 '그 이전 — 아니오' 를 읽는다)"""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("release_check", ROOT / "scripts" / "release_check.py")
+    rc = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(rc)
+    heads = rc.HEADING.findall((ROOT / "CHANGELOG.md").read_text(encoding="utf-8"))
+    series = lambda v: ".".join(v.split(".")[:2])  # noqa: E731
+    current = series(rc.project_version(ROOT))
+    if rc.DATE.fullmatch(heads[0][1].strip()):
+        want = [current]
+    else:
+        released = next(v for v, when in heads[1:] if rc.DATE.fullmatch(when.strip()))
+        want = [current] + ([series(released)] if series(released) != current else [])
+    assert rc.supported_series(ROOT) == {"SECURITY.md": want, "SUPPORT.md": want}
+
+
 def test_support_links_and_reply_target():
     text, _ = _support_rows()
     for rel in re.findall(r"\]\(((?!https?:)[^)#]+)\)", text):
@@ -583,6 +627,10 @@ def test_changelog_unreleased_sections_have_english_summary():
             m = re.search(rf"^\*{part}\*\n((?:- .*\n(?:  .*\n)*)+)", summary, re.M)
             assert m, f"{version}: 영어 요약에 *{part}* 목록이 없음"
             assert 1 <= len(re.findall(r"^- ", m.group(1), re.M)) <= 6, f"{version} {part}: 1~6줄로 요약"
+            # 6개 상한을 맞추려 한 항목에 몰아 쓰면 릴리스 노트에서 읽히지 않는다(0.8.0 Fixes 첫 항목이 29줄이던 적이 있음).
+            # 이미 나간 판의 노트는 고치지 않으므로 미출시 절만 본다
+            for item in re.findall(r"^- .*\n(?:  .*\n)*", m.group(1), re.M) if unreleased else []:
+                assert item.count("\n") <= 6, f"{version} {part}: 한 항목이 {item.count(chr(10))}줄 — 6줄 안으로 나누거나 줄인다: {item[:80]}"
         checked += 1
     assert checked >= 1
 

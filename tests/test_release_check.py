@@ -19,7 +19,7 @@ _spec.loader.exec_module(rc)
 def repo(tmp_path):
     """점검에 쓰는 파일만 복사한 가짜 저장소."""
     for f in ("pyproject.toml", "server.json.example", "CHANGELOG.md", "README.md", "src/blender_fx_mcp/__init__.py",
-              "CITATION.cff"):
+              "CITATION.cff", "SECURITY.md", "SUPPORT.md"):
         (tmp_path / f).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(ROOT / f, tmp_path / f)
     return tmp_path
@@ -35,6 +35,21 @@ def _release(root: Path, version: str = "9.9.9", date: str = "2026-12-01") -> No
     text = cl.read_text(encoding="utf-8")
     m = rc.HEADING.search(text)
     cl.write_text(text[:m.start()] + f"## {version} — {date}" + text[m.end():], encoding="utf-8")
+    _support_only(root, version)
+
+
+def _support_only(root: Path, version: str) -> None:
+    """출시 순서의 '지원 판 표 정리': blender-fx-mcp 판 줄을 새 판 계열 하나로."""
+    series = ".".join(version.split(".")[:2])
+    for f, row in (("SECURITY.md", f"| {series}.x (최신 / latest) | 예 / yes |"),
+                   ("SUPPORT.md", f"| blender-fx-mcp | {series}.x (최신 / latest) | 버그·보안 수정 / bug and security fixes |")):
+        p = root / f
+        lines = p.read_text(encoding="utf-8").splitlines()
+        pick = (lambda x: re.match(r"\| \d+\.\d+\.x", x)) if f == "SECURITY.md" else (lambda x: x.startswith("| blender-fx-mcp |"))
+        first = next(i for i, x in enumerate(lines) if pick(x))
+        lines = [x for i, x in enumerate(lines) if i == first or not pick(x)]
+        lines[first] = row
+        p.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 def _fails(results):
@@ -55,6 +70,23 @@ def test_current_repo_state():
     assert len(fails) == 2, fails
     assert "CHANGELOG.md 맨 위 절 판" in fails[0] and "pyproject 판" in fails[0]
     assert "미출시" in fails[1] and "YYYY-MM-DD" in fails[1]
+
+
+def test_release_requires_support_tables_trimmed(repo):
+    """출시 전에는 PyPI 최신 판(0.7.x)도 지원으로 적어 둔다. 출시(날짜를 붙임)한 뒤에도 그대로면 정리하라고 알린다."""
+    assert rc.supported_series(ROOT)["SECURITY.md"][:1] == [".".join(rc.project_version(ROOT).split(".")[:2])]
+    _release(repo)
+    for f, row in (("SECURITY.md", "| 9.8.x (PyPI 최신 / latest on PyPI) | 예 — 9.9.0 이 나올 때까지 / yes |"),
+                   ("SUPPORT.md", "| blender-fx-mcp | 9.8.x (PyPI) | 버그·보안 수정 |")):
+        p = repo / f
+        text = p.read_text(encoding="utf-8")
+        anchor = "| 9.9.x (최신 / latest) | 예 / yes |" if f == "SECURITY.md" else "| blender-fx-mcp | 9.9.x"
+        i = text.index(anchor)
+        j = text.index("\n", i) + 1
+        p.write_text(text[:j] + row + "\n" + text[j:], encoding="utf-8")
+    fails = _fails(rc.check_files(repo))
+    assert len(fails) == 2, fails
+    assert all("9.9.x, 9.8.x" in f and "9.9.x 하나로 정리" in f for f in fails), fails
 
 
 def test_released_state_passes(repo, capsys):

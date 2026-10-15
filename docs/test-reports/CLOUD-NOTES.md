@@ -5,10 +5,93 @@
 한 번에 돌려 `latest.md` 를 새로 쓰려면 `uv run python scripts/mac_report.py`(결과 확인 뒤 커밋). 클라우드 회차는 그 FAIL 부터 고친다.
 
 ```sh
-uv sync && uv run pytest -q                        # 블렌더 앱으로 전체 통과(새: fps·프레임 범위, 서버 오류 다음 할 일, 문서 도구 이름, 빠른 시작 5단계)
-uv run python examples/first_render.py             # Connect 뒤 끝까지. 그다음 Claude 에 "set_render fps=-24" → 블렌더에 가기 전 1~240·권장 24/30/60 안내인지
-uv run blender-fx-doctor --issue                   # 블렌더를 끈 채 Claude 에 "doctor" → 실패 항목(connection)과 고칠 방법을 정확히 집는지
+uv sync && uv run pytest -q                        # 블렌더 앱으로 전체 통과(새: emit·explode·water·particles 의 at=[1,2] = 장면 그대로, 바다 → reset_destroy → set_ground)
+uvx --from actionlint-py@1.7.12.25 actionlint      # CI lint 와 같은 워크플로 검사(출력 없이 끝나면 통과)
+BLENDER_FX_OUT=/nonexistent/x uv run blender-fx-doctor   # 출력 폴더 줄 실패 + 마지막 "해결법:" 이 #output-folder-not-writable 인지
 ```
+
+## 2026-10-15 (20회차)
+
+- 시작 확인: 저장된 지시의 최우선 F1·F3(0.7.0 판·release.yml)는 9회차(10/11)에 끝나 PR #13 으로 병합, 태그 `v0.7.0` 도 있음. 다시 할 것 없음 → 일반 규칙.
+  `latest.md`(10/1)의 FAIL 2건은 main 에 고쳐져 있음(재확인). main 은 앞서 있지 않음.
+  19회차 메모대로 열린 `claude/cloud-work-*` PR 중 가장 위(#19, `97216be`)에서 이어 갔다. 이 세션은 `claude/cloud-work-gbvlwr` 에 푸시 → PR 은 #19 위에 쌓음.
+- 한 일(백로그 위에서부터, 굽기 시간 어림은 Mac 실측 필요라 건너뜀):
+  1. **at·domain_at 을 `point()` 로** (`7e44ac7`) — emit·explode·water(at·domain_at)·particles. 시험으로 먼저 재현: IndexError 5개 + emit·particles 는 지난 효과를 지운 뒤 실패(장면 반쯤 바뀜, particles 는 프레임 범위도). 고친 뒤 통과.
+  2. **바다 밑 set_ground 안내가 진짜 되는지** (`a663488`) — 바다 → set_ground 실패(reset_destroy 안내) → reset_destroy → set_ground 성공, 바다 없음·바닥 보임·재질 grass. 안내는 그대로 맞았음.
+  3. **doctor 출력 폴더 해결법** (`516c9b1`) — troubleshooting 새 절 "Output folder not writable"(한/영) + `HELP_ANCHORS["output"]`, 앵커·id 시험은 기존 것이 지킴.
+  4. **CI 워크플로 검사** (`bfe1394`) — lint 잡에 `uvx --from actionlint-py@1.7.12.25 actionlint`(9/22 판, 지금 경고 0) + 판 고정 시험, CONTRIBUTING 한/영.
+  5. **예제 스크립트 이름 시험** (`9ab86ff`) — `examples/*.py` 의 문장 속 이름과 `call_tool`·STEPS 의 도구·인자 키가 서버 스키마에 있는지. 변이(없는 이름 2개)를 잡음.
+  - 남은 `[ ]` 1개(Mac 실측)라 새 항목 5개 추가(`89cd60c`: particles target 순서, water resolution 상한 넘는 안내, zizmor 7건, actionlint-py 내려받기 검증, examples/README 명령).
+- 돌린 시험: `uv run pytest -q`(3.11) **1248 통과·48 건너뜀**(블렌더 필요), CI 서버 명령 `--cov --cov-fail-under=99` **100%**,
+  **`scripts/bpy_tests.sh`(bpy 5.0.1) → 1290 통과·6 건너뜀(2분 2초)**(유체 `app_only` 5개·실제 캐릭터 파일 1개 — 블렌더 앱·개인 파일 필요), `uvx ruff@0.15.20 check .` 통과, actionlint 통과.
+  환경 메모: 이 컨테이너엔 libEGL 이 없어 `apt-get install`(bpy_tests.sh 가 알려 주는 줄)부터 했다.
+- 막힌 것: 없음. zizmor 는 high 1·medium 6 이 나와 이번엔 CI 에 넣지 않고 백로그로.
+- 완료 수·추가 수: **완료 5** / **추가 5** (완료 ≥ 추가). 남은 `[ ]` 6개(그중 1개 Mac 실측).
+- Mac에서 확인할 것: 맨 위 명령 3줄(또는 `uv run python scripts/mac_report.py` 한 번).
+
+## 2026-10-14 (19회차)
+
+- 시작 확인: 저장된 지시의 최우선 F1·F3(0.7.0 판·release.yml)는 9회차(10/11)에 끝나 PR #13 으로 병합, 태그 `v0.7.0` 도 있음. 다시 할 것 없음 → 일반 규칙.
+  `latest.md`(10/1)의 FAIL 2건은 main 에 고쳐져 있음(재확인). main 은 앞서 있지 않음.
+  ⚠️ 처음에 `claude/cloud-work`(16회차 끝)에서 시작해 백로그 5개를 했는데, 17·18회차가 PR #16·#18 로 같은 5개를 이미 해 둔 것을 늦게 봄 →
+  그 커밋은 푸시하지 않고 버림. 이 세션은 `claude/cloud-work-knktdu` 에만 푸시할 수 있어 18회차 끝 `ab0ad68`(#18) 위에서 다시 작업했다.
+  다음 회차는 시작할 때 열린 `claude/cloud-work-*` PR 중 가장 위 것부터 이어 가야 함.
+- 한 일(백로그 위에서부터, 굽기 시간 어림은 Mac 실측 필요라 건너뜀):
+  1. **render_video 한쪽 프레임** (`690f4e1`) — 확인해 보니 조용히 옮기지 않고 "두 값을 바꿔" 오류를 냈음(한쪽은 장면 값이라 틀린 안내). 한쪽만 주면 "함께 주어(예: …) 다시 시키세요".
+  2. **캐시 폴더 안 남김** (`21b8e9b`) — 물·연기·폭발이 `cache_*` 폴더를 검사 통과 뒤에 만듦. bpy 시험(실패 6개 호출이 폴더를 하나도 안 남김).
+  3. **지원 판 표** (`065dc92`) — SECURITY·SUPPORT 에 "0.7.x (PyPI 최신) — 0.8.0 이 나올 때까지". `release_check.py` 가 출시(날짜) 뒤 표를 새 판 하나로 정리하라고 알림. 출시 절차 1단계 한/영.
+  4. **릴리스 초안 잡** (`0752ea9`) — release.yml 에 `release-draft`(needs publish, `contents: write` 하나만, build 가 만든 노트·파일 artifact 만 받아 `gh release create --draft`, 저장소 코드 실행 없음).
+     노트는 dist 와 다른 artifact(dist/ 전부가 PyPI 로 가므로). 허용목록에 `contents: write` 추가, 기존 거절 시험 그대로 + 잡 단위 시험. 실제 동작은 다음 태그 때.
+  5. **실패 = 장면 그대로 확대** (`0557f05`) — 바다·바람·깃발이 있는 장면에서 시험. 찾아 고친 4곳: ocean 이 인자를 다 읽기 전에 옛 바다를 지우고 장면 길이 변경,
+     wind·cloth_flag 가 `at=[1, 2]` 에서 옛 효과를 지운 뒤 IndexError, set_ground 가 바다 밑 숨은 바닥을 다시 보이게 함. 서버 `check_points`(at·domain_at 숫자 셋) + 해결법 문장.
+  - 남은 `[ ]` 1개(Mac 실측)라 새 항목 5개 추가(`aa2d2a1`).
+- 돌린 시험: `uv run pytest -q`(3.11) **1244 통과·47 건너뜀**(블렌더 필요), CI 서버 명령 `--cov --cov-fail-under=99` **100%**,
+  **`scripts/bpy_tests.sh`(bpy 5.0.1) → 1285 통과·6 건너뜀(2분 34초)**(유체 `app_only` 5개·실제 캐릭터 파일 1개 — 블렌더 앱·개인 파일 필요), `uvx ruff@0.15.20 check .` 통과.
+  변이 확인: 항목 1·2·5 의 레시피 고침을 되돌리면 새 시험이 실패(항목 5 는 7줄).
+- 막힌 것: 없음(버린 중복 작업은 위 ⚠️).
+- 완료 수·추가 수: **완료 5** / **추가 5** (완료 ≥ 추가). 남은 `[ ]` 6개(그중 1개 Mac 실측).
+- Mac에서 확인할 것: 맨 위 명령 3줄(또는 `uv run python scripts/mac_report.py` 한 번).
+
+## 2026-10-14 (18회차)
+
+- 시작 확인: 저장된 지시의 최우선 F1·F3(0.7.0 판·release.yml)는 9회차(10/11)에 끝나 PR #13 으로 병합(`ff7555e`·`4eb778f`), 태그 `v0.7.0` 도 있음. 다시 할 것 없음 → 일반 규칙.
+  main 은 `claude/cloud-work` 보다 앞서 있지 않음. `latest.md`(10/1)의 FAIL 2건은 main 에 고쳐져 있음(재확인).
+  이 세션은 `claude/cloud-work-9gw4mg` 에만 푸시할 수 있어 17회차(PR #16, `claude/cloud-work-n6i9g1`) 끝 `89fb921` 에서 이어 작업했다.
+- 한 일(백로그 위에서부터, 굽기 시간 어림은 Mac 실측 필요라 건너뜀):
+  1. **set_timing 옮김 알림** (`5b8668d`) — 한쪽만 준 프레임으로 블렌더가 다른 쪽을 옮기면 결과에 옛 값→새 값과 "함께 주세요".
+  2. **실패 = 장면 그대로** (`c94c8ef`) — 새 bpy 시험 `tests/test_recipe_failure_keeps_scene.py`(레시피 11종·잘못된 호출 17개 앞뒤 장면 비교).
+     찾아 고친 6곳: `explode`·`emit` 이름 틀리면 지난 효과 삭제, `water` 검사 전 지난 물 삭제·프레임 범위 변경, `destroy` 면 없는 메시에서 다른 효과 삭제,
+     `export_model` 형식 검사 전에 물리를 키프레임으로 굽기, `import_model` parts 불일치 때 부품이 남음.
+  3. **해결법 '인자 값이 거부됨'** (`6e90759`) — 범위·선택지·순서·유한한 숫자 문장. 시험이 빠져 있던 `check_finite` 를 찾음.
+  4. **0.8.0 출시 준비 점검** (`c0cab3b`) — `release_check.py` 는 날짜 줄만 실패. 영어 요약 Fixes 29줄 한 덩어리를 주제별 6개로 + 항목 6줄 상한 시험(미출시 절만).
+  5. **dependabot 3개 옮김** (`fd8696f`) — checkout v7.0.1·setup-uv v10.3.0·stale v11.0.0. SHA=태그 커밋, node24, 쓰는 입력 그대로, setup-uv 캐시는 태그 push 에서 꺼짐.
+  - 새 백로그 5개 + CHANGELOG 한국어 고침 줄 (`0ac1810`).
+- 돌린 시험: `uv run pytest -q`(3.11) **1231 통과·44 건너뜀**(블렌더 필요), CI 서버 명령 `--cov --cov-fail-under=99` **100%**,
+  **`scripts/bpy_tests.sh`(bpy 5.0.1) → 1269 통과·6 건너뜀(2분 5초)**(유체 `app_only` 5개·실제 캐릭터 파일 1개 — 블렌더 앱·개인 파일 필요), `uvx ruff@0.15.20 check .` 통과, 도구 표 일치.
+  변이 확인: 항목 2 의 고침을 되돌리면 새 시험이 6곳 모두 잡음. 항목 4 의 상한 시험은 옛 CHANGELOG 에서 실패.
+- 막힌 것: 없음. (`claude/cloud-work` 에 직접 못 미는 것은 17회차와 같음 → PR 을 `claude/cloud-work` 로 엶, #16 뒤에 병합)
+- 완료 수·추가 수: **완료 5** / **추가 5** (완료 ≥ 추가). 남은 `[ ]` 6개(그중 1개 Mac 실측).
+- Mac에서 확인할 것: 맨 위 명령 3줄(또는 `uv run python scripts/mac_report.py` 한 번).
+
+## 2026-10-13 (17회차)
+
+- 시작 확인: 저장된 지시의 최우선 F1·F3(0.7.0 판·release.yml)는 9회차(10/11)에 끝나 PR #13 으로 병합, 태그 `v0.7.0` 도 있음. 다시 할 것 없음 → 일반 규칙.
+  main 은 `claude/cloud-work` 보다 앞서 있지 않음. `latest.md`(10/1)의 FAIL 2건은 고쳐져 있음(재확인).
+  이 세션의 푸시 브랜치는 `claude/cloud-work-n6i9g1`(`claude/cloud-work` 끝 9603f30 에서 이어 감, 앞으로 감기 가능).
+- 한 일(백로그 위에서부터, 굽기 시간 어림은 Mac 실측 필요·dependabot 3개는 CI 판단이 필요해 건너뜀):
+  1. **set_timing 순서 검사** (`1983ced`) — 거꾸로 준 쌍(`frame_end<frame_start`, `slow_to≤slow_from`, `render_video` 도)을 서버가 보내기 전에 바꿔 줄 값과 함께 막음, 레시피도 바꾸기 전에 검사.
+     **하다가 찾은 결함**: `set_timing(fps=…)` 가 결과 키 `fps` 가 겹쳐 늘 TypeError(장면은 이미 바뀐 뒤) → 고침.
+  2. **doctor 항목별 해결법 링크** (`24db12a`) — "해결법:" 줄이 실패 항목의 절로, `--json`·`doctor` 도구는 항목마다 `help`. 앵커가 실제 절인지 시험.
+  3. **문서 이름 시험 확대** (`8e17ec6`) — 7개 문서 + 호출 안 인자 이름. recipes.md 의 `hold_until` 을 "서버 안쪽 값"으로.
+  4. **결과에 길이(초)** (`09f2c3c`) — "288프레임 = 24fps 로 12초" / "72 frames = 3s at 24fps".
+  5. (새 항목 첫째) **global_slow 두 번** (`48cfbc8`) — 두 번 시키면 길이만 48→96→192 로 늘고 배율은 2배 그대로이던 결함. 원래 속도 기준·1 이면 되돌림.
+  - 남은 `[ ]` 2개라 새 항목 5개 추가(`436d6b2`: global_slow 두 번, 한쪽만 준 프레임 알림, 레시피 실패 = 장면 그대로 점검, 서버 오류 문장 해결법 검색, 0.8.0 출시 준비 점검).
+- 돌린 시험: `uv run pytest -q`(3.11) **1221 통과·41 건너뜀**(블렌더 필요), CI 서버 명령 `--cov --cov-fail-under=99` **100%**,
+  **`scripts/bpy_tests.sh`(bpy 5.0.1) → 1256 통과·6 건너뜀(2분 4초)**(유체 `app_only` 5개·실제 캐릭터 파일 1개 — 블렌더 앱·개인 파일 필요), `uvx ruff@0.15.20 check .` 통과, `gen_tool_table.py` 일치.
+  확인: 고치기 전 레시피로 bpy 재현(fps → TypeError, global_slow 두 번 → 192), 문서에 없는 이름을 넣으면 시험 실패.
+- 막힌 것: 없음.
+- 완료 수·추가 수: **완료 5** / **추가 5** (완료 ≥ 추가). 남은 `[ ]` 6개(그중 1개 Mac 실측).
+- Mac에서 확인할 것: 맨 위 명령 3줄(또는 `uv run python scripts/mac_report.py` 한 번).
 
 ## 2026-10-13 (16회차)
 
