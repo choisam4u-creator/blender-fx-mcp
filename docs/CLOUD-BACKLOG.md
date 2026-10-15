@@ -270,8 +270,16 @@
 
 ### 2026-10-15 (20회차) 추가 — 사용자 체감 우선(오픈소스 지원 기준: 시험·보안·유지보수)
 
-- [ ] `particles(target="없는이름")` 이 지난 같은 종류 파티클을 지우고 장면 길이를 바꾼 뒤 실패함 → `fx_bbox(target)` 를 `cleanup_kind` 앞으로 + `BAD_CALLS` 에 한 줄 (근거: 이번 회차에 particles `at` 을 고치며 보니 `target` 은 아직 정리 뒤에 읽음. 실패 = 장면 그대로)
-- [ ] `water` "물 덩어리가 격자 한 칸보다 작음" 오류가 권하는 `resolution` 값이 상한 320 을 넘으면 그 값은 못 쓰므로 `size` 를 키우라고만(또는 둘 다 되는 값) + 시험 (근거: 이번 회차에 water 를 읽으며 `need` 를 상한과 비교하지 않는 것을 봄. 오류가 권하는 다음 할 일이 진짜 되는지)
-- [ ] `zizmor`(판 고정) 지적 정리: `greet.yml` 의 `pull_request_target`(high, 코드 체크아웃 없음 확인 후 근거 주석 또는 `issues`·`pull_request` 로), checkout `persist-credentials: false` 누락(medium 6) → 고친 뒤 CI lint 에 zizmor 단계 + 시험 (근거: 이번 회차에 `uvx zizmor@1.30.1 --offline .github/workflows` 로 7건. 오픈소스 지원 기준의 보안 점수(Scorecard)와 겹침)
-- [ ] `actionlint-py` 는 sdist 를 빌드하며 actionlint 바이너리를 내려받음 → 받는 주소·체크섬 검증 여부를 확인해 SECURITY 공급망 표에 적고, 검증이 없으면 SHA 고정 공식 다운로드+체크섬으로 바꾸기 (근거: 이번 회차에 CI 에 넣으며 "Building actionlint-py" 를 봄. 공급망)
-- [ ] `examples/README.md` 의 명령 줄(코드 블록)을 시험에서 실제 진입점·스크립트 이름과 맞추기(`uv run python examples/…`·`uvx …` 가 가리키는 파일·`[project.scripts]` 가 있는지) (근거: 이번 회차에 예제 .py 이름 시험을 넣으며 README 쪽 명령은 파일 존재를 안 보는 것을 봄. 예제가 그대로 도는지)
+- [x] `particles(target="없는이름")` 이 지난 같은 종류 파티클을 지우고 장면 길이를 바꾼 뒤 실패함 → `fx_bbox(target)` 를 `cleanup_kind` 앞으로 + `BAD_CALLS` 에 한 줄 (근거: 이번 회차에 particles `at` 을 고치며 보니 `target` 은 아직 정리 뒤에 읽음. 실패 = 장면 그대로) → 2026-10-15 21회차(`f872074`)
+- [x] `water` "물 덩어리가 격자 한 칸보다 작음" 오류가 권하는 `resolution` 값이 상한 320 을 넘으면 그 값은 못 쓰므로 `size` 를 키우라고만(또는 둘 다 되는 값) + 시험 (근거: 이번 회차에 water 를 읽으며 `need` 를 상한과 비교하지 않는 것을 봄. 오류가 권하는 다음 할 일이 진짜 되는지) → 21회차(`b6a7669`)
+- [x] `zizmor`(판 고정) 지적 정리: `greet.yml` 의 `pull_request_target`(high, 코드 체크아웃 없음 확인 후 근거 주석 또는 `issues`·`pull_request` 로), checkout `persist-credentials: false` 누락(medium 6) → 고친 뒤 CI lint 에 zizmor 단계 + 시험 (근거: 이번 회차에 `uvx zizmor@1.30.1 --offline .github/workflows` 로 7건. 오픈소스 지원 기준의 보안 점수(Scorecard)와 겹침) → 21회차(`3c3dd7e`, 0건·greet 한 줄 근거 주석)
+- [x] `actionlint-py` 는 sdist 를 빌드하며 actionlint 바이너리를 내려받음 → 받는 주소·체크섬 검증 여부를 확인해 SECURITY 공급망 표에 적고, 검증이 없으면 SHA 고정 공식 다운로드+체크섬으로 바꾸기 (근거: 이번 회차에 CI 에 넣으며 "Building actionlint-py" 를 봄. 공급망) → 21회차: 검증 있음(sdist 의 checksums.cfg SHA-256 을 file_ops 가 맞춰 봄, 공식 checksums.txt 와 같음) → 바꾸지 않고 SECURITY 표에 적음
+- [x] `examples/README.md` 의 명령 줄(코드 블록)을 시험에서 실제 진입점·스크립트 이름과 맞추기(`uv run python examples/…`·`uvx …` 가 가리키는 파일·`[project.scripts]` 가 있는지) (근거: 이번 회차에 예제 .py 이름 시험을 넣으며 README 쪽 명령은 파일 존재를 안 보는 것을 봄. 예제가 그대로 도는지) → 21회차(`1f9daed`)
+
+### 2026-10-15 (21회차) 추가 — 사용자 체감 우선(오픈소스 지원 기준: 시험·보안·유지보수)
+
+- [ ] 레시피 정적 시험: `main()` 안에서 `get_target`·`fx_bbox(target)`·`point()` 호출이 `cleanup_*`·`set_frame_end`·`remove_object` 보다 앞에 오는지 ast 로 훑기(예외는 근거 주석 목록) (근거: 이번 회차 particles `target` 이 "정리 뒤에 읽기" 결함의 세 번째 사례. bpy 시험은 BAD_CALLS 에 한 줄씩 넣어야만 잡힘)
+- [ ] `uvx` 로 판을 고정한 도구(ruff 0.15.20·actionlint-py 1.7.12.25·zizmor 1.30.1)는 dependabot 이 못 봄 → 판을 한 표(CONTRIBUTING)에 모으고, 표와 워크플로·문서 속 판이 같은지 시험 + 분기마다 올리는 절차 한 줄 (근거: 이번 회차에 zizmor 를 넣으며 판 고정 도구가 셋이 됨. 활발한 유지보수)
+- [ ] `scripts/bpy_tests.sh`: 이미 받은 bpy 휠 경로(`BPY_WHEEL=…`)나 uv 캐시를 쓰는 길 + 처음 받을 때 "약 N분·M GB" 안내 줄 (근거: 이번 회차 컨테이너에서 bpy 5.0.1 설치에 20분 넘게 걸려 기다리는 줄 모르고 멈춘 듯 보였음. 기여자 첫 시험까지의 체감)
+- [ ] `docs/troubleshooting.md` 의 인용 오류 문장(`> …`)마다 그 머리 문구가 실제 레시피·서버 `L()` 문장에 있는지 시험(숫자는 자리표시로) (근거: 이번 회차에 water 문장을 바꾸며 문서 예시를 손으로 맞춤. 문서가 실제 오류와 어긋나면 검색해도 안 나옴)
+- [ ] `water` 결과 문장에 격자 한 칸 크기(m)와 "더 작은 물방울이 필요하면 resolution 을 N 으로" 한 줄 (근거: 이번 회차 `domain_box` 로 격자 크기를 바로 구할 수 있게 됨. 성공한 뒤에도 다음 조정 방법을 말해 줌)
