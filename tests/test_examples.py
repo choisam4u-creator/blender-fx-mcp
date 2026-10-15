@@ -465,3 +465,39 @@ def test_progress_notifications_over_real_stdio_server(monkeypatch, tmp_path, la
     assert len(seen) >= 2, seen
     assert all(m.startswith(label) for _, m in seen), seen
     assert [p for p, _ in seen] == sorted(p for p, _ in seen)
+
+
+def _readme_commands():
+    """examples/README.md 의 sh 코드 블록 줄과 표·본문의 `…` 안 명령(uv·uvx·claude 로 시작)."""
+    text = (EX / "README.md").read_text(encoding="utf-8")
+    lines = [ln.strip() for block in re.findall(r"^```sh\n(.*?)^```", text, re.S | re.M) for ln in block.splitlines()]
+    lines += re.findall(r"`((?:uv|uvx|claude) [^`]+)`", text)
+    return [ln for ln in lines if ln and not ln.startswith("#")]
+
+
+def test_examples_readme_commands_point_at_real_files_and_entry_points():
+    """README 가 시키는 명령이 그대로 돈다: 스크립트 파일이 있고, uvx·uv run 이 띄우는 이름이 [project.scripts] 에 있다."""
+    cmds = _readme_commands()
+    assert any("examples/first_render.py" in c for c in cmds) and any("uvx " + PACKAGE in c for c in cmds), cmds
+    entry = _entry_points()
+    seen = 0
+    for cmd in cmds:
+        words = cmd.split()
+        while words and re.fullmatch(r"[A-Z_]+=\S*", words[0]):  # 앞의 환경변수(BLENDER_FX_LANG=en) 는 뺀다
+            words = words[1:]
+        for i, w in enumerate(words):
+            if w.startswith("examples/"):
+                assert (ROOT / w).is_file(), f"없는 예제 파일: {cmd}"
+                assert words[:i] == ["uv", "run", "python"], f"예제는 uv run python 으로: {cmd}"
+                seen += 1
+            if w == "uvx":
+                nxt = words[i + 1]
+                assert nxt == PACKAGE and nxt in entry, f"uvx 가 띄우는 이름이 진입점이 아님: {cmd}"
+                seen += 1
+        if words[:2] == ["uv", "run"] and words[2] != "python":
+            assert words[2] in entry, f"uv run 이 띄우는 이름이 진입점이 아님: {cmd}"
+    assert seen >= 4, cmds
+    # 로컬 개발 안내의 args 도 진입점 이름이어야 한다
+    text = (EX / "README.md").read_text(encoding="utf-8")
+    for name in re.findall(r'"run", "([\w-]+)"\]', text):
+        assert name in entry, name
