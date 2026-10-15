@@ -23,8 +23,7 @@ def blast_geometry(p):
         center = Vector((lo.x + size.x / 2, lo.y + size.y / 2, lo.z + size.z * 0.4))
         radius = radius or max(0.5, 0.45 * min(size.x, size.y))
         return center, radius, lo, hi, lo.z
-    at = p.get("at") or [0.0, 0.0, 1.0]
-    center = Vector((float(at[0]), float(at[1]), float(at[2])))
+    center = point(p.get("at") or [0.0, 0.0, 1.0], "at")
     radius = radius or 1.0
     ground_z = 0.0 if center.z >= 0.0 else center.z - radius
     lo = Vector((center.x - radius * 4, center.y - radius * 4, ground_z))

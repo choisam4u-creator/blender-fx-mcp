@@ -44,13 +44,14 @@ def main():
     frames = max(12, int(p.get("frames") or min(scene().frame_end, 96)))
     start = max(1, int(p.get("start_frame") or 1))
     sc = scene()
+    a = p.get("at")
+    at = point(a, "at") if a else None  # 숫자 셋이 아니면 지난 파티클을 지우기 전에 멈춘다
     cleanup_kind(kind)
     set_frame_end(frames)
 
     lo, hi = fx_bbox(p.get("target") or None)
     size = hi - lo
-    a = p.get("at")
-    center = Vector((float(a[0]), float(a[1]), float(a[2]))) if a else Vector(((lo.x + hi.x) / 2, (lo.y + hi.y) / 2, lo.z))
+    center = at if at is not None else Vector(((lo.x + hi.x) / 2, (lo.y + hi.y) / 2, lo.z))
     area = float(p.get("area") or max(size.x, size.y, 4.0) * 3.0)
     height = float(p.get("height") or (hi.z - lo.z) + 6.0)
     ground_z = lo.z

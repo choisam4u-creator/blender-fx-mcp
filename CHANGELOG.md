@@ -16,7 +16,7 @@
   the scene; `export_model` checks the format before `bake_physics` turns the pieces into keyframes; `import_model` removes what it imported when no
   part matches `parts`. `restore("before_restore")` (undoing an undo) swaps the two states instead of overwriting one, and `destroy`/`reset_destroy`
   with a target no longer delete unrelated effects (ocean, water, smoke, flag, wind) or other buildings' glue.
-  `ocean`, `wind` and `cloth_flag` read every argument before removing the previous one, and `set_ground` no longer shows the hidden ground under an ocean.
+  `ocean`, `wind`, `cloth_flag`, `emit`, `explode`, `water` and `particles` read every argument (positions included) before removing the previous one, and `set_ground` no longer shows the hidden ground under an ocean.
 - **Bad values stop before Blender, with the values to use.** `width`/`height` 16-7680, `fps` 1-240 (24/30/60 recommended) and frame numbers from 1
   in `render_preview`, `render_video`, `set_render`, `set_timing` and `set_physics`; a reversed pair (`frame_end` before `frame_start`,
   `slow_to` not after `slow_from`) gets the swapped values; a position (`at`, `domain_at`) must be three numbers. `samples` out of range gets recommended values like the other numbers.

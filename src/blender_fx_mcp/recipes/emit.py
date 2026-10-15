@@ -32,6 +32,7 @@ def main():
     sc = scene()
     target_name = p.get("target")
     t = get_target(target_name) if target_name else None  # 이름이 틀렸으면 지난 불·연기를 지우기 전에 멈춘다
+    at = None if target_name else point(p.get("at") or [0.0, 0.0, 0.5], "at")  # at 도 지우기 전에 검사
     cleanup_emit()
     radius = float(p.get("radius") or 0.0)
     if target_name:
@@ -55,8 +56,7 @@ def main():
         smod.effector_settings.effector_type = "COLLISION"
         smod.effector_settings.use_effector = True
     else:
-        a = p.get("at") or [0.0, 0.0, 0.5]
-        center = Vector((float(a[0]), float(a[1]), float(a[2])))
+        center = at
         radius = radius or 0.5
         lo = Vector((center.x - radius, center.y - radius, center.z - radius))
         hi = Vector((center.x + radius, center.y + radius, center.z + radius))

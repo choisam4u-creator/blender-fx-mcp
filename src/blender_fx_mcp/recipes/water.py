@@ -98,7 +98,7 @@ def main():
         own_flow = False
     else:
         a = p.get("at")
-        at = Vector((float(a[0]), float(a[1]), float(a[2]))) if a else None
+        at = point(a, "at") if a else None
         size = float(p.get("size") or 0.0)
         own_flow = True
 
@@ -145,7 +145,7 @@ def main():
     if p.get("domain_at") and p.get("domain_size"):
         da = p["domain_at"]
         dsz = float(p["domain_size"])
-        c = Vector((float(da[0]), float(da[1]), float(da[2])))
+        c = point(da, "domain_at")
         lo = Vector((c.x - dsz / 2, c.y - dsz / 2, c.z))
         hi = Vector((c.x + dsz / 2, c.y + dsz / 2, c.z + dsz))
     dsize = hi - lo

@@ -27,9 +27,10 @@ print("FX_RESULT " + _json.dumps(dict(summary=dict(
 # 효과가 이미 있는 장면을 흉내 낸다: 유체는 bpy 에서 굽지 못하므로 역할 표시만 단 빈 객체로 둔다(정리 함수가 지우는 대상)
 STAND_INS = '''
 import bpy as _bpy
-for _role in ("smoke_domain", "blast", "emit_domain", "emit_flow", "liquid_domain", "liquid_flow"):
+for _role in ("smoke_domain", "blast", "emit_domain", "emit_flow", "liquid_domain", "liquid_flow", "particles"):
     _o = _bpy.data.objects.new("Old_" + _role, None)
     _o["fx_role"] = _role
+    _o["fx_kind"] = "snow"
     _bpy.context.scene.collection.objects.link(_o)
 '''
 
@@ -50,6 +51,12 @@ BAD_CALLS = [
     ("set_look", {"preset": "day", "sky": "없는하늘"}, "sky"),
     ("camera", {"preset": "없는각도"}, "preset"),
     ("particles", {"kind": "없는종류"}, "kind"),
+    # at·domain_at 이 숫자 셋이 아니면 지난 효과를 지우기 전에 _common.point() 가 멈춘다(도구는 check_points 로 먼저 막지만 레시피를 직접 부르는 경로)
+    ("explode", {"at": [1, 2]}, "[x, y, z]"),
+    ("emit", {"at": [1, 2]}, "[x, y, z]"),
+    ("water", {"at": [1, 2]}, "[x, y, z]"),
+    ("water", {"domain_at": [1, 2], "domain_size": 4}, "[x, y, z]"),
+    ("particles", {"kind": "snow", "at": [1, 2]}, "[x, y, z]"),
     ("export_model", {"path": "OUT/scene.xyz", "bake_physics": True}, ".xyz"),
     ("import_model", {"path": "OUT/model.glb", "parts": ["없는부품"]}, "parts"),
 ]
