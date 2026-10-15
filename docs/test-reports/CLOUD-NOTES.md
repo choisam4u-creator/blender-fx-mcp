@@ -5,10 +5,29 @@
 한 번에 돌려 `latest.md` 를 새로 쓰려면 `uv run python scripts/mac_report.py`(결과 확인 뒤 커밋). 클라우드 회차는 그 FAIL 부터 고친다.
 
 ```sh
-uv sync && uv run pytest -q                        # 블렌더 앱으로 전체 통과(새: 바다·바람·깃발 실패 = 장면 그대로, render_video 한쪽 프레임, 캐시 폴더 안 남김)
-uv run python examples/first_render.py             # Connect 뒤 끝까지. 그다음 Claude 에 "cloth_flag at=[1,2]" → 블렌더에 가기 전 "[x, y, z] 숫자 세 개" 안내인지
-uv run python scripts/release_check.py             # '미출시' 한 줄만 실패해야 함. 0.8.0 출시 때 SECURITY·SUPPORT 의 0.7.x 줄을 지우라고 알리는지는 날짜를 붙인 뒤
+uv sync && uv run pytest -q                        # 블렌더 앱으로 전체 통과(새: emit·explode·water·particles 의 at=[1,2] = 장면 그대로, 바다 → reset_destroy → set_ground)
+uvx --from actionlint-py@1.7.12.25 actionlint      # CI lint 와 같은 워크플로 검사(출력 없이 끝나면 통과)
+BLENDER_FX_OUT=/nonexistent/x uv run blender-fx-doctor   # 출력 폴더 줄 실패 + 마지막 "해결법:" 이 #output-folder-not-writable 인지
 ```
+
+## 2026-10-15 (20회차)
+
+- 시작 확인: 저장된 지시의 최우선 F1·F3(0.7.0 판·release.yml)는 9회차(10/11)에 끝나 PR #13 으로 병합, 태그 `v0.7.0` 도 있음. 다시 할 것 없음 → 일반 규칙.
+  `latest.md`(10/1)의 FAIL 2건은 main 에 고쳐져 있음(재확인). main 은 앞서 있지 않음.
+  19회차 메모대로 열린 `claude/cloud-work-*` PR 중 가장 위(#19, `97216be`)에서 이어 갔다. 이 세션은 `claude/cloud-work-gbvlwr` 에 푸시 → PR 은 #19 위에 쌓음.
+- 한 일(백로그 위에서부터, 굽기 시간 어림은 Mac 실측 필요라 건너뜀):
+  1. **at·domain_at 을 `point()` 로** (`7e44ac7`) — emit·explode·water(at·domain_at)·particles. 시험으로 먼저 재현: IndexError 5개 + emit·particles 는 지난 효과를 지운 뒤 실패(장면 반쯤 바뀜, particles 는 프레임 범위도). 고친 뒤 통과.
+  2. **바다 밑 set_ground 안내가 진짜 되는지** (`a663488`) — 바다 → set_ground 실패(reset_destroy 안내) → reset_destroy → set_ground 성공, 바다 없음·바닥 보임·재질 grass. 안내는 그대로 맞았음.
+  3. **doctor 출력 폴더 해결법** (`516c9b1`) — troubleshooting 새 절 "Output folder not writable"(한/영) + `HELP_ANCHORS["output"]`, 앵커·id 시험은 기존 것이 지킴.
+  4. **CI 워크플로 검사** (`bfe1394`) — lint 잡에 `uvx --from actionlint-py@1.7.12.25 actionlint`(9/22 판, 지금 경고 0) + 판 고정 시험, CONTRIBUTING 한/영.
+  5. **예제 스크립트 이름 시험** (`9ab86ff`) — `examples/*.py` 의 문장 속 이름과 `call_tool`·STEPS 의 도구·인자 키가 서버 스키마에 있는지. 변이(없는 이름 2개)를 잡음.
+  - 남은 `[ ]` 1개(Mac 실측)라 새 항목 5개 추가(`89cd60c`: particles target 순서, water resolution 상한 넘는 안내, zizmor 7건, actionlint-py 내려받기 검증, examples/README 명령).
+- 돌린 시험: `uv run pytest -q`(3.11) **1248 통과·48 건너뜀**(블렌더 필요), CI 서버 명령 `--cov --cov-fail-under=99` **100%**,
+  **`scripts/bpy_tests.sh`(bpy 5.0.1) → 1290 통과·6 건너뜀(2분 2초)**(유체 `app_only` 5개·실제 캐릭터 파일 1개 — 블렌더 앱·개인 파일 필요), `uvx ruff@0.15.20 check .` 통과, actionlint 통과.
+  환경 메모: 이 컨테이너엔 libEGL 이 없어 `apt-get install`(bpy_tests.sh 가 알려 주는 줄)부터 했다.
+- 막힌 것: 없음. zizmor 는 high 1·medium 6 이 나와 이번엔 CI 에 넣지 않고 백로그로.
+- 완료 수·추가 수: **완료 5** / **추가 5** (완료 ≥ 추가). 남은 `[ ]` 6개(그중 1개 Mac 실측).
+- Mac에서 확인할 것: 맨 위 명령 3줄(또는 `uv run python scripts/mac_report.py` 한 번).
 
 ## 2026-10-14 (19회차)
 
