@@ -163,3 +163,56 @@ def test_dev_doc_names_catch_a_removed_function():
     names = _code_names()
     assert {"run_guarded", "cleanup_fx", "fx_role", "build_code", "fake_blender"} <= names
     assert "run_guarded_v2" not in names and "make_fireworks" not in names
+
+
+def _tool_schemas() -> dict[str, set[str]]:
+    import anyio
+    from mcp import Client
+
+    async def tools():
+        async with Client(server.mcp) as client:
+            return (await client.list_tools()).tools
+
+    return {t.name: set(t.input_schema.get("properties", {})) for t in anyio.run(tools)}
+
+
+EXAMPLE_SCRIPTS = sorted((Path(__file__).parent.parent / "examples").glob("*.py"))
+
+
+@pytest.mark.parametrize("script", EXAMPLE_SCRIPTS, ids=lambda p: p.name)
+def test_example_scripts_name_only_real_tools_and_arguments(script):
+    """examples/*.py 의 docstring·print 문장에 나오는 이름과, 실제로 부르는 도구(`call_tool`·STEPS 의 (이름, 인자))가 서버에 있다.
+    예제를 그대로 돌리는 사용자가 없는 도구·인자 이름으로 막히지 않게(문서 시험은 .md 만 훑음)."""
+    import ast
+    schemas = _tool_schemas()
+    tools, args = set(schemas), set().union(*schemas.values())
+    tree = ast.parse(script.read_text(encoding="utf-8"))
+    bad = []
+    # 1) 문장 속 snake_case 이름: 도구·인자·문서 예외이거나, 이 파일 안 코드(변수·함수) 이름이어야 한다
+    code_names = {n.id for n in ast.walk(tree) if isinstance(n, ast.Name)} | \
+                 {n.name for n in ast.walk(tree) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))} | \
+                 {n.attr for n in ast.walk(tree) if isinstance(n, ast.Attribute)}
+    known = tools | args | set(DOC_NAMES_OK) | code_names
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+            bad += [n for n in re.findall(r"(?<![\w./-])([a-z][a-z0-9]*(?:_[a-z0-9]+)+)(?![\w./-])", node.value)
+                    if n not in known]
+    # 2) 실제로 부르는 도구 이름과 인자 키
+    calls = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call) and getattr(node.func, "attr", "") == "call_tool" and node.args \
+                and isinstance(node.args[0], ast.Constant):
+            keys = node.args[1].keys if len(node.args) > 1 and isinstance(node.args[1], ast.Dict) else []
+            calls.append((node.args[0].value, keys))
+        if isinstance(node, ast.Tuple) and len(node.elts) == 2 and isinstance(node.elts[0], ast.Constant) \
+                and isinstance(node.elts[0].value, str) and isinstance(node.elts[1], ast.Dict):
+            calls.append((node.elts[0].value, node.elts[1].keys))
+    for name, keys in calls:
+        if name not in schemas:
+            bad.append(f"도구 {name}")
+            continue
+        bad += [f"{name}({k.value}=)" for k in keys if isinstance(k, ast.Constant) and k.value not in schemas[name]]
+    assert not bad, f"{script.name} 에 없는 도구·인자 이름: {sorted(set(bad))}"
+    if script.name == "first_render.py":
+        assert {"ping_blender", "snapshot", "destroy", "render_preview"} <= {c[0] for c in calls} | set(
+            re.findall(r'"([a-z_]+)"', script.read_text(encoding="utf-8"))), "STEPS 를 못 읽음(시험이 비어 통과하지 않게)"
