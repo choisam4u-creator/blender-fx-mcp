@@ -359,6 +359,24 @@ def test_ci_lint_checks_workflows_with_pinned_actionlint():
     assert all(re.search(r"actionlint-py@\d+\.\d+\.\d+\.\d+ actionlint$", r) for r in runs), f"판 고정·경로 인자 없이(전체 워크플로): {runs}"
 
 
+def test_ci_lint_runs_pinned_zizmor_and_checkouts_drop_credentials():
+    """CI lint 잡이 판을 고정한 zizmor 로 워크플로 보안을 보고, 모든 checkout 이 토큰을 남기지 않는다(zizmor artipacked).
+    greet.yml 의 pull_request_target 은 근거 주석과 함께 그 줄에서만 끈다."""
+    wf = ROOT / ".github" / "workflows"
+    lint = _job_bodies((wf / "ci.yml").read_text(encoding="utf-8"))["lint"]
+    runs = re.findall(r"^      - run: (.*zizmor.*)$", lint, re.M)
+    assert len(runs) == 1, f"ci.yml lint 잡에 zizmor 단계가 하나 있어야 함: {runs}"
+    assert re.fullmatch(r"uvx zizmor@\d+\.\d+\.\d+ --offline \.github/workflows", runs[0]), runs
+    for path in sorted(wf.glob("*.yml")):
+        text = path.read_text(encoding="utf-8")
+        steps = re.findall(r"^      - uses: actions/checkout@.*\n((?:        .*\n)*)", text, re.M)
+        assert all("persist-credentials: false" in s for s in steps), f"{path.name}: checkout 에 persist-credentials: false 가 없음"
+    greet = (wf / "greet.yml").read_text(encoding="utf-8")
+    assert re.search(r"^  pull_request_target:  # zizmor: ignore\[dangerous-triggers\]$", greet, re.M)
+    assert "zizmor: ignore" not in "".join(p.read_text(encoding="utf-8") for p in wf.glob("*.yml") if p.name != "greet.yml")
+    assert not re.search(r"^      - (run|uses: actions/checkout)", greet.split("jobs:", 1)[1], re.M), "greet.yml 은 코드를 받거나 실행하지 않아야 끈 근거가 맞음"
+
+
 def test_release_workflow_publish_only_uploads_artifact():
     """release.yml: 태그 v* 로만 돌고, build 는 읽기 권한으로 점검·빌드하고, publish 는 id-token 만 받아
     build 의 결과물만 올린다(저장소 코드를 받거나 실행하지 않음)."""
