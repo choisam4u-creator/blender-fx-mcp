@@ -278,7 +278,7 @@
 
 ### 2026-10-15 (21회차) 추가 — 사용자 체감 우선(오픈소스 지원 기준: 시험·보안·유지보수)
 
-- [ ] 레시피 정적 시험: `main()` 안에서 `get_target`·`fx_bbox(target)`·`point()` 호출이 `cleanup_*`·`set_frame_end`·`remove_object` 보다 앞에 오는지 ast 로 훑기(예외는 근거 주석 목록) (근거: 이번 회차 particles `target` 이 "정리 뒤에 읽기" 결함의 세 번째 사례. bpy 시험은 BAD_CALLS 에 한 줄씩 넣어야만 잡힘)
+- [x] 레시피 정적 시험: `main()` 안에서 `get_target`·`fx_bbox(target)`·`point()` 호출이 `cleanup_*`·`set_frame_end`·`remove_object` 보다 앞에 오는지 ast 로 훑기(예외는 근거 주석 목록) (근거: 이번 회차 particles `target` 이 "정리 뒤에 읽기" 결함의 세 번째 사례. bpy 시험은 BAD_CALLS 에 한 줄씩 넣어야만 잡힘)
 - [ ] `uvx` 로 판을 고정한 도구(ruff 0.15.20·actionlint-py 1.7.12.25·zizmor 1.30.1)는 dependabot 이 못 봄 → 판을 한 표(CONTRIBUTING)에 모으고, 표와 워크플로·문서 속 판이 같은지 시험 + 분기마다 올리는 절차 한 줄 (근거: 이번 회차에 zizmor 를 넣으며 판 고정 도구가 셋이 됨. 활발한 유지보수)
 - [ ] `scripts/bpy_tests.sh`: 이미 받은 bpy 휠 경로(`BPY_WHEEL=…`)나 uv 캐시를 쓰는 길 + 처음 받을 때 "약 N분·M GB" 안내 줄 (근거: 이번 회차 컨테이너에서 bpy 5.0.1 설치에 20분 넘게 걸려 기다리는 줄 모르고 멈춘 듯 보였음. 기여자 첫 시험까지의 체감)
 - [ ] `docs/troubleshooting.md` 의 인용 오류 문장(`> …`)마다 그 머리 문구가 실제 레시피·서버 `L()` 문장에 있는지 시험(숫자는 자리표시로) (근거: 이번 회차에 water 문장을 바꾸며 문서 예시를 손으로 맞춤. 문서가 실제 오류와 어긋나면 검색해도 안 나옴)
