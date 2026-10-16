@@ -1,5 +1,6 @@
 # 레시피 정적 점검: main() 안에서 "읽기"(대상 찾기·상자·좌표 검사)가 "지우기"(정리·프레임 바꾸기·오브젝트 지우기)보다 앞에 오는지 ast 로 훑는다.
 # explode·set_timing·particles(target) 에서 "정리 뒤에 읽어 실패하면 장면이 반쯤 바뀐 채 남는" 결함이 세 번 나왔다.
+# main() 이 부르는 같은 파일 도우미 함수 안은 한 단계 따라간다.
 # bpy 시험(test_recipe_failure_keeps_scene.py 의 BAD_CALLS)은 한 줄씩 넣어야만 잡으므로, 블렌더 없이 모든 레시피를 한 번에 본다.
 import ast
 from pathlib import Path
@@ -33,17 +34,32 @@ def is_change(name):
     return name.startswith("cleanup_") or name in CHANGES
 
 
-def late_reads(source):
-    """main() 의 첫 장면 바꾸기 뒤에 오는 읽기 [(줄, 이름)]. main 이 없거나 바꾸기가 없으면 []."""
-    tree = ast.parse(source)
-    main = next((f for f in tree.body if isinstance(f, ast.FunctionDef) and f.name == "main"), None)
+def main_calls(tree):
+    """main() 의 호출을 실행 순서 열쇠와 함께 [((줄, 안쪽 줄), 이름)]. main 이 부르는 같은 파일의 도우미 함수는 한 단계 따라가
+    그 안의 호출을 부른 줄 자리에(안쪽 줄 순서대로) 넣는다. 정리·읽기를 도우미로 옮겨도 같은 결함이 숨지 않게."""
+    funcs = {f.name: f for f in tree.body if isinstance(f, ast.FunctionDef)}
+    main = funcs.get("main")
     if main is None:
         return []
-    calls = sorted((n.lineno, call_name(n)) for n in ast.walk(main) if isinstance(n, ast.Call) and call_name(n))
-    changes = [line for line, name in calls if is_change(name)]
+    out = []
+    for n in ast.walk(main):
+        if not isinstance(n, ast.Call) or not call_name(n):
+            continue
+        name = call_name(n)
+        out.append(((n.lineno, 0), name))  # 도우미 이름도 남긴다(cleanup_* 이름만으로 바꾸기로 보는 규칙 유지)
+        helper = funcs.get(name) if isinstance(n.func, ast.Name) and name != "main" else None
+        if helper is not None:
+            out.extend(((n.lineno, m.lineno), call_name(m)) for m in ast.walk(helper) if isinstance(m, ast.Call) and call_name(m))
+    return sorted(out)
+
+
+def late_reads(source):
+    """main() 의 첫 장면 바꾸기 뒤에 오는 읽기 [(main 의 줄, 이름)]. main 이 없거나 바꾸기가 없으면 []."""
+    calls = main_calls(ast.parse(source))
+    changes = [key for key, name in calls if is_change(name)]
     if not changes:
         return []
-    return [(line, name) for line, name in calls if name in READS and line > min(changes)]
+    return [(key[0], name) for key, name in calls if name in READS and key > min(changes)]
 
 
 def recipe_files():
@@ -75,6 +91,20 @@ def test_checker_catches_a_read_after_cleanup():
     assert late_reads("def main():\n    o = get_target('a')\n    remove_object(o)\n    point([1, 2], 'at')\n") == [(4, "point")]
 
 
+def test_checker_follows_same_file_helpers_one_level():
+    # 변이: 정리나 읽기를 main 이 부르는 도우미로 옮겨도 잡는지, 도우미 안의 순서도 보는지
+    clean_in_helper = "def reset():\n    cleanup_kind('snow')\n\ndef main():\n    reset()\n    fx_bbox(PARAMS.get('target'))\n"
+    read_in_helper = "def where():\n    return fx_bbox(PARAMS.get('target'))\n\ndef main():\n    set_frame_end(10)\n    where()\n"
+    both_in_helper = "def prep():\n    remove_object(None)\n    get_target('a')\n\ndef main():\n    prep()\n"
+    good_helper = "def prep():\n    get_target('a')\n    remove_object(None)\n\ndef main():\n    prep()\n"
+    assert late_reads(clean_in_helper) == [(6, "fx_bbox")]
+    assert late_reads(read_in_helper) == [(6, "fx_bbox")]
+    assert late_reads(both_in_helper) == [(6, "get_target")]
+    assert late_reads(good_helper) == []
+    # 다른 모듈의 같은 이름(_common.cleanup_kind 같은 속성 호출)은 따라가지 않고 이름 그대로 본다
+    assert late_reads("def main():\n    m.cleanup_x()\n    point([1], 'at')\n") == [(3, "point")]
+
+
 def test_checker_sees_the_recipes_that_matter():
     # 훑기가 헛돌지 않게: 지우기와 읽기를 함께 하는 레시피가 실제로 있어야 한다
     both = []
@@ -84,3 +114,11 @@ def test_checker_sees_the_recipes_that_matter():
         if names & READS and any(is_change(n) for n in names):
             both.append(path.stem)
     assert {"destroy", "explode", "emit", "particles", "water"} <= set(both)
+
+
+def test_checker_actually_enters_real_helpers():
+    # 도우미 따라가기가 헛돌지 않게: explode 의 blast_geometry(대상·좌표 읽기)와 emit 의 cleanup_emit(지우기)이 main 순서에 들어온다
+    explode = [name for _, name in main_calls(ast.parse((RECIPES / "explode.py").read_text(encoding="utf-8")))]
+    emit = [name for _, name in main_calls(ast.parse((RECIPES / "emit.py").read_text(encoding="utf-8")))]
+    assert {"blast_geometry", "get_target", "point"} <= set(explode)
+    assert {"cleanup_emit", "remove_object"} <= set(emit)
