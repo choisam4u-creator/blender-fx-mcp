@@ -29,6 +29,6 @@ jobs:
             Thanks for your first issue! This project has a single maintainer; first replies aim for 7 days (bugs) or 14 days (questions and ideas), see [SUPPORT.md](https://github.com/choisam4u-creator/blender-fx-mcp/blob/main/SUPPORT.md).
             For a bug, the output of `blender-fx-doctor` (or `--json`) lets us reproduce it right away. Fixes for common error messages are in [docs/troubleshooting.md](https://github.com/choisam4u-creator/blender-fx-mcp/blob/main/docs/troubleshooting.md).
           pr_message: |
-            첫 PR 고맙습니다! 블렌더 없이 도는 시험은 `uv run pytest -q`, 린트는 `uvx ruff check .` 입니다. 한/영 문장 규칙과 작은 일 목록은 [CONTRIBUTING.md](https://github.com/choisam4u-creator/blender-fx-mcp/blob/main/CONTRIBUTING.md) 에 있습니다.
+            첫 PR 고맙습니다! 블렌더 없이 도는 시험은 `uv run pytest -q`, 린트는 `uvx ruff@0.15.20 check .` 입니다. 한/영 문장 규칙과 작은 일 목록은 [CONTRIBUTING.md](https://github.com/choisam4u-creator/blender-fx-mcp/blob/main/CONTRIBUTING.md) 에 있습니다.
 
-            Thanks for your first pull request! Run `uv run pytest -q` (works without Blender) and `uvx ruff check .`. Message rules and small starter tasks are in [CONTRIBUTING.md](https://github.com/choisam4u-creator/blender-fx-mcp/blob/main/CONTRIBUTING.md#good-first-contributions).
+            Thanks for your first pull request! Run `uv run pytest -q` (works without Blender) and `uvx ruff@0.15.20 check .`. Message rules and small starter tasks are in [CONTRIBUTING.md](https://github.com/choisam4u-creator/blender-fx-mcp/blob/main/CONTRIBUTING.md#good-first-contributions).

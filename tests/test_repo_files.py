@@ -231,7 +231,7 @@ def test_pull_request_template_matches_contributing():
     """PR 양식의 확인 칸이 CONTRIBUTING 절차(ruff·pytest·한/영 문장·README 도구 표)를 빠뜨리지 않아야 한다."""
     text = (ROOT / ".github" / "pull_request_template.md").read_text(encoding="utf-8")
     contributing = (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
-    for cmd in ("uvx ruff check .", "uv run pytest -q"):
+    for cmd in ("uvx ruff@0.15.20 check .", "uv run pytest -q"):
         assert cmd in text and cmd in contributing, cmd
     for needed in ("L(", "t(", "run_guarded(main)", "STEPS", "## 도구 목록", "## English", "app_only", "CHANGELOG.md"):
         assert needed in text, needed

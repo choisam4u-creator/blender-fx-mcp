@@ -1,6 +1,6 @@
 # 기여 안내 / Contributing
 
-**English:** Every effect is one recipe file in `src/blender_fx_mcp/recipes/` plus one tool in `server.py`. Recipes run inside Blender with `PARAMS` prepended by the server and must end with `run_guarded(main)`, printing one `FX_RESULT` JSON line. Lint with `uvx ruff check .`. Server-side coverage (recipes excluded, same command as CI): `uv run pytest -q tests --ignore=tests/test_asset_robustness.py --ignore=tests/test_recipe_failure_keeps_scene.py --ignore=tests/test_recipes_fx_extra.py --ignore=tests/test_recipes_headless.py --ignore=tests/test_recipes_v05.py --ignore=tests/test_recipes_v06.py --cov --cov-report=term` (100% on 2026-10-11; CI fails below the 99% floor, `--cov-fail-under=99`, so a new error branch needs its own test); only the Blender-only recipe test files are ignored, so new test files join CI automatically. The fake Blender in tests is `fake_blender` from `tests/conftest.py` (a Python body behind a `/bin/sh` or `.cmd` wrapper), so the failure, timeout and trimming branches also run on Windows CI; only 1 `@posix_only` test (the segfault signal in `tests/test_headless.py`) is skipped there. Test headlessly with `uv run pytest -q` (needs Blender on this machine) and, with Blender open, `uv run python scripts/e2e_socket.py`. For a new tool, add a row to both README tool tables: `uv run python scripts/gen_tool_table.py --draft` prints draft rows from the docstrings, and running it without arguments lists rows or `a/b/c` value lists that disagree with the server. Keep error messages human-readable; the AI shows them to a non-technical user (see [Error message rules](#error-message-rules)). Start with [docs/architecture.md](docs/architecture.md) for the call path and test paths, or pick a small task from [Good first contributions](#good-first-contributions).
+**English:** Every effect is one recipe file in `src/blender_fx_mcp/recipes/` plus one tool in `server.py`. Recipes run inside Blender with `PARAMS` prepended by the server and must end with `run_guarded(main)`, printing one `FX_RESULT` JSON line. Lint with `uvx ruff@0.15.20 check .`. Server-side coverage (recipes excluded, same command as CI): `uv run pytest -q tests --ignore=tests/test_asset_robustness.py --ignore=tests/test_recipe_failure_keeps_scene.py --ignore=tests/test_recipes_fx_extra.py --ignore=tests/test_recipes_headless.py --ignore=tests/test_recipes_v05.py --ignore=tests/test_recipes_v06.py --cov --cov-report=term` (100% on 2026-10-11; CI fails below the 99% floor, `--cov-fail-under=99`, so a new error branch needs its own test); only the Blender-only recipe test files are ignored, so new test files join CI automatically. The fake Blender in tests is `fake_blender` from `tests/conftest.py` (a Python body behind a `/bin/sh` or `.cmd` wrapper), so the failure, timeout and trimming branches also run on Windows CI; only 1 `@posix_only` test (the segfault signal in `tests/test_headless.py`) is skipped there. Test headlessly with `uv run pytest -q` (needs Blender on this machine) and, with Blender open, `uv run python scripts/e2e_socket.py`. For a new tool, add a row to both README tool tables: `uv run python scripts/gen_tool_table.py --draft` prints draft rows from the docstrings, and running it without arguments lists rows or `a/b/c` value lists that disagree with the server. Keep error messages human-readable; the AI shows them to a non-technical user (see [Error message rules](#error-message-rules)). Start with [docs/architecture.md](docs/architecture.md) for the call path and test paths, or pick a small task from [Good first contributions](#good-first-contributions).
 
 ## 구조
 
@@ -34,7 +34,7 @@ src/blender_fx_mcp/
    `tests/test_server_tools.py` 의 `RESULTS`·`CALLS` 에 성공 결과와 호출 한 줄을 넣는다(빠지면 시험이 실패한다).
    README 한/영 도구 표에 한 줄씩 넣는다. `uv run python scripts/gen_tool_table.py --draft` 가 도구 설명으로 만든 초안 행을 주고, 인자 없이 돌리면 표와 서버(빠진 도구·`a/b/c` 값 목록)가 어긋난 곳을 알려 준다.
 4. `headless.py` 의 `STEPS` 에 단계를 추가하고, `tests/test_recipes_headless.py` 에 테스트를 넣는다. 결과 이미지가 실제로 달라지는지(픽셀) 확인하는 assert 를 포함한다.
-5. `uvx ruff check .` 와 `uv run pytest -q` 통과 후 PR. 워크플로(`.github/workflows/`)를 고쳤다면 `uvx --from actionlint-py actionlint` 와 `uvx zizmor --offline .github/workflows` 도(CI lint 잡과 같은 검사).
+5. `uvx ruff@0.15.20 check .` 와 `uv run pytest -q` 통과 후 PR. 워크플로(`.github/workflows/`)를 고쳤다면 `uvx --from actionlint-py@1.7.12.25 actionlint` 와 `uvx zizmor@1.30.1 --offline .github/workflows` 도(CI lint 잡과 같은 검사).
    - 서버 쪽 커버리지(CI 와 같은 명령): `uv run pytest -q tests --ignore=tests/test_asset_robustness.py --ignore=tests/test_recipe_failure_keeps_scene.py --ignore=tests/test_recipes_fx_extra.py --ignore=tests/test_recipes_headless.py --ignore=tests/test_recipes_v05.py --ignore=tests/test_recipes_v06.py --cov --cov-report=term`.
      블렌더가 있어야 하는 레시피 시험 파일만 `--ignore` 로 빼므로 새 시험 파일은 저절로 CI 에 들어간다. 레시피 시험 파일을 새로 만들면 이 목록과 `ci.yml` 에 함께 더한다.
      레시피는 블렌더 안에서 문자열로 실행돼 잴 수 없으므로 뺀다(`[tool.coverage.run] omit`). CI 는 이 표를 작업 요약에 남긴다.
@@ -68,7 +68,7 @@ src/blender_fx_mcp/
 - `good first issue` — 위 표 정도 크기의 일. 파일 한두 개, 시험 명령 하나로 끝난다.
 - `needs-info` — 재현 정보(doctor 출력·블렌더 판·불린 도구와 인자)를 기다리는 이슈. 30일 동안 답이 없으면 닫을 수 있다([SUPPORT.md](SUPPORT.md)).
 
-PR 전에는 늘 `uvx ruff check .` 와 위 확인 명령을 돌립니다.
+PR 전에는 늘 `uvx ruff@0.15.20 check .` 와 위 확인 명령을 돌립니다.
 
 ### Good first contributions
 
@@ -88,7 +88,7 @@ Labels:
 - `needs-info` — waiting for repro info (doctor output, Blender version, tool and arguments); may be closed after 30 days
   without a reply ([SUPPORT.md](SUPPORT.md)).
 
-Always run `uvx ruff check .` and the check command before opening a PR; after editing `.github/workflows/`, also `uvx --from actionlint-py actionlint` and `uvx zizmor --offline .github/workflows` (the same checks as the CI lint job).
+Always run `uvx ruff@0.15.20 check .` and the check command before opening a PR; after editing `.github/workflows/`, also `uvx --from actionlint-py@1.7.12.25 actionlint` and `uvx zizmor@1.30.1 --offline .github/workflows` (the same checks as the CI lint job).
 
 ## 규칙
 
@@ -99,6 +99,21 @@ Always run `uvx ruff check .` and the check command before opening a PR; after e
 - 주석은 한국어, 코드 식별자는 영어. 사용자에게 보이는 문장은 `L()`(레시피) 또는 `t()`(서버, `i18n.py`) 로 한국어·영어 둘 다 쓴다.
 - 사용자 오브젝트에 모디파이어를 붙일 때는 이름을 `FX_` 로 시작한다. `cleanup_fx` 가 그 이름만 떼어 낸다.
 - 되돌리기 어려운 동작(파일 열기, 물리 굽기 적용)을 넣을 때는 `snapshot` 을 먼저 권하는 문구를 도구 설명에 넣는다.
+
+## 판을 고정한 도구 / Pinned tools
+
+`uvx` 로 부르는 검사 도구는 `uv.lock` 밖이라 dependabot 이 올려 주지 않습니다. 판은 이 표 한 곳에 모으고, 워크플로·문서의 `도구@판` 이 표와 같은지 `tests/test_pinned_tools.py` 가 확인합니다.
+Tools run through `uvx` live outside `uv.lock`, so dependabot never bumps them. Their versions live in this one table; `tests/test_pinned_tools.py` checks that every `tool@version` in workflows and docs matches it.
+
+| 도구 / Tool | 판 / Version | 쓰는 곳 / Used in |
+|---|---|---|
+| ruff | 0.15.20 | CI `lint`, PR 양식 / PR template |
+| actionlint-py | 1.7.12.25 | CI `lint` (워크플로 검사 / workflow lint) |
+| zizmor | 1.30.1 | CI `lint` (워크플로 보안 / workflow security) |
+| twine | 7.0.0 | CI `build`, `release.yml` |
+
+분기마다(1·4·7·10월 첫 주) 각 도구의 최신 판을 확인해(`uvx pip index versions <도구>` 또는 PyPI) 표와 `.github/workflows/`·문서의 판을 한 번에 올리고, `uv run pytest -q tests/test_pinned_tools.py` 와 CI lint 가 초록인지 봅니다.
+Once a quarter (first week of Jan/Apr/Jul/Oct), check each tool's latest release, bump the table, workflows and docs together, and make sure `tests/test_pinned_tools.py` and the CI lint job stay green.
 
 ## 오류 문장 규칙
 
