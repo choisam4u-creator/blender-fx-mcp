@@ -306,7 +306,7 @@ def main():
     return dict(mode=mode, liquid=liquid, shape=shape, at=[round(v, 2) for v in at], size=round(size, 2),
                 direction_deg=direction_deg, pitch_deg=pitch_deg, speed=speed,
                 viscosity=visc, surface_tension=tension, gravity_scale=gravity_scale,
-                frames=frames, emit_frames=[start, stop], resolution=resolution,
+                frames=frames, emit_frames=[start, stop], resolution=resolution, cell_m=round(voxel, 3),
                 domain_size_m=[round(dsize.x, 1), round(dsize.y, 1), round(dsize.z, 1)],
                 obstacles=len(obstacles), effectors=effectors, spray=bool(p.get("spray")),
                 water_center=[round(v, 2) for v in wc], drift=[round(v, 2) for v in drift],

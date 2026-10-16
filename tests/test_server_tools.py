@@ -27,7 +27,7 @@ RESULTS = {
                 "resolution": 48, "chunks": 120, "moved_ratio": 0.8, "smoke_effectors": 30},
     "water": {"liquid": "honey", "mode": "stream", "at": [0, 0, 3], "size": 0.4, "direction_deg": 90.0,
               "pitch_deg": 0.0, "speed": 4.0, "viscosity": 2.0, "gravity_scale": 1.0, "resolution": 64,
-              "domain_size_m": 8.0, "effectors": 2, "drift": [3.1, 0.0, -2.0]},
+              "cell_m": 0.125, "domain_size_m": 8.0, "effectors": 2, "drift": [3.1, 0.0, -2.0]},
     "emit": {"target": "", "at": [1, 2, 0], "emit_frames": [1, 72], "resolution": 96, "domain_size_m": 6.0},
     "particles": {"kind": "snow", "count": 4000, "frames": [1, 72], "lifetime": 120, "size": 0.02,
                   "gravity": 0.1, "drag": 0.8},
@@ -443,3 +443,22 @@ def test_timing_says_when_blender_moved_the_other_end(fake, monkeypatch, lang, m
     assert expect in _text(server.set_timing(frame_start=500))
     monkeypatch.setitem(RESULTS, "set_timing", {k: v for k, v in RESULTS["set_timing"].items() if k != "moved"})
     assert "moved" not in _text(server.set_timing(frame_start=500)) and "옮겼" not in _text(server.set_timing())
+
+
+@pytest.mark.parametrize("lang", ["ko", "en"])
+def test_water_result_tells_cell_size_and_finer_resolution(fake, monkeypatch, lang):
+    # 성공한 뒤에도 다음 조정 방법: 격자 한 칸 크기와 resolution 을 두 배로 했을 때의 한 칸
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    text = tool_text(server.water(mode="stream"))
+    assert "0.125m" in text and "resolution=128" in text and "0.062m" in text
+    assert ("격자 한 칸" in text) == (lang == "ko") and ("Grid cell" in text) == (lang == "en")
+
+
+@pytest.mark.parametrize("now,finer", [(200, 320), (320, None)])
+def test_water_detail_respects_the_resolution_limit(monkeypatch, now, finer):
+    monkeypatch.setenv("BLENDER_FX_LANG", "en")
+    text = server._water_detail({"cell_m": 0.05, "resolution": now})
+    if finer:
+        assert f"resolution={finer}" in text
+    else:
+        assert "resolution=" not in text and "domain_at and domain_size" in text and "320 limit" in text

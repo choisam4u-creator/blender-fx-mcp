@@ -865,7 +865,18 @@ def water(
         f"resolution {res['resolution']}, domain {res['domain_size_m']}m, {res['effectors']} obstacles. "
         f"Water moved {res['drift']} (x,y,z m). Preview {rend['frames']} → {run_dir}",
     )
-    return [text] + _images(rend["paths"])
+    return [text + _water_detail(res)] + _images(rend["paths"])
+
+
+def _water_detail(res: dict) -> str:
+    """격자 한 칸 크기와 더 잘게 하는 다음 값(resolution 두 배, 상한 320). 상한이면 공간을 줄이는 길을 알려 준다."""
+    cell, now = res["cell_m"], res["resolution"]
+    if now >= 320:
+        return t(f"\n격자 한 칸 {cell:.3f}m. resolution 이 상한 320 이라, 더 작은 물방울이 필요하면 domain_at·domain_size 로 물 공간을 줄이세요.",
+                 f"\nGrid cell {cell:.3f}m. resolution is at its 320 limit; for smaller droplets, shrink the liquid space with domain_at and domain_size.")
+    finer = min(320, now * 2)
+    return t(f"\n격자 한 칸 {cell:.3f}m. 더 작은 물방울이 필요하면 resolution={finer}(한 칸 {cell * now / finer:.3f}m, 굽기가 몇 배 느려짐).",
+             f"\nGrid cell {cell:.3f}m. For smaller droplets, use resolution={finer} (cell {cell * now / finer:.3f}m, bakes several times slower).")
 
 
 @mcp.tool(annotations=ADDITIVE)

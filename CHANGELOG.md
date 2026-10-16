@@ -64,6 +64,7 @@
   간접 의존성 `exceptiongroup` 이 빠져 제3자 라이선스 표도 39개. 시험의 `importorskip("tomllib")` 는 보통 import 로
 
 **고침**
+- `water` 결과에 격자 한 칸 크기(m)와 "더 작은 물방울이 필요하면 resolution=N(한 칸 X m, 굽기가 몇 배 느려짐)" 한 줄. 상한 320 이면 `domain_at`·`domain_size` 로 공간을 줄이라고.
 - 실패한 호출이 장면을 바꾸지 않게(레시피 6곳): `explode`·`emit` 은 대상 이름이 틀리면 지난 폭발·불을 지운 뒤 멈췄고, `water` 는 이름·크기 검사 전에
   지난 물을 지우고 프레임 범위를 1~ 로 바꿨고, `destroy` 는 면 없는 메시에서 다른 효과를 지우고 바닥·카메라를 만든 뒤 멈췄고, `export_model` 은
   `bake_physics` 로 조각 물리를 키프레임으로 바꾼 뒤 "지원하지 않는 형식" 으로 멈췄고, `import_model` 은 `parts` 가 안 맞으면 가져온 부품을 남겼다.
