@@ -8,6 +8,7 @@
 #   BPY_WHEEL=~/Downloads/bpy-5.0.1-cp311-cp311-manylinux_2_28_x86_64.whl scripts/bpy_tests.sh   # 이미 받은 휠로(내려받기 없이)
 #
 # bpy 휠은 처음 한 번 크게 받는다(Linux 휠 356MB, 2026-10-16 클라우드 실측은 아래 BPY_NOTICE). 두 번째부터는 uv 캐시에서 깔려 빠르다.
+# BPY_WHEEL 은 파일 이름이 bpy-<BPY_VERSION>- 로 시작해야 한다(CI 와 같은 판).
 #
 # 필요한 것: uv, Linux x86_64, libEGL(소프트웨어 Mesa). 없으면 설치 명령을 알려 주고 멈춘다.
 set -euo pipefail
@@ -15,7 +16,7 @@ set -euo pipefail
 BPY_VERSION="5.0.1"
 PYTHON_VERSION="3.11"
 VENV=".venv-bpy"
-BPY_NOTICE="내려받기 356MB·설치 뒤 약 BPY_DISK_GB GB, 클라우드 컨테이너 실측 BPY_MINUTES분"
+BPY_NOTICE="내려받기 356MB·설치 뒤 약 1GB, 클라우드 컨테이너에서 받기 약 3분·깔기 12초, 느린 망에서는 20분 넘게"
 
 if [ -n "${BPY_WHEEL:-}" ]; then
   if [ ! -f "$BPY_WHEEL" ]; then

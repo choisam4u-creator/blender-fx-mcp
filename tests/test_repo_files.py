@@ -1,5 +1,8 @@
 # 저장소 안내 파일(이슈 양식 등) 점검. 블렌더 없이 돈다.
+import os
 import re
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -1308,3 +1311,30 @@ def test_error_message_rules_name_real_tests(bounds):
     if bounds is ERROR_RULES_EN:
         assert not HANGUL_RE.search(sec), "영어 절에 한글이 섞임"
         assert "(#error-message-rules)" in (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8").split("\n## ")[0]
+
+
+@pytest.mark.skipif(sys.platform == "win32" or shutil.which("bash") is None, reason="bash 스크립트(Linux·Mac)")
+@pytest.mark.parametrize("name,expected", [
+    (None, "BPY_WHEEL 파일이 없습니다"),
+    ("bpy-4.5.0-cp311-cp311-manylinux_2_28_x86_64.whl", "bpy 5.0.1 휠이 아닙니다"),
+])
+def test_bpy_script_rejects_a_wrong_wheel_before_doing_anything(tmp_path, name, expected):
+    """BPY_WHEEL(이미 받은 휠)이 없거나 다른 판이면 가상환경을 만들기 전에 다음 할 일과 함께 멈춘다."""
+    wheel = tmp_path / "없는.whl"
+    if name:
+        wheel = tmp_path / name
+        wheel.write_bytes(b"")
+    env = {**os.environ, "BPY_WHEEL": str(wheel)}
+    r = subprocess.run(["bash", str(BPY_SCRIPT)], capture_output=True, text=True, env=env, timeout=30)
+    assert r.returncode == 2 and expected in r.stderr, r.stderr
+    assert "다시 주거나" in r.stderr or "pypi.org/project/bpy/" in r.stderr
+
+
+def test_bpy_script_tells_how_long_the_first_download_takes():
+    # 처음 받을 때 크기·시간을 미리 말해 멈춘 듯 보이지 않게, 이미 받은 휠을 쓰는 길도 함께
+    script = BPY_SCRIPT.read_text(encoding="utf-8")
+    notice = re.search(r'^BPY_NOTICE="([^"]+)"', script, re.M).group(1)
+    assert re.search(r"\d+MB", notice) and re.search(r"\d+분", notice), notice
+    assert '"$BPY_NOTICE"' in script or "$BPY_NOTICE" in script
+    assert "BPY_WHEEL=휠경로 scripts/bpy_tests.sh" in script
+    assert "BPY_WHEEL" in (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
