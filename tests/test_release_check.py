@@ -2,6 +2,7 @@
 import importlib.util
 import re
 import shutil
+import subprocess
 import tarfile
 import tomllib
 import zipfile
@@ -471,3 +472,84 @@ def test_mac_report_without_command_block(tmp_path):
     notes = tmp_path / "n.md"
     notes.write_text("# 비어 있음\n", encoding="utf-8")
     assert _mac_report().main(["--notes", str(notes), "--dry-run"]) == 2
+
+
+# ---------- scripts/triage_report.py ----------
+
+def _triage():
+    spec = importlib.util.spec_from_file_location("triage_report", ROOT / "scripts" / "triage_report.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _fake_github(repo="o/r"):
+    """열린 것 다섯: 늦은 버그(답 없음), 제때 답한 질문, 늦게 답한 PR(리뷰), 봇 PR, 관리자가 연 PR."""
+    me, maint, bot = {"login": "user1", "type": "User"}, {"login": "maint", "type": "User"}, {"login": "dependabot[bot]", "type": "Bot"}
+    data = {
+        f"repos/{repo}/issues?state=open&per_page=100": [
+            {"number": 1, "title": "crash | on render", "user": me, "labels": [{"name": "bug"}], "created_at": "2026-10-01T00:00:00Z"},
+            {"number": 2, "title": "how to?", "user": me, "labels": [{"name": "question"}], "created_at": "2026-10-01T00:00:00Z"},
+            {"number": 3, "title": "fix typo", "user": me, "labels": [], "created_at": "2026-09-01T00:00:00Z", "pull_request": {}},
+            {"number": 4, "title": "bump x", "user": bot, "labels": [], "created_at": "2026-09-01T00:00:00Z", "pull_request": {}},
+            {"number": 5, "title": "own work", "user": maint, "author_association": "OWNER", "labels": [],
+             "created_at": "2026-09-01T00:00:00Z", "pull_request": {}},
+        ],
+        # 1: 글쓴이 본인 댓글·봇 댓글은 답이 아니다
+        f"repos/{repo}/issues/1/comments?per_page=100": [{"user": me, "created_at": "2026-10-02T00:00:00Z"},
+                                                          {"user": bot, "created_at": "2026-10-02T00:00:00Z"}],
+        f"repos/{repo}/issues/2/comments?per_page=100": [{"user": maint, "created_at": "2026-10-03T12:00:00Z"}],
+        f"repos/{repo}/issues/3/comments?per_page=100": [],
+        f"repos/{repo}/pulls/3/reviews?per_page=100": [{"user": maint, "submitted_at": "2026-09-21T00:00:00Z"}],
+        f"repos/{repo}/issues/4/comments?per_page=100": [],
+        f"repos/{repo}/pulls/4/reviews?per_page=100": [],
+        f"repos/{repo}/issues/5/comments?per_page=100": [],
+        f"repos/{repo}/pulls/5/reviews?per_page=100": [],
+    }
+    return lambda path: data[path]
+
+
+def test_triage_report_flags_only_items_past_the_support_target(capsys):
+    from datetime import datetime, timezone
+    tr = _triage()
+    now = datetime(2026, 10, 16, tzinfo=timezone.utc)
+    rows = {r["number"]: r for r in tr.triage("o/r", _fake_github(), now)}
+    assert set(rows) == {1, 2, 3}, "봇·관리자가 연 것은 기본으로 뺀다"
+    assert rows[1]["target"] == 7 and rows[1]["reply_days"] is None and rows[1]["late"]
+    assert rows[2]["target"] == 14 and rows[2]["reply_days"] == 2.5 and not rows[2]["late"]
+    assert rows[3]["kind"] == "PR" and rows[3]["reply_days"] == 20.0 and rows[3]["late"], "리뷰도 첫 답, 14일 넘김"
+    assert {r["number"] for r in tr.triage("o/r", _fake_github(), now, include_bots=True, include_own=True)} == {1, 2, 3, 4, 5}
+
+    assert tr.main(["--repo", "o/r"], api=_fake_github(), now=now) == 1
+    out = capsys.readouterr().out
+    assert "3개 중" in out and "2 of 3" in out and "| 1 | issue | crash \\| on render | bug | 7일 / d | 없음 / none ⚠ |" in out
+    assert "how to?" not in out, "목표 안인 것은 --all 일 때만"
+    assert tr.main(["--repo", "o/r", "--all"], api=_fake_github(), now=now) == 1 and "how to?" in capsys.readouterr().out
+
+
+def test_triage_report_without_gh_says_what_to_do(monkeypatch, capsys):
+    tr = _triage()
+    monkeypatch.setattr(tr.shutil, "which", lambda name: None)
+    assert tr.main([]) == 2
+    err = capsys.readouterr().err
+    assert "brew install gh" in err and "gh auth login" in err and "https://cli.github.com" in err
+
+
+def test_triage_report_reads_paginated_gh_output(monkeypatch):
+    tr = _triage()
+    monkeypatch.setattr(tr.shutil, "which", lambda name: "/usr/bin/gh")
+    done = subprocess.CompletedProcess([], 0, stdout='[{"a": 1}]\n[{"a": 2}, {"a": 3}]\n', stderr="")
+    monkeypatch.setattr(tr.subprocess, "run", lambda *a, **k: done)
+    assert tr.gh_api("x") == [{"a": 1}, {"a": 2}, {"a": 3}]
+    monkeypatch.setattr(tr.subprocess, "run", lambda *a, **k: subprocess.CompletedProcess([], 1, "", "HTTP 401: Bad credentials"))
+    with pytest.raises(tr.GhError, match="HTTP 401"):
+        tr.gh_api("x")
+
+
+def test_triage_targets_match_support_md():
+    tr = _triage()
+    support = (ROOT / "SUPPORT.md").read_text(encoding="utf-8")
+    assert f"보안 신고 / Security report | {tr.TARGET_DAYS['security']}일 안" in support
+    assert f"버그 / Bug | {tr.TARGET_DAYS['bug']}일 안" in support
+    assert f"질문·기능 요청 / Question, feature | {tr.OTHER_DAYS}일 안" in support
+    assert tr.target_days(["bug", "question"]) == 7 and tr.target_days([]) == 14

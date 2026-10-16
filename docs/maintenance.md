@@ -12,6 +12,7 @@
    마감은 [`.github/workflows/stale.yml`](../.github/workflows/stale.yml) 이 매일 지킨다: 23일 조용하면 `stale` 라벨과 안내, 7일 더 조용하면 닫음. 누가 글을 쓰면 날짜가 다시 센다.
 4. **질문·기능 요청** — 첫 답 14일 안. 작고 범위가 분명한 일은 `good first issue` 를 붙인다([CONTRIBUTING.md](../CONTRIBUTING.md) 의 "처음 기여하기 좋은 일").
 5. 오류 문장 때문에 온 이슈는 해결법을 [docs/troubleshooting.md](troubleshooting.md) 에도 적는다.
+6. **목표를 지켰는지 보기** — 주에 한 번 `uv run python scripts/triage_report.py` 를 돌린다. 열린 이슈·PR 중 첫 답이 위 목표(7·14일)를 넘은 것만 표로 나온다(종료 코드 1). `--all` 은 전부, 봇·관리자가 연 PR 은 기본으로 뺀다. `gh` 로만 묻고 토큰을 저장하지 않는다.
 
 ### 라벨
 
@@ -88,6 +89,7 @@ How this single-maintainer project is maintained. These are the rules the mainta
    [`.github/workflows/stale.yml`](../.github/workflows/stale.yml) enforces the deadline daily: after 23 quiet days it adds the `stale` label and a notice, and closes the issue after 7 more. Any new comment restarts the count.
 4. **Questions and feature requests**: first reply within 14 days. Label small, well-scoped tasks `good first issue` (see "Good first contributions" in [CONTRIBUTING.md](../CONTRIBUTING.md)).
 5. When an issue was caused by an error message, add the fix to [docs/troubleshooting.md](troubleshooting.md) as well.
+6. **Checking the targets**: once a week, run `uv run python scripts/triage_report.py`. It lists only the open issues and PRs whose first reply is past the targets above (7 or 14 days), exiting with 1 when there are any. `--all` lists everything; PRs opened by bots or maintainers are left out by default. It asks GitHub only through `gh` and stores no token.
 
 ### Labels
 
