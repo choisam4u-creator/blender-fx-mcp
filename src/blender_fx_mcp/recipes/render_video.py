@@ -25,6 +25,17 @@ def main():
     f0 = int(p.get("frame_start") or sc.frame_start)
     f1 = int(p.get("frame_end") or sc.frame_end)
     if f1 < f0:
+        # 한쪽만 줬으면 다른 쪽은 장면 값이라 "바꿔라"가 아니라 "함께 주라"가 다음 할 일이다
+        if p.get("frame_start") and not p.get("frame_end"):
+            raise FxError(L(f"frame_start({f0}) 가 장면 끝(frame_end {f1}) 뒤입니다. frame_end 도 함께 주어"
+                            f"(예: frame_start={f0}, frame_end={f0 + 71}) 다시 시키세요. 장면은 바꾸지 않았습니다.",
+                            f"frame_start ({f0}) is after the scene's end (frame_end {f1}). Give frame_end too "
+                            f"(e.g. frame_start={f0}, frame_end={f0 + 71}) and ask again. The scene was not changed."))
+        if p.get("frame_end") and not p.get("frame_start"):
+            raise FxError(L(f"frame_end({f1}) 가 장면 시작(frame_start {f0}) 앞입니다. frame_start 도 함께 주어"
+                            f"(예: frame_start=1, frame_end={f1}) 다시 시키세요. 장면은 바꾸지 않았습니다.",
+                            f"frame_end ({f1}) is before the scene's start (frame_start {f0}). Give frame_start too "
+                            f"(e.g. frame_start=1, frame_end={f1}) and ask again. The scene was not changed."))
         raise FxError(L(f"frame_end({f1}) 가 frame_start({f0}) 보다 작습니다. 두 값을 바꿔 다시 시키세요.",
                         f"frame_end({f1}) is smaller than frame_start({f0}). Swap the two values and ask again."))
     if sc.camera is None:

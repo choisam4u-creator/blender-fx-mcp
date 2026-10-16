@@ -106,6 +106,10 @@ def main():
         keys = [str(w).lower() for w in wanted]
         keep = [o for o in meshes if any(k in o.name.lower() for k in keys)]
         if not keep:
+            for n in new_names:  # 가져온 것을 남기지 않는다(실패했는데 장면에 부품이 쌓이던 문제)
+                o = bpy.data.objects.get(n)
+                if o is not None:
+                    remove_object(o)
             raise FxError(L(f"parts 에 맞는 부품이 없습니다. 파일 안 부품: {short([q['name'] for q in parts])}",
                             f"No part matched 'parts'. Parts in the file: {short([q['name'] for q in parts])}"))
         dropped = [o.name for o in meshes if o not in keep]

@@ -111,9 +111,9 @@ def test_doctor_report_links_doc_only_when_something_is_wrong(monkeypatch):
     from blender_fx_mcp.doctor import format_report
     monkeypatch.setenv("BLENDER_FX_LANG", "en")
     ok = [{"name": "python", "ok": True, "detail": "3.13"}]
-    bad = ok + [{"name": "receiver connection", "ok": False, "detail": "refused"}]
+    bad = ok + [{"id": "connection", "name": "receiver connection", "ok": False, "detail": "refused"}]
     assert bridge.TROUBLESHOOTING_URL not in format_report(ok)
-    assert format_report(bad).endswith(f"Help: {bridge.TROUBLESHOOTING_URL}")
+    assert format_report(bad).endswith(f"Help: {bridge.TROUBLESHOOTING_URL}#connection-refused")
 
 
 def test_readme_links_troubleshooting():
@@ -180,3 +180,93 @@ def test_uv_step_does_not_need_doctor(lang):
     uv_step = _first_render_steps(section)[0]
     assert "brew install uv" in uv_step and "astral.sh/uv/install.sh" in uv_step and "doctor" not in uv_step
     assert 'install.ps1 | iex"' in _doc().split("## uv not found", 1)[1].split("\n## ", 1)[0]
+
+
+# 서버가 블렌더에 보내기 전에 막는 오류(범위·선택지·순서). 실제로 만든 문장의 값이 아닌 부분이 문서에서 검색돼야 한다
+# (문서 첫머리가 "오류 문장 앞부분을 Ctrl+F 로 찾으세요" 이므로)
+REJECTIONS = [
+    (lambda s: s.check_ranges("set_timing", {"fps": -24}), "은(는) 범위 밖입니다. 가능한 범위:", "is out of range. Allowed:"),
+    (lambda s: s.check_choices("destroy", {"material": "rubber"}), "은(는) 쓸 수 없습니다. 가능한 값:", "is not allowed. Choose one of:"),
+    (lambda s: s.check_order("set_timing", {"frame_start": 100, "frame_end": 50}),
+     "보다 같거나 커야 합니다. 장면은 바꾸지 않았습니다.", "The scene was not changed."),
+    (lambda s: s.check_order("set_timing", {"slow_from": 40, "slow_to": 20}), "보다 커야 합니다.", "must be greater than"),
+    (lambda s: s.check_finite({"power": float("nan")}), "에 유한한 숫자를 주세요", "must be a finite number"),
+    (lambda s: s.check_points({"at": [1, 2]}), "은(는) [x, y, z] 숫자 세 개로 주세요", "as three numbers [x, y, z]"),
+]
+
+
+@pytest.mark.parametrize("call,ko,en", REJECTIONS, ids=[en for _, _, en in REJECTIONS])
+def test_server_rejections_are_searchable_in_the_doc(monkeypatch, call, ko, en):
+    from blender_fx_mcp import server
+    for lang, stem in (("ko", ko), ("en", en)):
+        monkeypatch.setenv("BLENDER_FX_LANG", lang)
+        with pytest.raises(bridge.BlenderError) as err:
+            call(server)
+        assert stem in str(err.value), f"서버 문장이 바뀜({lang}): {err.value}"
+        assert stem in _doc(), f"troubleshooting.md 에서 찾을 수 없는 서버 오류 문장: {stem}"
+    assert "argument-value-rejected" in _anchors(_doc())
+
+
+def test_every_server_check_has_a_documented_rejection():
+    """새 검사 함수(check_*)를 더하면 위 REJECTIONS 에도 문장을 더한다."""
+    from blender_fx_mcp import server
+    checks = {n for n in dir(server) if n.startswith("check_") and callable(getattr(server, n))}
+    src = (ROOT / "tests" / "test_troubleshooting.py").read_text(encoding="utf-8")
+    assert checks <= {n for n in checks if f"s.{n}(" in src}, checks
+
+
+# 문서의 인용 오류 문장(`> …`)마다 그 문구가 실제 소스 문자열에 있는지. 숫자·[…]·'…'·(…)·… 는 자리표시로 보고(괄호 안은 끼워 만든 말이 많음),
+# 영문 식별자(at·BLENDER_FX_TIMEOUT·GB·ConnectionResetError)는 f-string 자리표시 {…} 와도 맞는다고 본다.
+# 문서를 손으로 맞추다 실제 문장과 어긋나면 사용자가 Ctrl+F 로 못 찾는다(PHRASES 는 고른 문장만 지킨다).
+QUOTE_EXEMPT = {
+    # 셸이 내는 문장(우리 소스가 아님)
+    "zsh: command not found: uvx",
+    "'uvx' is not recognized as an internal or external command",
+    # t() 로 고른 말(같거나 커야/커야)을 끼워 만드는 문장: REJECTIONS 가 실제로 만든 문장으로 확인한다
+    "… 보다 같거나 커야 합니다. 장면은 바꾸지 않았습니다.",
+    "… 보다 커야 합니다. 장면은 바꾸지 않았습니다.",
+}
+_PLACEHOLDER = r"…|\([^()]*\)|\d+(?:\.\d+)?|\[[^\]]*\]|'[^']*'|\bnan\b"
+
+
+def _quotes():
+    return [line[2:].strip() for line in _doc().splitlines() if line.startswith("> ")]
+
+
+def _fragments(quote):
+    """자리표시로 자른 조각 중 검색에 쓸 만한 것(4자 이상)."""
+    return [f.strip(" .,:()") for f in re.split(_PLACEHOLDER, quote) if len(f.strip(" .,:()")) >= 4]
+
+
+def _fragment_regex(fragment):
+    parts = re.split(r"([A-Za-z_][A-Za-z0-9_]*)", fragment)
+    return "".join(f"(?:{re.escape(p)}|\\{{[^{{}}]*\\}})" if i % 2 else re.escape(p) for i, p in enumerate(parts))
+
+
+def _source_text():
+    return "\n".join(p.read_text(encoding="utf-8") for p in sorted(SRC.rglob("*.py")))
+
+
+def _missing_fragments(quote, source):
+    return [f for f in _fragments(quote) if not re.search(_fragment_regex(f), source)]
+
+
+@pytest.mark.parametrize("quote", [q for q in _quotes() if q not in QUOTE_EXEMPT])
+def test_every_quoted_error_exists_in_source(quote):
+    assert _fragments(quote), f"자리표시만 있는 인용 문장: {quote!r}"
+    missing = _missing_fragments(quote, _source_text())
+    assert not missing, f"troubleshooting.md 의 인용 {quote!r} 중 소스에 없는 문구 {missing} — 실제 오류 문장과 맞추세요"
+
+
+def test_quote_exemptions_are_still_quoted():
+    assert QUOTE_EXEMPT <= set(_quotes()), f"문서에서 사라진 예외: {QUOTE_EXEMPT - set(_quotes())}"
+    assert len(_quotes()) - len(QUOTE_EXEMPT) >= 40, "훑는 인용이 너무 적음"
+
+
+def test_quote_checker_catches_a_drifted_sentence():
+    # 변이: 문서만 고친 문장은 잡고, 숫자·인자 이름이 들어간 실제 문장은 통과
+    source = 'raise FxError(L(f"물 덩어리({a:.2f}m)가 격자 한 칸보다 작습니다.", f"Give {name} as three numbers (got {v!r})"))'
+    assert _missing_fragments("물 덩어리(0.10m)가 격자 한 칸보다 작습니다.", source) == []
+    assert _missing_fragments("Give at as three numbers (got [1, 2]).", source) == []
+    assert _missing_fragments("물 덩어리(0.10m)가 격자 한 칸보다 훨씬 작습니다.", source) == ["가 격자 한 칸보다 훨씬 작습니다"]
+    assert _missing_fragments("Give at as four numbers.", source) == ["Give at as four numbers"]

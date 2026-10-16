@@ -6,8 +6,12 @@
 def main():
     p = PARAMS
     path = os.path.expanduser(p["path"])
-    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     ext = os.path.splitext(path)[1].lower()
+    # 형식은 맨 먼저 본다(전에는 bake_physics 로 조각 물리를 키프레임으로 바꾼 뒤에 "지원하지 않는 형식" 으로 멈췄다)
+    if ext not in (".glb", ".gltf", ".fbx", ".obj", ".abc"):
+        raise FxError(L(f"지원하지 않는 형식: {ext}. glb/gltf/fbx/obj/abc 만 됩니다.",
+                        f"Unsupported format: {ext}. Only glb/gltf/fbx/obj/abc are supported."))
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     sc = scene()
     names = p.get("names") or []
     if names:
@@ -57,13 +61,10 @@ def main():
                 bpy.ops.export_scene.fbx(filepath=path, use_selection=True)
         elif ext == ".obj":
             bpy.ops.wm.obj_export(filepath=path, export_selected_objects=True)
-        elif ext == ".abc":
-            # 알렘빅은 물 표면과 조각 움직임을 프레임마다 굽어서 내보낸다 (다른 프로그램으로 가져가기 좋음)
+        else:
+            # .abc: 알렘빅은 물 표면과 조각 움직임을 프레임마다 굽어서 내보낸다 (다른 프로그램으로 가져가기 좋음)
             bpy.ops.wm.alembic_export(filepath=path, selected=True,
                                       start=sc.frame_start, end=sc.frame_end, flatten=False)
-        else:
-            raise FxError(L(f"지원하지 않는 형식: {ext}. glb/gltf/fbx/obj/abc 만 됩니다.",
-                            f"Unsupported format: {ext}. Only glb/gltf/fbx/obj/abc are supported."))
     if not os.path.exists(path):
         raise FxError(L(f"내보낸 파일이 만들어지지 않았습니다: {path}. 그 폴더에 쓸 수 있는지 확인하고, 안 되면 glb 로 다시 내보내 보세요"
                         "(블렌더 창 아래 상태 줄·Info 창에 내보내기 오류가 나옵니다).",

@@ -11,41 +11,45 @@
 - Python 3.11 or newer is required. Python 3.10 reached end of life in 2026-10; 0.7.0 is the last release that supports it.
 
 *Fixes*
-- `restore("before_restore")` (undoing an undo) no longer overwrites the state it goes back to; the two states swap.
-  `destroy`/`reset_destroy` with a target no longer delete unrelated effects (ocean, water, smoke, flag, wind) or other buildings' glue.
-  Renders keep the samples and size set with `set_render` (previews no longer overwrite them; `render_video` uses them by default).
-  The tool list every client loads into each conversation is 24% smaller (33,015 → 25,093 characters): no per-argument `title`, no `{"result": string}` output schema
-  on text tools (and no duplicate of the sentence in `structuredContent`), no docstring indentation. A test keeps it under a budget.
-  The server instructions drop the glosses already in each tool's description (Korean 656 → 515, English 994 → 819 characters) and are part of the same budget test.
-  `list_objects`, `inspect_mesh` and `list_snapshots` also return MCP structured content (`structuredContent`), so the AI reads names and sizes without re-parsing text.
-  The `doctor` tool does too: each check with `ok` and `fix` (the next step), and `failed` with the ids to fix, so the AI names the broken step and its fix.
-  `render_preview` without a size follows the aspect set with `set_render`, scaled to 640 on the long side (a 1080×1920 scene previews at 360×640, not 640×360).
-  `render_preview`, `render_video` and `set_render` reject a `width`/`height` outside 16-7680 before anything reaches Blender, with the recommended sizes
-  (a negative size used to fail inside Blender with an unclear error).
-  The same goes for `fps` (1-240, recommended 24/30/60) in `set_render`, `render_video`, `set_timing` and `set_physics`, and for
-  `frame_start`/`frame_end`/`slow_from`/`slow_to` (frame numbers start at 1; 0 keeps the scene value).
-  A receiver failure (`Blender error: …`) and a missing result line now say it may be a bug and how to report it (`blender-fx-doctor --issue`);
-  out-of-range `samples` gets recommended values like the other numbers. A test keeps every server-side error telling the next step in Korean and English.
-  The README no longer tells you to lower `glue_neighbors`/`glue_max` (not `destroy` arguments); it says to lower `pieces` or use `glue="none"`.
-  A test checks that tool and argument names in the README, troubleshooting, recipes and demo docs are real.
-  Changing the ground while an ocean replaces it now says to run `reset_destroy` (it named a `reset` tool that does not exist).
-  A dropped connection mid-command, a cut-off reply and invalid `BLENDER_FX_TIMEOUT`/`BLENDER_FX_PORT` values now each get their own message.
-- Install commands now use the PyPI package: `uvx blender-fx-mcp` (and `uvx --from blender-fx-mcp blender-fx-doctor`); git is no longer needed.
-  The README, `examples/`, doctor, the connection-refused error and the bug form all use it. Troubleshooting explains how to get a newer release.
-- When less than 5GB is free, doctor names the largest parts of the output folder (baked caches, snapshots `clear_snapshots` would delete, render results, loose files) with their size
-  and the tool that clears each, largest first; if the folder is small it says clearing it will not help.
-- Progress notifications use plain words ("Baking the liquid — 45s so far") instead of internal recipe names.
-- `blender-fx-doctor` says when PyPI has a newer release and how to get it (`uv cache clean blender-fx-mcp`); quiet when offline or with `BLENDER_FX_NO_UPDATE_CHECK=1`.
-- Maintainer scripts: `release_notes.py vX.Y.Z` prints a CHANGELOG section as GitHub release notes (`--draft` for an unreleased one),
-  and `release_check.py --tag vX.Y.Z` checks a tag before it is pushed, with the same rule the release workflow uses.
+- **A failed call leaves the scene as it was.** A misspelled target no longer deletes the previous explosion or fire (`explode`, `emit`);
+  `water` no longer deletes the previous water and resets the frame range before its checks; `destroy` stops on a mesh without faces before touching
+  the scene; `export_model` checks the format before `bake_physics` turns the pieces into keyframes; `import_model` removes what it imported when no
+  part matches `parts`. `restore("before_restore")` (undoing an undo) swaps the two states instead of overwriting one, and `destroy`/`reset_destroy`
+  with a target no longer delete unrelated effects (ocean, water, smoke, flag, wind) or other buildings' glue.
+  `ocean`, `wind`, `cloth_flag`, `emit`, `explode`, `water` and `particles` read every argument (positions included) before removing the previous one, and `set_ground` no longer shows the hidden ground under an ocean.
+- **Bad values stop before Blender, with the values to use.** `width`/`height` 16-7680, `fps` 1-240 (24/30/60 recommended) and frame numbers from 1
+  in `render_preview`, `render_video`, `set_render`, `set_timing` and `set_physics`; a reversed pair (`frame_end` before `frame_start`,
+  `slow_to` not after `slow_from`) gets the swapped values; a position (`at`, `domain_at`) must be three numbers. `samples` out of range gets recommended values like the other numbers.
+- **Timing.** `set_timing(fps=…)` always failed after already changing the scene (duplicate result key); fixed. `global_slow` is relative to the
+  original speed (asking twice no longer stretches 48 → 192 frames; 1.0 undoes it). `set_timing` and `render_video` say the length in seconds
+  ("72 frames = 3s at 24fps"), and `set_timing` says when Blender moved the other end of the range (`frame_start=500` alone pushes `frame_end`).
+  `render_video` with only `frame_start` after the scene's end (or only `frame_end` before its start) says to give both, not to swap them.
+- **Rendering.** Renders keep the samples and size set with `set_render` (`render_video` uses them by default); `render_preview` without a size
+  follows that aspect at 640 on the long side (a 1080×1920 scene previews at 360×640).
+- **Smaller tool list, structured results, clearer errors.** The tool list each client loads is 24% smaller (33,015 → 25,093 characters) and the server
+  instructions shorter (Korean 656 → 515, English 994 → 819), both under a tested budget. `list_objects`, `inspect_mesh`, `list_snapshots` and `doctor`
+  return MCP structured content (`doctor`: `ok`, `fix` and `help` per check). A receiver failure or a missing result line says how to report it
+  (`blender-fx-doctor --issue`); a dropped connection, a cut-off reply and invalid `BLENDER_FX_TIMEOUT`/`BLENDER_FX_PORT` each get their own message;
+  `set_ground` under an ocean names `reset_destroy` (it named a `reset` tool that does not exist). Docs no longer mention `destroy` arguments that do not exist.
+- **Install and doctor.** Install commands use the PyPI package (`uvx blender-fx-mcp`, `uvx --from blender-fx-mcp blender-fx-doctor`); git is no longer
+  needed. doctor says when PyPI has a newer release (quiet offline or with `BLENDER_FX_NO_UPDATE_CHECK=1`), links the troubleshooting section for each
+  failed check, and when less than 5GB is free names the largest parts of the output folder and the tool that clears each. Progress notifications use
+  plain words ("Baking the liquid — 45s so far").
 
 *Tests and CI*
 - `examples/first_render.py` runs end to end in tests against the real server and a fake Blender receiver socket
   (five progress lines, exit 0 and the PNG paths; a recipe failure exits 1 with the error and the way back).
-- The release workflow checks the tag through `release_check.py --tag`, so the rule lives in one place and is tested.
+- The release workflow checks the tag through `release_check.py --tag`, so the rule lives in one place and is tested; CI lints every workflow with a pinned actionlint.
+- A Blender test fails every recipe once with a representative bad argument and compares the scene before and after; tests keep every
+  server-side error telling the next step in Korean and English, and tool and argument names in the docs real.
+- Maintainer scripts: `release_notes.py vX.Y.Z` prints a CHANGELOG section as GitHub release notes (`--draft` for an unreleased one),
+  and `release_check.py --tag vX.Y.Z` checks a tag before it is pushed, with the same rule the release workflow uses.
+  After PyPI publishing, the release workflow opens a draft GitHub release with these notes and the packages (only that job can create releases; a person publishes it).
+  SECURITY and SUPPORT list 0.7.x (the latest on PyPI) as supported until 0.8.0 ships; `release_check.py` asks to trim them to the new series once the release is dated.
 
 *Docs*
-- Troubleshooting: "Still on the old version" (clear the uv cache; use the `git+` address only to try unreleased `main`).
+- Troubleshooting: "Still on the old version" (clear the uv cache; use the `git+` address only to try unreleased `main`), and "Argument value rejected"
+  (the range, choice, order and finite-number errors the server stops before Blender; a test keeps each sentence searchable on the page).
 - README shows a PyPI version badge, and (both languages) a three-line "Getting help": `doctor --issue` → the matching form → reply targets.
 - `docs/maintenance.md` has an eight-step release procedure (bump, check, tag, build, approve, PyPI, registry, release notes), tested against `release.yml`.
 - `docs/registry.md` and `docs/maintenance.md` say to run `release_check.py --tag` before pushing a tag.
@@ -60,6 +64,26 @@
   간접 의존성 `exceptiongroup` 이 빠져 제3자 라이선스 표도 39개. 시험의 `importorskip("tomllib")` 는 보통 import 로
 
 **고침**
+- `water` 결과에 격자 한 칸 크기(m)와 "더 작은 물방울이 필요하면 resolution=N(한 칸 X m, 굽기가 몇 배 느려짐)" 한 줄. 상한 320 이면 `domain_at`·`domain_size` 로 공간을 줄이라고.
+- 실패한 호출이 장면을 바꾸지 않게(레시피 6곳): `explode`·`emit` 은 대상 이름이 틀리면 지난 폭발·불을 지운 뒤 멈췄고, `water` 는 이름·크기 검사 전에
+  지난 물을 지우고 프레임 범위를 1~ 로 바꿨고, `destroy` 는 면 없는 메시에서 다른 효과를 지우고 바닥·카메라를 만든 뒤 멈췄고, `export_model` 은
+  `bake_physics` 로 조각 물리를 키프레임으로 바꾼 뒤 "지원하지 않는 형식" 으로 멈췄고, `import_model` 은 `parts` 가 안 맞으면 가져온 부품을 남겼다.
+  bpy 시험이 레시피 11종에 잘못된 인자 17개를 넣고 앞뒤 장면(오브젝트·역할·모디파이어·프레임·fps·크기)을 비교한다
+- `set_timing` 에 한쪽만 준 값(`frame_start=500`)으로 블렌더가 다른 쪽을 따라 옮기면 결과에 "알림: … 옮겼습니다" 와 함께 주라는 안내
+- 해결법 문서에 "인자 값이 거부됨" 절(범위·선택지·순서·유한한 숫자). 서버가 실제로 만든 한/영 문장이 문서에서 검색되는지, 서버의 검사 함수가 모두 시험에 드는지 시험
+- 영어 요약 *Fixes* 를 주제별 6개로 다시 묶음(첫 항목이 29줄 한 덩어리였음) + 미출시 절 요약 항목 6줄 상한 시험
+- CI 액션: `actions/checkout` v7.0.1, `astral-sh/setup-uv` v10.3.0, `actions/stale` v11.0.0(dependabot #12·#17·#14 검토 뒤, SHA·입력·node24 확인)
+- 예제 이름 시험: `examples/*.py` 의 docstring·print 문장 속 이름과 실제로 부르는 도구·인자(`call_tool`·`STEPS`)가 서버에 있는지
+- CI lint 잡이 판을 고정한 actionlint(`actionlint-py` 1.7.12.25)로 워크플로 전체를 검사. 태그 때만 도는 release.yml 의 문법·표현식 오류를 PR 단계에서 잡는다 + 시험
+- `set_timing(global_slow=0.5)` 를 두 번 시키면 시간 배율은 2배 그대로인데 길이만 또 늘어(48 → 96 → 192프레임) 뒤 절반이 멈춘 화면이던 문제.
+  배율은 늘 원래 속도 기준(다시 시켜도 겹치지 않음), `global_slow=1` 이면 되돌림. 같은 호출의 `frame_end` 는 원래 길이로 본다
+- `set_timing`·`render_video` 결과 문장에 영상 길이를 초로("72프레임 = 24fps 로 3초"). 프레임 수만으로는 몇 초짜리인지 몰랐다
+- 문서 도구·인자 이름 시험을 `examples/README.md`·`docs/architecture.md`·`CONTRIBUTING.md` 까지 넓히고(기여자 문서의 내부 함수 이름은 코드에 있어야 함),
+  호출 안 인자 이름(`destroy(glue_max=3)` 꼴)도 본다. recipes.md 가 `destroy` 도구에 없는 `hold_until` 을 도구 호출처럼 적던 것을 "서버 안쪽 값"으로
+- `blender-fx-doctor` 의 "해결법:" 줄이 문서 첫머리 대신 실패 항목의 절로 바로(uv → `#uv-not-found`, 애드온·연결 → `#connection-refused`,
+  클라이언트 → `#tools-not-visible-in-the-client`, 디스크 → `#fluid-bake-failed`, 출력 폴더 → 새 절 `#output-folder-not-writable`). `--json`·MCP `doctor` 도구는 항목마다 `help` 로. 앵커가 실제 절 제목인지 시험
+- `set_timing(fps=…)` 가 결과에 `fps` 가 겹쳐 늘 실패하던 문제(장면은 이미 바뀐 뒤). 거꾸로 준 쌍(`frame_end` < `frame_start`, `slow_to` ≤ `slow_from`)은
+  서버가 블렌더에 보내기 전에 바꿔 줄 값과 함께 막고, 레시피도 순서·슬로모션 대상 검사를 길이·fps 를 바꾸기 전에 한다(실패했는데 장면이 반쯤 바뀐 채 남던 문제)
 - `snapshot` 이 같은 이름(이름 정리 뒤 같아지는 `a b`·`a_b` 포함)의 이전 스냅샷을 덮어쓰면 그렇다고 알려 준다
 - ruff 에 실제 결함을 잡는 규칙(bugbear `B`, 닫히지 않는 파일 `SIM115`, 쓰지 않는 변수 `RUF059`)을 더하고 걸린 9곳을 고침
 - `destroy(target=B)`·`reset_destroy(target=B)` 가 그 대상과 상관없는 효과(바다·물·연기·불·파티클·바람·깃발)와 다른 건물의 접착까지 지우던 문제.
