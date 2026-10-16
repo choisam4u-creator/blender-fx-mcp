@@ -28,7 +28,8 @@ RESULTS = {
     "water": {"liquid": "honey", "mode": "stream", "at": [0, 0, 3], "size": 0.4, "direction_deg": 90.0,
               "pitch_deg": 0.0, "speed": 4.0, "viscosity": 2.0, "gravity_scale": 1.0, "resolution": 64,
               "cell_m": 0.125, "domain_size_m": 8.0, "effectors": 2, "drift": [3.1, 0.0, -2.0]},
-    "emit": {"target": "", "at": [1, 2, 0], "emit_frames": [1, 72], "resolution": 96, "domain_size_m": 6.0},
+    "emit": {"target": "", "at": [1, 2, 0], "emit_frames": [1, 72], "resolution": 96, "cell_m": 0.1,
+             "domain_size_m": 6.0},
     "particles": {"kind": "snow", "count": 4000, "frames": [1, 72], "lifetime": 120, "size": 0.02,
                   "gravity": 0.1, "drag": 0.8},
     "wind": {"direction_deg": 45.0, "strength": 3.0, "turbulence": 1.0, "objects": "Wind"},
@@ -462,3 +463,34 @@ def test_water_detail_respects_the_resolution_limit(monkeypatch, now, finer):
         assert f"resolution={finer}" in text
     else:
         assert "resolution=" not in text and "domain_at and domain_size" in text and "320 limit" in text
+
+
+@pytest.mark.parametrize("lang", ["ko", "en"])
+@pytest.mark.parametrize("tool", ["fire", "smoke"])
+def test_emit_result_tells_cell_size_and_finer_resolution(fake, monkeypatch, lang, tool):
+    # 불·연기가 뭉개져 보일 때 무엇을 올릴지: 격자 한 칸 크기와 resolution 을 두 배로 했을 때의 한 칸
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    text = tool_text(getattr(server, tool)())
+    assert "0.100m" in text and "resolution=192" in text and "0.050m" in text
+    assert ("격자 한 칸" in text) == (lang == "ko") and ("Grid cell" in text) == (lang == "en")
+
+
+@pytest.mark.parametrize("now,finer", [(96, 192), (200, 256), (256, None)])
+def test_emit_detail_respects_the_resolution_limit(monkeypatch, now, finer):
+    monkeypatch.setenv("BLENDER_FX_LANG", "en")
+    text = server._emit_detail({"cell_m": 0.05, "resolution": now})
+    if finer:
+        assert f"resolution={finer}" in text
+    else:
+        assert "resolution=" not in text and "256 limit" in text and "radius or power" in text
+
+
+def test_emit_detail_is_quiet_without_cell_size():
+    assert server._emit_detail({"resolution": 64}) == ""
+
+
+@pytest.mark.parametrize("lang,auto", [("ko", "(자동)"), ("en", "(auto)")])
+def test_emit_calls_resolution_auto_only_when_not_given(fake, monkeypatch, lang, auto):
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    assert auto in tool_text(server.fire())
+    assert auto not in tool_text(server.fire(resolution=96))

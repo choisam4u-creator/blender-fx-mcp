@@ -158,7 +158,7 @@ def main():
                         "The smoke bake produced nothing. Lower resolution or frames and try again."))
     sc.frame_set(1)
     return dict(kind=kind, target=target_name, smoke_effectors=effectors, at=[round(v, 2) for v in center], radius=round(radius, 2), frames=frames,
-                emit_frames=[start, end], resolution=resolution, domain_size_m=[round(w, 1), round(w, 1), round(h, 1)],
+                emit_frames=[start, end], resolution=resolution, cell_m=round(max(w, h) / resolution, 3), domain_size_m=[round(w, 1), round(w, 1), round(h, 1)],
                 cache_files=cache_files, cache_dir=cache_dir)
 
 

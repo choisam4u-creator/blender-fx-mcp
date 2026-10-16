@@ -908,13 +908,31 @@ def _emit(kind: str, target: str, at, radius: float, power: float, frames: int, 
         return _fail(e)
     where = t(f"대상 {res['target']}", f"target {res['target']}") if res["target"] else t(f"위치 {res['at']}", f"at {res['at']}")
     label = {"fire": t("불", "Fire"), "smoke": t("연기", "Smoke")}[kind]
+    auto = t("(자동)", " (auto)") if not resolution else ""  # 사용자가 준 값을 "자동"이라 하지 않는다
     text = t(
-        f"{label}: {where}, {res['emit_frames'][0]}~{res['emit_frames'][1]}프레임 동안 뿜음, 해상도 {res['resolution']}(자동), "
+        f"{label}: {where}, {res['emit_frames'][0]}~{res['emit_frames'][1]}프레임 동안 뿜음, 해상도 {res['resolution']}{auto}, "
         f"공간 {res['domain_size_m']}m. 미리보기 {rend['frames']} → {run_dir}",
         f"{label}: {where}, emitting frames {res['emit_frames'][0]}-{res['emit_frames'][1]}, "
-        f"resolution {res['resolution']} (auto), domain {res['domain_size_m']}m. Preview {rend['frames']} → {run_dir}",
+        f"resolution {res['resolution']}{auto}, domain {res['domain_size_m']}m. Preview {rend['frames']} → {run_dir}",
     )
-    return [text] + _images(rend["paths"])
+    return [text + _emit_detail(res)] + _images(rend["paths"])
+
+
+def _emit_detail(res: dict) -> str:
+    """불·연기 격자 한 칸 크기와 더 잘게 하는 다음 값(resolution 두 배, 상한 256). 상한이면 공간을 줄이는 길을 알려 준다.
+    불·연기 공간은 대상(없으면 radius)과 power 로 커지므로 그 둘을 줄이는 것이 공간을 줄이는 길이다."""
+    cell, now = res.get("cell_m"), res["resolution"]
+    if cell is None:  # 예전 레시피(cell_m 없음)와 섞여도 결과 문장은 그대로
+        return ""
+    if now >= 256:
+        return t(f"\n격자 한 칸 {cell:.3f}m. resolution 이 상한 256 이라, 불·연기가 뭉개져 보이면 radius·power 를 줄이거나 "
+                 f"target 대신 at 으로 타는 곳을 좁혀 공간을 줄이세요.",
+                 f"\nGrid cell {cell:.3f}m. resolution is at its 256 limit; if the fire or smoke looks blurry, lower radius or power, "
+                 f"or use at instead of target to burn a smaller area, which shrinks the space.")
+    finer = min(256, now * 2)
+    return t(f"\n격자 한 칸 {cell:.3f}m. 불·연기가 뭉개져 보이면 resolution={finer}(한 칸 {cell * now / finer:.3f}m, 굽기가 몇 배 느려짐).",
+             f"\nGrid cell {cell:.3f}m. If the fire or smoke looks blurry, use resolution={finer} "
+             f"(cell {cell * now / finer:.3f}m, bakes several times slower).")
 
 
 @mcp.tool(annotations=ADDITIVE)
