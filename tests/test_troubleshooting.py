@@ -213,3 +213,60 @@ def test_every_server_check_has_a_documented_rejection():
     checks = {n for n in dir(server) if n.startswith("check_") and callable(getattr(server, n))}
     src = (ROOT / "tests" / "test_troubleshooting.py").read_text(encoding="utf-8")
     assert checks <= {n for n in checks if f"s.{n}(" in src}, checks
+
+
+# 문서의 인용 오류 문장(`> …`)마다 그 문구가 실제 소스 문자열에 있는지. 숫자·[…]·'…'·(…)·… 는 자리표시로 보고(괄호 안은 끼워 만든 말이 많음),
+# 영문 식별자(at·BLENDER_FX_TIMEOUT·GB·ConnectionResetError)는 f-string 자리표시 {…} 와도 맞는다고 본다.
+# 문서를 손으로 맞추다 실제 문장과 어긋나면 사용자가 Ctrl+F 로 못 찾는다(PHRASES 는 고른 문장만 지킨다).
+QUOTE_EXEMPT = {
+    # 셸이 내는 문장(우리 소스가 아님)
+    "zsh: command not found: uvx",
+    "'uvx' is not recognized as an internal or external command",
+    # t() 로 고른 말(같거나 커야/커야)을 끼워 만드는 문장: REJECTIONS 가 실제로 만든 문장으로 확인한다
+    "… 보다 같거나 커야 합니다. 장면은 바꾸지 않았습니다.",
+    "… 보다 커야 합니다. 장면은 바꾸지 않았습니다.",
+}
+_PLACEHOLDER = r"…|\([^()]*\)|\d+(?:\.\d+)?|\[[^\]]*\]|'[^']*'|\bnan\b"
+
+
+def _quotes():
+    return [line[2:].strip() for line in _doc().splitlines() if line.startswith("> ")]
+
+
+def _fragments(quote):
+    """자리표시로 자른 조각 중 검색에 쓸 만한 것(4자 이상)."""
+    return [f.strip(" .,:()") for f in re.split(_PLACEHOLDER, quote) if len(f.strip(" .,:()")) >= 4]
+
+
+def _fragment_regex(fragment):
+    parts = re.split(r"([A-Za-z_][A-Za-z0-9_]*)", fragment)
+    return "".join(f"(?:{re.escape(p)}|\\{{[^{{}}]*\\}})" if i % 2 else re.escape(p) for i, p in enumerate(parts))
+
+
+def _source_text():
+    return "\n".join(p.read_text(encoding="utf-8") for p in sorted(SRC.rglob("*.py")))
+
+
+def _missing_fragments(quote, source):
+    return [f for f in _fragments(quote) if not re.search(_fragment_regex(f), source)]
+
+
+@pytest.mark.parametrize("quote", [q for q in _quotes() if q not in QUOTE_EXEMPT])
+def test_every_quoted_error_exists_in_source(quote):
+    assert _fragments(quote), f"자리표시만 있는 인용 문장: {quote!r}"
+    missing = _missing_fragments(quote, _source_text())
+    assert not missing, f"troubleshooting.md 의 인용 {quote!r} 중 소스에 없는 문구 {missing} — 실제 오류 문장과 맞추세요"
+
+
+def test_quote_exemptions_are_still_quoted():
+    assert QUOTE_EXEMPT <= set(_quotes()), f"문서에서 사라진 예외: {QUOTE_EXEMPT - set(_quotes())}"
+    assert len(_quotes()) - len(QUOTE_EXEMPT) >= 40, "훑는 인용이 너무 적음"
+
+
+def test_quote_checker_catches_a_drifted_sentence():
+    # 변이: 문서만 고친 문장은 잡고, 숫자·인자 이름이 들어간 실제 문장은 통과
+    source = 'raise FxError(L(f"물 덩어리({a:.2f}m)가 격자 한 칸보다 작습니다.", f"Give {name} as three numbers (got {v!r})"))'
+    assert _missing_fragments("물 덩어리(0.10m)가 격자 한 칸보다 작습니다.", source) == []
+    assert _missing_fragments("Give at as three numbers (got [1, 2]).", source) == []
+    assert _missing_fragments("물 덩어리(0.10m)가 격자 한 칸보다 훨씬 작습니다.", source) == ["가 격자 한 칸보다 훨씬 작습니다"]
+    assert _missing_fragments("Give at as four numbers.", source) == ["Give at as four numbers"]
