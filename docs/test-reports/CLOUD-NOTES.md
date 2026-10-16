@@ -5,10 +5,34 @@
 한 번에 돌려 `latest.md` 를 새로 쓰려면 `uv run python scripts/mac_report.py`(결과 확인 뒤 커밋). 클라우드 회차는 그 FAIL 부터 고친다.
 
 ```sh
-uv sync && uv run pytest -q                        # 블렌더 앱으로 전체 통과(새: 레시피 읽기 순서 ast·판 고정 도구 표·troubleshooting 인용 문장 시험)
-uv run python -c "from blender_fx_mcp import server; print(server.water(resolution=32))"   # Connect 뒤: 결과 끝에 '격자 한 칸 …m. … resolution=64(한 칸 …m…)'
-uv run python -c "from blender_fx_mcp import server; print(server.water(resolution=320))"  # 같은 줄이 'resolution 이 상한 320 이라 … domain_at·domain_size' 로
+uv sync && uv run pytest -q                        # 블렌더 앱으로 전체 통과(새: 레시피 오류 문장→문서 시험·도우미 따라가는 읽기 순서 시험)
+uv run python -c "from blender_fx_mcp import server; print(server.fire(resolution=64, frames=24))"   # Connect 뒤: 끝에 '격자 한 칸 …m. 불·연기가 뭉개져 보이면 resolution=128(…)', '(자동)' 없음
+uv run python scripts/triage_report.py --all       # gh 로그인 상태: 첫 답 목표 표(관리자·봇 PR 은 빠짐), 넘은 것이 있으면 종료 코드 1
 ```
+
+## 2026-10-16 (23회차)
+
+- 시작 확인: 저장된 지시의 최우선 F1·F3(0.7.0 판·release.yml)는 9회차(10/11)에 끝나 PR #13 으로 병합됐고 태그 `v0.7.0` 도 있음. 다시 할 것 없음 → 일반 규칙.
+  `latest.md`(10/1)의 FAIL 2건은 main 에 고쳐져 있음(재확인). main 은 앞서 있지 않음.
+  열린 `claude/cloud-work-*` PR 중 가장 위(#22, `913549e`)에서 이어 감. 이 세션은 `claude/cloud-work-cvvg88` 에 푸시 → PR 은 #22 위에 쌓음.
+- 한 일(백로그 위에서부터, 굽기 시간 어림은 Mac 실측 필요라, CI bpy 휠 캐시는 Actions 로그를 봐야 해서 건너뜀):
+  1. **fire·smoke 격자 안내** (`a6a4b8e`): 결과 끝에 "격자 한 칸 0.100m. 불·연기가 뭉개져 보이면 resolution=192(한 칸 0.050m, 굽기가 몇 배 느려짐)"(한/영). 상한 256 이면 radius·power·at 으로 공간 줄이기.
+     덤: 사용자가 준 resolution 에도 "(자동)"이 붙던 것 고침.
+  2. **읽기 순서 ast 시험이 도우미 함수까지** (`874b25d`): `main()` 이 부르는 같은 파일 함수 안의 호출을 (부른 줄, 안쪽 줄) 순서로 끼워 봄. 실제 레시피 새 위반 0. 변이 시험 4갈래.
+     explode `blast_geometry`·emit `cleanup_emit` 안을 실제로 보는지도 시험.
+  3. **문제 해결 문서 ↔ 레시피 오류** (`c28dd62`): 레시피 `FxError` 55개마다 첫 문장의 가장 긴 고정 조각을 문서에서 찾음. 처음에 42개가 없었음.
+     새 절 3개(Object or file not found·Tool needs another step first·Export failed)와 기존 절 보강으로 0개. 블렌더 안쪽 고장 3개는 근거와 함께 예외(줄기만 함).
+     선택지 오류 16개는 서버 CHOICES 가 먼저 막는지 시험으로 확인.
+  4. **이슈 대응 기록** (`2e50c33`): `scripts/triage_report.py` 가 `gh api` 로 열린 이슈·PR 의 첫 답 일수를 SUPPORT 목표(7·14일)와 대조해, 넘은 것만 표로 냄. 봇·관리자가 연 것은 뺌.
+     이 컨테이너에서 실제 저장소로 돌림: 열린 7개가 모두 관리자 PR 이라 0개. maintenance 한/영 6단계.
+  5. **explode 격자 안내** (`4aba7fe`): 새로 넣은 첫 항목을 바로 함. 상한이면 power 가 아니라 radius·더 작은 대상으로 공간을 줄이라고 안내.
+  - 남은 `[ ]` 가 2개(Mac 실측·Actions 로그)라 새 항목 5개를 추가함(`6248423`): explode 격자 안내(이번에 끝냄), 레시피 오류에 해결법 절 링크, 서버 오류 문장→문서 시험, 주간 triage 워크플로(읽기 권한만), import 단위 안내.
+- 돌린 시험:
+  - `uv run pytest -q`(3.11) **1408 통과·49 건너뜀**(블렌더 필요). CI 서버 명령 `--cov --cov-fail-under=99` → **100%**. `uvx ruff@0.15.20 check .` 통과. 워크플로는 안 바꿔 actionlint·zizmor 는 생략.
+  - 못 돌린 것: `scripts/bpy_tests.sh`. 새 컨테이너라 bpy 휠(356MB)이 없음. 레시피 쪽 변경은 emit·explode 결과에 `cell_m` 하나를 더한 것이고, 두 굽기는 bpy 에서 `app_only` 라 어차피 건너뜀. 그래서 Mac 명령 2줄로 확인함.
+- 막힌 것: 없음.
+- 완료 수·추가 수: **완료 5** / **추가 5** (완료 ≥ 추가). 남은 `[ ]` 6개(그중 1개는 Mac 실측, 1개는 Actions 로그 필요).
+- Mac에서 확인할 것: 맨 위 명령 3줄(또는 `uv run python scripts/mac_report.py` 한 번).
 
 ## 2026-10-16 (22회차)
 
