@@ -177,7 +177,7 @@ def main():
 
     return dict(
         center=[round(v, 2) for v in center], radius=round(radius, 2), frames=frames, burst_frame=burst,
-        power=power, fire=fire, resolution=resolution, chunks=len(chunks), blast_strength=round(strength),
+        power=power, fire=fire, resolution=resolution, cell_m=round(dom_size / resolution, 3), chunks=len(chunks), blast_strength=round(strength),
         moved_ratio=round(moved / max(len(chunks), 1), 2) if chunks else None,
         rigid_bake=rb_method, cache_files=cache_files, cache_dir=cache_dir, smoke_effectors=effectors,
     )

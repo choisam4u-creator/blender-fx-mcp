@@ -792,7 +792,9 @@ def explode(
     if res.get("smoke_effectors"):
         text += t(f"조각 {res['smoke_effectors']}개가 연기를 막음. ", f"{res['smoke_effectors']} chunks block the smoke. ")
     text += t(f"미리보기 {rend['frames']} → {run_dir}", f"Preview {rend['frames']} → {run_dir}")
-    return [text] + _images(rend["paths"])
+    # 폭발 연기 공간은 반지름의 10배와 대상 크기 중 큰 쪽이라 power 로는 줄지 않는다
+    shrink = t("radius 를 줄이거나 더 작은 대상 고르기", "lower radius or pick a smaller target")
+    return [text + _emit_detail(res, shrink)] + _images(rend["paths"])
 
 
 # ---------- 물 ----------
@@ -918,17 +920,17 @@ def _emit(kind: str, target: str, at, radius: float, power: float, frames: int, 
     return [text + _emit_detail(res)] + _images(rend["paths"])
 
 
-def _emit_detail(res: dict) -> str:
-    """불·연기 격자 한 칸 크기와 더 잘게 하는 다음 값(resolution 두 배, 상한 256). 상한이면 공간을 줄이는 길을 알려 준다.
-    불·연기 공간은 대상(없으면 radius)과 power 로 커지므로 그 둘을 줄이는 것이 공간을 줄이는 길이다."""
+def _emit_detail(res: dict, shrink: str = "") -> str:
+    """불·연기 격자 한 칸 크기와 더 잘게 하는 다음 값(resolution 두 배, 상한 256). 상한이면 공간을 줄이는 길(shrink)을 알려 준다.
+    fire·smoke 의 공간은 대상(없으면 radius)과 power 로 커지므로 기본은 그 둘을 줄이거나 at 으로 좁히는 것이다."""
     cell, now = res.get("cell_m"), res["resolution"]
     if cell is None:  # 예전 레시피(cell_m 없음)와 섞여도 결과 문장은 그대로
         return ""
     if now >= 256:
-        return t(f"\n격자 한 칸 {cell:.3f}m. resolution 이 상한 256 이라, 불·연기가 뭉개져 보이면 radius·power 를 줄이거나 "
-                 f"target 대신 at 으로 타는 곳을 좁혀 공간을 줄이세요.",
-                 f"\nGrid cell {cell:.3f}m. resolution is at its 256 limit; if the fire or smoke looks blurry, lower radius or power, "
-                 f"or use at instead of target to burn a smaller area, which shrinks the space.")
+        how = shrink or t("radius·power 를 줄이거나 target 대신 at 으로 타는 곳을 좁히기",
+                          "lower radius or power, or use at instead of target to burn a smaller area")
+        return t(f"\n격자 한 칸 {cell:.3f}m. resolution 이 상한 256 이라, 불·연기가 뭉개져 보이면 공간을 줄이세요({how}).",
+                 f"\nGrid cell {cell:.3f}m. resolution is at its 256 limit; if the fire or smoke looks blurry, shrink the space ({how}).")
     finer = min(256, now * 2)
     return t(f"\n격자 한 칸 {cell:.3f}m. 불·연기가 뭉개져 보이면 resolution={finer}(한 칸 {cell * now / finer:.3f}m, 굽기가 몇 배 느려짐).",
              f"\nGrid cell {cell:.3f}m. If the fire or smoke looks blurry, use resolution={finer} "

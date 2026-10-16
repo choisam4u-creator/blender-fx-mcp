@@ -24,7 +24,7 @@ RESULTS = {
                 "impact": "left", "frames": 72, "total_mass_kg": 33000, "glue": "none", "glue_constraints": 0,
                 "dust": "low", "moved_ratio": 0.05, "max_fall_m": 0.2, "volume_kept": 0.998, "open_chunks": 0},
     "explode": {"center": [0, 0, 1], "radius": 2.0, "burst_frame": 12, "power": 1.0, "fire": True,
-                "resolution": 48, "chunks": 120, "moved_ratio": 0.8, "smoke_effectors": 30},
+                "resolution": 48, "cell_m": 0.5, "chunks": 120, "moved_ratio": 0.8, "smoke_effectors": 30},
     "water": {"liquid": "honey", "mode": "stream", "at": [0, 0, 3], "size": 0.4, "direction_deg": 90.0,
               "pitch_deg": 0.0, "speed": 4.0, "viscosity": 2.0, "gravity_scale": 1.0, "resolution": 64,
               "cell_m": 0.125, "domain_size_m": 8.0, "effectors": 2, "drift": [3.1, 0.0, -2.0]},
@@ -494,3 +494,16 @@ def test_emit_calls_resolution_auto_only_when_not_given(fake, monkeypatch, lang,
     monkeypatch.setenv("BLENDER_FX_LANG", lang)
     assert auto in tool_text(server.fire())
     assert auto not in tool_text(server.fire(resolution=96))
+
+
+@pytest.mark.parametrize("lang", ["ko", "en"])
+def test_explode_result_tells_cell_size_and_finer_resolution(fake, monkeypatch, lang):
+    # 기본 48 이라 연기가 뭉개져 보이기 쉬운 도구: 다음 값과, 상한이면 power 가 아니라 radius·대상으로 공간 줄이기
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    text = tool_text(server.explode())
+    assert "0.500m" in text and "resolution=96" in text and "0.250m" in text
+    assert ("격자 한 칸" in text) == (lang == "ko") and ("Grid cell" in text) == (lang == "en")
+    monkeypatch.setitem(RESULTS, "explode", {**RESULTS["explode"], "resolution": 256})
+    text = tool_text(server.explode())
+    assert "resolution=" not in text and ("radius 를 줄이거나 더 작은 대상" in text or "lower radius or pick a smaller target" in text)
+    assert "power" not in text.split("\n")[-1]
