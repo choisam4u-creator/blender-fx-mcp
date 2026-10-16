@@ -5,10 +5,34 @@
 한 번에 돌려 `latest.md` 를 새로 쓰려면 `uv run python scripts/mac_report.py`(결과 확인 뒤 커밋). 클라우드 회차는 그 FAIL 부터 고친다.
 
 ```sh
-uv sync && uv run pytest -q                        # 블렌더 앱으로 전체 통과(새: particles 없는 target·water 격자 안내가 320 을 넘지 않음)
-uvx zizmor@1.30.1 --offline .github/workflows      # CI lint 와 같은 워크플로 보안 검사("No findings", 1 ignored = greet 한 줄)
-uv run python -c "from blender_fx_mcp import server; print(server.water(size=0.01, resolution=16))"   # Connect 뒤: 'size 를 X 이상' 안내, 320 넘는 resolution 을 권하지 않음
+uv sync && uv run pytest -q                        # 블렌더 앱으로 전체 통과(새: 레시피 읽기 순서 ast·판 고정 도구 표·troubleshooting 인용 문장 시험)
+uv run python -c "from blender_fx_mcp import server; print(server.water(resolution=32))"   # Connect 뒤: 결과 끝에 '격자 한 칸 …m. … resolution=64(한 칸 …m…)'
+uv run python -c "from blender_fx_mcp import server; print(server.water(resolution=320))"  # 같은 줄이 'resolution 이 상한 320 이라 … domain_at·domain_size' 로
 ```
+
+## 2026-10-16 (22회차)
+
+- 시작 확인: 저장된 지시의 최우선 F1·F3(0.7.0 판·release.yml)는 9회차(10/11)에 끝나 PR #13 으로 병합됐고 태그 `v0.7.0` 도 있음. 다시 할 것 없음 → 일반 규칙.
+  `latest.md`(10/1)의 FAIL 2건은 main 에 고쳐져 있음(재확인). main 은 앞서 있지 않음.
+  열린 `claude/cloud-work-*` PR 중 가장 위(#21, `bb13086`)에서 이어 감. 이 세션은 `claude/cloud-work-helzxf` 에 푸시 → PR 은 #21 위에 쌓음.
+- 한 일(백로그 위에서부터, 굽기 시간 어림은 Mac 실측 필요라 건너뜀):
+  1. **레시피 읽기 순서 ast 시험** (`421375e`): `main()` 안에서 `get_target`·`fx_bbox`·`point` 가 `cleanup_*`·`set_frame_end`·`remove_object` 보다 앞인지 레시피 27개를 블렌더 없이 훑음.
+     지금 결함 없음. 예외는 wind 의 `fx_bbox(None)` 하나(실패하지 않고, 지운 바람은 메시가 아님)이고 근거를 적음. 필요 없어진 예외도 잡음. 변이 확인.
+  2. **판 고정 도구 표** (`e106d6f`): CONTRIBUTING 에 ruff·actionlint-py·zizmor·twine 판 표와 분기마다 올리는 절차(한/영). `tests/test_pinned_tools.py` 는 워크플로·문서의 `도구@판` 이 표와 같은지, 판 없는 `uvx 도구` 호출이 없는지 봄.
+     시험이 판 없는 곳 4곳을 찾아 고침(CONTRIBUTING 한/영, PR 양식, greet 안내). maintenance 출시 절차의 빠진 쉼표도.
+  3. **bpy_tests.sh 휠 재사용·안내** (`543480a`): `BPY_WHEEL=휠경로` 로 내려받기 없이 깔고, 처음 받을 때 크기와 시간을 알림.
+     이 컨테이너 실측: 받기 158초, 깔기 12초, `.venv-bpy` 958MB. 없는 파일이나 다른 판 휠이면 가상환경을 만들기 전에 다음 할 일과 함께 멈춤. 시험 3개.
+  4. **troubleshooting 인용 문장 시험** (`c904f87`): `> …` 인용 46개의 문구가 실제 소스 문자열에 있는지 봄. 숫자·괄호·[…]·'…' 는 자리표시로 보고, 영문 이름은 f-string 자리와 맞춤.
+     예외는 셸 문장 2개와 t() 로 끼워 만드는 문장 2개(REJECTIONS 가 실제 문장으로 확인). 문서만 고친 문장을 잡는 변이 확인.
+  5. **water 결과에 격자 크기** (`a14b0b3`): "격자 한 칸 0.125m. 더 작은 물방울이 필요하면 resolution=128(한 칸 0.062m, 굽기가 몇 배 느려짐)"(한/영). 상한 320 이면 domain_at·domain_size 로 공간을 줄이라고 알림. CHANGELOG 한 줄.
+  - 남은 `[ ]` 가 1개(Mac 실측)라 새 항목 5개를 추가함(`6a7e2f7`): emit 격자 안내, ast 시험이 도우미 함수 따라가기, 문서에 없는 FxError 목록, CI bpy 휠 캐시, 이슈 대응 기록 스크립트.
+- 돌린 시험:
+  - `uv run pytest -q`(3.11) **1344 통과·49 건너뜀**(블렌더 필요). CI 서버 명령 `--cov --cov-fail-under=99` → **100%**. `uvx ruff@0.15.20 check .`·actionlint·zizmor 통과("No findings").
+  - **`scripts/bpy_tests.sh`(bpy 5.0.1, BPY_WHEEL 로 설치) → 1387 통과·6 건너뜀(2분 52초)**. 건너뛴 것은 유체 `app_only` 5개와 실제 캐릭터 파일 1개(블렌더 앱·개인 파일 필요).
+  - 못 돌린 것: water 성공 문장의 실제 굽기(bpy 에서는 mantaflow 가 깨져 `app_only`). 그래서 Mac 명령 2·3줄로 확인함.
+- 막힌 것: 없음.
+- 완료 수·추가 수: **완료 5** / **추가 5** (완료 ≥ 추가). 남은 `[ ]` 6개(그중 1개는 Mac 실측).
+- Mac에서 확인할 것: 맨 위 명령 3줄(또는 `uv run python scripts/mac_report.py` 한 번).
 
 ## 2026-10-15 (21회차)
 
