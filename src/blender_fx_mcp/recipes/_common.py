@@ -42,6 +42,15 @@ def run_guarded(fn):
         emit_result(ok=False, error=f"{type(e).__name__}: {e}", traceback=traceback.format_exc()[-1500:])
 
 
+def point(value, name):
+    """[x, y, z] 목록을 Vector 로. 숫자 셋이 아니면 장면을 바꾸기 전에 고칠 값을 알려 준다."""
+    if not isinstance(value, (list, tuple)) or len(value) != 3:
+        raise FxError(L(f"{name} 은(는) [x, y, z] 숫자 세 개로 주세요(지금 {value!r}). 예: {name}=[0, 0, 1]. 장면은 바꾸지 않았습니다.",
+                        f"Give {name} as three numbers [x, y, z] (got {value!r}), e.g. {name}=[0, 0, 1], and ask again. "
+                        "The scene was not changed."))
+    return Vector((float(value[0]), float(value[1]), float(value[2])))
+
+
 def scene():
     return bpy.context.scene
 

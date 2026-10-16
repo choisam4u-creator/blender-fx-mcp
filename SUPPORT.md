@@ -34,7 +34,8 @@ Bugs without repro info (doctor output, Blender version, tool and arguments) wai
 | 블렌더 / Blender | 4.x 이하 / older | 확인 안 함 / untested |
 | 파이썬 / Python | 3.11, 3.12, 3.13, 3.14 | 지원 — CI 가 3.11·3.12·3.13·3.14 를 모두 돌림 / supported, CI runs 3.11, 3.12, 3.13, 3.14 |
 | 운영체제 / OS | macOS·Linux·Windows | 지원 — CI 가 서버 시험을 macOS, Linux, Windows 에서 돌림(레시피 시험은 Linux bpy·Mac 앱) / supported, CI runs server tests on macOS, Linux, Windows (recipe tests: Linux bpy, Mac app) |
-| blender-fx-mcp | 0.8.x (최신 / latest) | 버그·보안 수정 / bug and security fixes |
+| blender-fx-mcp | 0.8.x (다음 판, 준비 중 / next, in preparation) | 버그·보안 수정 / bug and security fixes |
+| blender-fx-mcp | 0.7.x (PyPI 최신 / latest on PyPI) | 버그·보안 수정, 0.8.0 이 나올 때까지 / bug and security fixes until 0.8.0 is released |
 
 판 정책은 [SECURITY.md](SECURITY.md) 와 같습니다. 이 표가 `pyproject.toml`·CI·README 와 어긋나면 시험이 실패합니다.
 Kept in sync with SECURITY.md; tests fail if this table drifts from `pyproject.toml`, CI or the README.

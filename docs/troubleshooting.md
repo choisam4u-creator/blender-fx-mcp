@@ -10,9 +10,9 @@ uvx --from blender-fx-mcp blender-fx-doctor
 여기 없는 문제는 [버그 신고](https://github.com/choisam4u-creator/blender-fx-mcp/issues/new?template=bug_report.yml)에 doctor 출력과 함께 올려 주세요.
 If your problem is not here, open a [bug report](https://github.com/choisam4u-creator/blender-fx-mcp/issues/new?template=bug_report.yml) with the doctor output.
 이슈에는 `blender-fx-doctor --issue` 를 붙이면 됩니다(판·OS·블렌더·클라이언트·언어 표와 점검 전체, 집 폴더는 `~` 로 가림).
-`blender-fx-doctor --json` 은 같은 결과를 JSON 으로 냅니다(항목 id: `python`·`blender-fx-mcp`·`mcp`·`uv`·`blender`·`addon`·`connection`·`client`·`output`·`space`), `clients` 에는 등록이 보인 MCP 클라이언트가 들어갑니다.
+`blender-fx-doctor --json` 은 같은 결과를 JSON 으로 냅니다(항목 id: `python`·`blender-fx-mcp`·`mcp`·`uv`·`blender`·`addon`·`connection`·`client`·`output`·`space`), `clients` 에는 등록이 보인 MCP 클라이언트가, 실패한 항목의 `help` 에는 이 문서에서 볼 절 주소가 들어갑니다(사람이 읽는 출력의 마지막 "해결법:" 줄도 같은 절).
 For an issue, paste `blender-fx-doctor --issue` (version, OS, Blender, clients and language table plus all checks, home folder masked as `~`).
-`blender-fx-doctor --json` prints the same result as JSON, with language-independent check ids; `clients` lists the MCP clients where it is registered.
+`blender-fx-doctor --json` prints the same result as JSON, with language-independent check ids; `clients` lists the MCP clients where it is registered, and each failed check's `help` is the section of this page to read (the last "Help:" line of the plain output links the same sections).
 
 ---
 
@@ -162,15 +162,39 @@ Symptom: **Connect to MCP server** does nothing and the Blender console shows `A
 (or another Blender window) holds port 9876. Keep one Blender window open, or change the port in the add-on panel
 (e.g. `9877`) and set `BLENDER_FX_PORT=9877` in your MCP config. Keep `BLENDER_FX_HOST` on `localhost`; the receiver has no authentication.
 
+## Output folder not writable
+
+**출력 폴더에 쓸 수 없음**
+
+> 출력 폴더 … 에 쓸 수 없음
+> output folder … cannot write to
+
+렌더·영상·스냅샷·캐시는 모두 출력 폴더(기본 `~/blender-fx-output`, MCP 설정의 `BLENDER_FX_OUT`)에 씁니다. doctor 가 이 줄을 실패로 보이면:
+
+- 폴더가 외장 디스크·네트워크 드라이브에 있으면 연결돼 있는지 봅니다.
+- 내 계정이 쓸 수 있는 폴더로 바꿉니다. MCP 설정의 `env` 에 `"BLENDER_FX_OUT": "~/blender-fx-output"` 처럼 집 폴더 아래를 주고 클라이언트 앱을 완전히 껐다 켭니다(폴더는 없으면 만듭니다).
+- macOS 에서 `Documents`·`Desktop` 아래를 골랐다면 시스템 설정 → 개인정보 보호 및 보안 → 파일 및 폴더에서 클라이언트 앱에 접근을 허용하거나, 그 밖의 폴더를 씁니다.
+- 고친 뒤 `blender-fx-doctor` 를 다시 돌려 출력 폴더 줄이 `[OK]` 인지 확인합니다.
+
+Renders, videos, snapshots and caches all go to the output folder (default `~/blender-fx-output`, or `BLENDER_FX_OUT` in your MCP config).
+If doctor shows this line as failed: check that an external or network drive holding the folder is connected; point `BLENDER_FX_OUT`
+in the `env` of your MCP config to a folder your account can write, e.g. `"BLENDER_FX_OUT": "~/blender-fx-output"`, and fully restart the
+client app (the folder is created if missing); on macOS, for a folder under `Documents` or `Desktop`, allow the client app in System
+Settings → Privacy & Security → Files and Folders, or use another folder. Run `blender-fx-doctor` again and check the line is `[OK]`.
+
 ## Fluid bake failed
 
 **물·연기 굽기 실패**
 
 > 물 덩어리(0.10m)가 계산 격자 한 칸(0.25m)보다 작아 물이 생기지 않습니다.
 > The water source (0.10m) is smaller than one simulation cell (0.25m), so no liquid forms.
+> 물 덩어리(0.10m)가 계산 격자 한 칸(0.25m)보다 작아 물이 생기지 않고, resolution 은 320 까지라 올려서는 안 됩니다.
+> The water source (0.10m) is smaller than one simulation cell (0.25m), so no liquid forms, … resolution only goes up to 320.
 
-`size` 를 키우거나, 문장에 나온 값 이상으로 `resolution` 을 올립니다.
-Increase `size`, or raise `resolution` to at least the value in the message.
+`size` 를 키우거나, 문장에 나온 값 이상으로 `resolution` 을 올립니다. 그 값이 상한 320 을 넘으면 문장이 대신 되는 `size` 를 알려 줍니다
+(`mode="object"` 면 더 큰 `source_object` 나 `domain_at`·`domain_size` 로 물 공간 줄이기).
+Increase `size`, or raise `resolution` to at least the value in the message. When that would exceed the limit of 320, the message gives a `size` that works instead
+(for `mode="object"`, use a larger `source_object` or shrink the space with `domain_at` and `domain_size`).
 
 > 물 굽기 결과가 비어 있습니다.
 > The liquid bake produced nothing.
@@ -217,6 +241,61 @@ object (`camera(preset="wide")`); or exposure was lowered too far (`set_render(e
 장면이 비어 있습니다. `make_demo_building` 이나 `import_model` 로 먼저 물체를 만듭니다.
 The scene is empty. Create something first with `make_demo_building` or `import_model`.
 
+## Argument value rejected
+
+**인자 값이 거부됨**
+
+서버가 블렌더에 보내기 전에 막은 값입니다. 장면은 바뀌지 않았습니다. 문장에 가능한 값·권장 값이 함께 나오니 그 안에서 다시 시킵니다.
+The server stopped the value before anything reached Blender, so the scene is unchanged. The message lists the allowed or recommended values; ask again with one of them.
+
+> … 은(는) 범위 밖입니다. 가능한 범위: …
+> … is out of range. Allowed: …
+
+숫자가 범위 밖입니다(예: `fps` 1~240, `width`·`height` 16~7680, 프레임 번호 1 이상). 대부분 0 은 "지금 장면 값 그대로" 입니다.
+A number is outside its range (for example `fps` 1-240, `width`/`height` 16-7680, frame numbers from 1). For most of them, 0 keeps the scene's current value.
+
+> … 은(는) 쓸 수 없습니다. 가능한 값: …
+> … is not allowed. Choose one of: …
+
+정해진 목록 밖의 이름입니다(`material`·`preset`·`liquid` 등). 비슷한 값이 있으면 "혹시 … 인가요?" 로 함께 알려 줍니다.
+The name is not in the fixed list (`material`, `preset`, `liquid`, …). A close match is suggested with "Did you mean …?".
+
+> … 보다 같거나 커야 합니다. 장면은 바꾸지 않았습니다.
+> … must be at least … The scene was not changed.
+> … 보다 커야 합니다. 장면은 바꾸지 않았습니다.
+> … must be greater than … The scene was not changed.
+
+`frame_start`·`frame_end` 나 `slow_from`·`slow_to` 를 거꾸로 줬습니다. 문장에 적힌 대로 두 값을 바꿔 다시 시킵니다(`slow_to` 는 `slow_from` 보다 커야 합니다).
+A pair such as `frame_start`/`frame_end` or `slow_from`/`slow_to` was given in reverse. Swap the two values as the message shows (`slow_to` must be greater than `slow_from`).
+
+> frame_end(…) 가 frame_start(…) 보다 작습니다. 두 값을 바꿔 다시 시키세요.
+> frame_end(…) is smaller than frame_start(…). Swap the two values and ask again.
+> slow_to(…) 는 slow_from(…) 보다 커야 합니다.
+> slow_to(…) must be greater than slow_from(…).
+
+블렌더가 지금 장면 값과 비교해 막은 같은 종류의 오류입니다. 문장대로 두 값을 바꿉니다.
+The same kind of error, caught by Blender against the scene's current values. Swap the two values as the message says.
+
+> frame_start(…) 가 장면 끝(frame_end …) 뒤입니다. frame_end 도 함께 주어(…) 다시 시키세요.
+> frame_start (…) is after the scene's end (frame_end …). Give frame_end too (…) and ask again.
+> frame_end(…) 가 장면 시작(frame_start …) 앞입니다.
+> frame_end (…) is before the scene's start (frame_start …).
+
+`render_video` 에 한쪽 끝만 줬는데 장면의 다른 끝을 넘었습니다. 두 값을 함께 줍니다(예: `frame_start=100, frame_end=171`). 장면 길이를 아예 바꾸려면 `set_timing` 을 씁니다.
+Only one end was given to `render_video`, and it passes the scene's other end. Give both (for example `frame_start=100, frame_end=171`), or change the scene length with `set_timing`.
+
+> at 은(는) [x, y, z] 숫자 세 개로 주세요(지금 [1, 2]).
+> Give at as three numbers [x, y, z] (got [1, 2]).
+
+위치(`at`·`domain_at`)는 미터 단위 숫자 세 개입니다. 높이(z)를 빠뜨린 경우가 많으니 `at=[x, y, 0]` 처럼 셋을 다 적어 다시 시킵니다.
+A position (`at`, `domain_at`) is three numbers in metres. The height (z) is the one usually missing; ask again with all three, such as `at=[x, y, 0]`.
+
+> … 에 유한한 숫자를 주세요(지금 nan).
+> … must be a finite number (got nan).
+
+`nan`·`inf` 같은 값은 물리·렌더에 쓸 수 없습니다. 보통 AI 가 계산을 잘못 넘긴 것이니 숫자를 직접 적어 다시 시킵니다.
+Values like `nan` or `inf` cannot be used for physics or rendering. The AI usually passed a broken calculation; ask again with a plain number.
+
 ## Fracture or import failed
 
 **부수기·가져오기 실패**
@@ -232,6 +311,98 @@ Lower `pieces` or use `repair=True`. Check the model with `inspect_mesh` first.
 
 경로는 블렌더가 돌고 있는 컴퓨터 기준입니다. 절대 경로로 줍니다.
 Paths are on the computer running Blender; give an absolute path.
+
+> '…' 에 면이 없어 조각낼 수 없습니다.
+> '…' has no faces, so it cannot be fractured.
+
+선이나 점만 있는 오브젝트(커브를 바꾼 것, 빈 메시)입니다. `inspect_mesh` 로 면 수를 보고 면이 있는 오브젝트로 다시 시킵니다.
+The object has only edges or points (a converted curve, an empty mesh). Check the face count with `inspect_mesh` and pick an object with faces.
+
+> 가져온 파일에 메시가 없습니다.
+> The imported file contains no mesh.
+
+파일에 카메라·조명·뼈대만 있습니다(문장에 들어 있던 종류가 나옵니다). 모양이 든 파일을 고르거나, 원래 프로그램에서 메시로 바꿔 내보냅니다.
+The file holds only cameras, lights or armatures (the message lists what it held). Pick a file with a shape, or convert it to a mesh in the original program and export again.
+
+> parts 에 맞는 부품이 없습니다.
+> No part matched 'parts'.
+
+`parts` 의 이름이 파일 안 부품 이름과 하나도 맞지 않았습니다. 문장에 나온 부품 이름 중에서 골라 다시 시키거나 `parts` 를 빼고 통째로 가져옵니다.
+None of the names in `parts` matched a part in the file. Pick from the part names in the message, or leave `parts` out to import everything.
+
+> 지원하지 않는 형식: …
+> Unsupported format: …
+
+가져오기는 glb·gltf·fbx·obj·stl·usd·blend, 내보내기는 glb·gltf·fbx·obj·abc 입니다. 다른 형식은 원래 프로그램에서 glb 로 바꿔 씁니다.
+Import takes glb, gltf, fbx, obj, stl, usd and blend; export writes glb, gltf, fbx, obj and abc. Convert other formats to glb in the original program.
+
+## Object or file not found
+
+**오브젝트·파일을 찾을 수 없음**
+
+> '…' 이름의 메시 오브젝트가 없습니다.
+> No mesh object named '…'.
+
+이름은 대소문자까지 같아야 합니다. 문장에 지금 있는 메시와 비슷한 이름("혹시 … 인가요?")이 함께 나오니 그 이름으로 다시 시킵니다. 목록은 `list_objects` 로 봅니다.
+장면에 메시가 하나도 없으면 `make_demo_building` 이나 `import_model` 로 먼저 만듭니다.
+Names are case-sensitive. The message lists the meshes in the scene and a close match ("Did you mean …?"); ask again with that name, or see them all with `list_objects`.
+If the scene has no meshes at all, create one first with `make_demo_building` or `import_model`.
+
+> '…' 은(는) 메시가 아니라 … 입니다.
+> '…' is a …, not a mesh.
+
+카메라·조명·빈 오브젝트는 부수거나 태울 수 없습니다. 문장에 나온 메시 중 하나로 다시 시킵니다.
+Cameras, lights and empties cannot be fractured or burned. Ask again with one of the meshes in the message.
+
+> mode='object' 에는 source_object 이름이 필요합니다.
+> mode='object' needs a source_object name.
+
+`water(mode="object")` 는 물로 바꿀 메시 이름이 있어야 합니다. `list_objects` 로 이름을 찾아 `source_object` 로 줍니다.
+`water(mode="object")` turns a mesh into liquid, so it needs that mesh's name. Find it with `list_objects` and pass it as `source_object`.
+
+> HDRI 파일이 없습니다: …
+> HDRI file not found: …
+
+경로는 블렌더가 돌고 있는 컴퓨터 기준입니다. 문장 끝에 비슷한 파일이나 찾아본 폴더가 나옵니다. `.hdr`·`.exr` 파일의 절대 경로로 줍니다.
+The path is on the computer running Blender. The end of the message names similar files or the folders searched; give the absolute path of an `.hdr` or `.exr` file.
+
+> 스냅샷 파일이 없습니다: …
+> Snapshot file not found: …
+
+`restore` 의 이름이 틀렸습니다. 문장에 있는 스냅샷 이름 중 하나로 다시 시키거나 `list_snapshots` 로 전체를 봅니다. 하나도 없으면 되돌리고 싶은 상태에서 `snapshot` 으로 먼저 저장합니다.
+The name given to `restore` does not exist. Ask again with one of the snapshot names in the message, or list them with `list_snapshots`. If there are none, save one with `snapshot` first, at the state you want to return to.
+
+## Tool needs another step first
+
+**먼저 다른 단계가 필요함**
+
+> 슬로모션을 걸 시뮬레이션이 없습니다.
+> There is no simulation to slow down.
+
+`set_timing` 의 슬로모션(`slow_from`·`slow_to`)은 부수기·폭발·물이 있어야 걸립니다. `destroy`·`explode`·`splash` 를 먼저 시킨 뒤 다시 시킵니다.
+Slow motion in `set_timing` (`slow_from`/`slow_to`) needs a destruction, explosion or water simulation. Run `destroy`, `explode` or `splash` first, then ask again.
+
+> 바다가 바닥을 대신하고 있어 바닥 재질을 바꿀 수 없습니다.
+> The ocean is acting as the ground, so the ground material cannot be changed.
+
+`ocean` 을 만들면 바닥이 숨습니다. 바닥 재질을 바꾸려면 `reset_destroy` 로 바다를 지운 뒤 `set_ground` 를 다시 시킵니다.
+Creating an `ocean` hides the ground. To change the ground material, remove the ocean with `reset_destroy`, then ask `set_ground` again.
+
+## Export failed
+
+**내보내기 실패**
+
+> 내보낼 오브젝트가 없습니다.
+> There is nothing to export.
+
+렌더에서 숨긴 것과 효과 보조 오브젝트(먼지·바람·불 뿜는 곳 등)는 빠집니다. `list_objects` 로 장면을 보고 내보낼 이름을 `names` 로 직접 줍니다.
+Objects hidden from render and effect helpers (dust, wind, emitters and so on) are left out. Check the scene with `list_objects` and pass the names to export as `names`.
+
+> 내보낸 파일이 만들어지지 않았습니다: …
+> The export file was not created: …
+
+그 폴더에 쓸 수 있는지 확인하고, 안 되면 glb 로 다시 내보냅니다. 블렌더 창 아래 상태 줄이나 Info 창에 내보내기 오류가 나옵니다.
+Check that the folder is writable, or export again as glb. Blender's status bar or Info editor shows the exporter's error.
 
 ## No video
 

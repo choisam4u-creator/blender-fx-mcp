@@ -4,12 +4,18 @@
 
 def main():
     p = PARAMS
-    for o in list(bpy.data.objects):
-        if o.get(FX_TAG) == "ocean":
-            remove_object(o)
+    # 인자를 모두 읽은 뒤에 장면을 바꾼다(잘못된 값이면 옛 바다·장면 길이가 그대로 남게)
     size = float(p.get("size", 60.0))
     frames = max(12, int(p.get("frames") or min(scene().frame_end, 96)))
     z = float(p.get("z", 0.0))
+    resolution = int(p.get("resolution", 10))
+    wave_scale = float(p.get("wave_scale", 1.5))
+    choppiness = float(p.get("choppiness", 1.2))
+    wind_velocity = float(p.get("wind_velocity", 25.0))
+    speed = float(p.get("speed", 1.0))
+    for o in list(bpy.data.objects):
+        if o.get(FX_TAG) == "ocean":
+            remove_object(o)
     sc = scene()
     set_frame_end(frames)
     # 바닥 평면이 있으면 숨긴다 (바다가 바닥)
@@ -27,21 +33,21 @@ def main():
     mod.spatial_size = int(size)
     mod.repeat_x = 1
     mod.repeat_y = 1
-    mod.resolution = int(p.get("resolution", 10))
+    mod.resolution = resolution
     try:
-        mod.viewport_resolution = int(p.get("resolution", 10))
+        mod.viewport_resolution = resolution
     except Exception:
         pass
-    mod.wave_scale = float(p.get("wave_scale", 1.5))
-    mod.choppiness = float(p.get("choppiness", 1.2))
-    mod.wind_velocity = float(p.get("wind_velocity", 25.0))
+    mod.wave_scale = wave_scale
+    mod.choppiness = choppiness
+    mod.wind_velocity = wind_velocity
     mod.depth = 200.0
     mod.use_foam = True
     mod.foam_coverage = 0.1
     mod.random_seed = 1
     mod.time = 0.0
     mod.keyframe_insert("time", frame=1)
-    mod.time = frames / float(sc.render.fps) * float(p.get("speed", 1.0))
+    mod.time = frames / float(sc.render.fps) * speed
     mod.keyframe_insert("time", frame=frames)
     if ocean.animation_data and ocean.animation_data.action:
         try:
