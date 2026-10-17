@@ -147,7 +147,9 @@ def test_report_numbers_next_steps_in_install_order(env, monkeypatch, lang):
     assert steps[3].split(". ", 1)[1].startswith(("(선택) ", "(optional) ")) and "claude mcp add" in steps[3]
     assert "uv" in steps[0] and "addon.py" in steps[1] and "Connect to MCP server" in steps[2]
     assert "Install from Disk" in steps[1]
-    assert lines[-1].endswith(bridge.TROUBLESHOOTING_URL)
+    # 해결법 줄은 실패 항목의 절로 바로(uv → addon·connection 은 한 절), 설치 순서대로
+    url = bridge.TROUBLESHOOTING_URL
+    assert lines[-1].split(": ", 1)[1] == f"{url}#uv-not-found · {url}#connection-refused"
     if lang == "en":
         assert not re.search(r"[가-힣]", "\n".join(lines[head:])), lines[head:]
 
@@ -322,7 +324,9 @@ def test_json_matches_text_report(monkeypatch, capsys, tmp_path, lang):
     assert {"addon", "connection"} <= set(data["failed"]) and "blender" not in data["failed"]
     assert next(c for c in data["checks"] if c["id"] == "blender")["optional"] is True
     assert all(c["fix"] for c in data["checks"] if c["id"] in data["failed"])
-    assert data["ok"] is False and data["help"] == bridge.TROUBLESHOOTING_URL and data["help"] in text[-1]
+    assert data["ok"] is False and data["help"] == f"{bridge.TROUBLESHOOTING_URL}#connection-refused" and data["help"] in text[-1]
+    rows = {c["id"]: c for c in data["checks"]}
+    assert rows["connection"]["help"] == rows["addon"]["help"] == data["help"] and rows["output"]["help"] == ""
     assert data["lang"] == lang and data["blender"] is None
     assert data["blender_fx_mcp"] == __version__
     assert (data["host"], data["port"]) == (bridge.host(), bridge.port())
@@ -481,6 +485,45 @@ def test_issue_markdown_masks_home_and_matches_report(monkeypatch, capsys, tmp_p
     assert f"| {lang} (BLENDER_FX_LANG) |" in out  # 언어와 그 근거(lang_source)
 
 
+@pytest.mark.parametrize("lang,label", [("ko", "최근 실패한 도구"), ("en", "Last failed tool")])
+def test_issue_carries_last_failed_tool(monkeypatch, tmp_path, lang, label):
+    """서버가 실패한 도구(이름·문장 첫 줄)를 출력 폴더 last_error.txt 에 남기고, --issue 가 그 한 줄을 표에 붙인다(집 폴더는 ~)."""
+    from blender_fx_mcp import server
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path / "out"))
+    monkeypatch.delenv("BLENDER_FX_HOST", raising=False)
+    monkeypatch.setattr(doctor, "registered_clients", lambda: [])
+    assert f"| {label} | - |" in doctor.format_issue([]), "실패가 없으면 -"
+
+    server.restore("no|such")   # 스냅샷 없음(블렌더 없이 서버가 막음)
+    saved = (tmp_path / "out" / server.LAST_ERROR).read_text(encoding="utf-8")
+    assert saved.count("\n") == 1 and saved.split("\t")[1] == "restore", saved
+    row = next(r for r in doctor.format_issue([]).splitlines() if r.startswith(f"| {label} |"))
+    assert row.startswith(f"| {label} | `restore`: ") and "no_such" in row and row.endswith(") |"), row
+    assert "Traceback" not in row and "\t" not in row
+
+    # 집 폴더가 든 실패 문장도 가린다. 표 칸을 깨는 | 는 \| 로
+    home = str(tmp_path / "home" / "sam")
+    monkeypatch.setattr(doctor.os.path, "expanduser", lambda p: home if p == "~" else p)
+    server._record_failure("import_model", f"파일이 없습니다: {home}/a|b.glb\n두 번째 줄")
+    out = doctor.format_issue([])
+    assert "`import_model`: 파일이 없습니다: ~/a\\|b.glb (" in out and "sam" not in out and "두 번째 줄" not in out
+
+
+def test_last_failure_quiet_when_broken_and_record_never_raises(monkeypatch, tmp_path):
+    from blender_fx_mcp import server
+    monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path))
+    (tmp_path / "last_error.txt").write_text("줄 하나뿐\n", encoding="utf-8")
+    assert doctor.last_failure() is None
+    (tmp_path / "last_error.txt").write_bytes(b"\xff\xfe\t\t")
+    assert doctor.last_failure() is None
+
+    def broken():
+        raise OSError("read-only")
+    monkeypatch.setattr(server, "out_root", broken)
+    assert server._fail(bridge.BlenderError("Something odd.")).endswith("Something odd.")   # 못 써도 결과는 그대로
+
+
 def test_issue_and_json_are_exclusive(capsys):
     with pytest.raises(SystemExit) as e:
         doctor.main(["--json", "--issue"])
@@ -584,3 +627,24 @@ def test_mask_home_skips_root_home(monkeypatch):
     """집 폴더가 / 이면(컨테이너 root 등) 모든 경로를 ~ 로 바꾸지 않게 그대로 둔다."""
     monkeypatch.setattr(doctor.os.path, "expanduser", lambda p: "/" if p == "~" else p)
     assert doctor.mask_home("/usr/bin/blender") == "/usr/bin/blender"
+
+
+def test_every_help_anchor_is_a_troubleshooting_heading():
+    """doctor 가 실패 항목마다 가리키는 절(#앵커)이 해결법 문서에 실제로 있다. 절 제목을 바꾸면 여기서 걸린다."""
+    from test_docs_links import anchors
+    doc = Path(__file__).resolve().parents[1] / "docs" / "troubleshooting.md"
+    assert set(doctor.HELP_ANCHORS.values()) <= anchors(doc)
+    assert doctor.CLIENT_HELP == doctor.help_url("client")
+
+
+def test_help_anchors_name_real_check_ids(env, monkeypatch):
+    """앵커 표의 키가 실제 점검 id(+ 새 판 알림 update)다. 오타 난 id 는 조용히 문서 첫머리로 떨어진다."""
+    monkeypatch.setattr(bridge, "ping", lambda: None)
+    ids = {c["id"] for c in doctor.run_checks(updates=False)} | {"update"}
+    assert set(doctor.HELP_ANCHORS) <= ids
+
+
+@pytest.mark.parametrize("cid,anchor", [("uv", "#uv-not-found"), ("client", "#tools-not-visible-in-the-client"),
+                                        ("output", "#output-folder-not-writable"), ("python", "")])
+def test_help_url_per_check(cid, anchor):
+    assert doctor.help_url(cid) == bridge.TROUBLESHOOTING_URL + anchor

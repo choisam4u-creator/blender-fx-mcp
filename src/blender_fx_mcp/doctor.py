@@ -28,6 +28,30 @@ SERVER_CMD = "uvx blender-fx-mcp"
 # 등록했는데도 클라이언트에 도구가 안 보일 때 볼 절. 절 제목이 바뀌면 tests/test_troubleshooting.py 가 알려 준다
 CLIENT_HELP = f"{bridge.TROUBLESHOOTING_URL}#tools-not-visible-in-the-client"
 
+# 실패한 항목마다 볼 해결법 절(docs/troubleshooting.md 의 제목 앵커). 없는 항목은 문서 첫머리.
+# 절 제목이 바뀌면 tests/test_doctor.py 가 알려 준다
+HELP_ANCHORS = {
+    "mcp": "uv-not-found",  # uvx 로 돌리면 함께 깔린다. uv 부터
+    "uv": "uv-not-found",
+    "addon": "connection-refused",
+    "connection": "connection-refused",
+    "client": "tools-not-visible-in-the-client",
+    "output": "output-folder-not-writable",
+    "update": "still-on-the-old-version",
+    "space": "fluid-bake-failed",
+}
+
+
+def help_url(check_id: str) -> str:
+    """그 항목이 실패했을 때 볼 해결법 주소."""
+    anchor = HELP_ANCHORS.get(check_id)
+    return f"{bridge.TROUBLESHOOTING_URL}#{anchor}" if anchor else bridge.TROUBLESHOOTING_URL
+
+
+def help_urls(checks: list[dict]) -> list[str]:
+    """실패한 항목들의 해결법 주소(설치 순서, 겹치는 것은 한 번). 첫 주소가 먼저 고칠 항목의 절이다."""
+    return list(dict.fromkeys(help_url(c.get("id", "")) for c in failed(checks)))
+
 
 def _check(name: str, ok: bool, detail: str, key: str = "", fix: str = "", optional: bool = False) -> dict:
     # key 는 --json 의 id. 화면 이름(name)은 언어에 따라 바뀌어도 id 는 그대로라 신고끼리 비교할 수 있다.
@@ -269,7 +293,7 @@ def run_checks(clients: bool = True, updates: bool | None = None) -> list[dict]:
                           optional=True))
 
     name_out = t("출력 폴더", "output folder")
-    root = os.path.expanduser(os.environ.get("BLENDER_FX_OUT", "~/blender-fx-output"))
+    root = out_dir()
     try:
         os.makedirs(root, exist_ok=True)
         test = os.path.join(root, ".write_test")
@@ -353,14 +377,16 @@ def format_report(checks: list[dict]) -> str:
     lines.append(t(f"확인 필요: {', '.join(c['name'] for c in bad)}. 다음 할 일:",
                    f"Needs attention: {', '.join(c['name'] for c in bad)}. Next steps:"))
     lines += [f"  {i}. {s}" for i, s in enumerate(steps, 1)]
-    lines.append(t(f"해결법: {bridge.TROUBLESHOOTING_URL}", f"Help: {bridge.TROUBLESHOOTING_URL}"))
+    urls = " · ".join(help_urls(checks))  # 실패 항목의 절로 바로(문서 첫머리에서 찾지 않게)
+    lines.append(t(f"해결법: {urls}", f"Help: {urls}"))
     return "\n".join(lines)
 
 
 def check_rows(checks: list[dict]) -> list[dict]:
     """점검 항목을 바깥에 보이는 모양으로(--json·MCP doctor 도구의 구조화 출력이 같은 모양을 쓴다)."""
     return [{"id": c["id"], "name": c["name"], "ok": c["ok"], "optional": c.get("optional", False),
-             "detail": c["detail"], "fix": c.get("fix", "")} for c in checks]
+             "detail": c["detail"], "fix": c.get("fix", ""), "help": "" if c["ok"] else help_url(c["id"])}
+            for c in checks]
 
 
 def format_json(checks: list[dict]) -> str:
@@ -378,7 +404,7 @@ def format_json(checks: list[dict]) -> str:
         "clients": registered_clients(),
         "checks": check_rows(checks),
         "failed": bad,
-        "help": bridge.TROUBLESHOOTING_URL if bad else None,
+        "help": help_urls(checks)[0] if bad else None,
     }
     return mask_home(json.dumps(report, ensure_ascii=False, indent=2))  # 버그 신고용이라 집 폴더(사용자 이름)를 가린다
 
@@ -397,6 +423,22 @@ def mask_home(text: str) -> str:
     return text
 
 
+def out_dir() -> str:
+    """서버와 같은 출력 폴더(BLENDER_FX_OUT, 기본 ~/blender-fx-output). 만들지는 않는다."""
+    return os.path.expanduser(os.environ.get("BLENDER_FX_OUT", "~/blender-fx-output"))
+
+
+def last_failure() -> str | None:
+    """서버가 출력 폴더 last_error.txt 에 남긴 마지막 도구 실패를 "도구: 문장 (시각)" 으로(마크다운 표 칸이라 | 는 \\|). 없거나 못 읽으면 None."""
+    try:
+        with open(os.path.join(out_dir(), "last_error.txt"), encoding="utf-8") as f:
+            when, tool, line = f.readline().rstrip("\n").split("\t", 2)
+    except (OSError, ValueError, UnicodeDecodeError):
+        return None
+    line = line.replace("|", "\\|")
+    return f"`{tool}`: {line} ({when})"
+
+
 def format_issue(checks: list[dict]) -> str:
     """이슈에 그대로 붙일 마크다운. 집 폴더는 ~ 로 가린다. 항목·결과는 format_report 와 같다."""
     clients = ", ".join(registered_clients()) or "-"
@@ -409,6 +451,8 @@ def format_issue(checks: list[dict]) -> str:
         (t("MCP 클라이언트", "MCP clients"), clients),
         (t("언어", "Language"), f"{'en' if is_en() else 'ko'} ({lang_source()})"),
         (t("수신기", "Receiver"), f"{bridge.host()}:{bridge.port()}"),
+        # 서버가 남긴 마지막 도구 실패. 신고할 때 오류 문장을 따로 복사해 붙이지 않아도 되게
+        (t("최근 실패한 도구", "Last failed tool"), last_failure() or "-"),
     ]
     table = "\n".join(f"| {k} | {val} |" for k, val in rows)
     head = t("blender-fx-doctor 결과", "blender-fx-doctor result")

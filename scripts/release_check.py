@@ -85,10 +85,32 @@ def check_files(root: Path) -> list[tuple[bool, str]]:
         if top in [h for h, _ in HEADING.findall(changelog)[1:]]:
             out.append((False, f"CHANGELOG.md 에 {top} 절이 두 번 있음 → 하나로 합친다"))
 
+        if dated:  # 출시하면 지원 판 표에서 지난 판(PyPI 최신이라 함께 지원하던 것)을 뺀다
+            out += check_supported(root, version)
+
     readme = (root / "README.md").read_text(encoding="utf-8")
     name = server.get("name", "")
     ok = f"mcp-name: {name}" in readme
     out.append((ok, f"README.md 의 mcp-name 줄({name})" + ("" if ok else " → 레지스트리 소유 확인용 줄을 README 맨 위에 넣는다")))
+    return out
+
+
+def supported_series(root: Path) -> dict[str, list[str]]:
+    """SECURITY.md 에서 보안 수정 '예' 인 판 계열, SUPPORT.md 의 blender-fx-mcp 줄 판 계열(예: ["0.8", "0.7"])."""
+    sec = (root / "SECURITY.md").read_text(encoding="utf-8")
+    sup = (root / "SUPPORT.md").read_text(encoding="utf-8")
+    return {"SECURITY.md": re.findall(r"^\| (\d+\.\d+)\.x[^|]*\| 예", sec, re.M),
+            "SUPPORT.md": re.findall(r"^\| blender-fx-mcp \| (\d+\.\d+)\.x", sup, re.M)}
+
+
+def check_supported(root: Path, version: str) -> list[tuple[bool, str]]:
+    """출시한 판의 계열 하나만 지원 판으로 남았는지. 출시 전에는 PyPI 최신 판도 함께 적어 두므로 출시 때 정리한다."""
+    series = ".".join(version.split(".")[:2])
+    out = []
+    for name, got in supported_series(root).items():
+        ok = got == [series]
+        out.append((ok, f"{name} 지원 판 = {', '.join(s + '.x' for s in got) or '(없음)'}"
+                    + ("" if ok else f" → 출시했으니 지원 판 줄을 {series}.x 하나로 정리한다(지난 판 줄은 지운다)")))
     return out
 
 
