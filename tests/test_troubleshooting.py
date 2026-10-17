@@ -276,8 +276,6 @@ def test_quote_checker_catches_a_drifted_sentence():
 # ---- 레시피 FxError 문장 → 문서 방향 ----
 # 위 PHRASES 는 문서에 인용한 문장이 소스에 있는지(문서 → 소스)를 본다. 여기서는 반대로, 레시피가 내는 FxError(L(한, 영)) 마다
 # 첫 문장의 가장 긴 고정 조각(값 자리 {…} 사이)이 문서에 있는지 본다. 사용자는 오류 문장 앞부분을 Ctrl+F 로 찾으니까.
-RECIPES = SRC / "recipes"
-
 # 아직 문서에 절이 없는 오류(영어 열쇠). 줄이기만 한다: 절을 쓰면 여기서 지우고, 새 FxError 는 문서에 쓰거나 근거와 함께 넣는다.
 # 대부분 서버가 블렌더에 보내기 전에 막거나(선택지·글자) 블렌더 안쪽 고장이라 사용자가 거의 보지 못하는 것들이다.
 UNDOCUMENTED = {
@@ -290,44 +288,18 @@ UNDOCUMENTED = {
 CHOICE_ERROR = re.compile(r"^(?:\w+ )?(\w+) must be (?:one of|\w+ or \w+|\w+ / \w+ / \w+)")
 
 
-def _fixed_parts(node):
-    """문자열(또는 f-string)의 고정 조각들. 값 자리 {…} 에서 끊는다."""
-    if isinstance(node, ast.Constant) and isinstance(node.value, str):
-        return [node.value]
-    if isinstance(node, ast.JoinedStr):
-        parts, cur = [], ""
-        for v in node.values:
-            if isinstance(v, ast.Constant):
-                cur += v.value
-            else:
-                parts.append(cur)
-                cur = ""
-        return parts + [cur]
-    return []
+def _gen_help_index():
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("gen_help_index", ROOT / "scripts" / "gen_help_index.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
-def _key(node, min_len):
-    """첫 문장(마침표·물음표 앞)의 가장 긴 고정 조각. 따옴표·빈칸·괄호를 다듬는다. 너무 짧으면 None."""
-    best = ""
-    for part in _fixed_parts(node):
-        part = re.split(r"(?<=[.?])\s", part, maxsplit=1)[0]
-        best = max(best, part, key=len)
-        if re.search(r"[.?]\s", part) or part.endswith((".", "?")):
-            break  # 첫 문장이 끝났다
-    best = best.strip(" '\"()[]:").rstrip(".")
-    return best if len(best) >= min_len else None
-
-
-def recipe_errors():
-    """[(파일, 줄, 한 열쇠, 영 열쇠)] — 레시피의 모든 raise FxError(L(한, 영))."""
-    out = []
-    for path in sorted(RECIPES.glob("*.py")):
-        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
-            if (isinstance(node, ast.Call) and getattr(node.func, "id", None) == "FxError" and node.args
-                    and isinstance(node.args[0], ast.Call) and getattr(node.args[0].func, "id", None) == "L"):
-                ko, en = node.args[0].args[:2]
-                out.append((path.name, node.lineno, _key(ko, 5), _key(en, 8)))
-    return out
+# 열쇠 뽑기는 서버의 해결법 링크 표(scripts/gen_help_index.py)와 같은 함수를 쓴다
+_gen = _gen_help_index()
+_key, recipe_errors = _gen.key, _gen.recipe_errors
 
 
 def undocumented_errors():
@@ -370,3 +342,63 @@ def test_recipe_error_key_cuts_at_values_and_first_sentence():
     tree = ast.parse("""f"Snapshot file not found: {path}. Existing: {x}." """, mode="eval")
     assert _key(tree.body, 8) == "Snapshot file not found"
     assert _key(ast.parse("'ab'", mode="eval").body, 8) is None
+
+
+# ---- 레시피 오류 → 해결법 절 링크 ----
+# 서버가 레시피 오류 문장 끝에 "해결법: …#절" 을 붙인다(src/blender_fx_mcp/help_index.py, scripts/gen_help_index.py 가 만듦).
+
+def test_help_index_matches_doc_and_recipes():
+    assert _gen.main([]) == 0, "uv run python scripts/gen_help_index.py --write 로 표를 새로 쓰세요"
+    from blender_fx_mcp.help_index import RECIPE_HELP
+    assert len(RECIPE_HELP) >= 45
+    assert set(RECIPE_HELP.values()) <= _anchors(_doc()), set(RECIPE_HELP.values()) - _anchors(_doc())
+
+
+def test_help_index_check_catches_drift(monkeypatch, tmp_path):
+    stale = tmp_path / "help_index.py"
+    stale.write_text(_gen.render({"No mesh object named": "timeout"}), encoding="utf-8")
+    monkeypatch.setattr(_gen, "OUT", stale)
+    assert _gen.main([]) == 1
+    assert _gen.main(["--bad"]) == 2
+    monkeypatch.setattr(_gen, "ROOT", tmp_path)
+    assert _gen.main(["--write"]) == 0 and stale.read_text(encoding="utf-8") == _gen.render(_gen.build())
+
+
+def test_every_documented_recipe_error_links_its_own_section(monkeypatch):
+    """문서에 있는 레시피 오류마다, 서버가 고르는 링크가 그 문장이 실제로 설명된 절이어야 한다(긴 열쇠부터 맞추는 순서가 엇갈리지 않게)."""
+    from blender_fx_mcp import server
+    doc = _doc()
+    seen = 0
+    for lang in ("ko", "en"):
+        monkeypatch.setenv("BLENDER_FX_LANG", lang)
+        for _f, _line, ko, en in recipe_errors():
+            for k in (ko, en):
+                sec = _gen.section_of(doc, k) if k else None
+                if sec:
+                    assert server.help_link(f"{k}. 다음 문장").endswith(f"{bridge.TROUBLESHOOTING_URL}#{sec}"), k
+                    seen += 1
+    assert seen >= 90
+
+
+@pytest.mark.parametrize("lang,error,word,anchor", [
+    ("ko", "'Towr' 이름의 메시 오브젝트가 없습니다. 혹시 'Tower' 인가요?", "해결법:", "object-or-file-not-found"),
+    ("en", "The liquid bake produced nothing. Raise resolution.", "Help:", "fluid-bake-failed"),
+])
+def test_recipe_error_from_blender_carries_help_link(monkeypatch, lang, error, word, anchor):
+    import json
+
+    from blender_fx_mcp import server
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    out = "FX_RESULT " + json.dumps({"ok": False, "error": error, "traceback": "Traceback (most recent call last): …"})
+    monkeypatch.setattr(server.bridge, "run_python", lambda code, timeout=None: out)
+    with pytest.raises(bridge.BlenderError) as err:
+        server.run_recipe("list_objects", {})
+    first = str(err.value).splitlines()[0]
+    assert first == f"{error} {word} {bridge.TROUBLESHOOTING_URL}#{anchor}", first
+    assert str(err.value).endswith("Traceback (most recent call last): …")
+
+
+def test_help_link_quiet_for_unknown_or_already_linked():
+    from blender_fx_mcp import server
+    assert server.help_link("Could not create the vortex force field.") == ""   # UNDOCUMENTED: 표에 없음
+    assert server.help_link(f"No mesh object named 'x'. Help: {bridge.TROUBLESHOOTING_URL}#timeout") == ""

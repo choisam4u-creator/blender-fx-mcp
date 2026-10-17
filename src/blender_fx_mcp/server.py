@@ -29,6 +29,7 @@ from mcp.types import CallToolResult, TextContent, ToolAnnotations
 from pydantic import Field
 
 from . import bridge, disk
+from .help_index import RECIPE_HELP
 from .bridge import BlenderError
 from .i18n import is_en, t
 
@@ -482,10 +483,22 @@ def run_recipe(recipe: str, params: dict, timeout: float | None = None) -> dict:
     res = parse_result(stdout)
     if not res.get("ok"):
         msg = res.get("error", t("(원인 없음)", "(no reason given)"))
+        msg += help_link(msg)
         if res.get("traceback"):
             msg += "\n" + res["traceback"]
         raise BlenderError(msg)
     return res
+
+
+def help_link(error: str) -> str:
+    """레시피 오류 문장에 맞는 해결법 절 링크(" 해결법: …#절"). 표(help_index.py)에 없거나 이미 링크가 있으면 빈 문자열."""
+    if bridge.TROUBLESHOOTING_URL in error:
+        return ""
+    for phrase, anchor in RECIPE_HELP.items():
+        if phrase in error:
+            url = f"{bridge.TROUBLESHOOTING_URL}#{anchor}"
+            return t(f" 해결법: {url}", f" Help: {url}")
+    return ""
 
 
 def _fail(e: Exception) -> str:
