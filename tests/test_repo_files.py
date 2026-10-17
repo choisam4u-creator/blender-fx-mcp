@@ -380,6 +380,25 @@ def test_ci_lint_runs_pinned_zizmor_and_checkouts_drop_credentials():
     assert not re.search(r"^      - (run|uses: actions/checkout)", greet.split("jobs:", 1)[1], re.M), "greet.yml 은 코드를 받거나 실행하지 않아야 끈 근거가 맞음"
 
 
+def test_triage_workflow_only_reads_and_writes_the_summary():
+    """triage.yml: 주 1회(와 손으로) scripts/triage_report.py 를 읽기 권한만으로 돌려 결과를 잡 요약에만 쓴다(댓글·라벨 없음)."""
+    text = (ROOT / ".github" / "workflows" / "triage.yml").read_text(encoding="utf-8")
+    on = re.search(r"^on:\n((?:[ \t]+.*\n)+)", text, re.M).group(1)
+    assert re.fullmatch(r'  schedule:\n    - cron: "[\d ]+\* \* \d"\n  workflow_dispatch:\n', on), f"진입점은 주간 schedule·workflow_dispatch 만: {on!r}"
+    jobs = _job_bodies(text)
+    assert list(jobs) == ["first-reply"], list(jobs)
+    m = re.search(r"^    permissions:\n((?:      .*\n)+)", jobs["first-reply"], re.M)
+    assert m and m.group(1) == "      contents: read\n      issues: read\n      pull-requests: read\n", m and m.group(1)
+    assert "write" not in text and "persist-credentials: false" in text
+    assert re.findall(r"uses: ([\w-]+/[\w-]+)@", text) == ["actions/checkout"]
+    run = text.split("run: |\n", 1)[1]
+    assert 'python3 scripts/triage_report.py --repo "${GITHUB_REPOSITORY}"' in run and '>> "${GITHUB_STEP_SUMMARY}"' in run
+    assert "${{" not in run, "run 에 표현식을 넣지 않는다(토큰은 env 로만)"
+    for forbidden in ("gh issue", "gh pr", "--method", "-X ", "--include-own"):
+        assert forbidden not in run, f"triage.yml 은 읽기만: {forbidden}"
+    assert "GH_TOKEN: ${{ github.token }}" in text
+
+
 def test_release_workflow_publish_only_uploads_artifact():
     """release.yml: 태그 v* 로만 돌고, build 는 읽기 권한으로 점검·빌드하고, publish 는 id-token 만 받아
     build 의 결과물만 올린다(저장소 코드를 받거나 실행하지 않음)."""

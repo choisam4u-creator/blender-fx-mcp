@@ -65,6 +65,7 @@
 
 **고침**
 - `water` 결과에 격자 한 칸 크기(m)와 "더 작은 물방울이 필요하면 resolution=N(한 칸 X m, 굽기가 몇 배 느려짐)" 한 줄. 상한 320 이면 `domain_at`·`domain_size` 로 공간을 줄이라고.
+- `.github/workflows/triage.yml`: 주 1회 `scripts/triage_report.py` 를 읽기 권한(`issues`·`pull-requests: read`)만으로 돌려 첫 답 목표 표를 잡 요약에만 남김(댓글·라벨 없음, 넘은 것은 경고). 권한·진입점 시험.
 - 레시피 오류 문장(대상 없음·굽기 결과 없음·형식·내보내기 등 52개 문구) 끝에 `해결법: …/troubleshooting.md#절` 링크. 전에는 연결 오류에만 있었다. 표는 `scripts/gen_help_index.py` 가 문서에서 만들고, 링크가 그 문장을 설명한 절인지 시험이 본다.
 - `import_model` 결과에 레시피 알림(닫히지 않은 메시·면이 많음·부품 합침/뺌·충돌용 껍데기 의심)이 빠져 있던 것 고침. `size` 없이 가져온 모델의 가장 긴 변이 0.05m 미만이나 500m 초과면 cm·mm 단위일 수 있다며 다시 가져올 `import_model(size=…)` 값을 한/영으로 알려 줌.
 - `fire`·`smoke`·`explode` 결과에도 격자 한 칸 크기(m)와 "뭉개져 보이면 resolution=N" 한 줄(상한 256 이면 공간 줄이기: 불·연기는 radius·power·at, 폭발은 radius·더 작은 대상). 사용자가 준 resolution 은 더 이상 "(자동)"이라 하지 않음.

@@ -1,0 +1,37 @@
+# 이슈 대응 기록: 주 1회 scripts/triage_report.py 로 열린 이슈·PR 의 첫 답이 SUPPORT.md 목표(보안·버그 7일, 그 밖 14일)를 넘었는지 보고,
+# 결과 표를 이 실행의 잡 요약(Summary)에만 남긴다. 댓글·라벨은 쓰지 않는다(읽기 권한만). 관리자가 잊어도 주마다 기록이 남는다.
+# 목표를 넘은 것이 있으면 경고(노란 표시)만 하고, gh 가 실패하면 잡이 실패한다.
+name: triage
+
+on:
+  schedule:
+    - cron: "41 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  first-reply:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # 표준 라이브러리만 쓰는 스크립트라 의존성 설치 없이 러너의 python3 와 gh 로 돈다
+      - name: first-reply report
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          code=0
+          python3 scripts/triage_report.py --repo "${GITHUB_REPOSITORY}" > triage.md || code=$?
+          cat triage.md >> "${GITHUB_STEP_SUMMARY}"
+          if [ "$code" -eq 1 ]; then
+            echo "::warning::첫 답 목표를 넘은 이슈·PR 이 있습니다 / some issues or PRs are past the first-reply target"
+          elif [ "$code" -ne 0 ]; then
+            exit "$code"
+          fi
