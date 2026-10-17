@@ -304,8 +304,17 @@
 
 ### 2026-10-17 (24회차) 추가 — 사용자 체감 우선(오픈소스 지원 기준: 시험·문서·유지보수·이슈 대응)
 
-- [ ] 서버 쪽 오류(`스냅샷이 없습니다`·`before_restore` 예약 이름·FX_RESULT 없음 등 `_fail(BlenderError(t(…)))`)에도 해결법 절 링크: 이번 회차의 `help_index`(레시피 열쇠)를 서버 열쇠까지 넓혀 `_fail` 이 붙이고, 이미 링크가 있는 bridge 오류는 그대로 + 시험 (사용자 체감: 이번 회차에 서버 오류 문장을 문서에 모두 넣었지만 링크는 레시피 오류에만 붙음)
-- [ ] `scripts/lint.sh`: CI lint 잡과 같은 검사(ruff·actionlint + 판 고정 shellcheck-py 를 PATH 에·zizmor)를 한 줄로, 판은 CONTRIBUTING 표에서 + 시험(CI lint 단계와 같은 도구·판인지) (근거: 이번 회차에 lint 잡이 PR #20~#23 동안 빨갰는데 로컬 actionlint 는 shellcheck 가 없어 통과. 같은 검사를 로컬에서 못 돌린 것이 원인)
-- [ ] `triage_report.py` 에 기본 브랜치·열린 PR 의 최신 CI 결과 칸: 빨간 지 며칠째인지(`gh api …/actions/runs`)와 실패 잡 이름, 3일 넘으면 표에 ⚠ + 가짜 응답 시험 (유지보수: 이번 회차에 lint 빨강이 3일 동안 아무도 몰랐음. 주간 triage.yml 이 함께 남기면 잊어도 보임)
-- [ ] `blender-fx-doctor --issue` 에 "최근 실패한 도구 문장" 한 줄: 서버가 마지막 실패(도구 이름·문장 첫 줄, 집 폴더 `~`)를 출력 폴더 `last_error.txt` 에 남기고 doctor 가 읽음 + 시험 (이슈 대응·사용자 체감: 지금은 신고하려면 오류 문장을 따로 복사해 붙여야 함. 한 명령으로 재현 정보가 모임)
-- [ ] 레시피 오류의 해결법 링크가 실제 MCP 도구 결과(stdio 하위 프로세스 서버 + 가짜 수신기)에서도 "실패: … 해결법: …#절" 로 보이는지 끝까지 시험 (근거: 이번 회차 시험은 `run_recipe` 까지만 봄. 도구 결과 문장으로 바뀌는 길(`_fail`·구조화 출력)에서 링크가 빠지지 않는지)
+- [x] 서버 쪽 오류(`스냅샷이 없습니다`·`before_restore` 예약 이름·FX_RESULT 없음 등 `_fail(BlenderError(t(…)))`)에도 해결법 절 링크: 이번 회차의 `help_index`(레시피 열쇠)를 서버 열쇠까지 넓혀 `_fail` 이 붙이고, 이미 링크가 있는 bridge 오류는 그대로 + 시험 (사용자 체감: 이번 회차에 서버 오류 문장을 문서에 모두 넣었지만 링크는 레시피 오류에만 붙음)
+- [x] `scripts/lint.sh`: CI lint 잡과 같은 검사(ruff·actionlint + 판 고정 shellcheck-py 를 PATH 에·zizmor)를 한 줄로, 판은 CONTRIBUTING 표에서 + 시험(CI lint 단계와 같은 도구·판인지) (근거: 이번 회차에 lint 잡이 PR #20~#23 동안 빨갰는데 로컬 actionlint 는 shellcheck 가 없어 통과. 같은 검사를 로컬에서 못 돌린 것이 원인)
+- [x] `triage_report.py` 에 기본 브랜치·열린 PR 의 최신 CI 결과 칸: 빨간 지 며칠째인지(`gh api …/actions/runs`)와 실패 잡 이름, 3일 넘으면 표에 ⚠ + 가짜 응답 시험 (유지보수: 이번 회차에 lint 빨강이 3일 동안 아무도 몰랐음. 주간 triage.yml 이 함께 남기면 잊어도 보임)
+- [x] `blender-fx-doctor --issue` 에 "최근 실패한 도구 문장" 한 줄: 서버가 마지막 실패(도구 이름·문장 첫 줄, 집 폴더 `~`)를 출력 폴더 `last_error.txt` 에 남기고 doctor 가 읽음 + 시험 (이슈 대응·사용자 체감: 지금은 신고하려면 오류 문장을 따로 복사해 붙여야 함. 한 명령으로 재현 정보가 모임)
+- [x] 레시피 오류의 해결법 링크가 실제 MCP 도구 결과(stdio 하위 프로세스 서버 + 가짜 수신기)에서도 "실패: … 해결법: …#절" 로 보이는지 끝까지 시험 (근거: 이번 회차 시험은 `run_recipe` 까지만 봄. 도구 결과 문장으로 바뀌는 길(`_fail`·구조화 출력)에서 링크가 빠지지 않는지)
+
+
+### 2026-10-17 (25회차) 추가 — 사용자 체감 우선(오픈소스 지원 기준: 시험·문서·유지보수·이슈 대응)
+
+- [ ] `blender-fx-doctor` 가 모두 정상이면 마지막 줄에 다음 할 일 하나: "AI 에게 '데모 건물 부숴 줘' 또는 `uv run python examples/first_render.py`" 한/영 + 시험 (사용자 체감: 첫 설치~첫 렌더 단계 수. 지금은 "모두 정상입니다." 에서 끝나 무엇을 할지 README 로 돌아가야 함)
+- [ ] `blender-fx-doctor --json` 과 MCP `doctor` 도구 구조화 출력에 `last_error`(이번 회차 `last_error.txt` 의 시각·도구·첫 줄, 집 폴더 `~`) + 버그 양식 "오류 문장" 칸 설명에 "doctor --issue 에 이미 들어 있으면 생략" + 시험 (이슈 대응: 이번 회차는 `--issue` 마크다운에만 붙음. AI 가 doctor 도구로 신고 초안을 만들 때도 같은 정보)
+- [ ] `examples/first_render.py` 가 도구 실패로 끝나면(종료 코드 1) 마지막에 "신고: uvx --from blender-fx-mcp blender-fx-doctor --issue" 한 줄 한/영 + 가짜 수신기 시험 (사용자 체감: 오류 메시지가 다음 할 일을 말하는지. 지금은 되돌리는 방법만 나오고 막혔을 때 갈 곳이 없음)
+- [ ] `release_check.py` 에 출시 전 점검 두 줄: `gen_help_index.py` 표가 최신인지, `scripts/lint.sh --print` 가 CI lint 단계와 같은지 + 시험 (유지보수: 둘 다 pytest 가 지키지만, 출시 절차(`docs/maintenance.md` 8단계)는 `release_check` 하나만 돌리라고 함)
+- [ ] `triage_report.py` CI 칸을 GitHub REST 문서의 실제 응답 모양(`workflow_runs[].name·conclusion·created_at·html_url`, `jobs[].name·conclusion`) 고정 자료로 시험 + `docs/maintenance.md` 에 "빨간 CI 대응"(3일 넘으면 그 주에 고치거나 이슈로 남김) 한/영 (근거: 이번 회차 시험은 손으로 만든 최소 응답. 클라우드에 gh 가 없어 실제 저장소로 못 돌림 — Mac 에서 한 번 돌려 확인)
