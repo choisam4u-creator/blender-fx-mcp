@@ -29,10 +29,13 @@ brew install shellcheck && uvx --from actionlint-py@1.7.12.25 actionlint   # CI 
 - 돌린 시험:
   - `uv run pytest -q`(3.11) **1438 통과·49 건너뜀**(블렌더 필요). CI 서버 명령 `--cov --cov-fail-under=99` → **100%**. `uvx ruff@0.15.20 check .` 통과.
     actionlint(+shellcheck-py 0.11.0.1 을 PATH 에)·zizmor 1.30.1 "No findings". `python3 scripts/triage_report.py` 를 실제 저장소로 돌림 → 0개, 종료 0.
-  - 못 돌린 것: `scripts/bpy_tests.sh`. 새 컨테이너라 bpy 휠이 없음. 이번 변경은 서버·문서·워크플로뿐이고 레시피는 그대로라 bpy 결과가 바뀔 길이 없음. 실제 링크 문장은 Mac 명령 2줄로 확인함.
+  - PR #24 를 연 뒤 Codex 리뷰가 P2 2건을 지적함(쌓인 water·emit 레시피). bpy 로 재현해 보니 실제 결함이었음 → `222078b`.
+    `emit` 의 target, `water` 의 source_object·obstacles 에 지난 효과의 보조 메시(`FX_EmitFlow`·`FX_LiquidFlow`)를 주면, 정리 함수가 그것을 지운 뒤 `StructRNA … removed` 로 멈추고 지난 효과만 사라졌음.
+    `_common.reject_effect_part` 가 지우기 전에 멈추게 함. 실패 시험에 3갈래를 넣었고, 검사를 빼면 같은 ReferenceError 로 실패하는 것을 확인함. 스레드에 답하고 해결함.
+  - **`scripts/bpy_tests.sh`(bpy 5.0.1) → 1484 통과·6 건너뜀(2분 3초)**. 건너뛴 것은 유체 `app_only` 5개와 실제 캐릭터 파일 1개.
     triage.yml 실제 실행은 main 에 들어가야 schedule·dispatch 가 됨.
 - 막힌 것: 없음.
-- 완료 수·추가 수: **완료 5** / **추가 5** (완료 ≥ 추가). 남은 `[ ]` 6개(그중 1개는 Mac 실측).
+- 완료 수·추가 수: **완료 5**(+ 리뷰 지적 고침 1) / **추가 5** (완료 ≥ 추가). 남은 `[ ]` 6개(그중 1개는 Mac 실측).
 - Mac에서 확인할 것: 맨 위 명령 3줄(또는 `uv run python scripts/mac_report.py` 한 번).
 
 ## 2026-10-16 (23회차)
