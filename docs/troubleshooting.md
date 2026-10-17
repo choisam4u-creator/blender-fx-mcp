@@ -362,6 +362,12 @@ If the scene has no meshes at all, create one first with `make_demo_building` or
 카메라·조명·빈 오브젝트는 부수거나 태울 수 없습니다. 문장에 나온 메시 중 하나로 다시 시킵니다.
 Cameras, lights and empties cannot be fractured or burned. Ask again with one of the meshes in the message.
 
+> '…' 은(는) 지난 효과가 만든 보조 오브젝트라 새 효과를 시작할 때 지워집니다.
+> '…' is a helper object made by the previous effect, and it is removed when the new one starts.
+
+`list_objects` 에 보이는 `FX_EmitFlow`·`FX_LiquidFlow` 같은 이름은 지난 불·연기·물의 일부라, 새 효과를 만들 때 먼저 지워집니다. 장면은 바꾸지 않았습니다. 문장 끝의 원래 메시 이름(건물·가져온 모델)으로 다시 시킵니다.
+Names such as `FX_EmitFlow` or `FX_LiquidFlow` in `list_objects` belong to the previous fire, smoke or water and are removed before the new effect is built. The scene was not changed. Ask again with one of the original meshes listed at the end of the message.
+
 > mode='object' 에는 source_object 이름이 필요합니다.
 > mode='object' needs a source_object name.
 

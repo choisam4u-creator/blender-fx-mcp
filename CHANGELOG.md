@@ -65,6 +65,7 @@
 
 **고침**
 - `water` 결과에 격자 한 칸 크기(m)와 "더 작은 물방울이 필요하면 resolution=N(한 칸 X m, 굽기가 몇 배 느려짐)" 한 줄. 상한 320 이면 `domain_at`·`domain_size` 로 공간을 줄이라고.
+- `fire`·`smoke` 의 `target`, `water(mode="object")` 의 `source_object`·`obstacles` 에 지난 효과의 보조 메시(`list_objects` 에 보이는 `FX_EmitFlow`·`FX_LiquidFlow` 등)를 주면, 정리 함수가 그것을 지운 뒤 `StructRNA … has been removed` 로 멈춰 지난 효과만 사라지던 것. 지우기 전에 원래 메시 이름을 알려 주며 멈춘다(한/영, bpy 시험).
 - CI lint 가 10/15(PR #20 부터) 빨갛던 것: actionlint 의 shellcheck 가 커버리지 줄의 따옴표 없는 `$GITHUB_STEP_SUMMARY`(SC2086)를 잡음. 따옴표로 감싸고, 로컬에서도 같게 보려면 shellcheck 가 PATH 에 있어야 한다고 CONTRIBUTING 한/영에.
 - 해결법 문서에 서버 쪽 오류 문장 5개(스냅샷 없음 2가지·FX_RESULT 없음·`before_restore` 예약 이름·원격 블렌더 되돌리기)와 새 절 "Snapshot or restore refused". 서버·bridge 의 `BlenderError` 문장이 문서에 없으면 시험이 잡음.
 - `.github/workflows/triage.yml`: 주 1회 `scripts/triage_report.py` 를 읽기 권한(`issues`·`pull-requests: read`)만으로 돌려 첫 답 목표 표를 잡 요약에만 남김(댓글·라벨 없음, 넘은 것은 경고). 권한·진입점 시험.

@@ -32,6 +32,13 @@ for _role in ("smoke_domain", "blast", "emit_domain", "emit_flow", "liquid_domai
     _o["fx_role"] = _role
     _o["fx_kind"] = "snow"
     _bpy.context.scene.collection.objects.link(_o)
+# 목록(list_objects)에 보이는 보조 메시: 새 효과의 대상으로 주면 정리 함수가 지우기 전에 멈춰야 한다
+for _role in ("emit_flow", "liquid_flow"):
+    _me = _bpy.data.meshes.new("Old_mesh_" + _role)
+    _me.from_pydata([(0, 0, 0), (1, 0, 0), (0, 1, 0), (0, 0, 1)], [], [(0, 1, 2), (0, 1, 3), (0, 2, 3), (1, 2, 3)])
+    _o = _bpy.data.objects.new("Old_mesh_" + _role, _me)
+    _o["fx_role"] = _role
+    _bpy.context.scene.collection.objects.link(_o)
 '''
 
 # (레시피, 잘못된 인자, 오류에 들어갈 말). 검사 순서상 장면을 바꿀 수 있는 지점 뒤에서 나는 오류를 고른다
@@ -40,6 +47,9 @@ BAD_CALLS = [
     ("destroy", {"target": "Edges"}, "면이 없어"),
     ("explode", {"target": "없는건물"}, "없는건물"),
     ("emit", {"target": "없는건물"}, "없는건물"),
+    ("emit", {"target": "Old_mesh_emit_flow"}, "지난 효과가 만든 보조 오브젝트"),
+    ("water", {"mode": "object", "source_object": "Old_mesh_liquid_flow"}, "지난 효과가 만든 보조 오브젝트"),
+    ("water", {"obstacles": ["Old_mesh_liquid_flow"]}, "지난 효과가 만든 보조 오브젝트"),
     ("water", {"mode": "object"}, "source_object"),
     ("water", {"mode": "object", "source_object": "없는물체"}, "없는물체"),
     ("water", {"obstacles": ["없는벽"]}, "없는벽"),

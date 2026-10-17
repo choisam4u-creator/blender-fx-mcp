@@ -31,7 +31,8 @@ def main():
 
     sc = scene()
     target_name = p.get("target")
-    t = get_target(target_name) if target_name else None  # 이름이 틀렸으면 지난 불·연기를 지우기 전에 멈춘다
+    # 이름이 틀렸거나 지난 불·연기의 보조 오브젝트(FX_EmitFlow 등)면 그것을 지우기 전에 멈춘다
+    t = reject_effect_part(get_target(target_name), EMIT_ROLES) if target_name else None
     at = None if target_name else point(p.get("at") or [0.0, 0.0, 0.5], "at")  # at 도 지우기 전에 검사
     cleanup_emit()
     radius = float(p.get("radius") or 0.0)

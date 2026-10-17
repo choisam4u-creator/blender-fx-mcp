@@ -2,9 +2,11 @@
 # 자동 생성: uv run python scripts/gen_help_index.py --write (손으로 고치지 않는다)
 # 레시피 오류 문장의 고정 조각 → docs/troubleshooting.md 절 앵커. 긴 조각부터 맞춘다.
 RECIPE_HELP = {
+    'is a helper object made by the previous effect, and it is removed when the new one starts': 'object-or-file-not-found',
     'The ocean is acting as the ground, so the ground material cannot be changed': 'tool-needs-another-step-first',
     'There is no camera and no object, so nothing can be rendered': 'black-preview-effect-not-visible',
     'm)보다 작아 물이 생기지 않고, resolution 은 320 까지라 올려서는 안 됩니다': 'fluid-bake-failed',
+    '은(는) 지난 효과가 만든 보조 오브젝트라 새 효과를 시작할 때 지워집니다': 'object-or-file-not-found',
     "is before the scene's start (frame_start": 'argument-value-rejected',
     "mode='object' needs a source_object name": 'object-or-file-not-found',
     "mode='object' 에는 source_object 이름이 필요합니다": 'object-or-file-not-found',

@@ -91,7 +91,7 @@ def main():
         if not source_name:
             raise FxError(L("mode='object' 에는 source_object 이름이 필요합니다. list_objects 로 이름을 확인해 source_object 로 주세요.",
                             "mode='object' needs a source_object name. Look up the name with list_objects and pass it as source_object."))
-        flow = get_target(source_name)
+        flow = reject_effect_part(get_target(source_name), LIQUID_ROLES)  # 지난 물의 입구·도메인은 cleanup_liquid 가 지운다
         flo, fhi = world_bbox(flow)
         at = (flo + fhi) / 2
         size = max((fhi - flo).length / 2, 0.1)
@@ -105,10 +105,10 @@ def main():
     # 2) 물이 부딪힐 물건
     names = p.get("obstacles")
     if names:
-        obstacles = [get_target(n) for n in names]
+        obstacles = [reject_effect_part(get_target(n), LIQUID_ROLES) for n in names]
     else:
         obstacles = [o for o in mesh_objects()
-                     if o.get(FX_TAG) not in ("liquid_domain", "liquid_flow", "dust", "cell")
+                     if o.get(FX_TAG) not in (*LIQUID_ROLES, "dust", "cell")
                      and not o.hide_viewport and (mode != "object" or o.name != source_name)]
     # 바닥판은 아주 넓어서 크기 계산에 넣으면 물 공간이 쓸데없이 커진다.
     # 도메인 바닥이 이미 바닥 역할을 하므로 장애물에서도 뺀다.
