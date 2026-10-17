@@ -270,7 +270,7 @@ def test_readme_badges_match_repo():
 def test_ci_reports_server_coverage_without_recipes():
     """CI 서버 시험이 커버리지를 내고, 블렌더 안에서만 도는 레시피는 측정에서 빠져야 한다."""
     ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
-    assert re.search(r"pytest .*--cov .*markdown-append:\$GITHUB_STEP_SUMMARY", ci)
+    assert re.search(r"pytest .*--cov .*markdown-append:\$\{GITHUB_STEP_SUMMARY\}\"", ci)
     pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
     assert "pytest-cov" in pyproject
     assert re.search(r'^omit = \[.*recipes/\*.*\]$', pyproject, re.M)

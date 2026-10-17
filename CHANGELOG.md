@@ -65,6 +65,7 @@
 
 **고침**
 - `water` 결과에 격자 한 칸 크기(m)와 "더 작은 물방울이 필요하면 resolution=N(한 칸 X m, 굽기가 몇 배 느려짐)" 한 줄. 상한 320 이면 `domain_at`·`domain_size` 로 공간을 줄이라고.
+- CI lint 가 10/15(PR #20 부터) 빨갛던 것: actionlint 의 shellcheck 가 커버리지 줄의 따옴표 없는 `$GITHUB_STEP_SUMMARY`(SC2086)를 잡음. 따옴표로 감싸고, 로컬에서도 같게 보려면 shellcheck 가 PATH 에 있어야 한다고 CONTRIBUTING 한/영에.
 - 해결법 문서에 서버 쪽 오류 문장 5개(스냅샷 없음 2가지·FX_RESULT 없음·`before_restore` 예약 이름·원격 블렌더 되돌리기)와 새 절 "Snapshot or restore refused". 서버·bridge 의 `BlenderError` 문장이 문서에 없으면 시험이 잡음.
 - `.github/workflows/triage.yml`: 주 1회 `scripts/triage_report.py` 를 읽기 권한(`issues`·`pull-requests: read`)만으로 돌려 첫 답 목표 표를 잡 요약에만 남김(댓글·라벨 없음, 넘은 것은 경고). 권한·진입점 시험.
 - 레시피 오류 문장(대상 없음·굽기 결과 없음·형식·내보내기 등 52개 문구) 끝에 `해결법: …/troubleshooting.md#절` 링크. 전에는 연결 오류에만 있었다. 표는 `scripts/gen_help_index.py` 가 문서에서 만들고, 링크가 그 문장을 설명한 절인지 시험이 본다.

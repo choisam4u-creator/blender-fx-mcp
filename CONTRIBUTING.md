@@ -34,7 +34,7 @@ src/blender_fx_mcp/
    `tests/test_server_tools.py` 의 `RESULTS`·`CALLS` 에 성공 결과와 호출 한 줄을 넣는다(빠지면 시험이 실패한다).
    README 한/영 도구 표에 한 줄씩 넣는다. `uv run python scripts/gen_tool_table.py --draft` 가 도구 설명으로 만든 초안 행을 주고, 인자 없이 돌리면 표와 서버(빠진 도구·`a/b/c` 값 목록)가 어긋난 곳을 알려 준다. 해결법 문서에 절을 더하거나 레시피 오류 문장을 바꿨으면 `uv run python scripts/gen_help_index.py --write` 로 `src/blender_fx_mcp/help_index.py` 를 새로 쓴다. 서버가 이 표로 레시피 오류 끝에 "해결법: …#절" 을 붙인다(표가 낡으면 시험이 실패).
 4. `headless.py` 의 `STEPS` 에 단계를 추가하고, `tests/test_recipes_headless.py` 에 테스트를 넣는다. 결과 이미지가 실제로 달라지는지(픽셀) 확인하는 assert 를 포함한다.
-5. `uvx ruff@0.15.20 check .` 와 `uv run pytest -q` 통과 후 PR. 워크플로(`.github/workflows/`)를 고쳤다면 `uvx --from actionlint-py@1.7.12.25 actionlint` 와 `uvx zizmor@1.30.1 --offline .github/workflows` 도(CI lint 잡과 같은 검사).
+5. `uvx ruff@0.15.20 check .` 와 `uv run pytest -q` 통과 후 PR. 워크플로(`.github/workflows/`)를 고쳤다면 `uvx --from actionlint-py@1.7.12.25 actionlint` 와 `uvx zizmor@1.30.1 --offline .github/workflows` 도(CI lint 잡과 같은 검사). actionlint 는 PATH 에 `shellcheck` 가 없으면 `run:` 스크립트 검사를 조용히 건너뛴다(CI 러너에는 있음). 같은 결과를 보려면 먼저 `brew install shellcheck`(Linux 는 `apt install shellcheck`).
    - 서버 쪽 커버리지(CI 와 같은 명령): `uv run pytest -q tests --ignore=tests/test_asset_robustness.py --ignore=tests/test_recipe_failure_keeps_scene.py --ignore=tests/test_recipes_fx_extra.py --ignore=tests/test_recipes_headless.py --ignore=tests/test_recipes_v05.py --ignore=tests/test_recipes_v06.py --cov --cov-report=term`.
      블렌더가 있어야 하는 레시피 시험 파일만 `--ignore` 로 빼므로 새 시험 파일은 저절로 CI 에 들어간다. 레시피 시험 파일을 새로 만들면 이 목록과 `ci.yml` 에 함께 더한다.
      레시피는 블렌더 안에서 문자열로 실행돼 잴 수 없으므로 뺀다(`[tool.coverage.run] omit`). CI 는 이 표를 작업 요약에 남긴다.
@@ -89,7 +89,7 @@ Labels:
 - `needs-info` — waiting for repro info (doctor output, Blender version, tool and arguments); may be closed after 30 days
   without a reply ([SUPPORT.md](SUPPORT.md)).
 
-Always run `uvx ruff@0.15.20 check .` and the check command before opening a PR; after editing `.github/workflows/`, also `uvx --from actionlint-py@1.7.12.25 actionlint` and `uvx zizmor@1.30.1 --offline .github/workflows` (the same checks as the CI lint job).
+Always run `uvx ruff@0.15.20 check .` and the check command before opening a PR; after editing `.github/workflows/`, also `uvx --from actionlint-py@1.7.12.25 actionlint` and `uvx zizmor@1.30.1 --offline .github/workflows` (the same checks as the CI lint job). Without `shellcheck` on PATH, actionlint silently skips the `run:` scripts (the CI runner has it), so install it first (`brew install shellcheck`, or `apt install shellcheck` on Linux).
 
 ## 규칙
 
