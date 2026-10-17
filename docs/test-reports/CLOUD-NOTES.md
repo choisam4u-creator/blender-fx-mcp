@@ -5,10 +5,35 @@
 한 번에 돌려 `latest.md` 를 새로 쓰려면 `uv run python scripts/mac_report.py`(결과 확인 뒤 커밋). 클라우드 회차는 그 FAIL 부터 고친다.
 
 ```sh
-uv sync && uv run pytest -q                        # 블렌더 앱으로 전체 통과(새: 해결법 링크 표·서버 오류→문서·triage 워크플로·import 단위 안내 시험)
-uv run python -c "from blender_fx_mcp import server; print(server.destroy(target='Towr'))"   # Connect 뒤: '실패: … 메시 오브젝트가 없습니다 … 해결법: …troubleshooting.md#object-or-file-not-found'
-brew install shellcheck && uvx --from actionlint-py@1.7.12.25 actionlint   # CI lint 와 같게: 출력 없음이면 통과(PR #20~#23 의 빨강이 고쳐졌는지)
+uv sync && uv run pytest -q && scripts/lint.sh     # 블렌더 앱으로 전체 통과 + CI lint 와 같은 검사(새: lint.sh·triage CI 칸·last_error·stdio 링크 시험)
+uv run python -c "from blender_fx_mcp import server; print(server.restore('nope'))" && uv run blender-fx-doctor --issue | grep -E '최근 실패|Last failed'   # '실패: 스냅샷이 없습니다 … 해결법: …#object-or-file-not-found' 와 `restore` 줄
+gh auth status && uv run python scripts/triage_report.py --all   # 아래 'CI:' 표가 실제 저장소 응답으로 나오는지(클라우드엔 gh 없음)
 ```
+
+## 2026-10-17 (25회차)
+
+- 시작 확인: 저장된 지시의 최우선 F1·F3(0.7.0 판·release.yml)는 9회차(10/11)에 끝나 PR #13 으로 병합됐고 태그 `v0.7.0` 도 있음 → 다시 할 것 없음, 일반 규칙.
+  `latest.md`(10/1)의 FAIL 2건은 main 에 고쳐져 있음(재확인). main 은 앞서 있지 않음.
+  열린 `claude/cloud-work-*` PR 중 가장 위(#24, `27a7bdf`)에서 이어 감. 이 세션은 `claude/cloud-work-odjpcb` 에 푸시 → PR 은 #24 위에 쌓음.
+- 한 일(백로그 24회차 추가분 5개 모두, 굽기 시간 어림은 Mac 실측 필요라 계속 건너뜀):
+  1. **서버 쪽 오류에도 해결법 링크** (`e626b2c`): `gen_help_index.py` 가 `server.py` 의 `BlenderError(t(…))`·`_missing_snapshot` 열쇠도 표에 넣음(52 → 70개).
+     `_fail` 이 첫 줄 끝에 붙임(이미 링크가 있는 연결 오류·레시피 오류는 그대로, traceback 은 뒤). 문서에 없던 `clear_snapshots(keep=…)` 거부 문장을 문서화함.
+  2. **`scripts/lint.sh`** (`0639d82`): CI lint 잡의 세 검사를 CONTRIBUTING 판 표에서 읽은 판으로 한 줄로 돌림. actionlint 는 `--with shellcheck-py==0.11.0.1` 로
+     shellcheck 를 함께 깔아 로컬에서도 `run:` 을 검사함(SC2086 일부러 넣은 파일로 확인: 없으면 통과·있으면 잡힘). CI 도 같은 명령으로 바꿈, 판 표에 shellcheck-py 를 더함.
+     시험: `--print` 가 CI 단계와 똑같은지, 가짜 uvx 로 하나가 실패해도 셋 다 돌고 실패를 이름으로 알리는지, 표에 줄이 없으면 무엇을 고칠지. bash 라 `@posix_only` 3개(CONTRIBUTING 개수 4개로).
+  3. **triage CI 칸** (`5f23431`): 기본 브랜치·열린 PR 브랜치마다 워크플로별 최신 실행이 빨가면 빨간 지 며칠째(연달아 실패한 첫 실행부터)·실패 잡·실행 링크,
+     3일 넘으면 ⚠ 와 종료 코드 1, `--no-ci`. 최근 30일 실행만 물음(`--paginate` 가 전체 이력을 받지 않게). `triage.yml` 에 `actions: read` 만 더함.
+  4. **doctor --issue 에 최근 실패한 도구** (`bebaf06`): `_fail` 이 출력 폴더 `last_error.txt` 에 시각·도구 이름·첫 줄(300자)을 덮어씀, doctor 가 표 한 줄로(집 폴더 `~`, `|` 이스케이프).
+     시험이 개발자의 `~/blender-fx-output` 에 쓰지 않게 conftest 가 시험마다 `BLENDER_FX_OUT` 을 임시 폴더로 둠(전체 통과 확인).
+  5. **링크 끝까지 시험** (`b9c0ff6`·`0032bc4`): stdio 하위 프로세스 서버 + 가짜 수신기에서 레시피 실패(+traceback)와 `restore` 서버 오류의 도구 결과가
+     "실패: … 해결법: …#절"(링크 한 번, traceback 은 뒤)이고, 하위 프로세스가 `last_error.txt` 를 남기는지(한/영).
+  - 남은 `[ ]` 가 1개(Mac 실측)라 새 항목 5개 추가(`033f7bc`): doctor 정상 뒤 다음 할 일, `--json`·doctor 도구에 last_error, first_render 실패 시 신고 줄, release_check 에 표·lint 점검, triage CI 칸 실제 응답 모양 시험.
+- 돌린 시험:
+  - `uv run pytest -q`(3.11) **1461 통과·49 건너뜀**. CI 서버 명령 `--cov --cov-fail-under=99` → **100%**. `scripts/lint.sh`(ruff·actionlint+shellcheck·zizmor) 통과.
+  - 건너뛴 49개는 블렌더(또는 bpy)가 있어야 하는 레시피 시험. 이번 변경은 레시피를 건드리지 않아 `scripts/bpy_tests.sh`(휠 356MB) 는 돌리지 않음.
+  - `triage_report.py` 를 실제 저장소로는 못 돌림: 클라우드에 `gh` 가 없음(가짜 응답 시험만) → Mac 명령 3번째 줄.
+- 완료 5 · 추가 5 (완료 ≥ 추가).
+- Mac 에서 확인할 것: 위 "맥에서 돌릴 명령" 3줄.
 
 ## 2026-10-17 (24회차)
 
