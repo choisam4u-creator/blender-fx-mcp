@@ -470,7 +470,7 @@ def test_help_link_survives_real_stdio_tool_result(monkeypatch, tmp_path, lang, 
     assert rest.startswith("Traceback (most recent call last):") and recipe.count(bridge.TROUBLESHOOTING_URL) == 1
     assert calls == ["destroy"]
     assert server_side.startswith(failed) and server_side.endswith(f" {word} {bridge.TROUBLESHOOTING_URL}#object-or-file-not-found"), server_side
-    when, tool, line = (tmp_path / "out" / "last_error.txt").read_text(encoding="utf-8").rstrip("\n").split("\t")
+    _when, tool, line = (tmp_path / "out" / "last_error.txt").read_text(encoding="utf-8").rstrip("\n").split("\t")
     assert tool == "restore" and "nope" in line and bridge.TROUBLESHOOTING_URL not in line   # 신고용이라 문장 첫 줄만
 
 

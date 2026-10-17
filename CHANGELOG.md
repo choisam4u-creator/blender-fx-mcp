@@ -64,6 +64,7 @@
   간접 의존성 `exceptiongroup` 이 빠져 제3자 라이선스 표도 39개. 시험의 `importorskip("tomllib")` 는 보통 import 로
 
 **고침**
+- 해결법 링크 끝까지 시험: 서버를 stdio 하위 프로세스로 띄우고 가짜 수신기가 레시피 실패(+traceback)를 돌려줄 때, 도구 결과 첫 줄이 "실패: … 해결법: …#절" 이고 링크가 한 번만·traceback 은 그 뒤에 남는지, 서버 쪽 오류(`restore` 스냅샷 없음)도 같은지, 하위 프로세스가 `last_error.txt` 를 남기는지(한/영)
 - `blender-fx-doctor --issue` 표에 "최근 실패한 도구" 한 줄: 도구가 실패하면 서버가 출력 폴더 `last_error.txt` 에 시각·도구 이름·문장 첫 줄(300자)을 덮어쓰고 doctor 가 읽어 붙임(집 폴더 `~`, 표를 깨는 `|` 는 `\|`). 못 쓰거나 못 읽어도 결과는 그대로. 시험이 개발자의 출력 폴더를 건드리지 않게 conftest 가 시험마다 `BLENDER_FX_OUT` 을 임시 폴더로
 - `scripts/triage_report.py` 에 CI 칸: 기본 브랜치·열린 PR 마다 워크플로별 최신 실행이 빨가면 빨간 지 며칠째(연달아 실패한 첫 실행부터)·실패 잡 이름·실행 링크, 3일 넘으면 ⚠ 와 종료 코드 1(`--no-ci` 로 끔). 최근 30일 실행만 물어 `--paginate` 가 끝없이 받지 않게. `triage.yml` 에 `actions: read` 만 더함 + 가짜 응답 시험
 - `scripts/lint.sh`: CI lint 잡과 같은 세 검사(ruff·actionlint·zizmor)를 CONTRIBUTING 판 표에서 읽은 판으로 한 줄에. actionlint 는 판을 고정한 `shellcheck-py` 를 함께 깔아(`--with`) PATH 에 shellcheck 가 없어도 `run:` 검사를 건너뛰지 않음(10/15~17 lint 빨강이 로컬에서 안 보이던 원인). CI 도 같은 명령으로 바꾸고, 스크립트 명령이 CI 단계와 같은지·하나가 실패해도 셋 다 돌고 실패를 이름으로 알리는지 시험
