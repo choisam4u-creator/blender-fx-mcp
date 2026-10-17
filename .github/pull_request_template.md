@@ -6,7 +6,7 @@
 
 ## 확인 / Checklist
 
-- [ ] `uvx ruff check .` 통과 / passes
+- [ ] `uvx ruff@0.15.20 check .` 통과 / passes
 - [ ] `uv run pytest -q` 통과 (블렌더 앱이나 `pip install bpy` 파이썬으로) / passes (with Blender, or a `pip install bpy` Python)
 - [ ] 사용자에게 보이는 문장은 한/영 둘 다: 레시피는 `L("한국어", "English")`, 서버는 `t(...)` / user-facing messages are bilingual
 - [ ] `CHANGELOG.md` 의 미출시 절에 한 줄 / one line under Unreleased in `CHANGELOG.md`

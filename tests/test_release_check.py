@@ -2,6 +2,7 @@
 import importlib.util
 import re
 import shutil
+import subprocess
 import tarfile
 import tomllib
 import zipfile
@@ -19,7 +20,7 @@ _spec.loader.exec_module(rc)
 def repo(tmp_path):
     """점검에 쓰는 파일만 복사한 가짜 저장소."""
     for f in ("pyproject.toml", "server.json.example", "CHANGELOG.md", "README.md", "src/blender_fx_mcp/__init__.py",
-              "CITATION.cff"):
+              "CITATION.cff", "SECURITY.md", "SUPPORT.md"):
         (tmp_path / f).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(ROOT / f, tmp_path / f)
     return tmp_path
@@ -35,6 +36,21 @@ def _release(root: Path, version: str = "9.9.9", date: str = "2026-12-01") -> No
     text = cl.read_text(encoding="utf-8")
     m = rc.HEADING.search(text)
     cl.write_text(text[:m.start()] + f"## {version} — {date}" + text[m.end():], encoding="utf-8")
+    _support_only(root, version)
+
+
+def _support_only(root: Path, version: str) -> None:
+    """출시 순서의 '지원 판 표 정리': blender-fx-mcp 판 줄을 새 판 계열 하나로."""
+    series = ".".join(version.split(".")[:2])
+    for f, row in (("SECURITY.md", f"| {series}.x (최신 / latest) | 예 / yes |"),
+                   ("SUPPORT.md", f"| blender-fx-mcp | {series}.x (최신 / latest) | 버그·보안 수정 / bug and security fixes |")):
+        p = root / f
+        lines = p.read_text(encoding="utf-8").splitlines()
+        pick = (lambda x: re.match(r"\| \d+\.\d+\.x", x)) if f == "SECURITY.md" else (lambda x: x.startswith("| blender-fx-mcp |"))
+        first = next(i for i, x in enumerate(lines) if pick(x))
+        lines = [x for i, x in enumerate(lines) if i == first or not pick(x)]
+        lines[first] = row
+        p.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 def _fails(results):
@@ -55,6 +71,23 @@ def test_current_repo_state():
     assert len(fails) == 2, fails
     assert "CHANGELOG.md 맨 위 절 판" in fails[0] and "pyproject 판" in fails[0]
     assert "미출시" in fails[1] and "YYYY-MM-DD" in fails[1]
+
+
+def test_release_requires_support_tables_trimmed(repo):
+    """출시 전에는 PyPI 최신 판(0.7.x)도 지원으로 적어 둔다. 출시(날짜를 붙임)한 뒤에도 그대로면 정리하라고 알린다."""
+    assert rc.supported_series(ROOT)["SECURITY.md"][:1] == [".".join(rc.project_version(ROOT).split(".")[:2])]
+    _release(repo)
+    for f, row in (("SECURITY.md", "| 9.8.x (PyPI 최신 / latest on PyPI) | 예 — 9.9.0 이 나올 때까지 / yes |"),
+                   ("SUPPORT.md", "| blender-fx-mcp | 9.8.x (PyPI) | 버그·보안 수정 |")):
+        p = repo / f
+        text = p.read_text(encoding="utf-8")
+        anchor = "| 9.9.x (최신 / latest) | 예 / yes |" if f == "SECURITY.md" else "| blender-fx-mcp | 9.9.x"
+        i = text.index(anchor)
+        j = text.index("\n", i) + 1
+        p.write_text(text[:j] + row + "\n" + text[j:], encoding="utf-8")
+    fails = _fails(rc.check_files(repo))
+    assert len(fails) == 2, fails
+    assert all("9.9.x, 9.8.x" in f and "9.9.x 하나로 정리" in f for f in fails), fails
 
 
 def test_released_state_passes(repo, capsys):
@@ -439,3 +472,84 @@ def test_mac_report_without_command_block(tmp_path):
     notes = tmp_path / "n.md"
     notes.write_text("# 비어 있음\n", encoding="utf-8")
     assert _mac_report().main(["--notes", str(notes), "--dry-run"]) == 2
+
+
+# ---------- scripts/triage_report.py ----------
+
+def _triage():
+    spec = importlib.util.spec_from_file_location("triage_report", ROOT / "scripts" / "triage_report.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _fake_github(repo="o/r"):
+    """열린 것 다섯: 늦은 버그(답 없음), 제때 답한 질문, 늦게 답한 PR(리뷰), 봇 PR, 관리자가 연 PR."""
+    me, maint, bot = {"login": "user1", "type": "User"}, {"login": "maint", "type": "User"}, {"login": "dependabot[bot]", "type": "Bot"}
+    data = {
+        f"repos/{repo}/issues?state=open&per_page=100": [
+            {"number": 1, "title": "crash | on render", "user": me, "labels": [{"name": "bug"}], "created_at": "2026-10-01T00:00:00Z"},
+            {"number": 2, "title": "how to?", "user": me, "labels": [{"name": "question"}], "created_at": "2026-10-01T00:00:00Z"},
+            {"number": 3, "title": "fix typo", "user": me, "labels": [], "created_at": "2026-09-01T00:00:00Z", "pull_request": {}},
+            {"number": 4, "title": "bump x", "user": bot, "labels": [], "created_at": "2026-09-01T00:00:00Z", "pull_request": {}},
+            {"number": 5, "title": "own work", "user": maint, "author_association": "OWNER", "labels": [],
+             "created_at": "2026-09-01T00:00:00Z", "pull_request": {}},
+        ],
+        # 1: 글쓴이 본인 댓글·봇 댓글은 답이 아니다
+        f"repos/{repo}/issues/1/comments?per_page=100": [{"user": me, "created_at": "2026-10-02T00:00:00Z"},
+                                                          {"user": bot, "created_at": "2026-10-02T00:00:00Z"}],
+        f"repos/{repo}/issues/2/comments?per_page=100": [{"user": maint, "created_at": "2026-10-03T12:00:00Z"}],
+        f"repos/{repo}/issues/3/comments?per_page=100": [],
+        f"repos/{repo}/pulls/3/reviews?per_page=100": [{"user": maint, "submitted_at": "2026-09-21T00:00:00Z"}],
+        f"repos/{repo}/issues/4/comments?per_page=100": [],
+        f"repos/{repo}/pulls/4/reviews?per_page=100": [],
+        f"repos/{repo}/issues/5/comments?per_page=100": [],
+        f"repos/{repo}/pulls/5/reviews?per_page=100": [],
+    }
+    return lambda path: data[path]
+
+
+def test_triage_report_flags_only_items_past_the_support_target(capsys):
+    from datetime import datetime, timezone
+    tr = _triage()
+    now = datetime(2026, 10, 16, tzinfo=timezone.utc)
+    rows = {r["number"]: r for r in tr.triage("o/r", _fake_github(), now)}
+    assert set(rows) == {1, 2, 3}, "봇·관리자가 연 것은 기본으로 뺀다"
+    assert rows[1]["target"] == 7 and rows[1]["reply_days"] is None and rows[1]["late"]
+    assert rows[2]["target"] == 14 and rows[2]["reply_days"] == 2.5 and not rows[2]["late"]
+    assert rows[3]["kind"] == "PR" and rows[3]["reply_days"] == 20.0 and rows[3]["late"], "리뷰도 첫 답, 14일 넘김"
+    assert {r["number"] for r in tr.triage("o/r", _fake_github(), now, include_bots=True, include_own=True)} == {1, 2, 3, 4, 5}
+
+    assert tr.main(["--repo", "o/r"], api=_fake_github(), now=now) == 1
+    out = capsys.readouterr().out
+    assert "3개 중" in out and "2 of 3" in out and "| 1 | issue | crash \\| on render | bug | 7일 / d | 없음 / none ⚠ |" in out
+    assert "how to?" not in out, "목표 안인 것은 --all 일 때만"
+    assert tr.main(["--repo", "o/r", "--all"], api=_fake_github(), now=now) == 1 and "how to?" in capsys.readouterr().out
+
+
+def test_triage_report_without_gh_says_what_to_do(monkeypatch, capsys):
+    tr = _triage()
+    monkeypatch.setattr(tr.shutil, "which", lambda name: None)
+    assert tr.main([]) == 2
+    err = capsys.readouterr().err
+    assert "brew install gh" in err and "gh auth login" in err and "https://cli.github.com" in err
+
+
+def test_triage_report_reads_paginated_gh_output(monkeypatch):
+    tr = _triage()
+    monkeypatch.setattr(tr.shutil, "which", lambda name: "/usr/bin/gh")
+    done = subprocess.CompletedProcess([], 0, stdout='[{"a": 1}]\n[{"a": 2}, {"a": 3}]\n', stderr="")
+    monkeypatch.setattr(tr.subprocess, "run", lambda *a, **k: done)
+    assert tr.gh_api("x") == [{"a": 1}, {"a": 2}, {"a": 3}]
+    monkeypatch.setattr(tr.subprocess, "run", lambda *a, **k: subprocess.CompletedProcess([], 1, "", "HTTP 401: Bad credentials"))
+    with pytest.raises(tr.GhError, match="HTTP 401"):
+        tr.gh_api("x")
+
+
+def test_triage_targets_match_support_md():
+    tr = _triage()
+    support = (ROOT / "SUPPORT.md").read_text(encoding="utf-8")
+    assert f"보안 신고 / Security report | {tr.TARGET_DAYS['security']}일 안" in support
+    assert f"버그 / Bug | {tr.TARGET_DAYS['bug']}일 안" in support
+    assert f"질문·기능 요청 / Question, feature | {tr.OTHER_DAYS}일 안" in support
+    assert tr.target_days(["bug", "question"]) == 7 and tr.target_days([]) == 14

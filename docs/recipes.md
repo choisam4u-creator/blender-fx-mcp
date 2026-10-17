@@ -64,7 +64,7 @@ AI(Claude 등)에게 이렇게 말하면 어떤 도구가 어떤 인자로 불�
 |---|---|
 | 1 | `explode(target="Building", power=2.0, fire=True, resolution=48)` |
 
-- 안에서 먼저 조각낸 뒤(`destroy(impact="none", hold_until=11)`) 12프레임에 힘장으로 날리고 연기·불을 만든다
+- 안에서 먼저 조각낸 뒤(destroy 레시피를 `impact="none"`·`hold_until=11` 로 — 서버 안쪽 값이라 `destroy` 도구 인자는 아님) 12프레임에 힘장으로 날리고 연기·불을 만든다
 - 확인할 칸: `moved_ratio`(0.5 이상이면 조각이 날아감), `cache_files`(0 이면 연기가 안 구워진 것)
 - 미리보기는 연기가 보이도록 EEVEE(`quality="smoke"`)로 렌더한다
 - 클라우드 미측정(Mantaflow). Mac 시험 `test_explode_building` 이 같은 흐름을 검증한다
@@ -183,7 +183,7 @@ For a rigged character, look at the `parts` list in the result and pick one, e.g
 |---|---|
 | 1 | `explode(target="Building", power=2.0, fire=True, resolution=48)` |
 
-- It first fractures the building from inside (`destroy(impact="none", hold_until=11)`), throws the pieces with a force field at frame 12, then adds smoke and fire
+- It first fractures the building from inside (the destroy recipe with `impact="none"`, `hold_until=11`; internal values, not `destroy` tool arguments), throws the pieces with a force field at frame 12, then adds smoke and fire
 - What to check: `moved_ratio` (0.5 or more means the pieces flew), `cache_files` (0 means the smoke was not baked)
 - The preview renders with EEVEE (`quality="smoke"`) so the smoke is visible
 - Not measured in the cloud (Mantaflow). The Mac test `test_explode_building` checks the same flow

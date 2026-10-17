@@ -29,6 +29,7 @@ from mcp.types import CallToolResult, TextContent, ToolAnnotations
 from pydantic import Field
 
 from . import bridge, disk
+from .help_index import RECIPE_HELP
 from .bridge import BlenderError
 from .i18n import is_en, t
 
@@ -350,6 +351,28 @@ def check_ranges(recipe: str, params: dict) -> None:
         raise BlenderError(msg + (" " + hint if hint else ""))
 
 
+# 함께 주면 순서가 맞아야 하는 인자 쌍(앞, 뒤, 같아도 되는지). 레시피는 앞의 값을 먼저 장면에 넣은 뒤 순서 오류를 내
+# 실패했는데 장면이 반쯤 바뀐 채 남았다. 한쪽만 주면 지금 장면 값과의 비교는 레시피가 바꾸기 전에 한다.
+ORDERS: dict[str, list[tuple[str, str, bool]]] = {
+    "set_timing": [("frame_start", "frame_end", True), ("slow_from", "slow_to", False)],
+    "render_video": [("frame_start", "frame_end", True)],
+}
+
+
+def check_order(recipe: str, params: dict) -> None:
+    """앞뒤가 있는 두 인자를 거꾸로 주면 바꿔 줄 값을 알려 주는 BlenderError 를 낸다."""
+    for first, second, equal_ok in ORDERS.get(recipe, []):
+        a, b = params.get(first), params.get(second)
+        if a is None or b is None or b > a or (equal_ok and b == a):
+            continue
+        rule = t("같거나 커야", "at least") if equal_ok else t("커야", "greater than")
+        raise BlenderError(t(
+            f"{second}({b}) 는 {first}({a}) 보다 {rule} 합니다. 장면은 바꾸지 않았습니다. "
+            f"{first}={b}, {second}={a} 처럼 두 값을 바꿔 다시 시키세요.",
+            f"{second}({b}) must be {rule} {first}({a}). The scene was not changed. "
+            f"Swap the two values ({first}={b}, {second}={a}) and ask again."))
+
+
 # 진행 알림에 보일 사람 말(레시피 파일 이름 대신). 레시피를 새로 만들면 여기에도 더한다(tests/test_server_progress.py 가 확인).
 def recipe_labels() -> dict[str, str]:
     """레시피 이름 → 지금 언어의 사람 말."""
@@ -431,11 +454,27 @@ def _check_bake_space() -> None:
         f"Run clear_caches to delete baked caches, or point BLENDER_FX_OUT to a folder on a disk with more space, then ask again. (folder: {root})"))
 
 
+# [x, y, z] 위치 인자. 길이가 틀리면 레시피가 옛 효과를 지운 뒤 IndexError 로 멈추던 것을 서버에서 먼저 막는다
+POINT_PARAMS = ("at", "domain_at")
+
+
+def check_points(params: dict) -> None:
+    for name in POINT_PARAMS:
+        value = params.get(name)
+        if isinstance(value, (list, tuple)) and len(value) != 3:
+            raise BlenderError(t(f"{name} 은(는) [x, y, z] 숫자 세 개로 주세요(지금 {list(value)}). 예: {name}=[0, 0, 1]. "
+                                 "장면은 바꾸지 않았습니다.",
+                                 f"Give {name} as three numbers [x, y, z] (got {list(value)}), e.g. {name}=[0, 0, 1], "
+                                 "and ask again. The scene was not changed."))
+
+
 def run_recipe(recipe: str, params: dict, timeout: float | None = None) -> dict:
     params = {k: v for k, v in params.items() if v is not None}
     check_finite(params)
+    check_points(params)
     check_choices(recipe, params)
     check_ranges(recipe, params)
+    check_order(recipe, params)
     params.setdefault("_lang", "en" if is_en() else "ko")
     if params.get("cache_dir"):
         _check_bake_space()
@@ -444,10 +483,22 @@ def run_recipe(recipe: str, params: dict, timeout: float | None = None) -> dict:
     res = parse_result(stdout)
     if not res.get("ok"):
         msg = res.get("error", t("(원인 없음)", "(no reason given)"))
+        msg += help_link(msg)
         if res.get("traceback"):
             msg += "\n" + res["traceback"]
         raise BlenderError(msg)
     return res
+
+
+def help_link(error: str) -> str:
+    """레시피 오류 문장에 맞는 해결법 절 링크(" 해결법: …#절"). 표(help_index.py)에 없거나 이미 링크가 있으면 빈 문자열."""
+    if bridge.TROUBLESHOOTING_URL in error:
+        return ""
+    for phrase, anchor in RECIPE_HELP.items():
+        if phrase in error:
+            url = f"{bridge.TROUBLESHOOTING_URL}#{anchor}"
+            return t(f" 해결법: {url}", f" Help: {url}")
+    return ""
 
 
 def _fail(e: Exception) -> str:
@@ -495,14 +546,14 @@ def _cache_dirs() -> dict:
 def doctor() -> CallToolResult:
     """Check prerequisites (python, mcp, uv, Blender, receiver add-on, connection, output folder).
     준비물 점검. 뭔가 안 될 때 먼저 부른다."""
-    from .doctor import check_rows, failed, format_report, run_checks
+    from .doctor import check_rows, failed, format_report, help_urls, run_checks
     # 이 도구를 부른 클라이언트가 곧 등록돼 있다는 증거라 클라이언트 등록 항목은 뺀다(엉뚱한 등록 명령을 권하지 않게)
     checks = run_checks(clients=False)
     text = format_report(checks)
     # 항목마다 ok·다음 할 일(fix)을 구조화 값으로도 준다. AI 가 실패한 항목과 고칠 방법을 문장에서 다시 찾지 않는다
     bad = [c["id"] for c in failed(checks)]
     return _with_data(text, dict(ok=not bad, failed=bad, checks=check_rows(checks),
-                                 help=bridge.TROUBLESHOOTING_URL if bad else None, summary=text))
+                                 help=help_urls(checks)[0] if bad else None, summary=text))
 
 
 @mcp.tool(annotations=READ_ONLY)
@@ -596,7 +647,33 @@ def import_model(path: str, name: str = "", size: float = 0.0, on_ground: bool =
     )
     if res.get("source"):
         text += t(f" 파일: {res['source']}", f" File: {res['source']}")
-    return [text + _preview_note(rend)] + _images(rend["paths"])
+    notes = list(res.get("notes") or [])
+    unit = _unit_hint(s) if size <= 0 else ""
+    if unit:
+        notes.append(unit)
+    return [text + _notes(dict(notes=notes)) + _preview_note(rend)] + _images(rend["paths"])
+
+
+# 가져온 모델의 가장 긴 변이 이 범위 밖이면 단위(cm·mm)가 다르게 저장된 파일일 때가 많다
+UNIT_HINT_MIN_M, UNIT_HINT_MAX_M = 0.05, 500.0
+
+
+def _unit_hint(size_m: list) -> str:
+    """size 를 주지 않고 가져온 모델이 아주 작거나 크면, 단위 탓일 수 있다고 알리고 다시 가져올 size 값을 짐작해 준다."""
+    longest = max(size_m or [0.0])
+    if UNIT_HINT_MIN_M <= longest <= UNIT_HINT_MAX_M:
+        return ""
+    if longest < UNIT_HINT_MIN_M:
+        guess = round(longest * 100, 2)
+        return t(f"가장 긴 변이 {longest}m 로 아주 작습니다. 파일이 cm·mm 단위로 저장됐을 수 있고, 그대로면 부수기·물 격자가 어긋납니다. "
+                 f"실제 크기(m)로 다시 가져오세요: import_model(size={guess}) (cm 였다면 {guess}m).",
+                 f"The longest side is only {longest}m. The file may be saved in cm or mm, which throws off destroy and water grids. "
+                 f"Import again at the real size in metres: import_model(size={guess}) ({guess}m if it was cm).")
+    guess = round(longest / 100, 2)
+    return t(f"가장 긴 변이 {longest}m 로 아주 큽니다. 파일 단위가 cm·mm 인데 m 로 읽혔을 수 있고, 그대로면 부수기·물 격자가 어긋납니다. "
+             f"실제 크기(m)로 다시 가져오세요: import_model(size={guess}) (cm 였다면 {guess}m).",
+             f"The longest side is {longest}m. The file's units (cm or mm) may have been read as metres, which throws off "
+             f"destroy and water grids. Import again at the real size in metres: import_model(size={guess}) ({guess}m if it was cm).")
 
 
 @mcp.tool(annotations=DESTRUCTIVE)
@@ -754,7 +831,9 @@ def explode(
     if res.get("smoke_effectors"):
         text += t(f"조각 {res['smoke_effectors']}개가 연기를 막음. ", f"{res['smoke_effectors']} chunks block the smoke. ")
     text += t(f"미리보기 {rend['frames']} → {run_dir}", f"Preview {rend['frames']} → {run_dir}")
-    return [text] + _images(rend["paths"])
+    # 폭발 연기 공간은 반지름의 10배와 대상 크기 중 큰 쪽이라 power 로는 줄지 않는다
+    shrink = t("radius 를 줄이거나 더 작은 대상 고르기", "lower radius or pick a smaller target")
+    return [text + _emit_detail(res, shrink)] + _images(rend["paths"])
 
 
 # ---------- 물 ----------
@@ -827,7 +906,18 @@ def water(
         f"resolution {res['resolution']}, domain {res['domain_size_m']}m, {res['effectors']} obstacles. "
         f"Water moved {res['drift']} (x,y,z m). Preview {rend['frames']} → {run_dir}",
     )
-    return [text] + _images(rend["paths"])
+    return [text + _water_detail(res)] + _images(rend["paths"])
+
+
+def _water_detail(res: dict) -> str:
+    """격자 한 칸 크기와 더 잘게 하는 다음 값(resolution 두 배, 상한 320). 상한이면 공간을 줄이는 길을 알려 준다."""
+    cell, now = res["cell_m"], res["resolution"]
+    if now >= 320:
+        return t(f"\n격자 한 칸 {cell:.3f}m. resolution 이 상한 320 이라, 더 작은 물방울이 필요하면 domain_at·domain_size 로 물 공간을 줄이세요.",
+                 f"\nGrid cell {cell:.3f}m. resolution is at its 320 limit; for smaller droplets, shrink the liquid space with domain_at and domain_size.")
+    finer = min(320, now * 2)
+    return t(f"\n격자 한 칸 {cell:.3f}m. 더 작은 물방울이 필요하면 resolution={finer}(한 칸 {cell * now / finer:.3f}m, 굽기가 몇 배 느려짐).",
+             f"\nGrid cell {cell:.3f}m. For smaller droplets, use resolution={finer} (cell {cell * now / finer:.3f}m, bakes several times slower).")
 
 
 @mcp.tool(annotations=ADDITIVE)
@@ -859,13 +949,31 @@ def _emit(kind: str, target: str, at, radius: float, power: float, frames: int, 
         return _fail(e)
     where = t(f"대상 {res['target']}", f"target {res['target']}") if res["target"] else t(f"위치 {res['at']}", f"at {res['at']}")
     label = {"fire": t("불", "Fire"), "smoke": t("연기", "Smoke")}[kind]
+    auto = t("(자동)", " (auto)") if not resolution else ""  # 사용자가 준 값을 "자동"이라 하지 않는다
     text = t(
-        f"{label}: {where}, {res['emit_frames'][0]}~{res['emit_frames'][1]}프레임 동안 뿜음, 해상도 {res['resolution']}(자동), "
+        f"{label}: {where}, {res['emit_frames'][0]}~{res['emit_frames'][1]}프레임 동안 뿜음, 해상도 {res['resolution']}{auto}, "
         f"공간 {res['domain_size_m']}m. 미리보기 {rend['frames']} → {run_dir}",
         f"{label}: {where}, emitting frames {res['emit_frames'][0]}-{res['emit_frames'][1]}, "
-        f"resolution {res['resolution']} (auto), domain {res['domain_size_m']}m. Preview {rend['frames']} → {run_dir}",
+        f"resolution {res['resolution']}{auto}, domain {res['domain_size_m']}m. Preview {rend['frames']} → {run_dir}",
     )
-    return [text] + _images(rend["paths"])
+    return [text + _emit_detail(res)] + _images(rend["paths"])
+
+
+def _emit_detail(res: dict, shrink: str = "") -> str:
+    """불·연기 격자 한 칸 크기와 더 잘게 하는 다음 값(resolution 두 배, 상한 256). 상한이면 공간을 줄이는 길(shrink)을 알려 준다.
+    fire·smoke 의 공간은 대상(없으면 radius)과 power 로 커지므로 기본은 그 둘을 줄이거나 at 으로 좁히는 것이다."""
+    cell, now = res.get("cell_m"), res["resolution"]
+    if cell is None:  # 예전 레시피(cell_m 없음)와 섞여도 결과 문장은 그대로
+        return ""
+    if now >= 256:
+        how = shrink or t("radius·power 를 줄이거나 target 대신 at 으로 타는 곳을 좁히기",
+                          "lower radius or power, or use at instead of target to burn a smaller area")
+        return t(f"\n격자 한 칸 {cell:.3f}m. resolution 이 상한 256 이라, 불·연기가 뭉개져 보이면 공간을 줄이세요({how}).",
+                 f"\nGrid cell {cell:.3f}m. resolution is at its 256 limit; if the fire or smoke looks blurry, shrink the space ({how}).")
+    finer = min(256, now * 2)
+    return t(f"\n격자 한 칸 {cell:.3f}m. 불·연기가 뭉개져 보이면 resolution={finer}(한 칸 {cell * now / finer:.3f}m, 굽기가 몇 배 느려짐).",
+             f"\nGrid cell {cell:.3f}m. If the fire or smoke looks blurry, use resolution={finer} "
+             f"(cell {cell * now / finer:.3f}m, bakes several times slower).")
 
 
 @mcp.tool(annotations=ADDITIVE)
@@ -1034,15 +1142,22 @@ def set_timing(frame_start: int = 0, frame_end: int = 0, fps: int = 0, slow_from
     """Frame range, fps and slow motion.
     프레임 범위·fps·슬로모션. 0 은 '그대로'.
     slow_from~slow_to 구간 슬로모션은 리지드바디·연기·물에만 걸린다(파티클 제외).
-    global_slow(0.25 = 4배 느리게)는 장면 전체 시간을 늘려 파티클까지 전부 느려진다. 대신 길이가 늘어난다."""
+    global_slow(0.25 = 4배 느리게, 원래 속도 기준이라 다시 시켜도 겹치지 않고 1 이면 되돌림)는 장면 전체 시간을 늘려 파티클까지 전부 느려진다. 대신 길이가 늘어난다."""
     try:
         res = run_recipe("set_timing", dict(frame_start=frame_start or None, frame_end=frame_end or None,
                                             fps=fps or None, slow_from=slow_from or None, slow_to=slow_to or None,
                                             slow_factor=slow_factor, global_slow=global_slow or None), timeout=long_timeout())
     except BlenderError as e:
         return _fail(e)
-    text = t(f"타이밍: 프레임 {res['frame_range'][0]}~{res['frame_range'][1]}, {res['fps']}fps.",
-             f"Timing: frames {res['frame_range'][0]}-{res['frame_range'][1]}, {res['fps']}fps.")
+    first, last = res["frame_range"]
+    text = t(f"타이밍: 프레임 {first}~{last}, {_length(first, last, res['fps'])}.",
+             f"Timing: frames {first}-{last}, {_length(first, last, res['fps'])}.")
+    for name, (old, new) in (res.get("moved") or {}).items():
+        other = "frame_start" if name == "frame_end" else "frame_end"
+        text += t(f" 알림: {other} 에 맞춰 블렌더가 {name} 도 {old} → {new} 로 옮겼습니다. "
+                  f"원하는 길이가 아니면 frame_start·frame_end 를 함께 주세요.",
+                  f" Note: Blender also moved {name} from {old} to {new} to follow {other}. "
+                  f"If that is not the length you want, give frame_start and frame_end together.")
     if res.get("slow_motion"):
         sm = res["slow_motion"]
         text += t(f" 구간 슬로모션 {sm['frames'][0]}~{sm['frames'][1]} ×{sm['factor']} ({sm['applied_to']}).",
@@ -1052,6 +1167,16 @@ def set_timing(frame_start: int = 0, frame_end: int = 0, fps: int = 0, slow_from
         text += t(f" 전체 슬로모션 ×{g['factor']} (파티클 포함), 길이 {g['new_frame_end']}프레임.",
                   f" Global slow motion ×{g['factor']} (particles included), length now {g['new_frame_end']} frames.")
     return text
+
+
+def _length(first: int, last: int, fps: int) -> str:
+    """프레임 범위를 영상 길이로: "72프레임 = 24fps 로 3초". 프레임 수만으로는 몇 초짜리인지 모른다."""
+    frames = last - first + 1
+    secs = "?"
+    if fps > 0:  # 1초 아래는 소수 둘째 자리까지(1프레임 60fps 가 "0초" 로 보이지 않게)
+        secs = f"{frames / fps:.{1 if frames >= fps else 2}f}".rstrip("0").rstrip(".")
+    return t(f"{frames}프레임 = {fps}fps 로 {secs}초",
+             f"{frames} frame{'s' if frames != 1 else ''} = {secs}s at {fps}fps")
 
 
 @mcp.tool(annotations=SETTING)
@@ -1298,11 +1423,12 @@ def render_video(quality: str = "smoke", width: int = 0, height: int = 0, fps: i
     except BlenderError as e:
         return _fail(e)
     mb = res["size_bytes"] / 1_000_000
+    first, last = res["frames"]
     return t(
-        f"영상: {res['path']} ({mb:.1f}MB, {res['size'][0]}×{res['size'][1]}, {res['fps']}fps, "
-        f"프레임 {res['frames'][0]}~{res['frames'][1]}, {res['engine']})",
-        f"Video: {res['path']} ({mb:.1f}MB, {res['size'][0]}×{res['size'][1]}, {res['fps']}fps, "
-        f"frames {res['frames'][0]}-{res['frames'][1]}, {res['engine']})",
+        f"영상: {res['path']} ({mb:.1f}MB, {res['size'][0]}×{res['size'][1]}, "
+        f"프레임 {first}~{last} — {_length(first, last, res['fps'])}, {res['engine']})",
+        f"Video: {res['path']} ({mb:.1f}MB, {res['size'][0]}×{res['size'][1]}, "
+        f"frames {first}-{last} — {_length(first, last, res['fps'])}, {res['engine']})",
     )
 
 

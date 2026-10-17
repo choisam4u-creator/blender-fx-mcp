@@ -1,4 +1,5 @@
 # docs/troubleshooting.md 가 실제 오류 문장과 어긋나지 않는지 점검한다. 블렌더 없이 돈다.
+import ast
 import re
 from pathlib import Path
 
@@ -111,9 +112,9 @@ def test_doctor_report_links_doc_only_when_something_is_wrong(monkeypatch):
     from blender_fx_mcp.doctor import format_report
     monkeypatch.setenv("BLENDER_FX_LANG", "en")
     ok = [{"name": "python", "ok": True, "detail": "3.13"}]
-    bad = ok + [{"name": "receiver connection", "ok": False, "detail": "refused"}]
+    bad = ok + [{"id": "connection", "name": "receiver connection", "ok": False, "detail": "refused"}]
     assert bridge.TROUBLESHOOTING_URL not in format_report(ok)
-    assert format_report(bad).endswith(f"Help: {bridge.TROUBLESHOOTING_URL}")
+    assert format_report(bad).endswith(f"Help: {bridge.TROUBLESHOOTING_URL}#connection-refused")
 
 
 def test_readme_links_troubleshooting():
@@ -180,3 +181,260 @@ def test_uv_step_does_not_need_doctor(lang):
     uv_step = _first_render_steps(section)[0]
     assert "brew install uv" in uv_step and "astral.sh/uv/install.sh" in uv_step and "doctor" not in uv_step
     assert 'install.ps1 | iex"' in _doc().split("## uv not found", 1)[1].split("\n## ", 1)[0]
+
+
+# 서버가 블렌더에 보내기 전에 막는 오류(범위·선택지·순서). 실제로 만든 문장의 값이 아닌 부분이 문서에서 검색돼야 한다
+# (문서 첫머리가 "오류 문장 앞부분을 Ctrl+F 로 찾으세요" 이므로)
+REJECTIONS = [
+    (lambda s: s.check_ranges("set_timing", {"fps": -24}), "은(는) 범위 밖입니다. 가능한 범위:", "is out of range. Allowed:"),
+    (lambda s: s.check_choices("destroy", {"material": "rubber"}), "은(는) 쓸 수 없습니다. 가능한 값:", "is not allowed. Choose one of:"),
+    (lambda s: s.check_order("set_timing", {"frame_start": 100, "frame_end": 50}),
+     "보다 같거나 커야 합니다. 장면은 바꾸지 않았습니다.", "The scene was not changed."),
+    (lambda s: s.check_order("set_timing", {"slow_from": 40, "slow_to": 20}), "보다 커야 합니다.", "must be greater than"),
+    (lambda s: s.check_finite({"power": float("nan")}), "에 유한한 숫자를 주세요", "must be a finite number"),
+    (lambda s: s.check_points({"at": [1, 2]}), "은(는) [x, y, z] 숫자 세 개로 주세요", "as three numbers [x, y, z]"),
+]
+
+
+@pytest.mark.parametrize("call,ko,en", REJECTIONS, ids=[en for _, _, en in REJECTIONS])
+def test_server_rejections_are_searchable_in_the_doc(monkeypatch, call, ko, en):
+    from blender_fx_mcp import server
+    for lang, stem in (("ko", ko), ("en", en)):
+        monkeypatch.setenv("BLENDER_FX_LANG", lang)
+        with pytest.raises(bridge.BlenderError) as err:
+            call(server)
+        assert stem in str(err.value), f"서버 문장이 바뀜({lang}): {err.value}"
+        assert stem in _doc(), f"troubleshooting.md 에서 찾을 수 없는 서버 오류 문장: {stem}"
+    assert "argument-value-rejected" in _anchors(_doc())
+
+
+def test_every_server_check_has_a_documented_rejection():
+    """새 검사 함수(check_*)를 더하면 위 REJECTIONS 에도 문장을 더한다."""
+    from blender_fx_mcp import server
+    checks = {n for n in dir(server) if n.startswith("check_") and callable(getattr(server, n))}
+    src = (ROOT / "tests" / "test_troubleshooting.py").read_text(encoding="utf-8")
+    assert checks <= {n for n in checks if f"s.{n}(" in src}, checks
+
+
+# 문서의 인용 오류 문장(`> …`)마다 그 문구가 실제 소스 문자열에 있는지. 숫자·[…]·'…'·(…)·… 는 자리표시로 보고(괄호 안은 끼워 만든 말이 많음),
+# 영문 식별자(at·BLENDER_FX_TIMEOUT·GB·ConnectionResetError)는 f-string 자리표시 {…} 와도 맞는다고 본다.
+# 문서를 손으로 맞추다 실제 문장과 어긋나면 사용자가 Ctrl+F 로 못 찾는다(PHRASES 는 고른 문장만 지킨다).
+QUOTE_EXEMPT = {
+    # 셸이 내는 문장(우리 소스가 아님)
+    "zsh: command not found: uvx",
+    "'uvx' is not recognized as an internal or external command",
+    # t() 로 고른 말(같거나 커야/커야)을 끼워 만드는 문장: REJECTIONS 가 실제로 만든 문장으로 확인한다
+    "… 보다 같거나 커야 합니다. 장면은 바꾸지 않았습니다.",
+    "… 보다 커야 합니다. 장면은 바꾸지 않았습니다.",
+}
+_PLACEHOLDER = r"…|\([^()]*\)|\d+(?:\.\d+)?|\[[^\]]*\]|'[^']*'|\bnan\b"
+
+
+def _quotes():
+    return [line[2:].strip() for line in _doc().splitlines() if line.startswith("> ")]
+
+
+def _fragments(quote):
+    """자리표시로 자른 조각 중 검색에 쓸 만한 것(4자 이상)."""
+    return [f.strip(" .,:()") for f in re.split(_PLACEHOLDER, quote) if len(f.strip(" .,:()")) >= 4]
+
+
+def _fragment_regex(fragment):
+    parts = re.split(r"([A-Za-z_][A-Za-z0-9_]*)", fragment)
+    return "".join(f"(?:{re.escape(p)}|\\{{[^{{}}]*\\}})" if i % 2 else re.escape(p) for i, p in enumerate(parts))
+
+
+def _source_text():
+    return "\n".join(p.read_text(encoding="utf-8") for p in sorted(SRC.rglob("*.py")))
+
+
+def _missing_fragments(quote, source):
+    return [f for f in _fragments(quote) if not re.search(_fragment_regex(f), source)]
+
+
+@pytest.mark.parametrize("quote", [q for q in _quotes() if q not in QUOTE_EXEMPT])
+def test_every_quoted_error_exists_in_source(quote):
+    assert _fragments(quote), f"자리표시만 있는 인용 문장: {quote!r}"
+    missing = _missing_fragments(quote, _source_text())
+    assert not missing, f"troubleshooting.md 의 인용 {quote!r} 중 소스에 없는 문구 {missing} — 실제 오류 문장과 맞추세요"
+
+
+def test_quote_exemptions_are_still_quoted():
+    assert QUOTE_EXEMPT <= set(_quotes()), f"문서에서 사라진 예외: {QUOTE_EXEMPT - set(_quotes())}"
+    assert len(_quotes()) - len(QUOTE_EXEMPT) >= 40, "훑는 인용이 너무 적음"
+
+
+def test_quote_checker_catches_a_drifted_sentence():
+    # 변이: 문서만 고친 문장은 잡고, 숫자·인자 이름이 들어간 실제 문장은 통과
+    source = 'raise FxError(L(f"물 덩어리({a:.2f}m)가 격자 한 칸보다 작습니다.", f"Give {name} as three numbers (got {v!r})"))'
+    assert _missing_fragments("물 덩어리(0.10m)가 격자 한 칸보다 작습니다.", source) == []
+    assert _missing_fragments("Give at as three numbers (got [1, 2]).", source) == []
+    assert _missing_fragments("물 덩어리(0.10m)가 격자 한 칸보다 훨씬 작습니다.", source) == ["가 격자 한 칸보다 훨씬 작습니다"]
+    assert _missing_fragments("Give at as four numbers.", source) == ["Give at as four numbers"]
+
+
+# ---- 레시피 FxError 문장 → 문서 방향 ----
+# 위 PHRASES 는 문서에 인용한 문장이 소스에 있는지(문서 → 소스)를 본다. 여기서는 반대로, 레시피가 내는 FxError(L(한, 영)) 마다
+# 첫 문장의 가장 긴 고정 조각(값 자리 {…} 사이)이 문서에 있는지 본다. 사용자는 오류 문장 앞부분을 Ctrl+F 로 찾으니까.
+# 아직 문서에 절이 없는 오류(영어 열쇠). 줄이기만 한다: 절을 쓰면 여기서 지우고, 새 FxError 는 문서에 쓰거나 근거와 함께 넣는다.
+# 대부분 서버가 블렌더에 보내기 전에 막거나(선택지·글자) 블렌더 안쪽 고장이라 사용자가 거의 보지 못하는 것들이다.
+UNDOCUMENTED = {
+    "Could not add rigid body physics to",   # 블렌더 안쪽 고장, 버그 신고 대상
+    "Could not create the",                  # 같음(_common 의 힘장 만들기: "Could not create the {종류} force field")
+    "Could not create the force field",      # 같음(explode)
+}
+# "<인자> must be …" 선택지 오류는 서버 CHOICES 가 블렌더에 보내기 전에 막아 사용자는 "is not allowed. Choose one of:" 를 본다(문서 절 있음).
+# 레시피 쪽 문장은 서버를 거치지 않는 호출의 마지막 방어선이라 문서에 따로 쓰지 않는다. 대신 그 인자가 정말 CHOICES 에 있는지 본다.
+CHOICE_ERROR = re.compile(r"^(?:\w+ )?(\w+) must be (?:one of|\w+ or \w+|\w+ / \w+ / \w+)")
+
+
+def _gen_help_index():
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("gen_help_index", ROOT / "scripts" / "gen_help_index.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+# 열쇠 뽑기는 서버의 해결법 링크 표(scripts/gen_help_index.py)와 같은 함수를 쓴다
+_gen = _gen_help_index()
+_key, recipe_errors = _gen.key, _gen.recipe_errors
+
+
+def undocumented_errors():
+    doc = _doc()
+    return {(f, line, en) for f, line, ko, en in recipe_errors()
+            if not ((ko and ko in doc) or (en and en in doc)) and not CHOICE_ERROR.match(en)}
+
+
+def test_recipe_choice_errors_are_blocked_by_the_server_first():
+    from blender_fx_mcp import server
+    guarded = {arg for args in server.CHOICES.values() for arg in args}
+    names = {CHOICE_ERROR.match(en).group(1) for _, _, _, en in recipe_errors() if CHOICE_ERROR.match(en)}
+    assert len(names) >= 8, names
+    assert names <= guarded, f"서버가 먼저 막지 않는 선택지 인자 {names - guarded} — server.CHOICES 에 넣거나 문서에 절을 쓰세요"
+
+
+def test_recipe_errors_are_found_by_the_checker():
+    # 훑기가 헛돌지 않게: 레시피 오류 문장 50개 이상을 보고, 열쇠를 못 뽑은 문장이 없다
+    errors = recipe_errors()
+    assert len(errors) >= 50
+    assert all(en for _, _, _, en in errors), [e for e in errors if not e[3]]
+
+
+def test_every_recipe_error_is_documented_or_listed():
+    missing = undocumented_errors()
+    new = sorted((f, line, en) for f, line, en in missing if en not in UNDOCUMENTED)
+    assert not new, (f"troubleshooting.md 에서 찾을 수 없는 레시피 오류 문장 {new} — 맞는 절에 한/영 인용(> …)과 다음 할 일을 쓰세요"
+                     "(사용자가 볼 일이 거의 없으면 UNDOCUMENTED 에 근거와 함께).")
+
+
+def test_undocumented_list_only_shrinks():
+    # 문서에 쓴 오류는 UNDOCUMENTED 에서 지운다(목록이 실제 빈칸을 가리키게)
+    still = {en for _, _, en in undocumented_errors()}
+    assert UNDOCUMENTED <= still, f"이제 문서에 있으니 UNDOCUMENTED 에서 지우세요: {UNDOCUMENTED - still}"
+
+
+def test_recipe_error_key_cuts_at_values_and_first_sentence():
+    tree = ast.parse("""f"No mesh object named '{name}'. Did you mean {g}?" """, mode="eval")
+    assert _key(tree.body, 8) == "No mesh object named"
+    tree = ast.parse("""f"Snapshot file not found: {path}. Existing: {x}." """, mode="eval")
+    assert _key(tree.body, 8) == "Snapshot file not found"
+    assert _key(ast.parse("'ab'", mode="eval").body, 8) is None
+
+
+# ---- 서버 오류 문장 → 문서 방향 ----
+# 서버(server.py·bridge.py)가 블렌더에 보내기 전·후에 내는 BlenderError(t(한, 영)) 도 레시피 오류처럼 문서에서 찾을 수 있어야 한다.
+# 검사 함수(check_*)의 문장은 값이 끼어 열쇠를 못 뽑으므로 위 REJECTIONS 가 실제로 만든 문장으로 본다.
+SERVER_UNDOCUMENTED = {
+    "must be a number of meters, 0 or more",   # /my_model 프롬프트 인자 오류: 문장이 고칠 값을 말하고, 도구 오류가 아니라 AI 에게 보이는 안내
+}
+
+
+def server_errors():
+    """[(어디, 한 열쇠, 영 열쇠)] — 서버 쪽 BlenderError(t(…)) 와 _missing_snapshot 의 문장."""
+    from test_server_next_steps import _t_pairs
+    return [(where, _key(call.args[0], 5), _key(call.args[1], 8)) for where, call in _t_pairs()]
+
+
+def test_server_errors_are_found_by_the_checker():
+    errors = server_errors()
+    assert len(errors) >= 20
+    assert {w.split(":")[0] for w, _, _ in errors} == {"bridge.py", "server.py"}
+
+
+def test_every_server_error_is_documented_or_listed():
+    doc = _doc()
+    rejected = {stem for _, ko, en in REJECTIONS for stem in (ko, en)}
+    missing = []
+    for where, ko, en in server_errors():
+        if ko is None and en is None:
+            continue  # 값으로만 이은 문장(check_order): REJECTIONS 가 본다
+        if (ko and ko in doc) or (en and en in doc) or en in SERVER_UNDOCUMENTED or (en and any(en in r for r in rejected)):
+            continue
+        missing.append((where, en))
+    assert not missing, f"troubleshooting.md 에서 찾을 수 없는 서버 오류 문장 {missing} — 맞는 절에 한/영 인용(> …)과 다음 할 일을 쓰세요"
+    still = {en for _, _, en in server_errors()}
+    assert SERVER_UNDOCUMENTED <= still, f"소스에서 사라진 예외: {SERVER_UNDOCUMENTED - still}"
+    assert not [e for e in SERVER_UNDOCUMENTED if e in doc], "이제 문서에 있으니 SERVER_UNDOCUMENTED 에서 지우세요"
+
+
+# ---- 레시피 오류 → 해결법 절 링크 ----
+# 서버가 레시피 오류 문장 끝에 "해결법: …#절" 을 붙인다(src/blender_fx_mcp/help_index.py, scripts/gen_help_index.py 가 만듦).
+
+def test_help_index_matches_doc_and_recipes():
+    assert _gen.main([]) == 0, "uv run python scripts/gen_help_index.py --write 로 표를 새로 쓰세요"
+    from blender_fx_mcp.help_index import RECIPE_HELP
+    assert len(RECIPE_HELP) >= 45
+    assert set(RECIPE_HELP.values()) <= _anchors(_doc()), set(RECIPE_HELP.values()) - _anchors(_doc())
+
+
+def test_help_index_check_catches_drift(monkeypatch, tmp_path):
+    stale = tmp_path / "help_index.py"
+    stale.write_text(_gen.render({"No mesh object named": "timeout"}), encoding="utf-8")
+    monkeypatch.setattr(_gen, "OUT", stale)
+    assert _gen.main([]) == 1
+    assert _gen.main(["--bad"]) == 2
+    monkeypatch.setattr(_gen, "ROOT", tmp_path)
+    assert _gen.main(["--write"]) == 0 and stale.read_text(encoding="utf-8") == _gen.render(_gen.build())
+
+
+def test_every_documented_recipe_error_links_its_own_section(monkeypatch):
+    """문서에 있는 레시피 오류마다, 서버가 고르는 링크가 그 문장이 실제로 설명된 절이어야 한다(긴 열쇠부터 맞추는 순서가 엇갈리지 않게)."""
+    from blender_fx_mcp import server
+    doc = _doc()
+    seen = 0
+    for lang in ("ko", "en"):
+        monkeypatch.setenv("BLENDER_FX_LANG", lang)
+        for _f, _line, ko, en in recipe_errors():
+            for k in (ko, en):
+                sec = _gen.section_of(doc, k) if k else None
+                if sec:
+                    assert server.help_link(f"{k}. 다음 문장").endswith(f"{bridge.TROUBLESHOOTING_URL}#{sec}"), k
+                    seen += 1
+    assert seen >= 90
+
+
+@pytest.mark.parametrize("lang,error,word,anchor", [
+    ("ko", "'Towr' 이름의 메시 오브젝트가 없습니다. 혹시 'Tower' 인가요?", "해결법:", "object-or-file-not-found"),
+    ("en", "The liquid bake produced nothing. Raise resolution.", "Help:", "fluid-bake-failed"),
+])
+def test_recipe_error_from_blender_carries_help_link(monkeypatch, lang, error, word, anchor):
+    import json
+
+    from blender_fx_mcp import server
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    out = "FX_RESULT " + json.dumps({"ok": False, "error": error, "traceback": "Traceback (most recent call last): …"})
+    monkeypatch.setattr(server.bridge, "run_python", lambda code, timeout=None: out)
+    with pytest.raises(bridge.BlenderError) as err:
+        server.run_recipe("list_objects", {})
+    first = str(err.value).splitlines()[0]
+    assert first == f"{error} {word} {bridge.TROUBLESHOOTING_URL}#{anchor}", first
+    assert str(err.value).endswith("Traceback (most recent call last): …")
+
+
+def test_help_link_quiet_for_unknown_or_already_linked():
+    from blender_fx_mcp import server
+    assert server.help_link("Could not create the vortex force field.") == ""   # UNDOCUMENTED: 표에 없음
+    assert server.help_link(f"No mesh object named 'x'. Help: {bridge.TROUBLESHOOTING_URL}#timeout") == ""
