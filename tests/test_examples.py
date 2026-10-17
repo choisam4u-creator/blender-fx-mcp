@@ -296,7 +296,7 @@ PNG = bytes.fromhex("89504e470d0a1a0a0000000d4948445200000001000000010806000000"
                     "1f15c4890000000d49444154789c6360000002000154a24f5d0000000049454e44ae426082")
 
 
-def _fake_receiver(port_holder, calls, fail="", slow=None):
+def _fake_receiver(port_holder, calls, fail="", slow=None, error="pieces is too big. Try 50-400.", traceback=""):
     """blender-mcp 애드온과 같은 규약(JSON 한 덩어리 요청 → JSON 응답)으로 답하는 수신기.
     execute_code 의 코드가 어느 레시피인지 레시피 파일 본문으로 알아내고, 그 레시피가 내는 FX_RESULT 를 흉내 낸다.
     render 는 PARAMS 의 out_dir 에 실제 PNG 를 만든다(예제가 그 경로를 출력하는지 보려고)."""
@@ -327,7 +327,8 @@ def _fake_receiver(port_holder, calls, fail="", slow=None):
             import time
             time.sleep(slow[name])
         if name == fail:  # 레시피가 블렌더 안에서 실패하면 emit_result(ok=False, error=…) 를 낸다
-            return {"result": "FX_RESULT " + json.dumps({"ok": False, "error": "pieces is too big. Try 50-400."}) + "\n"}
+            bad = {"ok": False, "error": error, **({"traceback": traceback} if traceback else {})}
+            return {"result": "FX_RESULT " + json.dumps(bad, ensure_ascii=False) + "\n"}
         res = dict(common)
         if name == "render":
             out = Path(params["out_dir"])
@@ -427,6 +428,50 @@ def test_first_render_recipe_failure_with_fake_receiver(monkeypatch, capsys, tmp
     assert code == 1
     assert calls == ["snapshot", "demo_scene", "render", "destroy"]
     assert out[-2] == "destroy: Failed: pieces is too big. Try 50-400." and out[-1] == example.undo_line()
+
+
+@pytest.mark.parametrize("lang, error, word, anchor", [
+    ("ko", "'Towr' 이름의 메시 오브젝트가 없습니다. 혹시 'Tower' 인가요?", "해결법:", "object-or-file-not-found"),
+    ("en", "No mesh object named 'Towr'. Did you mean 'Tower'?", "Help:", "object-or-file-not-found"),
+])
+def test_help_link_survives_real_stdio_tool_result(monkeypatch, tmp_path, lang, error, word, anchor):
+    """배포 형태 그대로(서버를 stdio 하위 프로세스로) 레시피 오류·서버 쪽 오류가 도구 결과 문장에서 "실패: … 해결법: …#절" 로 보이는지.
+    run_recipe 가 붙인 링크가 _fail·MCP 직렬화를 지나며 빠지거나 두 번 붙지 않고, 블렌더 traceback 은 첫 줄 뒤에 남는다.
+    실패한 도구는 하위 프로세스 서버가 출력 폴더 last_error.txt 에 남긴다(doctor --issue 가 읽음)."""
+    import asyncio
+
+    from mcp import ClientSession
+    from mcp.client.stdio import stdio_client
+
+    from blender_fx_mcp import bridge
+
+    port, calls = [], []
+    srv = _fake_receiver(port, calls, fail="destroy", error=error, traceback="Traceback (most recent call last):\n  boom")
+
+    async def go():
+        params = _load("list_tools").server_params([])
+        async with stdio_client(params) as (read, write):
+            async with ClientSession(read, write) as session:
+                await session.initialize()
+                recipe = await session.call_tool("destroy", {"target": "Towr"})
+                server_side = await session.call_tool("restore", {"name": "nope"})
+                return recipe.content[0].text, server_side.content[0].text
+
+    try:
+        monkeypatch.setenv("BLENDER_FX_PORT", str(port[0]))
+        monkeypatch.setenv("BLENDER_FX_LANG", lang)
+        monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path / "out"))
+        recipe, server_side = asyncio.run(go())
+    finally:
+        srv.close()
+    failed = "실패: " if lang == "ko" else "Failed: "
+    first, rest = recipe.split("\n", 1)
+    assert first == f"{failed}{error} {word} {bridge.TROUBLESHOOTING_URL}#{anchor}", first
+    assert rest.startswith("Traceback (most recent call last):") and recipe.count(bridge.TROUBLESHOOTING_URL) == 1
+    assert calls == ["destroy"]
+    assert server_side.startswith(failed) and server_side.endswith(f" {word} {bridge.TROUBLESHOOTING_URL}#object-or-file-not-found"), server_side
+    when, tool, line = (tmp_path / "out" / "last_error.txt").read_text(encoding="utf-8").rstrip("\n").split("\t")
+    assert tool == "restore" and "nope" in line and bridge.TROUBLESHOOTING_URL not in line   # 신고용이라 문장 첫 줄만
 
 
 @pytest.mark.parametrize("lang, label", [("ko", "장면 저장 중 — "), ("en", "Saving the scene — ")])
