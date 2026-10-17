@@ -634,7 +634,33 @@ def import_model(path: str, name: str = "", size: float = 0.0, on_ground: bool =
     )
     if res.get("source"):
         text += t(f" 파일: {res['source']}", f" File: {res['source']}")
-    return [text + _preview_note(rend)] + _images(rend["paths"])
+    notes = list(res.get("notes") or [])
+    unit = _unit_hint(s) if size <= 0 else ""
+    if unit:
+        notes.append(unit)
+    return [text + _notes(dict(notes=notes)) + _preview_note(rend)] + _images(rend["paths"])
+
+
+# 가져온 모델의 가장 긴 변이 이 범위 밖이면 단위(cm·mm)가 다르게 저장된 파일일 때가 많다
+UNIT_HINT_MIN_M, UNIT_HINT_MAX_M = 0.05, 500.0
+
+
+def _unit_hint(size_m: list) -> str:
+    """size 를 주지 않고 가져온 모델이 아주 작거나 크면, 단위 탓일 수 있다고 알리고 다시 가져올 size 값을 짐작해 준다."""
+    longest = max(size_m or [0.0])
+    if UNIT_HINT_MIN_M <= longest <= UNIT_HINT_MAX_M:
+        return ""
+    if longest < UNIT_HINT_MIN_M:
+        guess = round(longest * 100, 2)
+        return t(f"가장 긴 변이 {longest}m 로 아주 작습니다. 파일이 cm·mm 단위로 저장됐을 수 있고, 그대로면 부수기·물 격자가 어긋납니다. "
+                 f"실제 크기(m)로 다시 가져오세요: import_model(size={guess}) (cm 였다면 {guess}m).",
+                 f"The longest side is only {longest}m. The file may be saved in cm or mm, which throws off destroy and water grids. "
+                 f"Import again at the real size in metres: import_model(size={guess}) ({guess}m if it was cm).")
+    guess = round(longest / 100, 2)
+    return t(f"가장 긴 변이 {longest}m 로 아주 큽니다. 파일 단위가 cm·mm 인데 m 로 읽혔을 수 있고, 그대로면 부수기·물 격자가 어긋납니다. "
+             f"실제 크기(m)로 다시 가져오세요: import_model(size={guess}) (cm 였다면 {guess}m).",
+             f"The longest side is {longest}m. The file's units (cm or mm) may have been read as metres, which throws off "
+             f"destroy and water grids. Import again at the real size in metres: import_model(size={guess}) ({guess}m if it was cm).")
 
 
 @mcp.tool(annotations=DESTRUCTIVE)
