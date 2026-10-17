@@ -501,12 +501,26 @@ def help_link(error: str) -> str:
     return ""
 
 
+LAST_ERROR = "last_error.txt"  # 출력 폴더에 남기는 마지막 실패(blender-fx-doctor --issue 가 읽어 신고에 붙인다)
+
+
 def _fail(e: Exception) -> str:
-    """도구 실패 문장. 서버 쪽 오류(스냅샷 없음·예약 이름·FX_RESULT 없음 등)에도 첫 줄 끝에 해결법 링크를 붙인다(이미 있으면 그대로)."""
+    """도구 실패 문장. 서버 쪽 오류(스냅샷 없음·예약 이름·FX_RESULT 없음 등)에도 첫 줄 끝에 해결법 링크를 붙인다(이미 있으면 그대로).
+    도구 이름(부른 함수)과 첫 줄을 출력 폴더 last_error.txt 에 남겨, 신고할 때 오류 문장을 따로 복사하지 않아도 되게 한다."""
     msg = str(e)
     first, sep, rest = msg.partition("\n")
     msg = first + help_link(msg) + sep + rest
+    _record_failure(inspect.currentframe().f_back.f_code.co_name, first)
     return t(f"실패: {msg}", f"Failed: {msg}")
+
+
+def _record_failure(tool: str, first_line: str) -> None:
+    """마지막 실패 한 줄(시각·도구·문장 첫 줄 300자)을 덮어쓴다. 못 써도 도구 결과는 그대로 돌려준다."""
+    try:
+        line = " ".join((first_line.splitlines() or [""])[0].split())[:300]
+        (out_root() / LAST_ERROR).write_text(f"{time.strftime('%Y-%m-%d %H:%M')}\t{tool}\t{line}\n", encoding="utf-8")
+    except OSError:
+        pass
 
 
 def _with_data(text: str, data: dict) -> CallToolResult:

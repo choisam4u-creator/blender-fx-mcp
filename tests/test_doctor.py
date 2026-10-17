@@ -485,6 +485,45 @@ def test_issue_markdown_masks_home_and_matches_report(monkeypatch, capsys, tmp_p
     assert f"| {lang} (BLENDER_FX_LANG) |" in out  # 언어와 그 근거(lang_source)
 
 
+@pytest.mark.parametrize("lang,label", [("ko", "최근 실패한 도구"), ("en", "Last failed tool")])
+def test_issue_carries_last_failed_tool(monkeypatch, tmp_path, lang, label):
+    """서버가 실패한 도구(이름·문장 첫 줄)를 출력 폴더 last_error.txt 에 남기고, --issue 가 그 한 줄을 표에 붙인다(집 폴더는 ~)."""
+    from blender_fx_mcp import server
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path / "out"))
+    monkeypatch.delenv("BLENDER_FX_HOST", raising=False)
+    monkeypatch.setattr(doctor, "registered_clients", lambda: [])
+    assert f"| {label} | - |" in doctor.format_issue([]), "실패가 없으면 -"
+
+    server.restore("no|such")   # 스냅샷 없음(블렌더 없이 서버가 막음)
+    saved = (tmp_path / "out" / server.LAST_ERROR).read_text(encoding="utf-8")
+    assert saved.count("\n") == 1 and saved.split("\t")[1] == "restore", saved
+    row = next(r for r in doctor.format_issue([]).splitlines() if r.startswith(f"| {label} |"))
+    assert row.startswith(f"| {label} | `restore`: ") and "no_such" in row and row.endswith(") |"), row
+    assert "Traceback" not in row and "\t" not in row
+
+    # 집 폴더가 든 실패 문장도 가린다. 표 칸을 깨는 | 는 \| 로
+    home = str(tmp_path / "home" / "sam")
+    monkeypatch.setattr(doctor.os.path, "expanduser", lambda p: home if p == "~" else p)
+    server._record_failure("import_model", f"파일이 없습니다: {home}/a|b.glb\n두 번째 줄")
+    out = doctor.format_issue([])
+    assert "`import_model`: 파일이 없습니다: ~/a\\|b.glb (" in out and "sam" not in out and "두 번째 줄" not in out
+
+
+def test_last_failure_quiet_when_broken_and_record_never_raises(monkeypatch, tmp_path):
+    from blender_fx_mcp import server
+    monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path))
+    (tmp_path / "last_error.txt").write_text("줄 하나뿐\n", encoding="utf-8")
+    assert doctor.last_failure() is None
+    (tmp_path / "last_error.txt").write_bytes(b"\xff\xfe\t\t")
+    assert doctor.last_failure() is None
+
+    def broken():
+        raise OSError("read-only")
+    monkeypatch.setattr(server, "out_root", broken)
+    assert server._fail(bridge.BlenderError("Something odd.")).endswith("Something odd.")   # 못 써도 결과는 그대로
+
+
 def test_issue_and_json_are_exclusive(capsys):
     with pytest.raises(SystemExit) as e:
         doctor.main(["--json", "--issue"])

@@ -293,7 +293,7 @@ def run_checks(clients: bool = True, updates: bool | None = None) -> list[dict]:
                           optional=True))
 
     name_out = t("출력 폴더", "output folder")
-    root = os.path.expanduser(os.environ.get("BLENDER_FX_OUT", "~/blender-fx-output"))
+    root = out_dir()
     try:
         os.makedirs(root, exist_ok=True)
         test = os.path.join(root, ".write_test")
@@ -423,6 +423,22 @@ def mask_home(text: str) -> str:
     return text
 
 
+def out_dir() -> str:
+    """서버와 같은 출력 폴더(BLENDER_FX_OUT, 기본 ~/blender-fx-output). 만들지는 않는다."""
+    return os.path.expanduser(os.environ.get("BLENDER_FX_OUT", "~/blender-fx-output"))
+
+
+def last_failure() -> str | None:
+    """서버가 출력 폴더 last_error.txt 에 남긴 마지막 도구 실패를 "도구: 문장 (시각)" 으로(마크다운 표 칸이라 | 는 \\|). 없거나 못 읽으면 None."""
+    try:
+        with open(os.path.join(out_dir(), "last_error.txt"), encoding="utf-8") as f:
+            when, tool, line = f.readline().rstrip("\n").split("\t", 2)
+    except (OSError, ValueError, UnicodeDecodeError):
+        return None
+    line = line.replace("|", "\\|")
+    return f"`{tool}`: {line} ({when})"
+
+
 def format_issue(checks: list[dict]) -> str:
     """이슈에 그대로 붙일 마크다운. 집 폴더는 ~ 로 가린다. 항목·결과는 format_report 와 같다."""
     clients = ", ".join(registered_clients()) or "-"
@@ -435,6 +451,8 @@ def format_issue(checks: list[dict]) -> str:
         (t("MCP 클라이언트", "MCP clients"), clients),
         (t("언어", "Language"), f"{'en' if is_en() else 'ko'} ({lang_source()})"),
         (t("수신기", "Receiver"), f"{bridge.host()}:{bridge.port()}"),
+        # 서버가 남긴 마지막 도구 실패. 신고할 때 오류 문장을 따로 복사해 붙이지 않아도 되게
+        (t("최근 실패한 도구", "Last failed tool"), last_failure() or "-"),
     ]
     table = "\n".join(f"| {k} | {val} |" for k, val in rows)
     head = t("blender-fx-doctor 결과", "blender-fx-doctor result")
