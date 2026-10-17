@@ -5,10 +5,35 @@
 한 번에 돌려 `latest.md` 를 새로 쓰려면 `uv run python scripts/mac_report.py`(결과 확인 뒤 커밋). 클라우드 회차는 그 FAIL 부터 고친다.
 
 ```sh
-uv sync && uv run pytest -q                        # 블렌더 앱으로 전체 통과(새: 레시피 오류 문장→문서 시험·도우미 따라가는 읽기 순서 시험)
-uv run python -c "from blender_fx_mcp import server; print(server.fire(resolution=64, frames=24))"   # Connect 뒤: 끝에 '격자 한 칸 …m. 불·연기가 뭉개져 보이면 resolution=128(…)', '(자동)' 없음
-uv run python scripts/triage_report.py --all       # gh 로그인 상태: 첫 답 목표 표(관리자·봇 PR 은 빠짐), 넘은 것이 있으면 종료 코드 1
+uv sync && uv run pytest -q                        # 블렌더 앱으로 전체 통과(새: 해결법 링크 표·서버 오류→문서·triage 워크플로·import 단위 안내 시험)
+uv run python -c "from blender_fx_mcp import server; print(server.destroy(target='Towr'))"   # Connect 뒤: '실패: … 메시 오브젝트가 없습니다 … 해결법: …troubleshooting.md#object-or-file-not-found'
+brew install shellcheck && uvx --from actionlint-py@1.7.12.25 actionlint   # CI lint 와 같게: 출력 없음이면 통과(PR #20~#23 의 빨강이 고쳐졌는지)
 ```
+
+## 2026-10-17 (24회차)
+
+- 시작 확인: 저장된 지시의 최우선 F1·F3(0.7.0 판·release.yml)는 9회차(10/11)에 끝나 PR #13 으로 병합됐고 태그 `v0.7.0` 도 있음. 다시 할 것 없음 → 일반 규칙.
+  `latest.md`(10/1)의 FAIL 2건은 main 에 고쳐져 있음(재확인). main 은 앞서 있지 않음.
+  열린 `claude/cloud-work-*` PR 중 가장 위(#23, `ef4590d`)에서 이어 감. 이 세션은 `claude/cloud-work-el1061` 에 푸시 → PR 은 #23 위에 쌓음.
+- 한 일(백로그 위에서부터, 굽기 시간 어림은 Mac 실측 필요라 건너뜀):
+  1. **import 단위 안내** (`ade4034`): 확인해 보니 자동 축척 규칙은 없고, 서버가 레시피 `notes`(닫히지 않은 메시·면 많음·부품 합침/뺌)를 **버리고 있었음** → 함께 고침.
+     `size` 없이 가져온 모델의 가장 긴 변이 0.05m 미만이나 500m 초과면 cm·mm 단위일 수 있다며 `import_model(size=…)` 짐작 값(한/영).
+  2. **레시피 오류에 해결법 링크** (`e87dd44`): `scripts/gen_help_index.py` 가 레시피 `FxError` 열쇠(한/영)마다 문서에서 절을 찾아 `help_index.py`(52개)를 씀.
+     `run_recipe` 가 실패 문장 끝에 "해결법: …#절" 을 붙임. 시험이 표가 최신인지, 열쇠마다 자기 절로 가는지 봄. 열쇠 뽑기는 시험과 스크립트가 같은 함수를 씀.
+  3. **주간 triage 워크플로** (`8926976`): 월요일마다 `triage_report.py` 를 읽기 권한만으로 돌려 표를 Summary 에 남김(댓글·라벨 없음, 넘으면 경고). 권한·진입점 시험, 변이 확인.
+  4. **서버 오류 문장 → 문서** (`85c7a5e`): server·bridge 의 `BlenderError` 21개 중 빠진 5개를 문서화함(새 절 Snapshot or restore refused). 예외 1개는 근거와 함께 둠.
+  5. **CI bpy 휠 캐시** (`614b52a`): Actions 로그(run 156)를 보니 bpy 설치가 Linux 2초·macOS 4초 → 이미 캐시됨, 바꿀 것 없음.
+     **같은 로그에서 lint 잡이 PR #20(10/15)부터 빨갰던 것을 찾음**: actionlint 의 shellcheck SC2086(커버리지 줄의 따옴표 없는 `$GITHUB_STEP_SUMMARY`).
+     따옴표로 감싸서 고쳤고, 판을 고정한 shellcheck 를 PATH 에 두고 옛 파일은 잡히고 새 파일은 통과하는 것을 확인함. 로컬에 shellcheck 가 없으면 조용히 건너뛰는 점을 CONTRIBUTING 한/영에 적음.
+  - 남은 `[ ]` 가 1개(Mac 실측)라 새 항목 5개를 추가함(`ad71086`): 서버 오류에도 링크, `scripts/lint.sh`, triage 에 CI 빨강 칸, doctor --issue 에 최근 실패, 링크 끝까지 시험.
+- 돌린 시험:
+  - `uv run pytest -q`(3.11) **1438 통과·49 건너뜀**(블렌더 필요). CI 서버 명령 `--cov --cov-fail-under=99` → **100%**. `uvx ruff@0.15.20 check .` 통과.
+    actionlint(+shellcheck-py 0.11.0.1 을 PATH 에)·zizmor 1.30.1 "No findings". `python3 scripts/triage_report.py` 를 실제 저장소로 돌림 → 0개, 종료 0.
+  - 못 돌린 것: `scripts/bpy_tests.sh`. 새 컨테이너라 bpy 휠이 없음. 이번 변경은 서버·문서·워크플로뿐이고 레시피는 그대로라 bpy 결과가 바뀔 길이 없음. 실제 링크 문장은 Mac 명령 2줄로 확인함.
+    triage.yml 실제 실행은 main 에 들어가야 schedule·dispatch 가 됨.
+- 막힌 것: 없음.
+- 완료 수·추가 수: **완료 5** / **추가 5** (완료 ≥ 추가). 남은 `[ ]` 6개(그중 1개는 Mac 실측).
+- Mac에서 확인할 것: 맨 위 명령 3줄(또는 `uv run python scripts/mac_report.py` 한 번).
 
 ## 2026-10-16 (23회차)
 
