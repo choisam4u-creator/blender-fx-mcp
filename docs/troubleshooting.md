@@ -147,6 +147,14 @@ Another program answers on the port, or the receiver is not the blender-mcp add-
 수신기가 코드를 실행하다 실패했습니다. 뒤에 붙은 메시지가 원인입니다. 레시피 오류(아래)가 아니라 이 문장이 나오면 버그일 가능성이 큽니다. 신고해 주세요.
 The receiver failed while running code; the rest of the message is the cause. If you see this instead of a recipe error below, it is likely a bug — please report it.
 
+> 블렌더가 결과 줄(FX_RESULT)을 돌려주지 않았습니다.
+> Blender returned no FX_RESULT line.
+
+블렌더는 명령을 끝냈는데 결과를 알리는 줄이 없었습니다. 수신기가 출력을 잘랐거나 다른 애드온이 출력을 가로챈 경우입니다. 한 번 더 시켜 보고,
+같은 일이 계속되면 `blender-fx-doctor --issue` 결과와 문장 끝의 "출력 끝부분"을 붙여 신고해 주세요.
+Blender finished the command but sent no result line (the receiver cut the output, or another add-on captured it). Try once more;
+if it keeps happening, report it with `blender-fx-doctor --issue` and the "End of output" part of the message.
+
 ## Port already in use
 
 **포트 충돌**
@@ -368,6 +376,10 @@ The path is on the computer running Blender. The end of the message names simila
 
 > 스냅샷 파일이 없습니다: …
 > Snapshot file not found: …
+> 스냅샷이 없습니다: …
+> Snapshot not found: …
+> 블렌더가 있는 컴퓨터에 스냅샷 '…' 이 없습니다(…).
+> There is no snapshot '…' on the Blender computer (…).
 
 `restore` 의 이름이 틀렸습니다. 문장에 있는 스냅샷 이름 중 하나로 다시 시키거나 `list_snapshots` 로 전체를 봅니다. 하나도 없으면 되돌리고 싶은 상태에서 `snapshot` 으로 먼저 저장합니다.
 The name given to `restore` does not exist. Ask again with one of the snapshot names in the message, or list them with `list_snapshots`. If there are none, save one with `snapshot` first, at the state you want to return to.
@@ -387,6 +399,22 @@ Slow motion in `set_timing` (`slow_from`/`slow_to`) needs a destruction, explosi
 
 `ocean` 을 만들면 바닥이 숨습니다. 바닥 재질을 바꾸려면 `reset_destroy` 로 바다를 지운 뒤 `set_ground` 를 다시 시킵니다.
 Creating an `ocean` hides the ground. To change the ground material, remove the ocean with `reset_destroy`, then ask `set_ground` again.
+
+## Snapshot or restore refused
+
+**스냅샷·되돌리기 거절**
+
+> 'before_restore' 은 restore 가 직전 상태를 자동으로 저장하는 이름이라 쓸 수 없습니다.
+> 'before_restore' is the name restore uses to auto-save the previous state.
+
+`before_restore` 는 `restore` 가 되돌리기 직전 장면을 넣어 두는 자리입니다(`restore("before_restore")` 가 되돌리기를 취소). 다른 이름으로 `snapshot` 을 다시 시킵니다.
+`before_restore` is where `restore` keeps the scene from just before it ran (`restore("before_restore")` undoes a restore). Ask `snapshot` again with another name.
+
+> 다른 컴퓨터의 블렌더에서는 before_restore 로 되돌릴 수 없습니다(지금 장면을 저장하면 그 파일을 덮어씀).
+> Restoring before_restore is not supported with a remote Blender (saving the current scene would overwrite it).
+
+블렌더가 다른 컴퓨터(`BLENDER_FX_HOST`)에 있으면 지금 장면을 저장할 때 그 파일을 덮어쓰게 됩니다. `snapshot` 으로 지금 장면을 다른 이름으로 저장한 뒤, 블렌더에서 `before_restore.blend` 를 직접 엽니다.
+With Blender on another computer (`BLENDER_FX_HOST`), saving the current scene would overwrite that file. Save the current scene with `snapshot` under another name, then open `before_restore.blend` in Blender yourself.
 
 ## Export failed
 

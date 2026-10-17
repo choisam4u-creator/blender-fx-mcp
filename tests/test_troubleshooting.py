@@ -344,6 +344,42 @@ def test_recipe_error_key_cuts_at_values_and_first_sentence():
     assert _key(ast.parse("'ab'", mode="eval").body, 8) is None
 
 
+# ---- 서버 오류 문장 → 문서 방향 ----
+# 서버(server.py·bridge.py)가 블렌더에 보내기 전·후에 내는 BlenderError(t(한, 영)) 도 레시피 오류처럼 문서에서 찾을 수 있어야 한다.
+# 검사 함수(check_*)의 문장은 값이 끼어 열쇠를 못 뽑으므로 위 REJECTIONS 가 실제로 만든 문장으로 본다.
+SERVER_UNDOCUMENTED = {
+    "must be a number of meters, 0 or more",   # /my_model 프롬프트 인자 오류: 문장이 고칠 값을 말하고, 도구 오류가 아니라 AI 에게 보이는 안내
+}
+
+
+def server_errors():
+    """[(어디, 한 열쇠, 영 열쇠)] — 서버 쪽 BlenderError(t(…)) 와 _missing_snapshot 의 문장."""
+    from test_server_next_steps import _t_pairs
+    return [(where, _key(call.args[0], 5), _key(call.args[1], 8)) for where, call in _t_pairs()]
+
+
+def test_server_errors_are_found_by_the_checker():
+    errors = server_errors()
+    assert len(errors) >= 20
+    assert {w.split(":")[0] for w, _, _ in errors} == {"bridge.py", "server.py"}
+
+
+def test_every_server_error_is_documented_or_listed():
+    doc = _doc()
+    rejected = {stem for _, ko, en in REJECTIONS for stem in (ko, en)}
+    missing = []
+    for where, ko, en in server_errors():
+        if ko is None and en is None:
+            continue  # 값으로만 이은 문장(check_order): REJECTIONS 가 본다
+        if (ko and ko in doc) or (en and en in doc) or en in SERVER_UNDOCUMENTED or (en and any(en in r for r in rejected)):
+            continue
+        missing.append((where, en))
+    assert not missing, f"troubleshooting.md 에서 찾을 수 없는 서버 오류 문장 {missing} — 맞는 절에 한/영 인용(> …)과 다음 할 일을 쓰세요"
+    still = {en for _, _, en in server_errors()}
+    assert SERVER_UNDOCUMENTED <= still, f"소스에서 사라진 예외: {SERVER_UNDOCUMENTED - still}"
+    assert not [e for e in SERVER_UNDOCUMENTED if e in doc], "이제 문서에 있으니 SERVER_UNDOCUMENTED 에서 지우세요"
+
+
 # ---- 레시피 오류 → 해결법 절 링크 ----
 # 서버가 레시피 오류 문장 끝에 "해결법: …#절" 을 붙인다(src/blender_fx_mcp/help_index.py, scripts/gen_help_index.py 가 만듦).
 
