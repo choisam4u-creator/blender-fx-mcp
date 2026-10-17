@@ -21,7 +21,8 @@ jobs:
       - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
       - run: uvx ruff@0.15.20 check .
       # 워크플로 문법·표현식·shellcheck 검사. release.yml 은 태그를 밀어야만 돌아서, 고친 것을 PR 단계에서 미리 본다(판 고정).
-      - run: uvx --from actionlint-py@1.7.12.25 actionlint
+      # shellcheck 도 판을 고정해 함께 깐다(러너에 깔린 판에 기대지 않고, 로컬 scripts/lint.sh 와 같은 결과).
+      - run: uvx --with shellcheck-py==0.11.0.1 --from actionlint-py@1.7.12.25 actionlint
       # 워크플로 보안 검사(위험한 트리거·토큰 남김·표현식 주입 등, OpenSSF Scorecard 와 겹침). 판 고정, 네트워크 없이.
       - run: uvx zizmor@1.30.1 --offline .github/workflows
       # 끌어오는 패키지의 라이선스가 허용 목록 안이고 docs/third-party-licenses.md 표와 같은지(uv.lock 이 바뀌면 표도 고쳐야 함).

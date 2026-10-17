@@ -1,10 +1,10 @@
-# uvx 로 판을 고정한 검사 도구(ruff·actionlint-py·zizmor·twine)는 uv.lock 밖이라 dependabot 이 못 본다.
+# uvx 로 판을 고정한 검사 도구(ruff·actionlint-py·shellcheck-py·zizmor·twine)는 uv.lock 밖이라 dependabot 이 못 본다.
 # 판은 CONTRIBUTING 의 "판을 고정한 도구" 표 한 곳에 두고, 워크플로·문서 속 `도구@판` 과 판 없는 `uvx 도구` 를 여기서 막는다.
 import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-TOOLS = ("ruff", "actionlint-py", "zizmor", "twine")
+TOOLS = ("ruff", "actionlint-py", "shellcheck-py", "zizmor", "twine")
 # 지난 회차 기록은 그때의 판을 그대로 남긴다
 HISTORY = {"docs/CLOUD-BACKLOG.md", "docs/test-reports/CLOUD-NOTES.md"}
 
@@ -29,7 +29,7 @@ def test_every_pinned_version_matches_the_table():
     wrong = []
     for path in checked_files():
         text = path.read_text(encoding="utf-8", errors="replace")
-        for tool, version in re.findall(r"\b(" + "|".join(map(re.escape, TOOLS)) + r")@(\d+(?:\.\d+)+)", text):
+        for tool, version in re.findall(r"\b(" + "|".join(map(re.escape, TOOLS)) + r")(?:@|==)(\d+(?:\.\d+)+)", text):
             if version != table[tool]:
                 wrong.append(f"{path.relative_to(ROOT)}: {tool}@{version} (표는 {table[tool]})")
     assert not wrong, "판이 CONTRIBUTING 표와 다름 — 표와 함께 한 번에 올리세요:\n" + "\n".join(wrong)
@@ -49,7 +49,7 @@ def test_uvx_tool_commands_are_pinned():
 def test_ci_runs_every_table_tool_at_its_version():
     workflows = "\n".join(p.read_text(encoding="utf-8") for p in (ROOT / ".github" / "workflows").glob("*.yml"))
     for tool, version in pinned_table().items():
-        assert f"{tool}@{version}" in workflows, f"표의 {tool}@{version} 를 쓰는 워크플로가 없음 — 안 쓰면 표에서 지우세요"
+        assert f"{tool}@{version}" in workflows or f"{tool}=={version}" in workflows, f"표의 {tool}@{version} 를 쓰는 워크플로가 없음 — 안 쓰면 표에서 지우세요"
 
 
 def test_quarterly_bump_step_is_written_down():
