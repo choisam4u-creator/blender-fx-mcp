@@ -483,6 +483,27 @@ def _triage():
     return module
 
 
+SINCE = "2026-09-16"   # now(2026-10-16) 에서 CI_LOOKBACK_DAYS(30) 전
+
+
+def _ci_data(repo="o/r", runs=None, jobs=None, issues=()):
+    """CI 칸용 가짜 응답: 기본 브랜치 main, 열린 PR #3(fix-typo). runs = {브랜치: [실행…]}, jobs = {실행 id: [잡…]}."""
+    runs = runs or {}
+    data = {f"repos/{repo}": [{"default_branch": "main"}],
+            f"repos/{repo}/pulls?state=open&per_page=100": [{"number": 3, "head": {"ref": "fix-typo"}}],
+            f"repos/{repo}/issues?state=open&per_page=100": list(issues)}
+    for branch in ("main", "fix-typo"):
+        data[f"repos/{repo}/actions/runs?branch={branch}&status=completed&created=%3E%3D{SINCE}&per_page=100"] = [
+            {"total_count": len(runs.get(branch, [])), "workflow_runs": runs.get(branch, [])}]
+    for run_id, js in (jobs or {}).items():
+        data[f"repos/{repo}/actions/runs/{run_id}/jobs?per_page=100"] = [{"jobs": js}]
+    return data
+
+
+def _run(run_id, name, conclusion, created):
+    return {"id": run_id, "name": name, "conclusion": conclusion, "created_at": created, "html_url": f"https://x/runs/{run_id}"}
+
+
 def _fake_github(repo="o/r"):
     """열린 것 다섯: 늦은 버그(답 없음), 제때 답한 질문, 늦게 답한 PR(리뷰), 봇 PR, 관리자가 연 PR."""
     me, maint, bot = {"login": "user1", "type": "User"}, {"login": "maint", "type": "User"}, {"login": "dependabot[bot]", "type": "Bot"}
@@ -506,6 +527,8 @@ def _fake_github(repo="o/r"):
         f"repos/{repo}/issues/5/comments?per_page=100": [],
         f"repos/{repo}/pulls/5/reviews?per_page=100": [],
     }
+    green = {"main": [_run(1, "ci", "success", "2026-10-15T00:00:00Z")]}
+    data = {**_ci_data(repo, green), **data}
     return lambda path: data[path]
 
 
@@ -525,6 +548,39 @@ def test_triage_report_flags_only_items_past_the_support_target(capsys):
     assert "3개 중" in out and "2 of 3" in out and "| 1 | issue | crash \\| on render | bug | 7일 / d | 없음 / none ⚠ |" in out
     assert "how to?" not in out, "목표 안인 것은 --all 일 때만"
     assert tr.main(["--repo", "o/r", "--all"], api=_fake_github(), now=now) == 1 and "how to?" in capsys.readouterr().out
+    assert "CI: 기본 브랜치·열린 PR 의 최신 실행이 모두 초록" in out
+
+
+def test_triage_report_ci_section_flags_long_red_runs(capsys):
+    from datetime import datetime, timezone
+    tr = _triage()
+    now = datetime(2026, 10, 16, tzinfo=timezone.utc)
+    runs = {
+        # main 의 ci: 10/12 부터 연달아 빨강(4일째) → ⚠. triage 는 초록이라 표에 없음. 그 전 초록은 빨개진 때를 끊는다
+        "main": [_run(11, "ci", "failure", "2026-10-15T00:00:00Z"), _run(9, "triage", "success", "2026-10-14T00:00:00Z"),
+                 _run(10, "ci", "failure", "2026-10-12T00:00:00Z"), _run(8, "ci", "success", "2026-10-10T00:00:00Z")],
+        # PR #3: 반나절 빨강 → 표에는 있지만 ⚠ 아님
+        "fix-typo": [_run(21, "ci", "timed_out", "2026-10-15T12:00:00Z"), _run(20, "ci", "success", "2026-10-15T06:00:00Z")],
+    }
+    jobs = {11: [{"name": "lint", "conclusion": "failure"}, {"name": "server-tests (3.13)", "conclusion": "success"}],
+            21: [{"name": "server-tests | os", "conclusion": "timed_out"}]}
+    data = _ci_data(runs=runs, jobs=jobs)
+    rows = tr.ci_status("o/r", data.__getitem__, now)
+    assert [(r["branch"], r["pr"], r["workflow"], r["red_days"], r["jobs"], r["late"]) for r in rows] == [
+        ("main", None, "ci", 4.0, ["lint"], True), ("fix-typo", 3, "ci", 0.5, ["server-tests | os"], False)]
+
+    assert tr.main(["--repo", "o/r"], api=data.__getitem__, now=now) == 1, "이슈는 없어도 3일 넘게 빨간 CI 가 있으면 1"
+    out = capsys.readouterr().out
+    assert "빨간 워크플로 2개, 3일 넘은 것 1개" in out
+    assert "| main | ci | 4.0일 / d ⚠ | lint | https://x/runs/11 |" in out
+    assert "| fix-typo (PR #3) | ci | 0.5일 / d | server-tests \\| os | https://x/runs/21 |" in out
+    assert out.index("| main |") < out.index("| fix-typo"), "오래 빨간 것부터"
+
+    short = _ci_data(runs={"fix-typo": runs["fix-typo"]}, jobs=jobs)
+    assert tr.main(["--repo", "o/r"], api=short.__getitem__, now=now) == 0, "3일 안의 빨강은 표에만"
+    capsys.readouterr()
+    assert tr.main(["--repo", "o/r", "--no-ci"], api=lambda p: [] if "issues" in p else 1 / 0, now=now) == 0, "--no-ci 는 CI 를 묻지 않음"
+    assert "CI:" not in capsys.readouterr().out
 
 
 def test_triage_report_without_gh_says_what_to_do(monkeypatch, capsys):

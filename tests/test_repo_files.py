@@ -388,7 +388,7 @@ def test_triage_workflow_only_reads_and_writes_the_summary():
     jobs = _job_bodies(text)
     assert list(jobs) == ["first-reply"], list(jobs)
     m = re.search(r"^    permissions:\n((?:      .*\n)+)", jobs["first-reply"], re.M)
-    assert m and m.group(1) == "      contents: read\n      issues: read\n      pull-requests: read\n", m and m.group(1)
+    assert m and m.group(1) == "      actions: read\n      contents: read\n      issues: read\n      pull-requests: read\n", m and m.group(1)
     assert "write" not in text and "persist-credentials: false" in text
     assert re.findall(r"uses: ([\w-]+/[\w-]+)@", text) == ["actions/checkout"]
     run = text.split("run: |\n", 1)[1]
