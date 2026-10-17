@@ -64,6 +64,7 @@
   간접 의존성 `exceptiongroup` 이 빠져 제3자 라이선스 표도 39개. 시험의 `importorskip("tomllib")` 는 보통 import 로
 
 **고침**
+- 서버 쪽 도구 실패(스냅샷 없음·`before_restore` 예약 이름·`keep` 범위·FX_RESULT 없음·디스크 부족·유한한 숫자 등)에도 첫 줄 끝에 `해결법: …#절` 링크. `gen_help_index.py` 가 `server.py` 의 `BlenderError(t(…))` 열쇠까지 표에 넣고 `_fail` 이 붙인다(이미 링크가 있는 연결 오류는 그대로). 해결법 문서에 `clear_snapshots(keep=…)` 거부 문장
 - `water` 결과에 격자 한 칸 크기(m)와 "더 작은 물방울이 필요하면 resolution=N(한 칸 X m, 굽기가 몇 배 느려짐)" 한 줄. 상한 320 이면 `domain_at`·`domain_size` 로 공간을 줄이라고.
 - `fire`·`smoke` 의 `target`, `water(mode="object")` 의 `source_object`·`obstacles` 에 지난 효과의 보조 메시(`list_objects` 에 보이는 `FX_EmitFlow`·`FX_LiquidFlow` 등)를 주면, 정리 함수가 그것을 지운 뒤 `StructRNA … has been removed` 로 멈춰 지난 효과만 사라지던 것. 지우기 전에 원래 메시 이름을 알려 주며 멈춘다(한/영, bpy 시험).
 - CI lint 가 10/15(PR #20 부터) 빨갛던 것: actionlint 의 shellcheck 가 커버리지 줄의 따옴표 없는 `$GITHUB_STEP_SUMMARY`(SC2086)를 잡음. 따옴표로 감싸고, 로컬에서도 같게 보려면 shellcheck 가 PATH 에 있어야 한다고 CONTRIBUTING 한/영에.

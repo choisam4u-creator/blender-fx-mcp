@@ -268,6 +268,12 @@ A number is outside its range (for example `fps` 1-240, `width`/`height` 16-7680
 정해진 목록 밖의 이름입니다(`material`·`preset`·`liquid` 등). 비슷한 값이 있으면 "혹시 … 인가요?" 로 함께 알려 줍니다.
 The name is not in the fixed list (`material`, `preset`, `liquid`, …). A close match is suggested with "Did you mean …?".
 
+> keep=… 은 쓸 수 없습니다. 남길 스냅샷 개수를 0~1000 사이 정수로 다시 시키세요(기본 5).
+> keep=… is not allowed. Ask again with the number of snapshots to keep, an integer from 0 to 1000 (default 5).
+
+`clear_snapshots` 의 `keep` 은 0~1000 정수입니다. 0 이면 `before_restore` 만 남기고 모두 지웁니다.
+`keep` of `clear_snapshots` is an integer from 0 to 1000. With 0, everything except `before_restore` is deleted.
+
 > … 보다 같거나 커야 합니다. 장면은 바꾸지 않았습니다.
 > … must be at least … The scene was not changed.
 > … 보다 커야 합니다. 장면은 바꾸지 않았습니다.

@@ -438,3 +438,42 @@ def test_help_link_quiet_for_unknown_or_already_linked():
     from blender_fx_mcp import server
     assert server.help_link("Could not create the vortex force field.") == ""   # UNDOCUMENTED: 표에 없음
     assert server.help_link(f"No mesh object named 'x'. Help: {bridge.TROUBLESHOOTING_URL}#timeout") == ""
+
+
+# ---- 서버 쪽 도구 실패에도 해결법 링크 ----
+# 표(help_index.py)는 server.py 의 BlenderError(t(…))·_missing_snapshot 열쇠도 담고, _fail 이 첫 줄 끝에 붙인다.
+
+def test_help_index_covers_server_errors():
+    from blender_fx_mcp.help_index import RECIPE_HELP
+    for k in ("스냅샷이 없습니다", "Snapshot not found", "is the name restore uses to auto-save the previous state",
+              "Blender returned no FX_RESULT line", "of disk space is left, so the bake was not started (water and smoke caches take several GB)"):
+        assert k in RECIPE_HELP, k
+    assert len(_gen.server_errors()) >= 10
+
+
+@pytest.mark.parametrize("lang,word", [("ko", "해결법:"), ("en", "Help:")])
+@pytest.mark.parametrize("call,anchor", [
+    (lambda s: s.restore("nope"), "object-or-file-not-found"),
+    (lambda s: s.snapshot("before_restore"), "snapshot-or-restore-refused"),
+    (lambda s: s.clear_snapshots(keep=-1), "argument-value-rejected"),
+])
+def test_server_tool_failure_carries_help_link(monkeypatch, tmp_path, lang, word, call, anchor):
+    from blender_fx_mcp import server
+    from conftest import tool_text
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path))
+    monkeypatch.delenv("BLENDER_FX_HOST", raising=False)
+    text = tool_text(call(server))
+    assert text.startswith(("실패:", "Failed:")), text
+    assert text.endswith(f" {word} {bridge.TROUBLESHOOTING_URL}#{anchor}"), text
+    assert text.count(bridge.TROUBLESHOOTING_URL) == 1
+
+
+def test_fail_puts_link_on_first_line_and_never_twice():
+    from blender_fx_mcp import server
+    err = bridge.BlenderError("Snapshot not found: x. Save one first.\nTraceback (most recent call last): …")
+    first, rest = server._fail(err).split("\n", 1)
+    assert first.endswith(f"{bridge.TROUBLESHOOTING_URL}#object-or-file-not-found") and rest.startswith("Traceback")
+    linked = bridge.BlenderError(f"Connection refused. Help: {bridge.TROUBLESHOOTING_URL}#connection-refused")
+    assert server._fail(linked).count(bridge.TROUBLESHOOTING_URL) == 1
+    assert server._fail(bridge.BlenderError("Something odd.")).endswith("Something odd.")   # 표에 없으면 그대로

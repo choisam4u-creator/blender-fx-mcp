@@ -491,7 +491,7 @@ def run_recipe(recipe: str, params: dict, timeout: float | None = None) -> dict:
 
 
 def help_link(error: str) -> str:
-    """레시피 오류 문장에 맞는 해결법 절 링크(" 해결법: …#절"). 표(help_index.py)에 없거나 이미 링크가 있으면 빈 문자열."""
+    """레시피·서버 오류 문장에 맞는 해결법 절 링크(" 해결법: …#절"). 표(help_index.py)에 없거나 이미 링크가 있으면 빈 문자열."""
     if bridge.TROUBLESHOOTING_URL in error:
         return ""
     for phrase, anchor in RECIPE_HELP.items():
@@ -502,7 +502,11 @@ def help_link(error: str) -> str:
 
 
 def _fail(e: Exception) -> str:
-    return t(f"실패: {e}", f"Failed: {e}")
+    """도구 실패 문장. 서버 쪽 오류(스냅샷 없음·예약 이름·FX_RESULT 없음 등)에도 첫 줄 끝에 해결법 링크를 붙인다(이미 있으면 그대로)."""
+    msg = str(e)
+    first, sep, rest = msg.partition("\n")
+    msg = first + help_link(msg) + sep + rest
+    return t(f"실패: {msg}", f"Failed: {msg}")
 
 
 def _with_data(text: str, data: dict) -> CallToolResult:
