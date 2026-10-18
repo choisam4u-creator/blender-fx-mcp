@@ -176,10 +176,11 @@ def _tool_schemas() -> dict[str, set[str]]:
     return {t.name: set(t.input_schema.get("properties", {})) for t in anyio.run(tools)}
 
 
-EXAMPLE_SCRIPTS = sorted((Path(__file__).parent.parent / "examples").glob("*.py"))
+EXAMPLE_SCRIPTS = sorted((Path(__file__).parent.parent / "examples").glob("*.py")) + [
+    Path(__file__).parent.parent / "src" / "blender_fx_mcp" / "first_render.py"]  # 예제 first_render.py 는 이 모듈의 껍데기
 
 
-@pytest.mark.parametrize("script", EXAMPLE_SCRIPTS, ids=lambda p: p.name)
+@pytest.mark.parametrize("script", EXAMPLE_SCRIPTS, ids=lambda p: f"{p.parent.name}/{p.name}")
 def test_example_scripts_name_only_real_tools_and_arguments(script):
     """examples/*.py 의 docstring·print 문장에 나오는 이름과, 실제로 부르는 도구(`call_tool`·STEPS 의 (이름, 인자))가 서버에 있다.
     예제를 그대로 돌리는 사용자가 없는 도구·인자 이름으로 막히지 않게(문서 시험은 .md 만 훑음)."""
@@ -213,6 +214,6 @@ def test_example_scripts_name_only_real_tools_and_arguments(script):
             continue
         bad += [f"{name}({k.value}=)" for k in keys if isinstance(k, ast.Constant) and k.value not in schemas[name]]
     assert not bad, f"{script.name} 에 없는 도구·인자 이름: {sorted(set(bad))}"
-    if script.name == "first_render.py":
+    if script.name == "first_render.py" and script.parent.name == "blender_fx_mcp":  # STEPS 는 본체에
         assert {"ping_blender", "snapshot", "destroy", "render_preview"} <= {c[0] for c in calls} | set(
             re.findall(r'"([a-z_]+)"', script.read_text(encoding="utf-8"))), "STEPS 를 못 읽음(시험이 비어 통과하지 않게)"

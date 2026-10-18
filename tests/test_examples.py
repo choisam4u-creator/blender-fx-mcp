@@ -245,6 +245,44 @@ def test_first_render_is_documented():
     assert "uv run python examples/first_render.py" in (EX / "first_render.py").read_text(encoding="utf-8")
 
 
+def test_first_render_entry_point_and_example_are_the_same_code():
+    """PyPI 사용자는 저장소가 없어 예제 파일이 없다. 콘솔 진입점이 패키지 모듈을 가리키고, 예제는 같은 코드를 쓰는 껍데기다."""
+    from blender_fx_mcp import first_render
+
+    assert _entry_points()["blender-fx-first-render"] == "blender_fx_mcp.first_render:main"
+    example = _load("first_render")
+    assert example.main is first_render.main and example.run is first_render.run and example.STEPS is first_render.STEPS
+    # 인자 없이 띄우는 서버는 이 패키지가 깔린 파이썬의 서버 모듈(저장소 경로에 기대지 않음)
+    import sys
+    params = first_render.server_params([])
+    assert [params.command, *params.args] == [sys.executable, "-m", "blender_fx_mcp.server"]
+
+
+def test_first_render_png_paths_without_folder_is_empty(tmp_path):
+    """렌더 문장에 '→ 폴더' 가 없으면(다른 서버·원격) 찾지 않고, 둘째 줄(여는 명령)은 폴더 이름에 섞이지 않는다."""
+    from blender_fx_mcp import first_render
+
+    assert first_render.png_paths("Render done") == []
+    (tmp_path / "a.png").write_bytes(b"x")
+    assert first_render.png_paths(f"Render: frames [1] → {tmp_path}\nOpen it: open {tmp_path}") == [str(tmp_path / "a.png")]
+
+
+def test_first_render_main_exits_with_run_code(monkeypatch):
+    """main(argv) 는 run 의 종료 코드로 끝나고, 인자를 서버 명령으로 넘긴다."""
+    from blender_fx_mcp import first_render
+
+    seen = []
+
+    async def fake_run(params):
+        seen.append([params.command, *params.args])
+        return 2
+
+    monkeypatch.setattr(first_render, "run", fake_run)
+    with pytest.raises(SystemExit) as e:
+        first_render.main(["uvx", "blender-fx-mcp"])
+    assert e.value.code == 2 and seen == [["uvx", "blender-fx-mcp"]]
+
+
 def test_first_render_progress_line_is_bilingual(monkeypatch):
     example = _load("first_render")
     monkeypatch.setenv("BLENDER_FX_LANG", "ko")
@@ -254,11 +292,12 @@ def test_first_render_progress_line_is_bilingual(monkeypatch):
 
 
 def test_readme_points_to_first_render_in_both_languages():
-    """README 한/영 설치 절에서 first_render.py 를 찾을 수 있고, 명령이 예제 docstring 의 명령과 같다."""
+    """README 한/영 설치 절에서 첫 렌더 확인 명령을 찾을 수 있고, 명령이 예제 docstring 의 명령과 같다."""
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     doc = (EX / "first_render.py").read_text(encoding="utf-8")
-    cmd = "uv run python examples/first_render.py"
-    assert cmd in doc
+    # README 는 저장소 없이(PyPI) 도는 진입점으로. 예제 껍데기 docstring 도 같은 명령을 말한다
+    cmd = "uvx --from blender-fx-mcp blender-fx-first-render"
+    assert cmd in doc and "blender-fx-first-render" in _entry_points()
     ko, en = readme.split("\n## English", 1)
     assert f"\n{cmd}   #" in ko.split("## 매일 쓰는 순서")[0]
     assert f"\nBLENDER_FX_LANG=en {cmd}   #" in en.split("### First command")[0]
@@ -556,7 +595,12 @@ def test_examples_readme_commands_point_at_real_files_and_entry_points():
                 seen += 1
             if w == "uvx":
                 nxt = words[i + 1]
-                assert nxt == PACKAGE and nxt in entry, f"uvx 가 띄우는 이름이 진입점이 아님: {cmd}"
+                if nxt == "--from":  # uvx --from <패키지> <진입점>: 패키지는 PyPI 이름, 띄우는 이름은 진입점
+                    assert words[i + 2] == PACKAGE, f"uvx --from 패키지가 PyPI 이름이 아님: {cmd}"
+                    nxt = words[i + 3]
+                else:
+                    assert nxt == PACKAGE, f"uvx 가 띄우는 이름이 PyPI 이름이 아님: {cmd}"
+                assert nxt in entry, f"uvx 가 띄우는 이름이 진입점이 아님: {cmd}"
                 seen += 1
         if words[:2] == ["uv", "run"] and words[2] != "python":
             assert words[2] in entry, f"uv run 이 띄우는 이름이 진입점이 아님: {cmd}"

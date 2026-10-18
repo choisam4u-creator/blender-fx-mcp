@@ -367,11 +367,11 @@ def first_step(for_ai: bool = False) -> str:
     if for_ai:
         return t("다음 할 일: make_demo_building → snapshot → destroy → render_preview 로 첫 렌더(또는 /first_demo).",
                  "Next: make_demo_building → snapshot → destroy → render_preview for a first render (or /first_demo).")
-    return t(f"다음 할 일: AI 에게 \"연습용 건물을 만들고 부숴서 미리보기 보여 줘\"(또는 /first_demo) — AI 없이 블렌더 쪽만(저장소에서): {FIRST_RENDER_CMD}",
-             f"Next: ask the AI \"make a demo building, destroy it and show a preview\" (or /first_demo) — Blender side only, no AI (in a checkout): {FIRST_RENDER_CMD}")
+    return t(f"다음 할 일: AI 에게 \"연습용 건물을 만들고 부숴서 미리보기 보여 줘\"(또는 /first_demo) — AI 없이 블렌더 쪽만: {FIRST_RENDER_CMD}",
+             f"Next: ask the AI \"make a demo building, destroy it and show a preview\" (or /first_demo) — Blender side only, no AI: {FIRST_RENDER_CMD}")
 
 
-FIRST_RENDER_CMD = "uv run python examples/first_render.py"
+FIRST_RENDER_CMD = "uvx --from blender-fx-mcp blender-fx-first-render"  # 저장소 없이(PyPI 설치) 도는 진입점
 
 
 def format_report(checks: list[dict], for_ai: bool = False) -> str:
