@@ -11,6 +11,8 @@ ping_blender → make_demo_building → destroy → render_preview in order and 
 Open Blender and click Connect in the BlenderMCP tab first. If it cannot connect, it prints the next steps and exits with code 2.
 도구가 실패하면 그 오류 문장(무엇을 바꾸면 되는지 들어 있음)을 출력하고 종료 코드 1. 장면에 'Building' 이 하나 더해진다.
 If a tool fails it prints the error (which says what to change) and exits with code 1. It adds a 'Building' to the scene.
+실패하면 마지막 줄에 신고 방법(doctor --issue 출력을 버그 양식에)을 출력한다.
+On a failure the last line says how to report it (paste the doctor --issue output into the bug form).
 시작 전에 지금 장면을 스냅샷 first_render_before 로 저장하고, 끝에 되돌리는 방법을 출력한다.
 The current scene is saved first as snapshot first_render_before, and the way back is printed at the end.
 단계마다 `[2/5] make_demo_building …` 진행 줄과 걸린 초를 출력한다(붕괴·렌더는 수십 초 걸릴 수 있음).
@@ -55,6 +57,17 @@ def undo_line() -> str:
             f"To go back: ask your AI to 'restore {BEFORE}' or pick /undo_last.")
 
 
+REPORT_CMD = "uvx --from blender-fx-mcp blender-fx-doctor --issue"
+
+
+def report_line() -> str:
+    # 오류 문장대로 고쳐도 막히면 갈 곳. --issue 표에 방금 실패한 도구 문장(last_error.txt)이 이미 들어간다
+    return (f"막히면 신고: {REPORT_CMD} 출력을 버그 양식에 붙이세요 — "
+            "https://github.com/choisam4u-creator/blender-fx-mcp/issues/new?template=bug_report.yml" if not en() else
+            f"Still stuck? Report it: paste the output of {REPORT_CMD} into the bug form — "
+            "https://github.com/choisam4u-creator/blender-fx-mcp/issues/new?template=bug_report.yml")
+
+
 def png_paths(render_text: str) -> list[str]:
     """render_preview 문장의 '→ <폴더>' 에서 PNG 를 찾는다. 서버와 같은 컴퓨터일 때만 보인다."""
     if "→ " not in render_text:
@@ -95,6 +108,7 @@ async def run(params: StdioServerParameters) -> int:
                 if result.is_error or text.startswith(FAILED):
                     if i:  # 스냅샷 뒤에 실패했으면 장면이 바뀌었을 수 있다
                         print(undo_line())
+                    print(report_line())
                     return 1
             paths = png_paths(text)
             print(("PNG {n}개:" if not en() else "{n} PNG files:").format(n=len(paths)))

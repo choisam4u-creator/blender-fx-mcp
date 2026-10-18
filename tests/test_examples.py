@@ -220,9 +220,9 @@ def test_first_render_success_and_tool_failure(monkeypatch, capsys, tmp_path, fa
     assert out[1] == "snapshot: Snapshot saved: first_render_before" or fail == "snapshot"
     if fail == "snapshot":
         # 저장에 실패하면 장면을 건드리기 전에 멈춘다(되돌릴 곳이 없으니 되돌리기 안내도 없다)
-        assert out[-1].startswith("snapshot: Failed: ") and len(out) == 2
+        assert out[-2].startswith("snapshot: Failed: ") and out[-1] == example.report_line() and len(out) == 3
     elif fail:
-        assert out[-2:] == ["destroy: Failed: pieces is too big. Try 50-400.", undo]
+        assert out[-3:] == ["destroy: Failed: pieces is too big. Try 50-400.", undo, example.report_line()]
         assert not any(x.startswith("render_preview") for x in out)
     else:
         assert out[-4:] == ["2 PNG files:", f"  {folder / 'frame_0001.png'}", f"  {folder / 'frame_0072.png'}", undo]
@@ -410,24 +410,39 @@ def test_first_render_end_to_end_with_fake_receiver(monkeypatch, capsys, tmp_pat
     assert out[-1] == example.undo_line() and "first_render_before" in out[-1]
 
 
-def test_first_render_recipe_failure_with_fake_receiver(monkeypatch, capsys, tmp_path):
-    """블렌더 안에서 붕괴가 실패하면 서버의 오류 문장을 그대로 보이고, 렌더는 부르지 않고, 되돌리는 방법과 종료 코드 1."""
+@pytest.mark.parametrize("lang", ["ko", "en"])
+def test_first_render_recipe_failure_with_fake_receiver(monkeypatch, capsys, tmp_path, lang):
+    """블렌더 안에서 붕괴가 실패하면 서버의 오류 문장을 그대로 보이고, 렌더는 부르지 않고, 되돌리는 방법·신고 방법과 종료 코드 1.
+    신고 명령(doctor --issue)은 실제 진입점이고, 그 표에는 방금 실패한 destroy 가 이미 들어 있다."""
     import asyncio
+    import re
+    import tomllib
+
+    from blender_fx_mcp import doctor
 
     port, calls = [], []
     srv = _fake_receiver(port, calls, fail="destroy")
     try:
         monkeypatch.setenv("BLENDER_FX_PORT", str(port[0]))
-        monkeypatch.setenv("BLENDER_FX_LANG", "en")
+        monkeypatch.setenv("BLENDER_FX_LANG", lang)
         monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path / "out"))
         example = _load("first_render")
         code = asyncio.run(example.run(example.server_params([])))
     finally:
         srv.close()
-    out = _results(capsys.readouterr().out.splitlines(), "en")
+    out = _results(capsys.readouterr().out.splitlines(), lang)
     assert code == 1
     assert calls == ["snapshot", "demo_scene", "render", "destroy"]
-    assert out[-2] == "destroy: Failed: pieces is too big. Try 50-400." and out[-1] == example.undo_line()
+    failed = "실패: " if lang == "ko" else "Failed: "
+    assert out[-3].startswith(f"destroy: {failed}pieces is too big. Try 50-400.") and out[-2] == example.undo_line()
+    assert out[-1] == example.report_line() and example.REPORT_CMD in out[-1] and "bug_report.yml" in out[-1]
+    assert (re.search(r"[가-힣]", out[-1]) is None) == (lang == "en")
+    # 명령이 실제 패키지·진입점이고 양식 파일이 있다
+    root = Path(__file__).resolve().parents[1]
+    project = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))["project"]
+    assert example.REPORT_CMD == f"uvx --from {project['name']} blender-fx-doctor --issue" and "blender-fx-doctor" in project["scripts"]
+    assert (root / ".github" / "ISSUE_TEMPLATE" / "bug_report.yml").is_file()
+    assert doctor.last_failure().startswith("`destroy`: ")  # 신고 표에 방금 실패가 이미 있다
 
 
 @pytest.mark.parametrize("lang, error, word, anchor", [

@@ -38,7 +38,7 @@
 
 *Tests and CI*
 - `examples/first_render.py` runs end to end in tests against the real server and a fake Blender receiver socket
-  (five progress lines, exit 0 and the PNG paths; a recipe failure exits 1 with the error and the way back).
+  (five progress lines, exit 0 and the PNG paths; a recipe failure exits 1 with the error, the way back and how to report it).
 - The release workflow checks the tag through `release_check.py --tag`, so the rule lives in one place and is tested; CI lints every workflow with a pinned actionlint.
 - A Blender test fails every recipe once with a representative bad argument and compares the scene before and after; tests keep every
   server-side error telling the next step in Korean and English, and tool and argument names in the docs real.
@@ -64,6 +64,7 @@
   간접 의존성 `exceptiongroup` 이 빠져 제3자 라이선스 표도 39개. 시험의 `importorskip("tomllib")` 는 보통 import 로
 
 **고침**
+- `examples/first_render.py` 가 도구 실패로 끝나면(종료 코드 1) 마지막 줄에 신고 방법: `uvx --from blender-fx-mcp blender-fx-doctor --issue` 출력을 버그 양식에(표에 방금 실패한 도구가 이미 들어감). 한/영·실제 진입점·가짜 수신기 끝까지 시험
 - `blender-fx-doctor --json` 과 MCP `doctor` 도구 구조화 값에 `last_error`(마지막 도구 실패의 시각·도구·첫 줄, 집 폴더 `~`, 없으면 null). `--issue` 표의 "최근 실패한 도구" 와 같은 값이라 AI 가 신고 초안을 만들 때도 오류 문장을 다시 묻지 않음. 버그 양식 "무엇이 나왔나" 칸에 "표에 이미 있으면 위 표 참고" + 시험
 - `blender-fx-doctor` 가 모두 정상이면 마지막 줄에 다음 할 일 하나: AI 에게 보낼 첫 문장(또는 `/first_demo`)과 AI 없이 확인하는 `uv run python examples/first_render.py`. MCP `doctor` 도구는 AI 가 할 순서(`make_demo_building → snapshot → destroy → render_preview`). 실패가 있으면 붙이지 않음 + 한/영·실제 도구 이름·예제 명령 시험
 - 해결법 링크 끝까지 시험: 서버를 stdio 하위 프로세스로 띄우고 가짜 수신기가 레시피 실패(+traceback)를 돌려줄 때, 도구 결과 첫 줄이 "실패: … 해결법: …#절" 이고 링크가 한 번만·traceback 은 그 뒤에 남는지, 서버 쪽 오류(`restore` 스냅샷 없음)도 같은지, 하위 프로세스가 `last_error.txt` 를 남기는지(한/영)
