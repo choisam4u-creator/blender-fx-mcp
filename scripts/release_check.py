@@ -16,6 +16,7 @@ Mac 실측(`docs/test-reports/latest.md`)이 PASS 이고 30일 안인지도 든�
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -141,9 +142,12 @@ def check_generated(root: Path) -> list[tuple[bool, str]]:
     out: list[tuple[bool, str]] = []
     gen = root / "scripts" / "gen_help_index.py"
     if gen.is_file():
-        r = subprocess.run([sys.executable, str(gen)], cwd=root, capture_output=True, text=True, check=False)
+        # 파이프의 기본 인코딩과 무관하게 자식 출력과 부모 읽기를 UTF-8로 맞춘다.
+        r = subprocess.run([sys.executable, str(gen)], cwd=root, capture_output=True, text=True,
+                           encoding="utf-8", env={**os.environ, "PYTHONIOENCODING": "utf-8"}, check=False)
         out.append((r.returncode == 0, "해결법 대응표(src/blender_fx_mcp/help_index.py) = 문서·레시피·서버 오류 문장"
-                    + ("" if r.returncode == 0 else " → 다름. `uv run python scripts/gen_help_index.py --write` 로 새로 쓰고 커밋한다")))
+                    + ("" if r.returncode == 0 else " → 다름. `uv run python scripts/gen_help_index.py --write` 로 새로 쓰고 커밋한다")
+                    + (f"\n{r.stderr.strip()}" if r.returncode != 0 and r.stderr.strip() else "")))
     lint = root / "scripts" / "lint.sh"
     if lint.is_file():
         bash = shutil.which("bash")

@@ -769,3 +769,24 @@ def test_generated_check_catches_lint_drift(monkeypatch, tmp_path):
     monkeypatch.setattr(rc.shutil, "which", lambda _: None)
     [(ok, line)] = rc.check_generated(tmp_path)
     assert ok and "건너뜀" in line
+
+
+@pytest.mark.parametrize("exit_code, stderr", [(0, ""), (1, ""), (2, "진단: 입력을 확인하세요")])
+def test_generated_check_utf8_pipes(tmp_path, monkeypatch, exit_code, stderr):
+    """부모 기본 읽기와 자식 출력을 cp1252로 모의해 한글·실패 진단을 보존한다."""
+    monkeypatch.setenv("PYTHONIOENCODING", "cp1252")
+    monkeypatch.setattr(subprocess, "_text_encoding", lambda: "cp1252")
+    gen = tmp_path / "scripts" / "gen_help_index.py"
+    gen.parent.mkdir()
+    gen.write_text(
+        "import sys\n"
+        "print('대응표 확인')\n"
+        f"print({stderr!r}, file=sys.stderr)\n"
+        f"sys.exit({exit_code})\n", encoding="utf-8",
+    )
+    [(ok, line)] = rc.check_generated(tmp_path)
+    assert ok == (exit_code == 0)
+    if exit_code:
+        assert "gen_help_index.py --write" in line
+    if stderr:
+        assert stderr in line
