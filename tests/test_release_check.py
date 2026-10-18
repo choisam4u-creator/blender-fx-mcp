@@ -609,6 +609,38 @@ def test_triage_report_ci_section_reads_real_rest_shapes(capsys):
     assert tr.NO_SIGNAL.isdisjoint(tr.RED)
 
 
+def test_triage_report_ci_marks_runs_green_only_after_rerun(capsys):
+    """재실행해서야 초록이 된 실행은 목록 API 에 마지막 시도(초록)만 와 표에서 사라진다. 앞 시도(attempts/N-1)가 빨가면 '흔들림' 줄로.
+    REST 칸 이름 그대로(run_attempt·head_sha·previous_attempt_url). 앞 시도도 초록(그냥 다시 돌린 것)이면 흔들림이 아니다. 종료 코드는 그대로."""
+    from datetime import datetime, timezone
+    tr = _triage()
+    now = datetime(2026, 10, 16, tzinfo=timezone.utc)
+
+    def rerun(run_id, name, created, attempt):
+        return {**_run(run_id, name, "success", created), "run_attempt": attempt, "head_sha": "acb5820",
+                "previous_attempt_url": f"https://api.github.com/repos/o/r/actions/runs/{run_id}/attempts/{attempt - 1}"}
+    runs = {"main": [rerun(31, "ci", "2026-10-15T00:00:00Z", 2), rerun(30, "ci", "2026-10-10T00:00:00Z", 3),
+                     rerun(29, "triage", "2026-10-14T00:00:00Z", 2)],
+            "fix-typo": [rerun(41, "ci", "2026-10-15T00:00:00Z", 2)]}
+    data = _ci_data(runs=runs)
+    data.update({"repos/o/r/actions/runs/31/attempts/1": [{"id": 31, "run_attempt": 1, "conclusion": "failure"}],
+                 "repos/o/r/actions/runs/30/attempts/2": [{"id": 30, "run_attempt": 2, "conclusion": "timed_out"}],
+                 "repos/o/r/actions/runs/29/attempts/1": [{"id": 29, "run_attempt": 1, "conclusion": "success"}],
+                 "repos/o/r/actions/runs/41/attempts/1": [{"id": 41, "run_attempt": 1, "conclusion": "failure"}]})
+    rows = tr.ci_status("o/r", data.__getitem__, now)
+    assert [(r["branch"], r["pr"], r["workflow"], r["flaky"], r["url"], r["late"]) for r in rows] == [
+        ("main", None, "ci", 2, "https://x/runs/31", False), ("fix-typo", 3, "ci", 1, "https://x/runs/41", False)]
+    assert tr.main(["--repo", "o/r"], api=data.__getitem__, now=now) == 0, "흔들림은 고칠 거리지만 빨간 CI 는 아님"
+    out = capsys.readouterr().out.split("CI:", 1)[1]
+    assert "모두 초록" in out and "triage" not in out
+    assert "흔들림 / Flaky: main · ci — 재실행해서 초록 2번(최근 30일)" in out and out.rstrip().endswith("fix the test: https://x/runs/41")
+    # 빨간 표가 있을 때는 표 아래 빈 줄 뒤에
+    data[next(k for k in data if "branch=main" in k)][0]["workflow_runs"].insert(0, _run(32, "lint", "failure", "2026-10-15T06:00:00Z"))
+    data["repos/o/r/actions/runs/32/jobs?per_page=100"] = [{"jobs": [{"name": "lint", "conclusion": "failure"}]}]
+    text = tr.format_ci(tr.ci_status("o/r", data.__getitem__, now))
+    assert "빨간 워크플로 1개" in text and "| main | lint |" in text and text.index("| main | lint |") < text.index("\n\n흔들림 / Flaky: main")
+
+
 def test_maintenance_has_red_ci_response_rule():
     """maintenance 한/영에 빨간 CI 대응 절: triage 표의 3일(CI_RED_DAYS)과 같은 일수, 그 주에 고치거나 이슈로 남김."""
     tr = _triage()
@@ -618,6 +650,7 @@ def test_maintenance_has_red_ci_response_rule():
     assert f"{tr.CI_RED_DAYS}일" in ko and "이슈" in ko and "triage_report.py" in ko
     assert f"{tr.CI_RED_DAYS} days" in en and "issue" in en and "triage_report.py" in en
     assert "cancelled" in ko and "cancelled" in en  # 취소된 실행은 세지 않는다는 것도
+    assert "흔들림" in ko and "Flaky" in en  # 재실행해서 초록이면 표 아래 줄로 남는다는 것도
 
 
 def test_triage_report_without_gh_says_what_to_do(monkeypatch, capsys):

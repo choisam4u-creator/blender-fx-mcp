@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: MIT
 """이슈 대응 기록: 열린 이슈·PR 마다 첫 답까지 며칠 걸렸는지 보고, SUPPORT.md 목표(보안·버그 7일, 그 밖 14일)를 넘은 것만 표로 낸다.
 기본 브랜치와 열린 PR 브랜치의 최신 CI 도 보고, 빨간 워크플로마다 빨간 지 며칠째인지와 실패한 잡 이름을 표로 낸다(3일 넘으면 ⚠).
+재실행해서야 초록이 된 실행(흔들리는 시험)은 표 아래 "흔들림" 줄로 남긴다(종료 코드에는 안 셈).
 
   uv run python scripts/triage_report.py                 # 이 저장소, 목표를 넘은 것만 + 빨간 CI
   uv run python scripts/triage_report.py --all           # 목표 안인 것까지 모두
@@ -117,8 +118,23 @@ def _runs(repo: str, branch: str, api: Api, since: str) -> list[dict]:
     return sorted(runs, key=lambda r: r["created_at"], reverse=True)
 
 
+def _flaky(repo: str, runs: list[dict], api: Api) -> list[dict]:
+    """재실행해서 초록이 된 실행(같은 커밋에서 바로 앞 시도가 빨강), 새것부터. 목록 API 는 실행마다 마지막 시도만 주어
+    초록이 되면 표에서 사라지므로, run_attempt > 1 인 초록 실행만 앞 시도를 한 번 더 묻는다."""
+    out = []
+    for run in runs:
+        attempt = run.get("run_attempt") or 1
+        if run.get("conclusion") != "success" or attempt < 2:
+            continue
+        before = api(f"repos/{repo}/actions/runs/{run['id']}/attempts/{attempt - 1}")
+        if before and before[0].get("conclusion") in RED:
+            out.append(run)
+    return out
+
+
 def ci_status(repo: str, api: Api, now: datetime) -> list[dict]:
-    """기본 브랜치·열린 PR 브랜치마다 워크플로별 최신 실행이 빨가면 {브랜치, PR, 워크플로, 빨간 지 일수, 실패 잡, 넘음}."""
+    """기본 브랜치·열린 PR 브랜치마다 워크플로별 최신 실행이 빨가면 {브랜치, PR, 워크플로, 빨간 지 일수, 실패 잡, 넘음}.
+    최근 CI_LOOKBACK_DAYS 일 안에 재실행해서 초록이 된 것은 {…, flaky: 횟수, url: 가장 최근 것} 으로 따로(넘음은 아님)."""
     since = datetime.fromtimestamp(now.timestamp() - CI_LOOKBACK_DAYS * 86400, timezone.utc).date().isoformat()
     default = api(f"repos/{repo}")[0]["default_branch"]
     branches = [(default, None)] + [(p["head"]["ref"], p["number"]) for p in api(f"repos/{repo}/pulls?state=open&per_page=100")]
@@ -130,6 +146,9 @@ def ci_status(repo: str, api: Api, now: datetime) -> list[dict]:
                 continue
             by_workflow.setdefault(run["name"], []).append(run)
         for name, runs in sorted(by_workflow.items()):
+            flaky = _flaky(repo, runs, api)
+            if flaky:
+                rows.append(dict(branch=branch, pr=pr, workflow=name, flaky=len(flaky), url=flaky[0].get("html_url", ""), late=False))
             if runs[0].get("conclusion") not in RED:
                 continue
             first_red = runs[0]
@@ -145,9 +164,22 @@ def ci_status(repo: str, api: Api, now: datetime) -> list[dict]:
     return rows
 
 
+def format_flaky(rows: list[dict]) -> list[str]:
+    """흔들리는 워크플로 줄(표 아래). 재실행해서 초록이면 표에서 사라져 아무도 고치지 않으니 따로 남긴다."""
+    lines = []
+    for r in rows:
+        where = r["branch"] + (f" (PR #{r['pr']})" if r["pr"] else "")
+        lines.append(f"흔들림 / Flaky: {where} · {r['workflow']} — 재실행해서 초록 {r['flaky']}번(최근 {CI_LOOKBACK_DAYS}일), 시험을 고치세요 / "
+                     f"green only after a re-run {r['flaky']}x (last {CI_LOOKBACK_DAYS} days), fix the test: {r['url'] or '-'}")
+    return lines
+
+
 def format_ci(rows: list[dict]) -> str:
+    flaky = format_flaky([r for r in rows if r.get("flaky")])
+    rows = [r for r in rows if not r.get("flaky")]
     if not rows:
-        return "CI: 기본 브랜치·열린 PR 의 최신 실행이 모두 초록 / CI: latest runs on the default branch and open PRs are all green"
+        return "\n".join(["CI: 기본 브랜치·열린 PR 의 최신 실행이 모두 초록 / CI: latest runs on the default branch and open PRs are all green",
+                          *flaky])
     late = sum(r["late"] for r in rows)
     lines = [f"CI: 빨간 워크플로 {len(rows)}개, {CI_RED_DAYS}일 넘은 것 {late}개 / "
              f"{len(rows)} red workflows, {late} red for more than {CI_RED_DAYS} days", "",
@@ -156,7 +188,7 @@ def format_ci(rows: list[dict]) -> str:
         where = r["branch"] + (f" (PR #{r['pr']})" if r["pr"] else "")
         jobs = ", ".join(r["jobs"]).replace("|", "\\|") or "-"
         lines.append(f"| {where} | {r['workflow']} | {r['red_days']}일 / d{' ⚠' if r['late'] else ''} | {jobs} | {r['url'] or '-'} |")
-    return "\n".join(lines)
+    return "\n".join(lines + ([""] + flaky if flaky else []))
 
 
 def format_table(rows: list[dict], show_all: bool) -> str:

@@ -66,6 +66,7 @@
   간접 의존성 `exceptiongroup` 이 빠져 제3자 라이선스 표도 39개. 시험의 `importorskip("tomllib")` 는 보통 import 로
 
 **고침**
+- `triage_report.py` CI 칸에 "흔들림" 줄: 목록 API 는 실행마다 마지막 시도만 주어 재실행해서 초록이 되면 표에서 사라졌음 → `run_attempt` > 1 인 초록 실행의 앞 시도(`attempts/N-1`)가 빨가면 표 아래에 워크플로·최근 30일 횟수·실행 링크(종료 코드에는 안 셈). maintenance '빨간 CI 대응' 한/영.
 - `last_error`(doctor `--json`·MCP `doctor` 구조화 값)에 `stale`: 7일 넘은 마지막 실패는 `true`, `--issue` 표 "최근 실패한 도구" 끝에 "오래됨(7일 넘음), 지금 문제와 다를 수 있음"(한/영). 지난주 실패가 오늘 신고에 섞여 엉뚱한 원인을 쫓지 않게.
 - 첫 렌더 확인을 저장소 없이: 본체를 패키지 모듈 `blender_fx_mcp.first_render` + 콘솔 진입점 `blender-fx-first-render` 로 옮김(`uvx --from blender-fx-mcp blender-fx-first-render`). `examples/first_render.py` 는 같은 코드를 부르는 껍데기. README 한/영·doctor 다음 할 일에서 "(저장소에서)" 조건이 빠짐.
 - `render_preview`·`render_video` 결과 끝 줄과 `examples/first_render.py` 끝에 결과를 바로 여는 명령 한 줄(macOS `open`·Linux `xdg-open`·Windows `start ""`, 경로 따옴표): 미리보기는 폴더, 영상은 mp4, 예제는 첫 PNG. 블렌더가 다른 컴퓨터면 붙이지 않음(한/영).
