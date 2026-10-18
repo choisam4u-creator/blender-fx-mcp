@@ -45,6 +45,13 @@ gh label create "stale" --color ededed --description "needs-info 마감 7일 전
 SHA 가 각 태그 커밋과 같음(`git ls-remote`), 셋 다 `node24`(GitHub 호스트 러너는 됨), 우리가 쓰는 입력(`persist-credentials`, stale 의 `only-labels` 등 7개)이 모두 남아 있음.
 setup-uv 는 입력을 주지 않으며, v10 의 캐시 기본값 `auto` 는 태그 push 에서 꺼져 release.yml 이 캐시를 쓰지 않는다. 클라우드 정비 브랜치에 옮겨 CI 로 확인.
 
+### 빨간 CI 대응
+
+1. `uv run python scripts/triage_report.py` 의 CI 표(또는 매주 월요일 `triage.yml` 의 Summary)에서 빨간 워크플로·실패 잡·실행 링크를 본다. 같은 워크플로가 연달아 실패한 첫 실행부터 센다. 취소된 실행(cancelled, 새 push 로 concurrency 가 끊은 것)·건너뛴 실행·포크 PR 승인 대기(action_required)는 세지 않는다.
+2. 기본 브랜치가 빨가면 PR 병합보다 먼저 본다. 실패 잡 로그에서 원인을 찾아 고치는 PR 을 낸다. 같은 커밋에서 한 번 다시 돌려 초록이면 흔들리는 시험이니 시험을 고친다(건너뛰게 만들지 않는다).
+3. 빨간 지 3일이 넘으면(표의 ⚠, 종료 코드 1) 그 주 안에 고치거나, 못 고치면 원인·실패 잡·실행 링크를 적은 이슈(`bug` 라벨)로 남겨 다음 사람이 이어 가게 한다.
+4. 열린 PR 만 빨가면 그 PR 몫이다. 기본 브랜치도 같은 잡이 빨가면 기본 브랜치를 먼저 고치고 PR 에 기본 브랜치를 병합한다.
+
 ### 판 번호와 출시
 
 - 판 번호는 `메이저.마이너.패치` 이다. 1.0 전에는 **마이너** 가 새 도구·인자·동작 변화(예: 범위 밖 값을 오류로 바꾼 것), **패치** 가 고침만이다.
@@ -110,6 +117,13 @@ Labels are defined in [`.github/labels.yml`](../.github/labels.yml). Every label
 Review log (2026-10-14): checkout v4.4.0 → v7.0.1 (#12), setup-uv v5.4.2 → v10.3.0 (#17, supersedes #11), stale v10.4.0 → v11.0.0 (#14).
 Each SHA matches its tag commit (`git ls-remote`); all three run on `node24` (fine on GitHub-hosted runners); every input we pass (`persist-credentials`, the seven stale inputs) still exists.
 We pass no inputs to setup-uv, and its v10 cache default `auto` is off for tag pushes, so release.yml stays cache-free. Ported to the cloud maintenance branch and checked by CI.
+
+### Responding to red CI
+
+1. Read the CI table of `uv run python scripts/triage_report.py` (or the Monday `triage.yml` Summary): red workflow, failed jobs, run link. Days count from the first run of the current failing streak. Cancelled runs (`cancelled`, cut by concurrency after a new push), skipped runs and fork PRs waiting for approval (action_required) are not counted.
+2. A red default branch comes before merging PRs. Find the cause in the failed job log and open a fixing PR. If one re-run on the same commit is green, the test is flaky: fix the test (do not make it skip).
+3. After 3 days red (⚠ in the table, exit code 1), fix it that week, or open an issue (`bug` label) with the cause, failed jobs and run link so the next person can pick it up.
+4. If only an open PR is red, it belongs to that PR. If the default branch fails the same job, fix the default branch first and merge it into the PR.
 
 ### Versions and releases
 

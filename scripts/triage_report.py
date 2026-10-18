@@ -32,6 +32,9 @@ OTHER_DAYS = 14
 CI_RED_DAYS = 3
 CI_LOOKBACK_DAYS = 30
 RED = {"failure", "timed_out", "startup_failure"}
+# 결과가 건강을 말하지 않는 실행: 새 push 로 취소(concurrency), 조건으로 건너뜀, 포크 PR 승인 대기. 최신·연속을 셀 때 건너뛴다
+# (빼지 않으면 빨간 main 위에 취소된 실행 하나가 CI 를 초록으로 보이게 한다)
+NO_SIGNAL = {"cancelled", "skipped", "neutral", "action_required", "stale"}
 
 GH_HELP = (
     "gh(GitHub CLI)가 필요합니다. 설치: macOS `brew install gh`, 그 밖은 https://cli.github.com 을 본 뒤 `gh auth login` 으로 로그인하세요.\n"
@@ -123,6 +126,8 @@ def ci_status(repo: str, api: Api, now: datetime) -> list[dict]:
     for branch, pr in branches:
         by_workflow: dict[str, list[dict]] = {}
         for run in _runs(repo, branch, api, since):
+            if run.get("conclusion") in NO_SIGNAL:
+                continue
             by_workflow.setdefault(run["name"], []).append(run)
         for name, runs in sorted(by_workflow.items()):
             if runs[0].get("conclusion") not in RED:

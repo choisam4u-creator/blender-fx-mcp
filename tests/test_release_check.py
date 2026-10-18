@@ -583,6 +583,43 @@ def test_triage_report_ci_section_flags_long_red_runs(capsys):
     assert "CI:" not in capsys.readouterr().out
 
 
+def test_triage_report_ci_section_reads_real_rest_shapes(capsys):
+    """GitHub REST 문서의 실제 응답 모양(workflow_runs[]·jobs[] 의 모든 칸, 쪽 나눔, 재실행 run_attempt)을 고정 자료로.
+    취소된 실행(새 push 로 concurrency 취소)·포크 PR 승인 대기(action_required)는 건강을 말하지 않아 건너뛴다:
+    빨간 main 위에 취소된 실행 하나가 있어도 빨강으로, 건너뛴(skipped) 잡은 실패 잡이 아니다."""
+    import json
+    from datetime import datetime, timezone
+    tr = _triage()
+    fixture = json.loads((ROOT / "tests" / "fixtures" / "github_actions_rest.json").read_text(encoding="utf-8"))
+    data = _ci_data(runs={}, jobs={})
+    for branch, pages in fixture["runs"].items():
+        data[f"repos/o/r/actions/runs?branch={branch}&status=completed&created=%3E%3D{SINCE}&per_page=100"] = pages
+    for run_id, pages in fixture["jobs"].items():
+        data[f"repos/o/r/actions/runs/{run_id}/jobs?per_page=100"] = pages
+    data["repos/o/r/pulls?state=open&per_page=100"] = fixture["pulls"]
+    now = datetime(2026, 10, 16, tzinfo=timezone.utc)
+    rows = tr.ci_status("o/r", data.__getitem__, now)
+    assert [(r["branch"], r["pr"], r["workflow"], r["red_days"], r["jobs"], r["late"]) for r in rows] == [
+        ("main", None, "ci", 4.0, ["lint"], True)], rows
+    assert rows[0]["url"] == "https://github.com/octo-org/octo-repo/actions/runs/30433641"  # 취소된 것이 아닌 마지막 빨간 실행
+    assert tr.main(["--repo", "o/r"], api=data.__getitem__, now=now) == 1
+    out = capsys.readouterr().out
+    assert "| main | ci | 4.0일 / d ⚠ | lint | https://github.com/octo-org/octo-repo/actions/runs/30433641 |" in out
+    assert "fix-typo" not in out.split("CI:", 1)[1], "승인 대기 실행 아래 마지막 결과는 초록"
+    assert tr.NO_SIGNAL.isdisjoint(tr.RED)
+
+
+def test_maintenance_has_red_ci_response_rule():
+    """maintenance 한/영에 빨간 CI 대응 절: triage 표의 3일(CI_RED_DAYS)과 같은 일수, 그 주에 고치거나 이슈로 남김."""
+    tr = _triage()
+    text = (ROOT / "docs" / "maintenance.md").read_text(encoding="utf-8")
+    ko = text.split("### 빨간 CI 대응", 1)[1].split("\n#", 1)[0]
+    en = text.split("### Responding to red CI", 1)[1].split("\n#", 1)[0]
+    assert f"{tr.CI_RED_DAYS}일" in ko and "이슈" in ko and "triage_report.py" in ko
+    assert f"{tr.CI_RED_DAYS} days" in en and "issue" in en and "triage_report.py" in en
+    assert "cancelled" in ko and "cancelled" in en  # 취소된 실행은 세지 않는다는 것도
+
+
 def test_triage_report_without_gh_says_what_to_do(monkeypatch, capsys):
     tr = _triage()
     monkeypatch.setattr(tr.shutil, "which", lambda name: None)

@@ -52,7 +52,8 @@
 - Troubleshooting: "Still on the old version" (clear the uv cache; use the `git+` address only to try unreleased `main`), and "Argument value rejected"
   (the range, choice, order and finite-number errors the server stops before Blender; a test keeps each sentence searchable on the page).
 - README shows a PyPI version badge, and (both languages) a three-line "Getting help": `doctor --issue` → the matching form → reply targets.
-- `docs/maintenance.md` has an eight-step release procedure (bump, check, tag, build, approve, PyPI, registry, release notes), tested against `release.yml`.
+- `docs/maintenance.md` has an eight-step release procedure (bump, check, tag, build, approve, PyPI, registry, release notes), tested against `release.yml`,
+  and "Responding to red CI" (fix within the week after 3 days red, or open an issue); `triage_report.py` no longer lets a cancelled run hide a red branch.
 - `docs/registry.md` and `docs/maintenance.md` say to run `release_check.py --tag` before pushing a tag.
 - README quick start: the uv step gives the Linux and Windows install commands directly (it used to point to doctor, which itself needs uv),
   and each step links the troubleshooting section to read when stuck. Troubleshooting has a new "uv not found" section.
@@ -65,6 +66,7 @@
   간접 의존성 `exceptiongroup` 이 빠져 제3자 라이선스 표도 39개. 시험의 `importorskip("tomllib")` 는 보통 import 로
 
 **고침**
+- `triage_report.py` CI 칸이 취소된 실행(새 push 로 concurrency 가 끊은 것)·건너뛴 실행·포크 PR 승인 대기를 세지 않음: 빨간 main 위에 취소된 실행 하나가 있으면 CI 가 초록으로 보이던 문제. GitHub REST 문서의 실제 응답 모양(`workflow_runs[]`·`jobs[]` 모든 칸, 쪽 나눔, 재실행)을 고정 자료(`tests/fixtures/github_actions_rest.json`)로 시험. `docs/maintenance.md` 에 "빨간 CI 대응" 한/영(3일 넘으면 그 주에 고치거나 이슈로)
 - `release_check.py` 파일 점검에 두 줄: 해결법 대응표(`gen_help_index.py`)가 문서·오류 문장과 같은지, `scripts/lint.sh --print` 가 ci.yml lint 단계와 같은지(다르면 양쪽 명령과 고칠 곳). 출시 절차 8단계는 이 스크립트 하나만 돌리므로. bash 가 없으면 lint 줄은 건너뜀 + 시험 3개
 - `examples/first_render.py` 가 도구 실패로 끝나면(종료 코드 1) 마지막 줄에 신고 방법: `uvx --from blender-fx-mcp blender-fx-doctor --issue` 출력을 버그 양식에(표에 방금 실패한 도구가 이미 들어감). 한/영·실제 진입점·가짜 수신기 끝까지 시험
 - `blender-fx-doctor --json` 과 MCP `doctor` 도구 구조화 값에 `last_error`(마지막 도구 실패의 시각·도구·첫 줄, 집 폴더 `~`, 없으면 null). `--issue` 표의 "최근 실패한 도구" 와 같은 값이라 AI 가 신고 초안을 만들 때도 오류 문장을 다시 묻지 않음. 버그 양식 "무엇이 나왔나" 칸에 "표에 이미 있으면 위 표 참고" + 시험
