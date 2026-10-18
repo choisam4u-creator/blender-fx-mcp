@@ -559,6 +559,26 @@ def test_json_carries_last_error_same_as_issue(monkeypatch, capsys, tmp_path):
     assert doctor.last_failure() == f"`import_model`: 파일이 없습니다: ~/a\\|b.glb ({err['time']})"
 
 
+@pytest.mark.parametrize("lang, mark", [("ko", " — 오래됨(7일 넘음), 지금 문제와 다를 수 있음"),
+                                        ("en", " — stale (over 7 days old), may not be this problem")])
+def test_old_last_error_is_marked_stale(monkeypatch, tmp_path, lang, mark):
+    """지난주 실패가 오늘 신고에 섞여 엉뚱한 원인을 쫓지 않게, 7일 넘은 마지막 실패는 --json 에 stale: true, --issue 표에 '오래됨'."""
+    from datetime import datetime, timedelta
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path))
+    now = datetime(2026, 10, 18, 12, 0)
+    for age, stale in ((timedelta(days=7), False), (timedelta(days=7, minutes=1), True), (timedelta(0), False)):
+        when = (now - age).strftime("%Y-%m-%d %H:%M")
+        (tmp_path / "last_error.txt").write_text(f"{when}\trestore\t스냅샷 없음\n", encoding="utf-8")
+        assert doctor.last_error(now)["stale"] is stale, age
+        assert doctor.last_failure(now) == f"`restore`: 스냅샷 없음 ({when})" + (mark if stale else "")
+    # 시각을 못 읽으면 오래됐다고 단정하지 않는다. 기본 now 는 지금 시각
+    (tmp_path / "last_error.txt").write_text("어제쯤\trestore\tx\n", encoding="utf-8")
+    assert doctor.last_error()["stale"] is False
+    (tmp_path / "last_error.txt").write_text("2020-01-01 00:00\trestore\tx\n", encoding="utf-8")
+    assert doctor.last_error()["stale"] is True and mark in doctor.format_issue([])
+
+
 def test_bug_form_says_doctor_issue_already_has_the_error():
     """버그 양식 '무엇이 나왔나' 칸이 doctor --issue 표에 이미 있으면 다시 붙이지 않아도 된다고 한/영으로 말한다."""
     root = Path(__file__).resolve().parents[1]

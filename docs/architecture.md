@@ -32,7 +32,7 @@
 목록형 도구(`list_objects`·`inspect_mesh`·`list_snapshots`)는 같은 내용을 구조화 값(`structuredContent`)으로도 준다(`_with_data`).
 AI 가 문장을 다시 파싱하지 않고 이름·크기를 집는다. 실패는 다른 도구처럼 문장만.
 `doctor` 도 점검 항목마다 `ok`·`fix`(다음 할 일)와 `failed`(고쳐야 할 항목 id)를 준다(`--json` 과 같은 항목 모양, `doctor.check_rows`).
-`last_error` 는 마지막 도구 실패(시각·도구·첫 줄, 집 폴더 `~`, `doctor.last_error`)라 AI 가 신고 초안에 오류 문장을 다시 묻지 않는다(`--json` 도 같은 칸).
+`last_error` 는 마지막 도구 실패(시각·도구·첫 줄, 집 폴더 `~`, 7일 넘으면 `stale: true`, `doctor.last_error`)라 AI 가 신고 초안에 오류 문장을 다시 묻지 않는다(`--json` 도 같은 칸).
 
 AI 는 블렌더 코드를 짜지 않습니다. 검증된 레시피와 값만 고릅니다.
 
@@ -109,7 +109,7 @@ bpy 모듈로 (CI recipe-tests-bpy: Linux · recipe-tests-bpy-macos: macOS arm64
 The list tools (`list_objects`, `inspect_mesh`, `list_snapshots`) also return the same content as `structuredContent` (`_with_data`),
 so the AI picks names and sizes without re-parsing text. Failures stay plain sentences like every other tool.
 `doctor` also returns each check's `ok` and `fix` (the next step) plus `failed` (ids to fix), in the same row shape as `--json` (`doctor.check_rows`).
-`last_error` holds the last failed tool (time, tool, first line, home folder as `~`, `doctor.last_error`), so a bug report draft needs no copied error (`--json` has the same field).
+`last_error` holds the last failed tool (time, tool, first line, home folder as `~`, `stale: true` after 7 days, `doctor.last_error`), so a bug report draft needs no copied error (`--json` has the same field).
 
 The AI never writes Blender code. It only picks a tested recipe and its values.
 

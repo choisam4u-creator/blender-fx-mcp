@@ -16,6 +16,7 @@ import shutil
 import subprocess
 import sys
 import urllib.request
+from datetime import datetime, timedelta
 from importlib import metadata
 
 from . import __version__, bridge, disk
@@ -442,24 +443,34 @@ def out_dir() -> str:
     return os.path.expanduser(os.environ.get("BLENDER_FX_OUT", "~/blender-fx-output"))
 
 
-def last_error() -> dict | None:
-    """서버가 출력 폴더 last_error.txt 에 남긴 마지막 도구 실패 {time, tool, message}(집 폴더는 ~). 없거나 못 읽으면 None.
-    --json·MCP doctor 도구·--issue 가 같은 값을 써, AI 가 신고 초안을 만들 때도 오류 문장을 다시 묻지 않는다."""
+LAST_ERROR_STALE_DAYS = 7  # 이보다 오래된 마지막 실패는 "오래됨"(지난주 실패가 오늘 신고에 섞여 엉뚱한 원인을 쫓지 않게)
+
+
+def last_error(now: datetime | None = None) -> dict | None:
+    """서버가 출력 폴더 last_error.txt 에 남긴 마지막 도구 실패 {time, tool, message, stale}(집 폴더는 ~). 없거나 못 읽으면 None.
+    --json·MCP doctor 도구·--issue 가 같은 값을 써, AI 가 신고 초안을 만들 때도 오류 문장을 다시 묻지 않는다.
+    stale: 시각이 LAST_ERROR_STALE_DAYS 일보다 오래됐으면 true(시각을 못 읽으면 false)."""
     try:
         with open(os.path.join(out_dir(), "last_error.txt"), encoding="utf-8") as f:
             when, tool, line = f.readline().rstrip("\n").split("\t", 2)
     except (OSError, ValueError, UnicodeDecodeError):
         return None
-    return {"time": when, "tool": tool, "message": mask_home(line)}
+    try:  # 서버가 그 컴퓨터 지역 시각으로 적는다(server._record_failure)
+        age = (now or datetime.now()) - datetime.strptime(when, "%Y-%m-%d %H:%M")
+    except ValueError:
+        age = timedelta(0)
+    return {"time": when, "tool": tool, "message": mask_home(line), "stale": age > timedelta(days=LAST_ERROR_STALE_DAYS)}
 
 
-def last_failure() -> str | None:
-    """last_error() 를 "도구: 문장 (시각)" 한 줄로(마크다운 표 칸이라 | 는 \\|). 없으면 None."""
-    err = last_error()
+def last_failure(now: datetime | None = None) -> str | None:
+    """last_error() 를 "도구: 문장 (시각)" 한 줄로(마크다운 표 칸이라 | 는 \\|). 오래됐으면 그렇다고 덧붙인다. 없으면 None."""
+    err = last_error(now)
     if err is None:
         return None
     line = err["message"].replace("|", "\\|")
-    return f"`{err['tool']}`: {line} ({err['time']})"
+    old = t(f" — 오래됨({LAST_ERROR_STALE_DAYS}일 넘음), 지금 문제와 다를 수 있음",
+            f" — stale (over {LAST_ERROR_STALE_DAYS} days old), may not be this problem") if err["stale"] else ""
+    return f"`{err['tool']}`: {line} ({err['time']}){old}"
 
 
 def format_issue(checks: list[dict]) -> str:
