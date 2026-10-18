@@ -5,10 +5,29 @@
 한 번에 돌려 `latest.md` 를 새로 쓰려면 `uv run python scripts/mac_report.py`(결과 확인 뒤 커밋). 클라우드 회차는 그 FAIL 부터 고친다.
 
 ```sh
-uv sync && uv run pytest -q && scripts/lint.sh     # 블렌더 앱으로 전체 통과 + CI lint 와 같은 검사(새: lint.sh·triage CI 칸·last_error·stdio 링크 시험)
-uv run python -c "from blender_fx_mcp import server; print(server.restore('nope'))" && uv run blender-fx-doctor --issue | grep -E '최근 실패|Last failed'   # '실패: 스냅샷이 없습니다 … 해결법: …#object-or-file-not-found' 와 `restore` 줄
-gh auth status && uv run python scripts/triage_report.py --all   # 아래 'CI:' 표가 실제 저장소 응답으로 나오는지(클라우드엔 gh 없음)
+uv sync && uv run pytest -q && scripts/lint.sh && uv run python scripts/release_check.py   # 전체 통과 + lint, release_check 는 '미출시' 1줄만 FAIL(새: 대응표·lint 점검 줄)
+uv run blender-fx-doctor | tail -1 && uv run blender-fx-doctor --json | grep -A3 last_error   # 블렌더 Connect 뒤: 끝줄 '다음 할 일: …', last_error 칸
+gh auth status && uv run python scripts/triage_report.py --all   # CI 표가 실제 응답으로 나오는지(취소된 실행은 세지 않음, 클라우드엔 gh 없음)
 ```
+
+## 2026-10-18 (26회차)
+
+- 시작 확인: 저장된 지시의 최우선 F1·F3(0.7.0 판·release.yml)는 9회차(10/11)에 끝나 PR #13 으로 병합됐고(`ff7555e`·`4eb778f`) 태그 `v0.7.0` 도 있음 → 다시 할 것 없음, 일반 규칙.
+  `latest.md`(10/1)의 FAIL 2건은 main 에 고쳐져 있음(재확인). main 은 앞서 있지 않음.
+  열린 `claude/cloud-work-*` PR 중 가장 위(#25, `079186c`)에서 이어 감. 이 세션은 `claude/cloud-work-minl4u` 에 푸시 → PR 은 #25 위에 쌓음.
+- 한 일(백로그 25회차 추가분 5개 모두, 굽기 시간 어림은 Mac 실측 필요라 계속 건너뜀):
+  1. **doctor 정상 뒤 다음 할 일** (`8c5cc7f`): 모두 정상이면 끝줄에 AI 에게 보낼 첫 문장(또는 `/first_demo`)과 `uv run python examples/first_render.py`. MCP `doctor` 도구는 AI 가 할 순서.
+  2. **`--json`·doctor 도구에 `last_error`** (`bed0d9a`): `--issue` 표와 같은 값(시각·도구·첫 줄, 집 폴더 `~`). 버그 양식 '무엇이 나왔나' 에 "표에 있으면 위 표 참고".
+  3. **first_render 실패 시 신고 줄** (`f6d44d3`): 종료 코드 1 이면 끝줄에 `uvx --from blender-fx-mcp blender-fx-doctor --issue` → 버그 양식 링크(한/영, 가짜 수신기 끝까지 시험).
+  4. **release_check 두 줄** (`5cdb08f`): 해결법 대응표가 최신인지, `lint.sh --print` = ci.yml lint 단계인지. 출시 절차 2단계 문서 한/영.
+  5. **triage CI 칸 실제 응답 모양** (`28af206`): REST 문서 모양 고정 자료로 시험하다 찾은 결함 — 빨간 main 위에 취소된 실행 하나가 있으면 초록으로 보였음 → 취소·건너뜀·승인 대기는 세지 않음. maintenance 에 '빨간 CI 대응' 한/영.
+  - 남은 `[ ]` 가 1개(Mac 실측)라 새 항목 5개 추가(`175cb55`): 렌더 결과 여는 명령, PyPI 사용자용 first-render 진입점, 오래된 last_error 표시, triage 흔들림 표시, release_check 에 latest.md 점검.
+- 돌린 시험: `uv run pytest -q`(3.11) **1474 통과·49 건너뜀**(블렌더·bpy 필요), CI 서버 명령 `--cov --cov-fail-under=99` **100%**,
+  **`scripts/bpy_tests.sh`(bpy 5.0.1) → 1517 통과·6 건너뜀**(유체 `app_only` 5개·실제 캐릭터 파일 1개 — 블렌더 앱·개인 파일 필요; 처음엔 libEGL 이 없어 apt 로 설치 뒤 돌림),
+  `scripts/lint.sh`(ruff·actionlint+shellcheck·zizmor) 통과, `gen_tool_table.py` 일치. 변이 확인: triage 의 `NO_SIGNAL` 필터를 빼면 새 시험 실패.
+- 막힌 것: 없음. `triage_report.py` 를 실제 저장소로 돌리는 것은 클라우드에 gh 가 없어 Mac 몫.
+- 완료 수·추가 수: **완료 5** / **추가 5** (완료 ≥ 추가). 남은 `[ ]` 6개(그중 1개 Mac 실측).
+- Mac에서 확인할 것: 맨 위 명령 3줄(또는 `uv run python scripts/mac_report.py` 한 번).
 
 ## 2026-10-17 (25회차)
 
