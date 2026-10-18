@@ -77,7 +77,6 @@ def main():
     pitch_deg = float(p.get("pitch_deg", -90.0 if mode == "drop" else 0.0))
     gravity_scale = float(p.get("gravity_scale", 1.0))
     cache_dir = p.get("cache_dir") or os.path.join(os.path.expanduser("~"), "blender-fx-output", "cache_liquid")
-    os.makedirs(cache_dir, exist_ok=True)
 
     use_visc, visc, tension, color, alpha = LIQUIDS[liquid]
     if p.get("viscosity") is not None:
@@ -86,34 +85,30 @@ def main():
     if p.get("surface_tension") is not None:
         tension = float(p["surface_tension"])
 
-    cleanup_liquid()
-    set_frame_end(frames)
-    sc.frame_start = 1
-
-    # 1) 물이 나올 곳
+    # 1) 물이 나올 곳 (이름·크기 검사가 끝날 때까지 지난 물과 프레임 범위는 건드리지 않는다)
     source_name = p.get("source_object")
     if mode == "object":
         if not source_name:
             raise FxError(L("mode='object' 에는 source_object 이름이 필요합니다. list_objects 로 이름을 확인해 source_object 로 주세요.",
                             "mode='object' needs a source_object name. Look up the name with list_objects and pass it as source_object."))
-        flow = get_target(source_name)
+        flow = reject_effect_part(get_target(source_name), LIQUID_ROLES)  # 지난 물의 입구·도메인은 cleanup_liquid 가 지운다
         flo, fhi = world_bbox(flow)
         at = (flo + fhi) / 2
         size = max((fhi - flo).length / 2, 0.1)
         own_flow = False
     else:
         a = p.get("at")
-        at = Vector((float(a[0]), float(a[1]), float(a[2]))) if a else None
+        at = point(a, "at") if a else None
         size = float(p.get("size") or 0.0)
         own_flow = True
 
     # 2) 물이 부딪힐 물건
     names = p.get("obstacles")
     if names:
-        obstacles = [get_target(n) for n in names]
+        obstacles = [reject_effect_part(get_target(n), LIQUID_ROLES) for n in names]
     else:
         obstacles = [o for o in mesh_objects()
-                     if o.get(FX_TAG) not in ("liquid_domain", "liquid_flow", "dust", "cell")
+                     if o.get(FX_TAG) not in (*LIQUID_ROLES, "dust", "cell")
                      and not o.hide_viewport and (mode != "object" or o.name != source_name)]
     # 바닥판은 아주 넓어서 크기 계산에 넣으면 물 공간이 쓸데없이 커진다.
     # 도메인 바닥이 이미 바닥 역할을 하므로 장애물에서도 뺀다.
@@ -129,41 +124,78 @@ def main():
 
     if size <= 0:
         size = max(0.25, min((ob_hi - ob_lo).x, (ob_hi - ob_lo).y) * 0.25)
-    if at is None:
-        if mode == "pool":
-            at = Vector(((ob_lo.x + ob_hi.x) / 2, (ob_lo.y + ob_hi.y) / 2, ob_lo.z))
-        else:
-            at = Vector(((ob_lo.x + ob_hi.x) / 2, (ob_lo.y + ob_hi.y) / 2, ob_hi.z + size * 2.0))
-
-    # 3) 물이 살 공간(도메인): 장애물 + 출발점 + 날아갈 거리를 모두 담는다
+    given_at = at
+    fixed = None
+    if p.get("domain_at") and p.get("domain_size"):
+        fixed = (point(p["domain_at"], "domain_at"), float(p["domain_size"]))
     d = direction_vector(direction_deg, pitch_deg)
     travel = max(0.0, speed) * (frames / float(sc.render.fps)) * 0.6
-    end = at + d * travel
-    pts = [ob_lo, ob_hi, at, end, at + Vector((size, size, size)), at - Vector((size, size, size))]
-    lo = Vector((min(v.x for v in pts), min(v.y for v in pts), min(v.z for v in pts)))
-    hi = Vector((max(v.x for v in pts), max(v.y for v in pts), max(v.z for v in pts)))
-    pad = max(size * 2.0, (hi - lo).length * 0.12, 0.5)
-    lo -= Vector((pad, pad, 0.0))
-    hi += Vector((pad, pad, pad))
-    ground_z = min(lo.z, ob_lo.z)
-    lo.z = ground_z
-    if p.get("domain_at") and p.get("domain_size"):
-        da = p["domain_at"]
-        dsz = float(p["domain_size"])
-        c = Vector((float(da[0]), float(da[1]), float(da[2])))
-        lo = Vector((c.x - dsz / 2, c.y - dsz / 2, c.z))
-        hi = Vector((c.x + dsz / 2, c.y + dsz / 2, c.z + dsz))
+
+    def domain_box(size):
+        """물 덩어리 크기 size 일 때의 (출발점, 도메인 아래, 위). size 를 바꿔 보는 안내 계산도 같은 식을 쓴다."""
+        at = given_at
+        if at is None:
+            if mode == "pool":
+                at = Vector(((ob_lo.x + ob_hi.x) / 2, (ob_lo.y + ob_hi.y) / 2, ob_lo.z))
+            else:
+                at = Vector(((ob_lo.x + ob_hi.x) / 2, (ob_lo.y + ob_hi.y) / 2, ob_hi.z + size * 2.0))
+        # 3) 물이 살 공간(도메인): 장애물 + 출발점 + 날아갈 거리를 모두 담는다(바닥 높이는 domain_at 을 줘도 이 상자에서)
+        end = at + d * travel
+        pts = [ob_lo, ob_hi, at, end, at + Vector((size, size, size)), at - Vector((size, size, size))]
+        lo = Vector((min(v.x for v in pts), min(v.y for v in pts), min(v.z for v in pts)))
+        hi = Vector((max(v.x for v in pts), max(v.y for v in pts), max(v.z for v in pts)))
+        pad = max(size * 2.0, (hi - lo).length * 0.12, 0.5)
+        lo -= Vector((pad, pad, 0.0))
+        hi += Vector((pad, pad, pad))
+        lo.z = min(lo.z, ob_lo.z)
+        ground_z = lo.z
+        if fixed is not None:
+            c, dsz = fixed
+            lo = Vector((c.x - dsz / 2, c.y - dsz / 2, c.z))
+            hi = Vector((c.x + dsz / 2, c.y + dsz / 2, c.z + dsz))
+        return at, lo, hi, ground_z
+
+    def longest(size):
+        _at, lo, hi, _g = domain_box(size)
+        return max(hi - lo)
+
+    def size_needed(res):
+        """resolution res 에서 물이 생기는 가장 작은 size(도메인이 size 와 함께 커지므로 고정점까지 되풀이, 5% 여유)."""
+        s = size
+        for _ in range(60):
+            s = max(s, longest(s) * 1.5 / res)
+        return s * 1.05
+
+    at, lo, hi, ground_z = domain_box(size)
     dsize = hi - lo
 
     # 물 덩어리가 격자 한 칸보다 작으면 물이 아예 안 생긴다
     voxel = max(dsize.x, dsize.y, dsize.z) / float(resolution)
     if mode != "pool" and size < voxel * 1.5:
         need = int(math.ceil(max(dsize.x, dsize.y, dsize.z) / (size / 1.5)))
+        if need <= 320:
+            raise FxError(L(
+                f"물 덩어리({size:.2f}m)가 계산 격자 한 칸({voxel:.2f}m)보다 작아 물이 생기지 않습니다. "
+                f"size 를 키우거나 resolution 을 {need} 이상으로 올리세요.",
+                f"The water source ({size:.2f}m) is smaller than one simulation cell ({voxel:.2f}m), so no liquid forms. "
+                f"Increase size, or raise resolution to at least {need}."))
+        # 권할 resolution 이 상한 320 을 넘으면 그 값은 쓸 수 없다: 지금 resolution 과 상한에서 되는 size 를 알려 준다
+        if mode == "object":
+            raise FxError(L(
+                f"물 덩어리({size:.2f}m)가 계산 격자 한 칸({voxel:.2f}m)보다 작아 물이 생기지 않고, resolution 은 320 까지라 올려서는 안 됩니다. "
+                f"source_object 를 더 큰 물체로 바꾸거나, domain_at·domain_size 로 물 공간을 줄이세요.",
+                f"The water source ({size:.2f}m) is smaller than one simulation cell ({voxel:.2f}m), so no liquid forms, "
+                f"and resolution only goes up to 320. Use a larger source_object, or set domain_at and domain_size to shrink the liquid space."))
+        now, top = size_needed(resolution), size_needed(320)
         raise FxError(L(
-            f"물 덩어리({size:.2f}m)가 계산 격자 한 칸({voxel:.2f}m)보다 작아 물이 생기지 않습니다. "
-            f"size 를 키우거나 resolution 을 {need} 이상으로 올리세요.",
-            f"The water source ({size:.2f}m) is smaller than one simulation cell ({voxel:.2f}m), so no liquid forms. "
-            f"Increase size, or raise resolution to at least {need}."))
+            f"물 덩어리({size:.2f}m)가 계산 격자 한 칸({voxel:.2f}m)보다 작아 물이 생기지 않고, resolution 은 320 까지라 올려서는 안 됩니다. "
+            f"size 를 {now:.2f} 이상으로 키우세요(resolution=320 이면 size {top:.2f} 이상).",
+            f"The water source ({size:.2f}m) is smaller than one simulation cell ({voxel:.2f}m), so no liquid forms, "
+            f"and resolution only goes up to 320. Increase size to at least {now:.2f} (or {top:.2f} with resolution=320)."))
+
+    cleanup_liquid()
+    set_frame_end(frames)
+    sc.frame_start = 1
 
     bm = bmesh.new()
     bmesh.ops.create_cube(bm, size=1.0)
@@ -181,6 +213,7 @@ def main():
     ds.cache_type = "ALL"
     ds.cache_frame_start = 1
     ds.cache_frame_end = frames
+    os.makedirs(cache_dir, exist_ok=True)  # 인자·장면 검사를 다 통과한 뒤에(실패한 호출이 빈 캐시 폴더를 남기지 않게)
     ds.cache_directory = cache_dir
     ds.use_mesh = True
     ds.use_collision_border_top = False
@@ -273,7 +306,7 @@ def main():
     return dict(mode=mode, liquid=liquid, shape=shape, at=[round(v, 2) for v in at], size=round(size, 2),
                 direction_deg=direction_deg, pitch_deg=pitch_deg, speed=speed,
                 viscosity=visc, surface_tension=tension, gravity_scale=gravity_scale,
-                frames=frames, emit_frames=[start, stop], resolution=resolution,
+                frames=frames, emit_frames=[start, stop], resolution=resolution, cell_m=round(voxel, 3),
                 domain_size_m=[round(dsize.x, 1), round(dsize.y, 1), round(dsize.z, 1)],
                 obstacles=len(obstacles), effectors=effectors, spray=bool(p.get("spray")),
                 water_center=[round(v, 2) for v in wc], drift=[round(v, 2) for v in drift],

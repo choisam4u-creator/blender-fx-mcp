@@ -138,6 +138,38 @@ def test_global_slow_motion_changes_length(tmp_path):
     assert t["frame_map"] == [100, 200], t
 
 
+def test_global_slow_is_relative_to_the_original_speed():
+    """두 번 시키면 길이만 또 늘고(48→96→192) 시간 배율은 2배 그대로여서 뒤 절반이 빈 화면이던 문제.
+    배율은 늘 원래 속도 기준이고 1.0 이면 되돌린다. 같은 호출의 frame_end 는 원래 길이로 본다."""
+    results = run_steps([
+        ("set_timing", {"frame_start": 1, "frame_end": 48}),
+        ("set_timing", {"global_slow": 0.5, "rebake": False}),
+        ("set_timing", {"global_slow": 0.5, "rebake": False}),
+        ("set_timing", {"global_slow": 0.25, "rebake": False}),
+        ("set_timing", {"global_slow": 1.0, "rebake": False}),
+        ("set_timing", {"frame_end": 60, "global_slow": 0.5, "rebake": False}),
+    ], blender=BLENDER)
+    for r in results:
+        assert r["ok"], r
+    ends = [r["frame_range"][1] for r in results]
+    maps = [r["frame_map"][1] for r in results]
+    assert ends == [48, 96, 96, 192, 48, 120], ends
+    assert maps == [100, 200, 200, 400, 100, 200], maps
+
+
+def test_global_slow_keeps_the_exact_length_for_uneven_factors():
+    """0.75 처럼 100/배율이 정수가 아니면 반올림한 frame_map 으로 되짚을 때 한 프레임씩 어긋났다(101 → 102)."""
+    results = run_steps([
+        ("set_timing", {"frame_start": 1, "frame_end": 101}),
+        ("set_timing", {"global_slow": 0.75, "rebake": False}),
+        ("set_timing", {"global_slow": 0.75, "rebake": False}),
+        ("set_timing", {"global_slow": 1.0, "rebake": False}),
+    ], blender=BLENDER)
+    for r in results:
+        assert r["ok"], r
+    assert [r["frame_range"][1] for r in results] == [101, 135, 135, 101], results
+
+
 def test_alembic_export(tmp_path):
     abc = tmp_path / "scene.abc"
     results = run_steps([
@@ -189,6 +221,24 @@ def test_renders_keep_user_render_settings(tmp_path):
     assert video["ok"], video
     assert video["size"] == [320, 180] and video["fps"] == 30, video
     assert after_video["fps"] == 24 and after_video["samples"] == 2, after_video
+
+
+def test_render_video_one_sided_frames_say_give_both(tmp_path):
+    """render_video 에 한쪽 프레임만 줘서 장면의 다른 쪽과 순서가 어긋나면 "바꿔라"가 아니라 "함께 주라"고 하고 장면은 그대로다."""
+    out = str(tmp_path / "clip.mp4")
+    results = run_steps([
+        ("demo_scene", {}),
+        ("set_timing", {"frame_start": 1, "frame_end": 72}),
+        ("render_video", {"out_path": out, "quality": "preview", "frame_start": 100}),
+        ("set_timing", {"frame_start": 50, "frame_end": 72}),
+        ("render_video", {"out_path": out, "quality": "preview", "frame_end": 10, "_lang": "en"}),
+        ("set_timing", {}),
+    ], blender=BLENDER)
+    late, end_first, after = results[2], results[4], results[5]
+    assert late["ok"] is False and "frame_end 도 함께 주어" in late["error"] and "frame_end=171" in late["error"], late
+    assert end_first["ok"] is False and "Give frame_start too" in end_first["error"], end_first
+    assert "Swap" not in end_first["error"], end_first
+    assert after["frame_range"] == [50, 72], after
 
 
 def test_destroy_and_reset_with_target_keep_other_effects(tmp_path):

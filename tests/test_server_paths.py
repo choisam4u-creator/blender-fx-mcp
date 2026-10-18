@@ -91,3 +91,36 @@ def test_import_result_shows_full_path(monkeypatch, tmp_path):
     (tmp_path / "tower.glb").write_bytes(b"x")
     text = server.import_model(str(tmp_path / "tower.glb"))[0]
     assert text.endswith(f"(joined 1 meshes). File: {tmp_path / 'tower.glb'}"), text
+
+
+def _imported(monkeypatch, tmp_path, size_m, lang="ko", notes=None):
+    """가짜 import_model 결과(크기 size_m)로 서버 문장을 만든다. 블렌더 없이."""
+    monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path))
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    monkeypatch.setattr(server, "run_recipe", lambda recipe, params, timeout=None: {
+        "name": "M", "size_m": size_m, "vertices": 8, "faces": 6, "joined": 1, "notes": notes or []})
+    monkeypatch.setattr(server, "_render", lambda *a, **k: ({"paths": []}, None))
+    monkeypatch.setattr(server, "_preview_note", lambda rend: "")
+    (tmp_path / "m.fbx").write_bytes(b"x")
+    return lambda **kw: server.import_model(str(tmp_path / "m.fbx"), **kw)[0]
+
+
+@pytest.mark.parametrize("size_m,guess", [([0.01, 0.02, 0.018], "2.0"), ([1800.0, 400.0, 1200.0], "18.0")])
+@pytest.mark.parametrize("lang,marker", [("ko", "실제 크기(m)로 다시 가져오세요"), ("en", "Import again at the real size")])
+def test_import_odd_size_suggests_unit_fix(monkeypatch, tmp_path, size_m, guess, lang, marker):
+    text = _imported(monkeypatch, tmp_path, size_m, lang)()
+    assert marker in text and f"import_model(size={guess})" in text, text
+    assert "cm" in text
+
+
+def test_import_unit_hint_quiet_for_normal_size_or_given_size(monkeypatch, tmp_path):
+    run = _imported(monkeypatch, tmp_path, [0.01, 0.02, 0.018])
+    assert "size=" not in run(size=0.02)          # 사용자가 정한 크기면 말하지 않는다
+    for edge in ([0.05, 0.01, 0.01], [500.0, 2.0, 2.0], [2.0, 2.0, 12.0]):
+        assert server._unit_hint(edge) == "", edge
+
+
+def test_import_shows_recipe_notes(monkeypatch, tmp_path):
+    # 레시피가 남긴 알림(닫히지 않은 메시·부품 합침 등)이 결과 문장에 나와야 다음 할 일(shell_thickness·parts)을 안다
+    text = _imported(monkeypatch, tmp_path, [2.0, 2.0, 12.0], notes=["가져온 모델이 닫혀 있지 않습니다"])()
+    assert "\n- 가져온 모델이 닫혀 있지 않습니다" in text, text

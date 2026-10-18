@@ -24,11 +24,12 @@ RESULTS = {
                 "impact": "left", "frames": 72, "total_mass_kg": 33000, "glue": "none", "glue_constraints": 0,
                 "dust": "low", "moved_ratio": 0.05, "max_fall_m": 0.2, "volume_kept": 0.998, "open_chunks": 0},
     "explode": {"center": [0, 0, 1], "radius": 2.0, "burst_frame": 12, "power": 1.0, "fire": True,
-                "resolution": 48, "chunks": 120, "moved_ratio": 0.8, "smoke_effectors": 30},
+                "resolution": 48, "cell_m": 0.5, "chunks": 120, "moved_ratio": 0.8, "smoke_effectors": 30},
     "water": {"liquid": "honey", "mode": "stream", "at": [0, 0, 3], "size": 0.4, "direction_deg": 90.0,
               "pitch_deg": 0.0, "speed": 4.0, "viscosity": 2.0, "gravity_scale": 1.0, "resolution": 64,
-              "domain_size_m": 8.0, "effectors": 2, "drift": [3.1, 0.0, -2.0]},
-    "emit": {"target": "", "at": [1, 2, 0], "emit_frames": [1, 72], "resolution": 96, "domain_size_m": 6.0},
+              "cell_m": 0.125, "domain_size_m": 8.0, "effectors": 2, "drift": [3.1, 0.0, -2.0]},
+    "emit": {"target": "", "at": [1, 2, 0], "emit_frames": [1, 72], "resolution": 96, "cell_m": 0.1,
+             "domain_size_m": 6.0},
     "particles": {"kind": "snow", "count": 4000, "frames": [1, 72], "lifetime": 120, "size": 0.02,
                   "gravity": 0.1, "drag": 0.8},
     "wind": {"direction_deg": 45.0, "strength": 3.0, "turbulence": 1.0, "objects": "Wind"},
@@ -279,8 +280,9 @@ def test_doctor_tool_returns_report(monkeypatch):
 
     row = dict(id="python", name="python", ok=True, detail="3.11", fix="")
     monkeypatch.setattr(doctor, "run_checks", lambda clients=True: [row])
-    monkeypatch.setattr(doctor, "format_report", lambda rows: f"report:{rows[0]['id']}")
-    assert tool_text(server.doctor()) == "report:python"
+    # AI 가 부른 도구라 모두 정상일 때 끝줄이 AI 가 할 순서(for_ai)
+    monkeypatch.setattr(doctor, "format_report", lambda rows, for_ai=False: f"report:{rows[0]['id']}:{for_ai}")
+    assert tool_text(server.doctor()) == "report:python:True"
 
 
 @pytest.mark.parametrize("lang", ["ko", "en"])
@@ -408,3 +410,101 @@ def test_snapshot_says_when_it_replaces_one(fake, monkeypatch, tmp_path):
     assert "replaced" not in server.snapshot("fresh_name")
     _snapshots(tmp_path, "a_b")
     assert "replaced the earlier snapshot 'a_b'" in server.snapshot("a b")  # 이름 정리 뒤 같아짐
+
+
+@pytest.mark.parametrize("lang,timing,video", [
+    ("en", "Timing: frames 1-288, 288 frames = 12s at 24fps.", "frames 1-72 — 72 frames = 3s at 24fps, EEVEE)"),
+    ("ko", "타이밍: 프레임 1~288, 288프레임 = 24fps 로 12초.", "프레임 1~72 — 72프레임 = 24fps 로 3초, EEVEE)"),
+])
+def test_timing_and_video_say_the_length_in_seconds(fake, monkeypatch, lang, timing, video):
+    """프레임 수만으로는 영상이 몇 초인지 모른다. 결과 문장에 초로 적는다."""
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    assert _text(server.set_timing()).startswith(timing)
+    assert _text(server.render_video()).endswith(video)
+
+
+@pytest.mark.parametrize("first,last,fps,expect", [
+    (1, 72, 24, "72 frames = 3s at 24fps"), (1, 100, 30, "100 frames = 3.3s at 30fps"),
+    (10, 10, 60, "1 frame = 0.02s at 60fps"), (1, 12, 24, "12 frames = 0.5s at 24fps"), (1, 240, 24, "240 frames = 10s at 24fps"), (1, 48, 0, "48 frames = ?s at 0fps"),
+])
+def test_length_rounds_to_a_tenth(monkeypatch, first, last, fps, expect):
+    monkeypatch.setenv("BLENDER_FX_LANG", "en")
+    assert server._length(first, last, fps) == expect
+
+
+@pytest.mark.parametrize("lang,moved,expect", [
+    ("en", {"frame_end": [250, 500]}, "Note: Blender also moved frame_end from 250 to 500 to follow frame_start. "
+                                      "If that is not the length you want, give frame_start and frame_end together."),
+    ("ko", {"frame_start": [10, 5]}, "알림: frame_end 에 맞춰 블렌더가 frame_start 도 10 → 5 로 옮겼습니다. "
+                                     "원하는 길이가 아니면 frame_start·frame_end 를 함께 주세요."),
+])
+def test_timing_says_when_blender_moved_the_other_end(fake, monkeypatch, lang, moved, expect):
+    """한쪽만 준 값(frame_start=500)으로 블렌더가 다른 쪽을 조용히 옮기면 길이가 1프레임이 되는 것을 사용자가 모른다."""
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    monkeypatch.setitem(RESULTS, "set_timing", {**RESULTS["set_timing"], "moved": moved})
+    assert expect in _text(server.set_timing(frame_start=500))
+    monkeypatch.setitem(RESULTS, "set_timing", {k: v for k, v in RESULTS["set_timing"].items() if k != "moved"})
+    assert "moved" not in _text(server.set_timing(frame_start=500)) and "옮겼" not in _text(server.set_timing())
+
+
+@pytest.mark.parametrize("lang", ["ko", "en"])
+def test_water_result_tells_cell_size_and_finer_resolution(fake, monkeypatch, lang):
+    # 성공한 뒤에도 다음 조정 방법: 격자 한 칸 크기와 resolution 을 두 배로 했을 때의 한 칸
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    text = tool_text(server.water(mode="stream"))
+    assert "0.125m" in text and "resolution=128" in text and "0.062m" in text
+    assert ("격자 한 칸" in text) == (lang == "ko") and ("Grid cell" in text) == (lang == "en")
+
+
+@pytest.mark.parametrize("now,finer", [(200, 320), (320, None)])
+def test_water_detail_respects_the_resolution_limit(monkeypatch, now, finer):
+    monkeypatch.setenv("BLENDER_FX_LANG", "en")
+    text = server._water_detail({"cell_m": 0.05, "resolution": now})
+    if finer:
+        assert f"resolution={finer}" in text
+    else:
+        assert "resolution=" not in text and "domain_at and domain_size" in text and "320 limit" in text
+
+
+@pytest.mark.parametrize("lang", ["ko", "en"])
+@pytest.mark.parametrize("tool", ["fire", "smoke"])
+def test_emit_result_tells_cell_size_and_finer_resolution(fake, monkeypatch, lang, tool):
+    # 불·연기가 뭉개져 보일 때 무엇을 올릴지: 격자 한 칸 크기와 resolution 을 두 배로 했을 때의 한 칸
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    text = tool_text(getattr(server, tool)())
+    assert "0.100m" in text and "resolution=192" in text and "0.050m" in text
+    assert ("격자 한 칸" in text) == (lang == "ko") and ("Grid cell" in text) == (lang == "en")
+
+
+@pytest.mark.parametrize("now,finer", [(96, 192), (200, 256), (256, None)])
+def test_emit_detail_respects_the_resolution_limit(monkeypatch, now, finer):
+    monkeypatch.setenv("BLENDER_FX_LANG", "en")
+    text = server._emit_detail({"cell_m": 0.05, "resolution": now})
+    if finer:
+        assert f"resolution={finer}" in text
+    else:
+        assert "resolution=" not in text and "256 limit" in text and "radius or power" in text
+
+
+def test_emit_detail_is_quiet_without_cell_size():
+    assert server._emit_detail({"resolution": 64}) == ""
+
+
+@pytest.mark.parametrize("lang,auto", [("ko", "(자동)"), ("en", "(auto)")])
+def test_emit_calls_resolution_auto_only_when_not_given(fake, monkeypatch, lang, auto):
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    assert auto in tool_text(server.fire())
+    assert auto not in tool_text(server.fire(resolution=96))
+
+
+@pytest.mark.parametrize("lang", ["ko", "en"])
+def test_explode_result_tells_cell_size_and_finer_resolution(fake, monkeypatch, lang):
+    # 기본 48 이라 연기가 뭉개져 보이기 쉬운 도구: 다음 값과, 상한이면 power 가 아니라 radius·대상으로 공간 줄이기
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    text = tool_text(server.explode())
+    assert "0.500m" in text and "resolution=96" in text and "0.250m" in text
+    assert ("격자 한 칸" in text) == (lang == "ko") and ("Grid cell" in text) == (lang == "en")
+    monkeypatch.setitem(RESULTS, "explode", {**RESULTS["explode"], "resolution": 256})
+    text = tool_text(server.explode())
+    assert "resolution=" not in text and ("radius 를 줄이거나 더 작은 대상" in text or "lower radius or pick a smaller target" in text)
+    assert "power" not in text.split("\n")[-1]

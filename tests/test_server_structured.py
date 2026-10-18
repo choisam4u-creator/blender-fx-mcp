@@ -95,3 +95,16 @@ def test_doctor_structured_names_failed_checks_and_fixes(monkeypatch, tmp_path, 
     assert data["help"].startswith("https://")
     assert set(data["failed"]) == {c["id"] for c in data["checks"] if not c["ok"] and not c["optional"]}
     assert tool.output_schema is None
+    assert data["last_error"] is None  # 이 시험 전에는 실패한 도구가 없음
+
+
+def test_doctor_structured_carries_last_error(monkeypatch, tmp_path):
+    """도구가 실패한 뒤 doctor 를 부르면 구조화 값 last_error 에 그 도구·첫 줄이 있어 AI 가 신고 초안에 바로 쓴다."""
+    from blender_fx_mcp import server
+    monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path))
+    monkeypatch.setenv("BLENDER_FX_NO_UPDATE_CHECK", "1")
+    monkeypatch.setattr(bridge, "ping", lambda: None)
+    server.restore("nope")
+    result, _tool = anyio.run(_call, "doctor")
+    err = result.structured_content["last_error"]
+    assert err["tool"] == "restore" and "nope" in err["message"] and err["time"]
