@@ -609,3 +609,53 @@ def test_triage_targets_match_support_md():
     assert f"버그 / Bug | {tr.TARGET_DAYS['bug']}일 안" in support
     assert f"질문·기능 요청 / Question, feature | {tr.OTHER_DAYS}일 안" in support
     assert tr.target_days(["bug", "question"]) == 7 and tr.target_days([]) == 14
+
+
+# ---- 만든 파일·명령이 원본과 같은지(출시 절차는 release_check 하나만 돌린다) ----
+
+def test_generated_checks_pass_on_this_repo(monkeypatch):
+    """이 저장소에서는 해결법 대응표·lint.sh --print 점검이 둘 다 통과한다(Windows 는 bash 없이 건너뜀 줄)."""
+    import sys
+    if sys.platform == "win32":
+        monkeypatch.setattr(rc.shutil, "which", lambda _: None)
+    results = rc.check_generated(ROOT)
+    assert [ok for ok, _ in results] == [True, True], results
+    assert results[0][1].startswith("해결법 대응표") and results[1][1].startswith("scripts/lint.sh --print")
+    assert results in [rc.check_files(ROOT)[-2:]]  # 파일 점검(출시 절차의 한 명령)에 들어 있다
+
+
+def test_generated_check_catches_stale_help_index(tmp_path):
+    """대응표가 문서·레시피와 다르면 FAIL 과 고치는 명령."""
+    for rel in ("scripts/gen_help_index.py", "docs/troubleshooting.md", "src/blender_fx_mcp/server.py"):
+        (tmp_path / rel).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(ROOT / rel, tmp_path / rel)
+    shutil.copytree(ROOT / "src" / "blender_fx_mcp" / "recipes", tmp_path / "src" / "blender_fx_mcp" / "recipes")
+    out = tmp_path / "src" / "blender_fx_mcp" / "help_index.py"
+    shutil.copy(ROOT / "src" / "blender_fx_mcp" / "help_index.py", out)
+    assert rc.check_generated(tmp_path) == [(True, "해결법 대응표(src/blender_fx_mcp/help_index.py) = 문서·레시피·서버 오류 문장")]
+    out.write_text(out.read_text(encoding="utf-8").replace("#", "#stale-", 1), encoding="utf-8")
+    [(ok, line)] = rc.check_generated(tmp_path)
+    assert not ok and "gen_help_index.py --write" in line
+
+
+def test_generated_check_catches_lint_drift(monkeypatch, tmp_path):
+    """lint.sh --print 가 ci.yml lint 단계와 다르면 FAIL 과 양쪽 명령·고칠 곳. bash 가 없으면 건너뜀 줄(실패 아님)."""
+    (tmp_path / "scripts").mkdir()
+    (tmp_path / "scripts" / "lint.sh").write_text("# 내용은 쓰지 않음(subprocess.run 을 가짜로)\n", encoding="utf-8")
+    (tmp_path / ".github" / "workflows").mkdir(parents=True)
+    shutil.copy(ROOT / ".github" / "workflows" / "ci.yml", tmp_path / ".github" / "workflows" / "ci.yml")
+    want = rc.ci_lint_commands(tmp_path)
+    assert len(want) == 3 and want[0].startswith("uvx ruff@")
+
+    def fake_run(printed):
+        return lambda *a, **k: subprocess.CompletedProcess(a[0], 0, stdout="".join(c + "\n" for c in printed), stderr="")
+
+    monkeypatch.setattr(rc.shutil, "which", lambda _: "/bin/bash")
+    monkeypatch.setattr(rc.subprocess, "run", fake_run(want))
+    assert rc.check_generated(tmp_path) == [(True, "scripts/lint.sh --print = CI lint 단계(3개)")]
+    monkeypatch.setattr(rc.subprocess, "run", fake_run(["uvx ruff@0.0.1 check ."] + want[1:]))
+    [(ok, line)] = rc.check_generated(tmp_path)
+    assert not ok and "ruff@0.0.1" in line and want[0] in line and "CONTRIBUTING" in line
+    monkeypatch.setattr(rc.shutil, "which", lambda _: None)
+    [(ok, line)] = rc.check_generated(tmp_path)
+    assert ok and "건너뜀" in line

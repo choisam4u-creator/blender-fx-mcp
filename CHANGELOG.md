@@ -44,6 +44,7 @@
   server-side error telling the next step in Korean and English, and tool and argument names in the docs real.
 - Maintainer scripts: `release_notes.py vX.Y.Z` prints a CHANGELOG section as GitHub release notes (`--draft` for an unreleased one),
   and `release_check.py --tag vX.Y.Z` checks a tag before it is pushed, with the same rule the release workflow uses.
+  `release_check.py` also checks that the help-link table is current and that `scripts/lint.sh --print` matches the CI lint steps.
   After PyPI publishing, the release workflow opens a draft GitHub release with these notes and the packages (only that job can create releases; a person publishes it).
   SECURITY and SUPPORT list 0.7.x (the latest on PyPI) as supported until 0.8.0 ships; `release_check.py` asks to trim them to the new series once the release is dated.
 
@@ -64,6 +65,7 @@
   간접 의존성 `exceptiongroup` 이 빠져 제3자 라이선스 표도 39개. 시험의 `importorskip("tomllib")` 는 보통 import 로
 
 **고침**
+- `release_check.py` 파일 점검에 두 줄: 해결법 대응표(`gen_help_index.py`)가 문서·오류 문장과 같은지, `scripts/lint.sh --print` 가 ci.yml lint 단계와 같은지(다르면 양쪽 명령과 고칠 곳). 출시 절차 8단계는 이 스크립트 하나만 돌리므로. bash 가 없으면 lint 줄은 건너뜀 + 시험 3개
 - `examples/first_render.py` 가 도구 실패로 끝나면(종료 코드 1) 마지막 줄에 신고 방법: `uvx --from blender-fx-mcp blender-fx-doctor --issue` 출력을 버그 양식에(표에 방금 실패한 도구가 이미 들어감). 한/영·실제 진입점·가짜 수신기 끝까지 시험
 - `blender-fx-doctor --json` 과 MCP `doctor` 도구 구조화 값에 `last_error`(마지막 도구 실패의 시각·도구·첫 줄, 집 폴더 `~`, 없으면 null). `--issue` 표의 "최근 실패한 도구" 와 같은 값이라 AI 가 신고 초안을 만들 때도 오류 문장을 다시 묻지 않음. 버그 양식 "무엇이 나왔나" 칸에 "표에 이미 있으면 위 표 참고" + 시험
 - `blender-fx-doctor` 가 모두 정상이면 마지막 줄에 다음 할 일 하나: AI 에게 보낼 첫 문장(또는 `/first_demo`)과 AI 없이 확인하는 `uv run python examples/first_render.py`. MCP `doctor` 도구는 AI 가 할 순서(`make_demo_building → snapshot → destroy → render_preview`). 실패가 있으면 붙이지 않음 + 한/영·실제 도구 이름·예제 명령 시험
