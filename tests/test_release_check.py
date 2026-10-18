@@ -61,6 +61,9 @@ def test_current_repo_state():
     """준비 중(맨 위 절이 '미출시', 버전은 아직 이전 판)이면 정확히 '판 다름'과 '미출시' 두 줄만,
     판을 올리고 날짜만 기다리면 '미출시' 한 줄만 실패하고, 출시 순서를 마친 뒤(날짜가 붙음)에는 모두 통과해야 한다."""
     fails = _fails(rc.check_files(ROOT))
+    # Mac 실측 줄은 저장소 진행이 아니라 Mac 에서 마지막으로 돌린 때를 따른다(따로 시험). 여기서는 한 줄 있는지만
+    assert sum(f.startswith("Mac 실측(latest.md)") for f in fails) <= 1
+    fails = [f for f in fails if not f.startswith("Mac 실측(latest.md)")]
     top_version, when = rc.HEADING.search((ROOT / "CHANGELOG.md").read_text(encoding="utf-8")).groups()
     if rc.DATE.fullmatch(when.strip()):
         assert fails == []
@@ -683,6 +686,43 @@ def test_triage_targets_match_support_md():
 
 # ---- 만든 파일·명령이 원본과 같은지(출시 절차는 release_check 하나만 돌린다) ----
 
+MAC_PASS = "# Mac 시험 결과 (최신)\n\n- 날짜: 2026-10-10\n- 시험한 브랜치: `main` (커밋 abc1234)\n- 종합: **PASS**\n"
+
+
+@pytest.mark.parametrize("text, today, ok, words", [
+    (MAC_PASS, "2026-11-09", True, ["= PASS, 2026-10-10(30일 전)"]),
+    (MAC_PASS, "2026-11-10", False, ["31일 전", "30일 넘음", "scripts/mac_report.py"]),
+    (MAC_PASS.replace("**PASS**", "**FAIL** — 1개 실패"), "2026-10-11", False, ["= FAIL", "FAIL 항목을 먼저 고친 뒤", "scripts/mac_report.py"]),
+    (MAC_PASS.replace("**PASS**", "**FAIL**"), "2026-12-01", False, ["FAIL 항목을 먼저 고친 뒤, 30일 넘음"]),
+    ("# 손으로 쓴 메모\n", "2026-10-11", False, ["'- 날짜:'·'- 종합:' 줄을 못 읽음", "scripts/mac_report.py"]),
+])
+def test_mac_report_must_be_recent_pass(tmp_path, text, today, ok, words):
+    """출시 전 실제 블렌더 결과를 보는 단계: latest.md 가 PASS 이고 30일 안이어야 통과, 아니면 다시 돌릴 명령을 말한다."""
+    from datetime import date
+    path = tmp_path / rc.MAC_REPORT
+    path.parent.mkdir(parents=True)
+    path.write_text(text, encoding="utf-8")
+    [(got, line)] = rc.check_mac_report(tmp_path, date.fromisoformat(today))
+    assert got is ok and all(w in line for w in words), line
+    assert ("scripts/mac_report.py" in line) is (not ok)
+
+
+def test_mac_report_line_reads_what_mac_report_writes(tmp_path):
+    """mac_report.py 가 쓰는 머리(날짜·종합)를 release_check 가 그대로 읽는다(한쪽만 바뀌면 여기서 잡힘). 파일이 없으면 건너뜀."""
+    from datetime import date
+    assert rc.check_mac_report(tmp_path) == []
+    spec = importlib.util.spec_from_file_location("mac_report", ROOT / "scripts" / "mac_report.py")
+    mr = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mr)
+    path = tmp_path / rc.MAC_REPORT
+    path.parent.mkdir(parents=True)
+    for results, verdict in (([("uv run pytest -q", "", True, 1.0, "1 passed")], True),
+                             ([("uv run pytest -q", "", False, 1.0, "1 failed")], False)):
+        path.write_text(mr.report(results, "2026-10-17", "main", "abc1234", "macOS"), encoding="utf-8")
+        [(ok, line)] = rc.check_mac_report(tmp_path, date(2026, 10, 18))
+        assert ok is verdict and "2026-10-17(1일 전)" in line, line
+
+
 def test_generated_checks_pass_on_this_repo(monkeypatch):
     """이 저장소에서는 해결법 대응표·lint.sh --print 점검이 둘 다 통과한다(Windows 는 bash 없이 건너뜀 줄)."""
     import sys
@@ -691,7 +731,7 @@ def test_generated_checks_pass_on_this_repo(monkeypatch):
     results = rc.check_generated(ROOT)
     assert [ok for ok, _ in results] == [True, True], results
     assert results[0][1].startswith("해결법 대응표") and results[1][1].startswith("scripts/lint.sh --print")
-    assert results in [rc.check_files(ROOT)[-2:]]  # 파일 점검(출시 절차의 한 명령)에 들어 있다
+    assert results in [rc.check_files(ROOT)[-3:-1]]  # 파일 점검(출시 절차의 한 명령)에 들어 있다(마지막 줄은 Mac 실측)
 
 
 def test_generated_check_catches_stale_help_index(tmp_path):

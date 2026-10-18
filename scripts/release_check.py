@@ -6,7 +6,8 @@
   uv run python scripts/release_check.py --dist dist   # 이미 만든 휠·sdist 의 METADATA 만 (CI 패키징 점검)
   uv run python scripts/release_check.py --tag v0.7.0  # 파일 점검 + 밀 태그가 pyproject 판과 같은지 (release.yml 과 같은 규칙)
 
-파일 점검에는 해결법 대응표(`gen_help_index.py`)와 `scripts/lint.sh --print` 가 CI lint 단계와 같은지도 든다.
+파일 점검에는 해결법 대응표(`gen_help_index.py`)와 `scripts/lint.sh --print` 가 CI lint 단계와 같은지,
+Mac 실측(`docs/test-reports/latest.md`)이 PASS 이고 30일 안인지도 든다.
 `--dist` 는 판 번호·CHANGELOG 의 "미출시" 점검을 하지 않아 출시 전 PR 에서도 통과한다.
 실패한 줄마다 고칠 곳을 적는다. 모두 통과하면 종료 코드 0, 하나라도 실패하면 1.
 태그·PyPI·레지스트리 등록은 하지 않는다(그 순서는 docs/registry.md).
@@ -22,6 +23,7 @@ import sys
 import tarfile
 import tempfile
 import zipfile
+from datetime import date
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -95,7 +97,35 @@ def check_files(root: Path) -> list[tuple[bool, str]]:
     ok = f"mcp-name: {name}" in readme
     out.append((ok, f"README.md 의 mcp-name 줄({name})" + ("" if ok else " → 레지스트리 소유 확인용 줄을 README 맨 위에 넣는다")))
     out += check_generated(root)
+    out += check_mac_report(root)
     return out
+
+
+MAC_REPORT = Path("docs") / "test-reports" / "latest.md"
+MAC_REPORT_DAYS = 30  # 실제 블렌더로 돌린 결과가 이보다 오래면 출시 전에 다시
+
+
+def check_mac_report(root: Path, today: date | None = None) -> list[tuple[bool, str]]:
+    """Mac 에서 실제 블렌더로 돌린 결과(latest.md)가 PASS 이고 MAC_REPORT_DAYS 일 안인지. 클라우드·CI 는 블렌더 앱이 없어
+    이 결과만이 앱에서 도는지의 근거다. 파일이 없는 저장소(시험용 복사본)는 건너뛴다."""
+    path = root / MAC_REPORT
+    if not path.is_file():
+        return []
+    text = path.read_text(encoding="utf-8")
+    when = re.search(r"^- 날짜: (\d{4}-\d{2}-\d{2})", text, re.M)
+    verdict = re.search(r"^- 종합: \**(PASS|FAIL)\b", text, re.M)
+    again = " → Mac 에서 `uv run python scripts/mac_report.py` 를 다시 돌려 latest.md 를 새로 쓰고 커밋한다"
+    if not when or not verdict:
+        return [(False, f"{MAC_REPORT.as_posix()}: '- 날짜:'·'- 종합:' 줄을 못 읽음" + again)]
+    age = ((today or date.today()) - date.fromisoformat(when.group(1))).days
+    ok = verdict.group(1) == "PASS" and age <= MAC_REPORT_DAYS
+    why = []
+    if verdict.group(1) != "PASS":
+        why.append("FAIL 항목을 먼저 고친 뒤")
+    if age > MAC_REPORT_DAYS:
+        why.append(f"{MAC_REPORT_DAYS}일 넘음")
+    return [(ok, f"Mac 실측(latest.md) = {verdict.group(1)}, {when.group(1)}({age}일 전)"
+             + ("" if ok else f" ({', '.join(why)})" + again))]
 
 
 def ci_lint_commands(root: Path) -> list[str]:
