@@ -5,10 +5,32 @@
 한 번에 돌려 `latest.md` 를 새로 쓰려면 `uv run python scripts/mac_report.py`(결과 확인 뒤 커밋). 클라우드 회차는 그 FAIL 부터 고친다.
 
 ```sh
-uv sync && uv run pytest -q && scripts/lint.sh && uv run python scripts/release_check.py   # 전체 통과 + lint, release_check 는 '미출시' 1줄만 FAIL(새: 대응표·lint 점검 줄)
-uv run blender-fx-doctor | tail -1 && uv run blender-fx-doctor --json | grep -A3 last_error   # 블렌더 Connect 뒤: 끝줄 '다음 할 일: …', last_error 칸
-gh auth status && uv run python scripts/triage_report.py --all   # CI 표가 실제 응답으로 나오는지(취소된 실행은 세지 않음, 클라우드엔 gh 없음)
+uv sync && uv run pytest -q && uv run python scripts/mac_report.py   # 전체 통과 뒤 latest.md 를 새로 써 커밋(새: release_check 가 10/1 FAIL·30일 넘은 latest.md 를 FAIL 로)
+uv run blender-fx-first-render && uv run blender-fx-first-render --help   # 블렌더 Connect 뒤: 끝에 PNG 경로·'결과 보기: open …' 줄, 그 명령으로 열리는지
+uv run python scripts/release_check.py && gh auth status && uv run python scripts/triage_report.py --all   # '미출시' 1줄만 FAIL, CI 칸에 '흔들림' 줄이 실제 응답으로 나오는지
 ```
+
+## 2026-10-18 (27회차)
+
+- 시작 확인: 저장된 지시의 최우선 F1·F3(0.7.0 판·release.yml)는 9회차(10/11)에 끝나 PR #13 으로 병합됐고(`ff7555e`·`4eb778f`) 태그 `v0.7.0` 도 있음 → 다시 할 것 없음, 일반 규칙.
+  `latest.md`(10/1)의 FAIL 2건은 main 에 고쳐져 있음(재확인). main 은 앞서 있지 않음.
+  열린 `claude/cloud-work-*` PR 중 가장 위(#26, `fb53f99`)에서 이어 감. 이 세션은 `claude/cloud-work-p7f9zi` 에 푸시 → PR 은 #26 위에 쌓음.
+- 한 일(백로그 26회차 추가분 5개 모두 + 새 항목 1개, 굽기 시간 어림은 Mac 실측 필요라 계속 건너뜀):
+  1. **렌더 결과 여는 명령** (`6064be4`): 새 `opener.py`. `render_preview` 끝에 출력 폴더, `render_video` 끝에 mp4, first_render 끝에 첫 PNG 를 여는 한 줄(macOS `open`·Linux `xdg-open`·Windows `start ""`, 따옴표). 원격 블렌더면 안 붙임.
+  2. **저장소 없이 첫 렌더** (`e1857b5`): 본체를 `blender_fx_mcp.first_render` + 진입점 `blender-fx-first-render` 로, 예제는 껍데기. README 한/영·doctor 다음 할 일을 `uvx --from blender-fx-mcp blender-fx-first-render` 로.
+     ⚠️ 0.8.0 이 PyPI 에 오르기 전에는 이 uvx 명령이 PyPI 0.7.0 에 없음 → 새 백로그 항목(release_check 미출시 진입점 점검)으로 남김.
+  3. **오래된 last_error** (`9602609`): 7일 넘으면 `--json`·MCP doctor 에 `stale: true`, `--issue` 표에 "오래됨"(한/영).
+  4. **triage 흔들림 줄** (`9831c3f`): 목록 API 는 실행마다 마지막 시도만 줌 → `run_attempt` > 1 초록 실행의 앞 시도가 빨가면 표 아래에 횟수·링크(종료 코드엔 안 셈).
+  5. **release_check Mac 실측 줄** (`302acf0`): `latest.md` 가 FAIL 이거나 30일 넘으면 FAIL + `mac_report.py` 다시. release.yml `--tag` 도 이 점검을 지남. **지금 latest.md(10/1 FAIL) 때문에 이 줄이 FAIL** — Mac 에서 다시 돌릴 것.
+  6. **`blender-fx-first-render --help`** (`573109c`): 백로그에 적었다가 이번 회차가 만든 진입점의 결함이라 바로 고침 — 사용법·종료 코드, 없는 서버 명령은 traceback 대신 종료 코드 2 와 다음 할 일.
+  - 새 항목 5개 추가(`61f59f0`, 그중 1개는 위 6으로 완료): `--help`, 원격 블렌더 PNG 안내, 미출시 진입점 점검, `--issue` 에 첫 렌더 결과 줄, triage.yml 흔들림 경고 주석.
+- 돌린 시험: `uv run pytest -q`(3.11) **1500 통과·49 건너뜀**(블렌더·bpy 필요), CI 서버 명령 `--cov --cov-fail-under=99` **100%**,
+  **`scripts/bpy_tests.sh`(bpy 5.0.1) → 1543 통과·6 건너뜀**(유체 `app_only` 5개·실제 캐릭터 파일 1개 — 블렌더 앱·개인 파일 필요; libEGL 은 apt 로 설치 뒤 돌림),
+  `scripts/lint.sh`(ruff·actionlint+shellcheck·zizmor) 통과, `uv lock --check` 통과, `uv build` 휠에 `first_render.py`·`opener.py`·진입점 4개 확인.
+  `release_check.py` → FAIL 2줄('미출시' + 새 Mac 실측 줄, 둘 다 예상대로).
+- 막힌 것: 없음. `triage_report.py` 를 실제 저장소로 돌리는 것과 여는 명령이 실제로 열리는지는 클라우드에 gh·화면이 없어 Mac 몫.
+- 완료 수·추가 수: **완료 6** / **추가 5** (완료 ≥ 추가). 남은 `[ ]` 5개(그중 1개 Mac 실측).
+- Mac에서 확인할 것: 맨 위 명령 3줄.
 
 ## 2026-10-18 (26회차)
 
