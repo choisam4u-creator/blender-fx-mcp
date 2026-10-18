@@ -28,7 +28,7 @@
   follows that aspect at 640 on the long side (a 1080×1920 scene previews at 360×640).
 - **Smaller tool list, structured results, clearer errors.** The tool list each client loads is 24% smaller (33,015 → 25,093 characters) and the server
   instructions shorter (Korean 656 → 515, English 994 → 819), both under a tested budget. `list_objects`, `inspect_mesh`, `list_snapshots` and `doctor`
-  return MCP structured content (`doctor`: `ok`, `fix` and `help` per check). A receiver failure or a missing result line says how to report it
+  return MCP structured content (`doctor`: `ok`, `fix` and `help` per check, plus `last_error`, also in `--json`). A receiver failure or a missing result line says how to report it
   (`blender-fx-doctor --issue`); a dropped connection, a cut-off reply and invalid `BLENDER_FX_TIMEOUT`/`BLENDER_FX_PORT` each get their own message;
   `set_ground` under an ocean names `reset_destroy` (it named a `reset` tool that does not exist). Docs no longer mention `destroy` arguments that do not exist.
 - **Install and doctor.** Install commands use the PyPI package (`uvx blender-fx-mcp`, `uvx --from blender-fx-mcp blender-fx-doctor`); git is no longer
@@ -64,6 +64,7 @@
   간접 의존성 `exceptiongroup` 이 빠져 제3자 라이선스 표도 39개. 시험의 `importorskip("tomllib")` 는 보통 import 로
 
 **고침**
+- `blender-fx-doctor --json` 과 MCP `doctor` 도구 구조화 값에 `last_error`(마지막 도구 실패의 시각·도구·첫 줄, 집 폴더 `~`, 없으면 null). `--issue` 표의 "최근 실패한 도구" 와 같은 값이라 AI 가 신고 초안을 만들 때도 오류 문장을 다시 묻지 않음. 버그 양식 "무엇이 나왔나" 칸에 "표에 이미 있으면 위 표 참고" + 시험
 - `blender-fx-doctor` 가 모두 정상이면 마지막 줄에 다음 할 일 하나: AI 에게 보낼 첫 문장(또는 `/first_demo`)과 AI 없이 확인하는 `uv run python examples/first_render.py`. MCP `doctor` 도구는 AI 가 할 순서(`make_demo_building → snapshot → destroy → render_preview`). 실패가 있으면 붙이지 않음 + 한/영·실제 도구 이름·예제 명령 시험
 - 해결법 링크 끝까지 시험: 서버를 stdio 하위 프로세스로 띄우고 가짜 수신기가 레시피 실패(+traceback)를 돌려줄 때, 도구 결과 첫 줄이 "실패: … 해결법: …#절" 이고 링크가 한 번만·traceback 은 그 뒤에 남는지, 서버 쪽 오류(`restore` 스냅샷 없음)도 같은지, 하위 프로세스가 `last_error.txt` 를 남기는지(한/영)
 - `blender-fx-doctor --issue` 표에 "최근 실패한 도구" 한 줄: 도구가 실패하면 서버가 출력 폴더 `last_error.txt` 에 시각·도구 이름·문장 첫 줄(300자)을 덮어쓰고 doctor 가 읽어 붙임(집 폴더 `~`, 표를 깨는 `|` 는 `\|`). 못 쓰거나 못 읽어도 결과는 그대로. 시험이 개발자의 출력 폴더를 건드리지 않게 conftest 가 시험마다 `BLENDER_FX_OUT` 을 임시 폴더로

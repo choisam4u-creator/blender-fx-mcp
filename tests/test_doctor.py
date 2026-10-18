@@ -1,5 +1,6 @@
 # doctor.py 의 실패 갈래 시험. 사용자가 가장 먼저 돌리는 명령이라 실패 안내가 깨지지 않게 한다. 블렌더 없이 돈다.
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -535,6 +536,35 @@ def test_issue_carries_last_failed_tool(monkeypatch, tmp_path, lang, label):
     server._record_failure("import_model", f"파일이 없습니다: {home}/a|b.glb\n두 번째 줄")
     out = doctor.format_issue([])
     assert "`import_model`: 파일이 없습니다: ~/a\\|b.glb (" in out and "sam" not in out and "두 번째 줄" not in out
+
+
+def test_json_carries_last_error_same_as_issue(monkeypatch, capsys, tmp_path):
+    """--json 의 last_error 는 --issue 표의 "최근 실패한 도구" 와 같은 값(시각·도구·첫 줄, 집 폴더 ~). 실패가 없으면 null."""
+    from blender_fx_mcp import server
+    _fake_checks(monkeypatch, tmp_path, "ko")
+    monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path / "out"))
+
+    def json_out():
+        with pytest.raises(SystemExit):
+            doctor.main(["--json"])
+        return json.loads(capsys.readouterr().out)
+
+    assert json_out()["last_error"] is None
+    home = str(tmp_path / "home" / "sam")
+    monkeypatch.setattr(doctor.os.path, "expanduser", lambda p: home if p == "~" else p)
+    server._record_failure("import_model", f"파일이 없습니다: {home}/a|b.glb\n두 번째 줄")
+    err = json_out()["last_error"]
+    assert err["tool"] == "import_model" and err["message"] == "파일이 없습니다: ~/a|b.glb"
+    assert re.fullmatch(r"\d{4}-\d\d-\d\d \d\d:\d\d", err["time"]), err
+    assert doctor.last_failure() == f"`import_model`: 파일이 없습니다: ~/a\\|b.glb ({err['time']})"
+
+
+def test_bug_form_says_doctor_issue_already_has_the_error():
+    """버그 양식 '무엇이 나왔나' 칸이 doctor --issue 표에 이미 있으면 다시 붙이지 않아도 된다고 한/영으로 말한다."""
+    root = Path(__file__).resolve().parents[1]
+    form = (root / ".github" / "ISSUE_TEMPLATE" / "bug_report.yml").read_text(encoding="utf-8")
+    block = form.split("id: actual", 1)[1].split("- type:", 1)[0]
+    assert "최근 실패한 도구" in block and "Last failed tool" in block and "doctor --issue" in block
 
 
 def test_last_failure_quiet_when_broken_and_record_never_raises(monkeypatch, tmp_path):

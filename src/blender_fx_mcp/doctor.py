@@ -418,6 +418,7 @@ def format_json(checks: list[dict]) -> str:
         "checks": check_rows(checks),
         "failed": bad,
         "help": help_urls(checks)[0] if bad else None,
+        "last_error": last_error(),  # 마지막 도구 실패(없으면 null). --issue 표의 "최근 실패한 도구" 와 같은 값
     }
     return mask_home(json.dumps(report, ensure_ascii=False, indent=2))  # 버그 신고용이라 집 폴더(사용자 이름)를 가린다
 
@@ -441,15 +442,24 @@ def out_dir() -> str:
     return os.path.expanduser(os.environ.get("BLENDER_FX_OUT", "~/blender-fx-output"))
 
 
-def last_failure() -> str | None:
-    """서버가 출력 폴더 last_error.txt 에 남긴 마지막 도구 실패를 "도구: 문장 (시각)" 으로(마크다운 표 칸이라 | 는 \\|). 없거나 못 읽으면 None."""
+def last_error() -> dict | None:
+    """서버가 출력 폴더 last_error.txt 에 남긴 마지막 도구 실패 {time, tool, message}(집 폴더는 ~). 없거나 못 읽으면 None.
+    --json·MCP doctor 도구·--issue 가 같은 값을 써, AI 가 신고 초안을 만들 때도 오류 문장을 다시 묻지 않는다."""
     try:
         with open(os.path.join(out_dir(), "last_error.txt"), encoding="utf-8") as f:
             when, tool, line = f.readline().rstrip("\n").split("\t", 2)
     except (OSError, ValueError, UnicodeDecodeError):
         return None
-    line = line.replace("|", "\\|")
-    return f"`{tool}`: {line} ({when})"
+    return {"time": when, "tool": tool, "message": mask_home(line)}
+
+
+def last_failure() -> str | None:
+    """last_error() 를 "도구: 문장 (시각)" 한 줄로(마크다운 표 칸이라 | 는 \\|). 없으면 None."""
+    err = last_error()
+    if err is None:
+        return None
+    line = err["message"].replace("|", "\\|")
+    return f"`{err['tool']}`: {line} ({err['time']})"
 
 
 def format_issue(checks: list[dict]) -> str:
