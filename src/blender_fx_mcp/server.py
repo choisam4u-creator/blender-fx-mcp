@@ -567,7 +567,7 @@ def doctor() -> CallToolResult:
     from .doctor import check_rows, failed, format_report, help_urls, run_checks
     # 이 도구를 부른 클라이언트가 곧 등록돼 있다는 증거라 클라이언트 등록 항목은 뺀다(엉뚱한 등록 명령을 권하지 않게)
     checks = run_checks(clients=False)
-    text = format_report(checks)
+    text = format_report(checks, for_ai=True)
     # 항목마다 ok·다음 할 일(fix)을 구조화 값으로도 준다. AI 가 실패한 항목과 고칠 방법을 문장에서 다시 찾지 않는다
     bad = [c["id"] for c in failed(checks)]
     return _with_data(text, dict(ok=not bad, failed=bad, checks=check_rows(checks),

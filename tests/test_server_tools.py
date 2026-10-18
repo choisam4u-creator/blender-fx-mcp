@@ -280,8 +280,9 @@ def test_doctor_tool_returns_report(monkeypatch):
 
     row = dict(id="python", name="python", ok=True, detail="3.11", fix="")
     monkeypatch.setattr(doctor, "run_checks", lambda clients=True: [row])
-    monkeypatch.setattr(doctor, "format_report", lambda rows: f"report:{rows[0]['id']}")
-    assert tool_text(server.doctor()) == "report:python"
+    # AI 가 부른 도구라 모두 정상일 때 끝줄이 AI 가 할 순서(for_ai)
+    monkeypatch.setattr(doctor, "format_report", lambda rows, for_ai=False: f"report:{rows[0]['id']}:{for_ai}")
+    assert tool_text(server.doctor()) == "report:python:True"
 
 
 @pytest.mark.parametrize("lang", ["ko", "en"])

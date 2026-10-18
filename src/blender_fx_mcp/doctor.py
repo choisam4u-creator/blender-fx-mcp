@@ -362,7 +362,19 @@ _GROUP_FIX = {
 }
 
 
-def format_report(checks: list[dict]) -> str:
+def first_step(for_ai: bool = False) -> str:
+    """모두 정상일 때 마지막 줄. README 로 돌아가지 않고 바로 첫 렌더로(AI 가 부른 doctor 도구면 AI 가 할 순서)."""
+    if for_ai:
+        return t("다음 할 일: make_demo_building → snapshot → destroy → render_preview 로 첫 렌더(또는 /first_demo).",
+                 "Next: make_demo_building → snapshot → destroy → render_preview for a first render (or /first_demo).")
+    return t(f"다음 할 일: AI 에게 \"연습용 건물을 만들고 부숴서 미리보기 보여 줘\"(또는 /first_demo) — AI 없이 블렌더 쪽만(저장소에서): {FIRST_RENDER_CMD}",
+             f"Next: ask the AI \"make a demo building, destroy it and show a preview\" (or /first_demo) — Blender side only, no AI (in a checkout): {FIRST_RENDER_CMD}")
+
+
+FIRST_RENDER_CMD = "uv run python examples/first_render.py"
+
+
+def format_report(checks: list[dict], for_ai: bool = False) -> str:
     lines = [f"[{mark(c)}] {c['name']}: {c['detail']}" for c in checks]
     bad = failed(checks)
     # 선택 항목 중 할 일이 있는 것(클라이언트 등록)은 필수 항목 뒤에 "(선택)" 을 붙여 이어서 번호를 매긴다
@@ -373,6 +385,7 @@ def format_report(checks: list[dict]) -> str:
         if extra:
             lines.append(t("더 할 수 있는 일:", "You may also:"))
             lines += [f"  {i}. {s}" for i, s in enumerate(steps, 1)]
+        lines.append(first_step(for_ai))
         return "\n".join(lines)
     lines.append(t(f"확인 필요: {', '.join(c['name'] for c in bad)}. 다음 할 일:",
                    f"Needs attention: {', '.join(c['name'] for c in bad)}. Next steps:"))

@@ -248,18 +248,45 @@ def test_all_ok_but_client_missing_suggests_registering(env, monkeypatch, lang):
     i = lines.index("모두 정상입니다." if lang == "ko" else "Everything looks good.")
     assert lines[i + 1] in ("더 할 수 있는 일:", "You may also:")
     assert lines[i + 2].startswith(("  1. (선택) ", "  1. (optional) "))
-    assert "claude mcp add -s user blender-fx" in lines[i + 2] and len(lines) == i + 3
+    assert "claude mcp add -s user blender-fx" in lines[i + 2] and len(lines) == i + 4
+    assert lines[-1] == doctor.first_step()
     if lang == "en":
         assert "-e BLENDER_FX_LANG=en" in lines[i + 2] and not re.search(r"[가-힣]", "\n".join(lines[i:]))
     _write(env / "home" / ".claude.json", '{"mcpServers": {"blender-fx": {}}}')
-    assert doctor.format_report(doctor.run_checks()).splitlines()[-1] == lines[i]
+    assert doctor.format_report(doctor.run_checks()).splitlines()[-2:] == [lines[i], lines[-1]]
 
 
 # ---- 보고서와 종료 코드 ----
 
+@pytest.mark.parametrize("lang", ["ko", "en"])
+def test_all_ok_ends_with_first_render_step(env, monkeypatch, lang):
+    """모두 정상이면 README 로 돌아가지 않게 마지막 줄이 첫 렌더로 가는 할 일 하나. 실패가 있으면 붙이지 않는다."""
+    import re
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    ok = [doctor._check("a", True, "x")]
+    last = doctor.format_report(ok).splitlines()[-1]
+    assert last.startswith(("다음 할 일: ", "Next: ")) and "/first_demo" in last
+    assert doctor.FIRST_RENDER_CMD in last
+    assert (re.search(r"[가-힣]", last) is None) == (lang == "en")
+    # 예제 명령이 실제 예제 docstring 명령과 같고 파일이 있다(이름이 바뀌면 여기서 잡힘)
+    root = Path(__file__).resolve().parents[1]
+    assert doctor.FIRST_RENDER_CMD in (root / "examples" / "first_render.py").read_text(encoding="utf-8")
+    # AI 가 부른 doctor 도구는 AI 가 할 순서를, 도구 이름은 실제 서버 도구로
+    ai = doctor.format_report(ok, for_ai=True).splitlines()[-1]
+    import asyncio
+
+    from blender_fx_mcp import server
+    names = {tool.name for tool in asyncio.run(server.mcp.list_tools())}
+    for name in ("make_demo_building", "snapshot", "destroy", "render_preview"):
+        assert name in ai and name in names
+    assert doctor.FIRST_RENDER_CMD not in ai
+    bad = ok + [doctor._check("b", False, "y")]
+    assert all(not line.startswith(("다음 할 일: ", "Next: ")) for line in doctor.format_report(bad).splitlines())
+
+
 def test_report_all_ok_and_attention_line(env, monkeypatch):
     ok = [doctor._check("a", True, "x")]
-    assert doctor.format_report(ok).splitlines() == ["[OK] a: x", "모두 정상입니다."]
+    assert doctor.format_report(ok).splitlines() == ["[OK] a: x", "모두 정상입니다.", doctor.first_step()]
     bad = ok + [doctor._check("b", False, "y")]
     lines = doctor.format_report(bad).splitlines()
     assert lines[1] == "[X ] b: y"

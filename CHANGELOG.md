@@ -33,7 +33,7 @@
   `set_ground` under an ocean names `reset_destroy` (it named a `reset` tool that does not exist). Docs no longer mention `destroy` arguments that do not exist.
 - **Install and doctor.** Install commands use the PyPI package (`uvx blender-fx-mcp`, `uvx --from blender-fx-mcp blender-fx-doctor`); git is no longer
   needed. doctor says when PyPI has a newer release (quiet offline or with `BLENDER_FX_NO_UPDATE_CHECK=1`), links the troubleshooting section for each
-  failed check, and when less than 5GB is free names the largest parts of the output folder and the tool that clears each. Progress notifications use
+  failed check, ends an all-OK report with the next step (a first prompt or `examples/first_render.py`), and when less than 5GB is free names the largest parts of the output folder and the tool that clears each. Progress notifications use
   plain words ("Baking the liquid — 45s so far").
 
 *Tests and CI*
@@ -64,6 +64,7 @@
   간접 의존성 `exceptiongroup` 이 빠져 제3자 라이선스 표도 39개. 시험의 `importorskip("tomllib")` 는 보통 import 로
 
 **고침**
+- `blender-fx-doctor` 가 모두 정상이면 마지막 줄에 다음 할 일 하나: AI 에게 보낼 첫 문장(또는 `/first_demo`)과 AI 없이 확인하는 `uv run python examples/first_render.py`. MCP `doctor` 도구는 AI 가 할 순서(`make_demo_building → snapshot → destroy → render_preview`). 실패가 있으면 붙이지 않음 + 한/영·실제 도구 이름·예제 명령 시험
 - 해결법 링크 끝까지 시험: 서버를 stdio 하위 프로세스로 띄우고 가짜 수신기가 레시피 실패(+traceback)를 돌려줄 때, 도구 결과 첫 줄이 "실패: … 해결법: …#절" 이고 링크가 한 번만·traceback 은 그 뒤에 남는지, 서버 쪽 오류(`restore` 스냅샷 없음)도 같은지, 하위 프로세스가 `last_error.txt` 를 남기는지(한/영)
 - `blender-fx-doctor --issue` 표에 "최근 실패한 도구" 한 줄: 도구가 실패하면 서버가 출력 폴더 `last_error.txt` 에 시각·도구 이름·문장 첫 줄(300자)을 덮어쓰고 doctor 가 읽어 붙임(집 폴더 `~`, 표를 깨는 `|` 는 `\|`). 못 쓰거나 못 읽어도 결과는 그대로. 시험이 개발자의 출력 폴더를 건드리지 않게 conftest 가 시험마다 `BLENDER_FX_OUT` 을 임시 폴더로
 - `scripts/triage_report.py` 에 CI 칸: 기본 브랜치·열린 PR 마다 워크플로별 최신 실행이 빨가면 빨간 지 며칠째(연달아 실패한 첫 실행부터)·실패 잡 이름·실행 링크, 3일 넘으면 ⚠ 와 종료 코드 1(`--no-ci` 로 끔). 최근 30일 실행만 물어 `--paginate` 가 끝없이 받지 않게. `triage.yml` 에 `actions: read` 만 더함 + 가짜 응답 시험
