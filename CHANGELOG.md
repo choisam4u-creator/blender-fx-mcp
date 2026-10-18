@@ -69,6 +69,7 @@
 - `release_check.py` 파일 점검에 Mac 실측 한 줄: `docs/test-reports/latest.md` 의 종합이 FAIL 이거나 날짜가 30일 넘게 오래됐으면 "Mac 에서 `scripts/mac_report.py` 를 다시"(release.yml 의 태그 점검도 같은 함수라 실제 블렌더 결과 없이 출시되지 않음). maintenance 출시 절차 2단계 한/영.
 - `triage_report.py` CI 칸에 "흔들림" 줄: 목록 API 는 실행마다 마지막 시도만 주어 재실행해서 초록이 되면 표에서 사라졌음 → `run_attempt` > 1 인 초록 실행의 앞 시도(`attempts/N-1`)가 빨가면 표 아래에 워크플로·최근 30일 횟수·실행 링크(종료 코드에는 안 셈). maintenance '빨간 CI 대응' 한/영.
 - `last_error`(doctor `--json`·MCP `doctor` 구조화 값)에 `stale`: 7일 넘은 마지막 실패는 `true`, `--issue` 표 "최근 실패한 도구" 끝에 "오래됨(7일 넘음), 지금 문제와 다를 수 있음"(한/영). 지난주 실패가 오늘 신고에 섞여 엉뚱한 원인을 쫓지 않게.
+- `blender-fx-first-render --help`(`-h`)는 사용법·종료 코드를 한/영으로, 서버 명령을 못 찾으면 traceback 대신 종료 코드 2 와 다음 할 일.
 - 첫 렌더 확인을 저장소 없이: 본체를 패키지 모듈 `blender_fx_mcp.first_render` + 콘솔 진입점 `blender-fx-first-render` 로 옮김(`uvx --from blender-fx-mcp blender-fx-first-render`). `examples/first_render.py` 는 같은 코드를 부르는 껍데기. README 한/영·doctor 다음 할 일에서 "(저장소에서)" 조건이 빠짐.
 - `render_preview`·`render_video` 결과 끝 줄과 `examples/first_render.py` 끝에 결과를 바로 여는 명령 한 줄(macOS `open`·Linux `xdg-open`·Windows `start ""`, 경로 따옴표): 미리보기는 폴더, 영상은 mp4, 예제는 첫 PNG. 블렌더가 다른 컴퓨터면 붙이지 않음(한/영).
 - `triage_report.py` CI 칸이 취소된 실행(새 push 로 concurrency 가 끊은 것)·건너뛴 실행·포크 PR 승인 대기를 세지 않음: 빨간 main 위에 취소된 실행 하나가 있으면 CI 가 초록으로 보이던 문제. GitHub REST 문서의 실제 응답 모양(`workflow_runs[]`·`jobs[]` 모든 칸, 쪽 나눔, 재실행)을 고정 자료(`tests/fixtures/github_actions_rest.json`)로 시험. `docs/maintenance.md` 에 "빨간 CI 대응" 한/영(3일 넘으면 그 주에 고치거나 이슈로)

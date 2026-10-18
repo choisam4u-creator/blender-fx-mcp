@@ -25,6 +25,7 @@ Each step prints a `[2/5] make_demo_building …` progress line and the seconds 
 
 import asyncio
 import os
+import shutil
 import sys
 import time
 from pathlib import Path
@@ -126,9 +127,34 @@ async def run(params: StdioServerParameters) -> int:
             return 0
 
 
+USAGE = ("사용법: blender-fx-first-render [서버 명령 …]   (인자가 없으면 이 패키지의 서버. 예: blender-fx-first-render uvx blender-fx-mcp)\n"
+         "종료 코드: 0 = 첫 렌더 PNG 출력, 1 = 도구 실패(오류 문장·신고 방법), 2 = 블렌더 연결 안 됨·서버 명령 없음\n"
+         "Usage: blender-fx-first-render [server command …]   (no arguments: this package's server, e.g. blender-fx-first-render uvx blender-fx-mcp)\n"
+         "Exit codes: 0 = first render PNGs printed, 1 = a tool failed (error and how to report), 2 = no Blender connection or no server command")
+
+
+def missing_command(params: StdioServerParameters) -> str | None:
+    """서버 명령을 찾지 못하면 다음 할 일 문장(없으면 None). 그대로 띄우면 FileNotFoundError traceback 으로 끝난다."""
+    if shutil.which(params.command) or Path(params.command).is_file():
+        return None
+    return (f"서버 명령 '{params.command}' 를 찾지 못했습니다. 인자는 서버를 띄울 명령입니다 — 인자 없이 돌리거나 "
+            "PATH 에 있는 명령으로(예: uvx blender-fx-mcp). 사용법: blender-fx-first-render --help" if not en() else
+            f"Server command '{params.command}' not found. The arguments are the command that starts the server: run with no "
+            "arguments or use a command on PATH (e.g. uvx blender-fx-mcp). Usage: blender-fx-first-render --help")
+
+
 def main(argv: list[str] | None = None) -> None:
     """콘솔 진입점 blender-fx-first-render. 인자는 서버를 띄울 명령(없으면 이 패키지의 서버)."""
-    sys.exit(asyncio.run(run(server_params(sys.argv[1:] if argv is None else argv))))
+    argv = sys.argv[1:] if argv is None else argv
+    if argv[:1] in (["-h"], ["--help"]):
+        print(USAGE)
+        sys.exit(0)
+    params = server_params(argv)
+    problem = missing_command(params)
+    if problem:
+        print(problem)
+        sys.exit(2)
+    sys.exit(asyncio.run(run(params)))
 
 
 if __name__ == "__main__":

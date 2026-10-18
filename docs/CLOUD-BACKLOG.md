@@ -330,7 +330,7 @@
 
 ### 2026-10-18 (27회차) 추가 — 사용자 체감 우선(오픈소스 지원 기준: 문서·시험·이슈 대응·활발한 유지보수)
 
-- [ ] `blender-fx-first-render --help`·`-h` 는 사용법(인자 = 서버 명령, 종료 코드 0·1·2)을 출력, 서버 명령을 못 찾으면(`FileNotFoundError`) traceback 대신 "서버 명령 X 를 찾지 못함 → `uvx blender-fx-mcp` 처럼 PATH 에 있는 명령으로" 한/영 + 시험 (오류 메시지: 이번 회차 확인 — `uv run blender-fx-first-render --help` 가 `FileNotFoundError: '--help'` traceback 으로 끝남. 콘솔 진입점이 생겨 처음 치는 명령이 `--help` 일 가능성이 큼)
+- [x] `blender-fx-first-render --help`·`-h` 는 사용법(인자 = 서버 명령, 종료 코드 0·1·2)을 출력, 서버 명령을 못 찾으면(`FileNotFoundError`) traceback 대신 "서버 명령 X 를 찾지 못함 → `uvx blender-fx-mcp` 처럼 PATH 에 있는 명령으로" 한/영 + 시험 (오류 메시지: 이번 회차 확인 — `uv run blender-fx-first-render --help` 가 `FileNotFoundError: '--help'` traceback 으로 끝남. 콘솔 진입점이 생겨 처음 치는 명령이 `--help` 일 가능성이 큼) — 같은 회차에 바로 고침(이번 회차가 만든 진입점의 결함이라): `USAGE`(한/영, 종료 코드 0·1·2), `missing_command`(PATH·파일에 없으면 종료 코드 2 와 다음 할 일). 시험 4개
 - [ ] first_render 가 성공했는데 PNG 를 못 찾으면(블렌더가 다른 컴퓨터·`BLENDER_FX_HOST`) "PNG 0개" 대신 "블렌더 컴퓨터의 <폴더> 에 있음" 한 줄, 여는 명령은 생략 + 가짜 서버 시험 (사용자 체감: 원격 블렌더 사용자는 첫 렌더가 실패한 줄 앎. 이번 회차 여는 명령을 원격에서 뺀 것과 같은 갈래)
 - [ ] `release_check.py` 에 "문서의 `uvx --from blender-fx-mcp <진입점>` 이 PyPI 최신 판에 있는지" 한 줄(PyPI JSON 의 판과 비교, 오프라인이면 건너뜀) — 미출시 진입점이면 "출시 전까지 README 에 `uv run …`(저장소)도 함께" 안내 + 시험 (문서·유지보수: 이번 회차 README 가 `blender-fx-first-render` 를 안내하지만 PyPI 0.7.0 에는 없어 0.8.0 출시 전 main 을 읽은 사용자는 막힘)
 - [ ] `blender-fx-doctor --issue` 표에 "첫 렌더 확인" 한 줄: first_render 가 끝날 때 출력 폴더에 시각·종료 코드·멈춘 단계를 남기고 doctor 가 읽음(집 폴더 `~`, 7일 넘으면 오래됨) + 시험 (이슈 대응: 신고자에게 "first_render 가 어디서 멈췄나" 를 다시 묻지 않게. last_error 와 같은 방식)

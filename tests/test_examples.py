@@ -283,6 +283,32 @@ def test_first_render_main_exits_with_run_code(monkeypatch):
     assert e.value.code == 2 and seen == [["uvx", "blender-fx-mcp"]]
 
 
+@pytest.mark.parametrize("flag", ["--help", "-h"])
+def test_first_render_help_prints_usage(capsys, flag):
+    """콘솔 진입점이 생겨 처음 치는 명령이 --help 일 수 있다. '--help' 를 서버 명령으로 띄워 traceback 으로 끝나지 않는다."""
+    from blender_fx_mcp import first_render
+
+    with pytest.raises(SystemExit) as e:
+        first_render.main([flag])
+    out = capsys.readouterr().out
+    assert e.value.code == 0 and out.startswith("사용법: blender-fx-first-render") and "Usage: blender-fx-first-render" in out
+    assert "0 =" in out and "1 =" in out and "2 =" in out
+
+
+@pytest.mark.parametrize("lang, head", [("ko", "서버 명령 'no-such-server-x' 를 찾지 못했습니다."),
+                                        ("en", "Server command 'no-such-server-x' not found.")])
+def test_first_render_missing_server_command_says_next_step(monkeypatch, capsys, lang, head):
+    from blender_fx_mcp import first_render
+
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    with pytest.raises(SystemExit) as e:
+        first_render.main(["no-such-server-x", "--flag"])
+    out = capsys.readouterr().out.strip()
+    assert e.value.code == 2 and out.startswith(head) and "uvx blender-fx-mcp" in out and "--help" in out
+    assert "Traceback" not in out
+    assert first_render.missing_command(first_render.server_params([])) is None  # 기본 서버(이 파이썬)는 있다
+
+
 def test_first_render_progress_line_is_bilingual(monkeypatch):
     example = _load("first_render")
     monkeypatch.setenv("BLENDER_FX_LANG", "ko")
