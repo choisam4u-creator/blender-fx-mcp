@@ -191,7 +191,8 @@ def destroy(target: str, impact: str, material: str, pieces: int) -> str:
 
 @mcp.tool()
 def render_preview(frame_count: int) -> str:
-    return f"Render (BLENDER_EEVEE, 640×360): frames [1, 36, 72] → {FOLDER} (Fast preview: sky is not shown.)"
+    return (f"Render (BLENDER_EEVEE, 640×360): frames [1, 36, 72] → {FOLDER} (Fast preview: sky is not shown.)"
+            f"\\nOpen it: open '{FOLDER}'")
 
 mcp.run()
 '''
@@ -225,7 +226,10 @@ def test_first_render_success_and_tool_failure(monkeypatch, capsys, tmp_path, fa
         assert out[-3:] == ["destroy: Failed: pieces is too big. Try 50-400.", undo, example.report_line()]
         assert not any(x.startswith("render_preview") for x in out)
     else:
-        assert out[-4:] == ["2 PNG files:", f"  {folder / 'frame_0001.png'}", f"  {folder / 'frame_0072.png'}", undo]
+        from blender_fx_mcp.opener import open_command
+        first = str(folder / "frame_0001.png")
+        assert out[-5:] == ["2 PNG files:", f"  {first}", f"  {folder / 'frame_0072.png'}",
+                            f"Open it: {open_command(first)}", undo]
         # 단계마다 부르기 전에 진행 줄, 끝나면 걸린 초가 붙은 결과 줄
         names = ["ping_blender"] + [n for n, _ in example.STEPS]
         assert [x for x in raw if x.startswith("[")] == [f"[{i}/5] {n} … (waiting)" for i, n in enumerate(names, 1)]

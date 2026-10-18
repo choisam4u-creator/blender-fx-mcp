@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: MIT
 """블렌더 창 없이 터미널에서 첫 렌더까지: 서버를 공식 `mcp` 파이썬 클라이언트로 띄워
-ping_blender → make_demo_building → destroy → render_preview 를 차례로 부르고 미리보기 PNG 경로를 출력한다.
+ping_blender → make_demo_building → destroy → render_preview 를 차례로 부르고 미리보기 PNG 경로와 첫 장을 여는 명령을 출력한다.
 From the terminal to a first render: start the server with the official `mcp` Python client, call
 ping_blender → make_demo_building → destroy → render_preview in order and print the preview PNG paths.
 
@@ -27,6 +27,8 @@ from pathlib import Path
 
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
+
+from blender_fx_mcp.opener import open_line
 
 FAILED = ("실패: ", "Failed: ")  # 서버 도구가 실패하면 돌려주는 문장 머리
 BEFORE = "first_render_before"
@@ -72,7 +74,7 @@ def png_paths(render_text: str) -> list[str]:
     """render_preview 문장의 '→ <폴더>' 에서 PNG 를 찾는다. 서버와 같은 컴퓨터일 때만 보인다."""
     if "→ " not in render_text:
         return []
-    folder = render_text.rsplit("→ ", 1)[1].split(" (")[0].strip()
+    folder = render_text.rsplit("→ ", 1)[1].split("\n")[0].split(" (")[0].strip()
     return sorted(str(p) for p in Path(folder).glob("*.png"))
 
 
@@ -114,6 +116,8 @@ async def run(params: StdioServerParameters) -> int:
             print(("PNG {n}개:" if not en() else "{n} PNG files:").format(n=len(paths)))
             for p in paths:
                 print(f"  {p}")
+            if paths:  # 첫 장을 바로 여는 명령(서버 문장의 '결과 보기' 는 폴더를 연다)
+                print(open_line(paths[0]).lstrip("\n"))
             print(undo_line())
             return 0
 

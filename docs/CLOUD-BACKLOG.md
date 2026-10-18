@@ -322,7 +322,7 @@
 
 ### 2026-10-18 (26회차) 추가 — 사용자 체감 우선(오픈소스 지원 기준: 시험·문서·유지보수·이슈 대응)
 
-- [ ] `render_preview`·`render_video` 결과 문장과 `first_render.py` 끝에 결과를 바로 여는 OS별 명령 한 줄(macOS `open`·Linux `xdg-open`·Windows `start ""`, 경로 따옴표) 한/영 + 시험 (사용자 체감: 첫 렌더 뒤 PNG 경로만 나와 무엇으로 볼지 모름. 첫 설치~첫 렌더의 마지막 단계)
+- [x] `render_preview`·`render_video` 결과 문장과 `first_render.py` 끝에 결과를 바로 여는 OS별 명령 한 줄(macOS `open`·Linux `xdg-open`·Windows `start ""`, 경로 따옴표) 한/영 + 시험 (사용자 체감: 첫 렌더 뒤 PNG 경로만 나와 무엇으로 볼지 모름. 첫 설치~첫 렌더의 마지막 단계) — 새 `opener.py`(`open_command`·`open_line`, POSIX 는 `shlex.quote`, Windows 는 빈 제목 `""`). 미리보기는 출력 폴더, 영상은 mp4, 예제는 첫 PNG. 원격 블렌더면 안 붙임. 예제의 PNG 폴더 읽기는 결과 둘째 줄을 무시. 시험 `tests/test_opener.py` 7개 + 예제 성공 갈래
 - [ ] PyPI 로 설치한 사용자(저장소 없음)도 첫 렌더 확인을 돌리게: `first_render.py` 를 패키지 안 모듈 + 콘솔 진입점(`blender-fx-first-render`)으로 옮기고 예제 파일은 그 얇은 껍데기, doctor 다음 할 일·README 를 `uvx --from blender-fx-mcp blender-fx-first-render` 로 + 시험 (근거: 이번 회차 doctor 다음 할 일에 "(저장소에서)" 조건이 붙음. `uvx` 사용자는 예제 파일이 없어 한 단계가 빠짐)
 - [ ] `last_error` 가 오래되면(7일 넘음) `--issue` 표·`--json` 에 "오래됨" 표시(`stale: true`) + 시험 (이슈 대응: 지난주 실패가 오늘 신고에 섞여 엉뚱한 원인을 쫓게 함. 이번 회차에 같은 값을 세 곳에서 쓰게 했으니 한곳에서)
 - [ ] `triage_report.py` CI 칸에 "흔들림" 표시: 같은 `head_sha` 에서 실패 뒤 재실행(`run_attempt` > 1) 성공이면 표 아래 줄로 워크플로·실행 링크 + 고정 자료 시험 (유지보수: 이번 회차 maintenance '빨간 CI 대응' 2단계가 "다시 돌려 초록이면 흔들리는 시험이니 고친다" 인데 지금은 초록이 되면 표에서 사라져 아무도 고치지 않음)

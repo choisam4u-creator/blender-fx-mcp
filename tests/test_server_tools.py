@@ -420,7 +420,7 @@ def test_timing_and_video_say_the_length_in_seconds(fake, monkeypatch, lang, tim
     """프레임 수만으로는 영상이 몇 초인지 모른다. 결과 문장에 초로 적는다."""
     monkeypatch.setenv("BLENDER_FX_LANG", lang)
     assert _text(server.set_timing()).startswith(timing)
-    assert _text(server.render_video()).endswith(video)
+    assert _text(server.render_video()).split("\n")[0].endswith(video)
 
 
 @pytest.mark.parametrize("first,last,fps,expect", [

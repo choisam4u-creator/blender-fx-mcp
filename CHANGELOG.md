@@ -66,6 +66,7 @@
   간접 의존성 `exceptiongroup` 이 빠져 제3자 라이선스 표도 39개. 시험의 `importorskip("tomllib")` 는 보통 import 로
 
 **고침**
+- `render_preview`·`render_video` 결과 끝 줄과 `examples/first_render.py` 끝에 결과를 바로 여는 명령 한 줄(macOS `open`·Linux `xdg-open`·Windows `start ""`, 경로 따옴표): 미리보기는 폴더, 영상은 mp4, 예제는 첫 PNG. 블렌더가 다른 컴퓨터면 붙이지 않음(한/영).
 - `triage_report.py` CI 칸이 취소된 실행(새 push 로 concurrency 가 끊은 것)·건너뛴 실행·포크 PR 승인 대기를 세지 않음: 빨간 main 위에 취소된 실행 하나가 있으면 CI 가 초록으로 보이던 문제. GitHub REST 문서의 실제 응답 모양(`workflow_runs[]`·`jobs[]` 모든 칸, 쪽 나눔, 재실행)을 고정 자료(`tests/fixtures/github_actions_rest.json`)로 시험. `docs/maintenance.md` 에 "빨간 CI 대응" 한/영(3일 넘으면 그 주에 고치거나 이슈로)
 - `release_check.py` 파일 점검에 두 줄: 해결법 대응표(`gen_help_index.py`)가 문서·오류 문장과 같은지, `scripts/lint.sh --print` 가 ci.yml lint 단계와 같은지(다르면 양쪽 명령과 고칠 곳). 출시 절차 8단계는 이 스크립트 하나만 돌리므로. bash 가 없으면 lint 줄은 건너뜀 + 시험 3개
 - `examples/first_render.py` 가 도구 실패로 끝나면(종료 코드 1) 마지막 줄에 신고 방법: `uvx --from blender-fx-mcp blender-fx-doctor --issue` 출력을 버그 양식에(표에 방금 실패한 도구가 이미 들어감). 한/영·실제 진입점·가짜 수신기 끝까지 시험

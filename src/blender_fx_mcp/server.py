@@ -32,6 +32,7 @@ from . import bridge, disk
 from .help_index import RECIPE_HELP
 from .bridge import BlenderError
 from .i18n import is_en, t
+from .opener import open_line
 
 RECIPES = Path(__file__).parent / "recipes"
 LONG = 1800.0  # 굽기가 오래 걸리는 도구의 대기 시간(초)
@@ -546,6 +547,11 @@ def _preview_note(rend: dict) -> str:
         return t(" (빠른 미리보기라 하늘·연기·물은 보이지 않습니다. render_preview(quality=\"smoke\") 로 보세요.)",
                  " (Fast preview: sky, smoke and water are not shown. Use render_preview(quality=\"smoke\").)")
     return ""
+
+
+def _open_note(path: str) -> str:
+    """렌더 결과를 여는 명령 줄. 블렌더가 다른 컴퓨터면 그쪽 경로라 이 컴퓨터에서 열 수 없어 붙이지 않는다."""
+    return open_line(path) if bridge.is_local() else ""
 
 
 def _notes(res: dict) -> str:
@@ -1423,7 +1429,7 @@ def render_preview(frame_count: int = 5, quality: str = "preview", width: int = 
         return _fail(e)
     text = t(f"렌더 ({rend['engine']}, {rend['size'][0]}×{rend['size'][1]}): 프레임 {rend['frames']} → {run_dir}",
              f"Render ({rend['engine']}, {rend['size'][0]}×{rend['size'][1]}): frames {rend['frames']} → {run_dir}")
-    return [text + _preview_note(rend)] + _images(rend["paths"])
+    return [text + _preview_note(rend) + _open_note(str(run_dir))] + _images(rend["paths"])
 
 
 @mcp.tool(annotations=ADDITIVE)
@@ -1448,7 +1454,7 @@ def render_video(quality: str = "smoke", width: int = 0, height: int = 0, fps: i
         f"프레임 {first}~{last} — {_length(first, last, res['fps'])}, {res['engine']})",
         f"Video: {res['path']} ({mb:.1f}MB, {res['size'][0]}×{res['size'][1]}, "
         f"frames {first}-{last} — {_length(first, last, res['fps'])}, {res['engine']})",
-    )
+    ) + _open_note(res["path"])
 
 
 @mcp.tool(annotations=DESTRUCTIVE)
