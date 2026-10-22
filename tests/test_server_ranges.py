@@ -156,7 +156,9 @@ def test_boundaries_and_auto_values_reach_blender(monkeypatch):
     assert len(sent) == 2 * len(server.RANGES) + 2
 
 
-@pytest.mark.parametrize("bad", [dict(resolution=500), dict(frames=3), dict(material="titanium"), dict(pieces=5000)])
+@pytest.mark.parametrize("bad", [
+    dict(resolution=500), dict(frames=3), dict(material="titanium"), dict(pieces=5000), dict(at=[1, 2]),
+])
 def test_explode_checks_every_argument_before_fracturing(monkeypatch, tmp_path, bad):
     """폭발은 조각내기(destroy) → 굽기(explode) 두 단계다. 굽기 인자가 틀렸으면 조각내기 전에 멈춰야 장면이 반쯤 바뀌지 않는다."""
     from blender_fx_mcp import bridge, server
@@ -269,3 +271,20 @@ def test_points_korean(monkeypatch):
     with pytest.raises(bridge.BlenderError, match=r"at 은\(는\) \[x, y, z\] 숫자 세 개로 주세요\(지금 \[1, 2\]\)"):
         server.check_points({"at": [1, 2]})
     server.check_points({"at": [1, 2, 3], "domain_at": None})  # 맞으면 조용히
+
+
+@pytest.mark.parametrize("lang,prefix,expect", [
+    ("en", "Failed: Give at", "three numbers [x, y, z]"),
+    ("ko", "실패: at", "[x, y, z] 숫자 세 개로 주세요"),
+])
+@pytest.mark.parametrize("at", [[1], [1, 2], [1, 2, 3, 4]])
+def test_explode_bad_point_with_target_is_caught_before_blender(monkeypatch, tmp_path, lang, prefix, expect, at):
+    """대상이 있어도 잘못된 좌표는 조각내기와 디스크 검사 전에 거절한다."""
+    monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path))
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    sent = []
+    monkeypatch.setattr(bridge, "run_python", lambda code, timeout=None: sent.append(code))
+    monkeypatch.setattr(server, "_check_bake_space", lambda: pytest.fail("좌표 검사 전에 디스크 검사"))
+    out = server.explode(target="Building", at=at)
+    assert out.startswith(prefix) and expect in out and str(at) in out, out
+    assert sent == []

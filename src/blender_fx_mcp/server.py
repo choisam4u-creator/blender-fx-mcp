@@ -835,6 +835,7 @@ def explode(
                      cache_dir=_cache_dirs()["fluid"])
         for recipe, params in (("destroy", shatter if target else {}), ("explode", blast)):
             given = {k: v for k, v in params.items() if v is not None}
+            check_points(given)
             check_choices(recipe, given)
             check_ranges(recipe, given)
         _check_bake_space()

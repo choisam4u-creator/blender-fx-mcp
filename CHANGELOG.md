@@ -11,6 +11,7 @@
 - Python 3.11 or newer is required. Python 3.10 reached end of life in 2026-10; 0.7.0 is the last release that supports it.
 
 *Fixes*
+- `explode(target=..., at=...)` rejects a position with the wrong length before checking bake space or fracturing the target.
 - **A failed call leaves the scene as it was.** A misspelled target no longer deletes the previous explosion or fire (`explode`, `emit`);
   `water` no longer deletes the previous water and resets the frame range before its checks; `destroy` stops on a mesh without faces before touching
   the scene; `export_model` checks the format before `bake_physics` turns the pieces into keyframes; `import_model` removes what it imported when no
