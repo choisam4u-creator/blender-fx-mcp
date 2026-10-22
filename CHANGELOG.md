@@ -11,7 +11,6 @@
 - Python 3.11 or newer is required. Python 3.10 reached end of life in 2026-10; 0.7.0 is the last release that supports it.
 
 *Fixes*
-- `explode(target=..., at=...)` rejects a position with the wrong length before checking bake space or fracturing the target.
 - **A failed call leaves the scene as it was.** A misspelled target no longer deletes the previous explosion or fire (`explode`, `emit`);
   `water` no longer deletes the previous water and resets the frame range before its checks; `destroy` stops on a mesh without faces before touching
   the scene; `export_model` checks the format before `bake_physics` turns the pieces into keyframes; `import_model` removes what it imported when no
@@ -20,7 +19,7 @@
   `ocean`, `wind`, `cloth_flag`, `emit`, `explode`, `water` and `particles` read every argument (positions included) before removing the previous one, and `set_ground` no longer shows the hidden ground under an ocean.
 - **Bad values stop before Blender, with the values to use.** `width`/`height` 16-7680, `fps` 1-240 (24/30/60 recommended) and frame numbers from 1
   in `render_preview`, `render_video`, `set_render`, `set_timing` and `set_physics`; a reversed pair (`frame_end` before `frame_start`,
-  `slow_to` not after `slow_from`) gets the swapped values; a position (`at`, `domain_at`) must be three numbers. `samples` out of range gets recommended values like the other numbers.
+  `slow_to` not after `slow_from`) gets the swapped values; a position (`at`, `domain_at`) must be three numbers, and `explode` checks it before checking bake space or fracturing the target. `samples` out of range gets recommended values like the other numbers.
 - **Timing.** `set_timing(fps=…)` always failed after already changing the scene (duplicate result key); fixed. `global_slow` is relative to the
   original speed (asking twice no longer stretches 48 → 192 frames; 1.0 undoes it). `set_timing` and `render_video` say the length in seconds
   ("72 frames = 3s at 24fps"), and `set_timing` says when Blender moved the other end of the range (`frame_start=500` alone pushes `frame_end`).
