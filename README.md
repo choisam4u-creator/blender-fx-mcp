@@ -176,12 +176,19 @@ uv run python examples/first_render.py
 
 ## 개발·테스트
 
-블렌더를 창 없이 띄워 레시피를 소켓 없이 검증할 수 있습니다.
+### 1. pytest 시험
+
+개발 의존성을 준비한 뒤 서버 동작과 레시피를 시험합니다.
+블렌더 실행 파일이 필요한 레시피 시험은 파일을 찾지 못하면 건너뜁니다.
 
 ```bash
 uv sync --group dev
 uv run pytest -q
 ```
+
+### 2. headless 레시피 실행
+
+블렌더 실행 파일이 필요합니다. 창 없이 띄워 레시피를 소켓 없이 검증합니다.
 
 ```bash
 uv run blender-fx-headless demo-windows destroy render
@@ -191,7 +198,10 @@ uv run blender-fx-headless demo snapshot destroy restore
 uv run blender-fx-headless demo destroy video save
 ```
 
-블렌더가 켜져 있으면 실제 MCP 클라이언트 → 서버 → 소켓 경로 전체를 확인할 수 있습니다:
+### 3. e2e_socket 연결 시험
+
+블렌더와 BlenderMCP 수신기가 켜져 있어야 합니다.
+실제 MCP 클라이언트 → 서버 → 소켓 → 블렌더 경로와 이미지 응답을 확인합니다:
 
 ```bash
 uv run python scripts/e2e_socket.py
