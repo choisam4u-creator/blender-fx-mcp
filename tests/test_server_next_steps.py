@@ -28,14 +28,14 @@ def _t_pairs():
             if isinstance(node, ast.FunctionDef) and node.name == "_missing_snapshot":
                 for ret in ast.walk(node):
                     if isinstance(ret, ast.Return) and isinstance(ret.value, ast.Call):
-                        yield f"{path.rsplit('/', 1)[-1]}:{ret.lineno}", ret.value
+                        yield f"{Path(path).name}:{ret.lineno}", ret.value
             if not (isinstance(node, ast.Call) and getattr(node.func, "id", None) == "BlenderError" and node.args):
                 continue
             arg = node.args[0]
             if isinstance(arg, ast.BinOp):  # t(...) + 꼬리(parse_result 의 출력 끝부분)
                 arg = arg.left
             if isinstance(arg, ast.Call) and getattr(arg.func, "id", None) == "t":
-                yield f"{path.rsplit('/', 1)[-1]}:{node.lineno}", arg
+                yield f"{Path(path).name}:{node.lineno}", arg
 
 
 PAIRS = list(_t_pairs())

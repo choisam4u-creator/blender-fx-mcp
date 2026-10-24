@@ -16,6 +16,7 @@ import shutil
 import subprocess
 import sys
 import urllib.request
+from datetime import datetime, timedelta
 from importlib import metadata
 
 from . import __version__, bridge, disk
@@ -27,6 +28,30 @@ SERVER_CMD = "uvx blender-fx-mcp"
 
 # 등록했는데도 클라이언트에 도구가 안 보일 때 볼 절. 절 제목이 바뀌면 tests/test_troubleshooting.py 가 알려 준다
 CLIENT_HELP = f"{bridge.TROUBLESHOOTING_URL}#tools-not-visible-in-the-client"
+
+# 실패한 항목마다 볼 해결법 절(docs/troubleshooting.md 의 제목 앵커). 없는 항목은 문서 첫머리.
+# 절 제목이 바뀌면 tests/test_doctor.py 가 알려 준다
+HELP_ANCHORS = {
+    "mcp": "uv-not-found",  # uvx 로 돌리면 함께 깔린다. uv 부터
+    "uv": "uv-not-found",
+    "addon": "connection-refused",
+    "connection": "connection-refused",
+    "client": "tools-not-visible-in-the-client",
+    "output": "output-folder-not-writable",
+    "update": "still-on-the-old-version",
+    "space": "fluid-bake-failed",
+}
+
+
+def help_url(check_id: str) -> str:
+    """그 항목이 실패했을 때 볼 해결법 주소."""
+    anchor = HELP_ANCHORS.get(check_id)
+    return f"{bridge.TROUBLESHOOTING_URL}#{anchor}" if anchor else bridge.TROUBLESHOOTING_URL
+
+
+def help_urls(checks: list[dict]) -> list[str]:
+    """실패한 항목들의 해결법 주소(설치 순서, 겹치는 것은 한 번). 첫 주소가 먼저 고칠 항목의 절이다."""
+    return list(dict.fromkeys(help_url(c.get("id", "")) for c in failed(checks)))
 
 
 def _check(name: str, ok: bool, detail: str, key: str = "", fix: str = "", optional: bool = False) -> dict:
@@ -269,7 +294,7 @@ def run_checks(clients: bool = True, updates: bool | None = None) -> list[dict]:
                           optional=True))
 
     name_out = t("출력 폴더", "output folder")
-    root = os.path.expanduser(os.environ.get("BLENDER_FX_OUT", "~/blender-fx-output"))
+    root = out_dir()
     try:
         os.makedirs(root, exist_ok=True)
         test = os.path.join(root, ".write_test")
@@ -338,7 +363,19 @@ _GROUP_FIX = {
 }
 
 
-def format_report(checks: list[dict]) -> str:
+def first_step(for_ai: bool = False) -> str:
+    """모두 정상일 때 마지막 줄. README 로 돌아가지 않고 바로 첫 렌더로(AI 가 부른 doctor 도구면 AI 가 할 순서)."""
+    if for_ai:
+        return t("다음 할 일: make_demo_building → snapshot → destroy → render_preview 로 첫 렌더(또는 /first_demo).",
+                 "Next: make_demo_building → snapshot → destroy → render_preview for a first render (or /first_demo).")
+    return t(f"다음 할 일: AI 에게 \"연습용 건물을 만들고 부숴서 미리보기 보여 줘\"(또는 /first_demo) — AI 없이 블렌더 쪽만: {FIRST_RENDER_CMD}",
+             f"Next: ask the AI \"make a demo building, destroy it and show a preview\" (or /first_demo) — Blender side only, no AI: {FIRST_RENDER_CMD}")
+
+
+FIRST_RENDER_CMD = "uvx --from blender-fx-mcp blender-fx-first-render"  # 저장소 없이(PyPI 설치) 도는 진입점
+
+
+def format_report(checks: list[dict], for_ai: bool = False) -> str:
     lines = [f"[{mark(c)}] {c['name']}: {c['detail']}" for c in checks]
     bad = failed(checks)
     # 선택 항목 중 할 일이 있는 것(클라이언트 등록)은 필수 항목 뒤에 "(선택)" 을 붙여 이어서 번호를 매긴다
@@ -349,18 +386,21 @@ def format_report(checks: list[dict]) -> str:
         if extra:
             lines.append(t("더 할 수 있는 일:", "You may also:"))
             lines += [f"  {i}. {s}" for i, s in enumerate(steps, 1)]
+        lines.append(first_step(for_ai))
         return "\n".join(lines)
     lines.append(t(f"확인 필요: {', '.join(c['name'] for c in bad)}. 다음 할 일:",
                    f"Needs attention: {', '.join(c['name'] for c in bad)}. Next steps:"))
     lines += [f"  {i}. {s}" for i, s in enumerate(steps, 1)]
-    lines.append(t(f"해결법: {bridge.TROUBLESHOOTING_URL}", f"Help: {bridge.TROUBLESHOOTING_URL}"))
+    urls = " · ".join(help_urls(checks))  # 실패 항목의 절로 바로(문서 첫머리에서 찾지 않게)
+    lines.append(t(f"해결법: {urls}", f"Help: {urls}"))
     return "\n".join(lines)
 
 
 def check_rows(checks: list[dict]) -> list[dict]:
     """점검 항목을 바깥에 보이는 모양으로(--json·MCP doctor 도구의 구조화 출력이 같은 모양을 쓴다)."""
     return [{"id": c["id"], "name": c["name"], "ok": c["ok"], "optional": c.get("optional", False),
-             "detail": c["detail"], "fix": c.get("fix", "")} for c in checks]
+             "detail": c["detail"], "fix": c.get("fix", ""), "help": "" if c["ok"] else help_url(c["id"])}
+            for c in checks]
 
 
 def format_json(checks: list[dict]) -> str:
@@ -378,7 +418,8 @@ def format_json(checks: list[dict]) -> str:
         "clients": registered_clients(),
         "checks": check_rows(checks),
         "failed": bad,
-        "help": bridge.TROUBLESHOOTING_URL if bad else None,
+        "help": help_urls(checks)[0] if bad else None,
+        "last_error": last_error(),  # 마지막 도구 실패(없으면 null). --issue 표의 "최근 실패한 도구" 와 같은 값
     }
     return mask_home(json.dumps(report, ensure_ascii=False, indent=2))  # 버그 신고용이라 집 폴더(사용자 이름)를 가린다
 
@@ -397,6 +438,41 @@ def mask_home(text: str) -> str:
     return text
 
 
+def out_dir() -> str:
+    """서버와 같은 출력 폴더(BLENDER_FX_OUT, 기본 ~/blender-fx-output). 만들지는 않는다."""
+    return os.path.expanduser(os.environ.get("BLENDER_FX_OUT", "~/blender-fx-output"))
+
+
+LAST_ERROR_STALE_DAYS = 7  # 이보다 오래된 마지막 실패는 "오래됨"(지난주 실패가 오늘 신고에 섞여 엉뚱한 원인을 쫓지 않게)
+
+
+def last_error(now: datetime | None = None) -> dict | None:
+    """서버가 출력 폴더 last_error.txt 에 남긴 마지막 도구 실패 {time, tool, message, stale}(집 폴더는 ~). 없거나 못 읽으면 None.
+    --json·MCP doctor 도구·--issue 가 같은 값을 써, AI 가 신고 초안을 만들 때도 오류 문장을 다시 묻지 않는다.
+    stale: 시각이 LAST_ERROR_STALE_DAYS 일보다 오래됐으면 true(시각을 못 읽으면 false)."""
+    try:
+        with open(os.path.join(out_dir(), "last_error.txt"), encoding="utf-8") as f:
+            when, tool, line = f.readline().rstrip("\n").split("\t", 2)
+    except (OSError, ValueError, UnicodeDecodeError):
+        return None
+    try:  # 서버가 그 컴퓨터 지역 시각으로 적는다(server._record_failure)
+        age = (now or datetime.now()) - datetime.strptime(when, "%Y-%m-%d %H:%M")
+    except ValueError:
+        age = timedelta(0)
+    return {"time": when, "tool": tool, "message": mask_home(line), "stale": age > timedelta(days=LAST_ERROR_STALE_DAYS)}
+
+
+def last_failure(now: datetime | None = None) -> str | None:
+    """last_error() 를 "도구: 문장 (시각)" 한 줄로(마크다운 표 칸이라 | 는 \\|). 오래됐으면 그렇다고 덧붙인다. 없으면 None."""
+    err = last_error(now)
+    if err is None:
+        return None
+    line = err["message"].replace("|", "\\|")
+    old = t(f" — 오래됨({LAST_ERROR_STALE_DAYS}일 넘음), 지금 문제와 다를 수 있음",
+            f" — stale (over {LAST_ERROR_STALE_DAYS} days old), may not be this problem") if err["stale"] else ""
+    return f"`{err['tool']}`: {line} ({err['time']}){old}"
+
+
 def format_issue(checks: list[dict]) -> str:
     """이슈에 그대로 붙일 마크다운. 집 폴더는 ~ 로 가린다. 항목·결과는 format_report 와 같다."""
     clients = ", ".join(registered_clients()) or "-"
@@ -409,6 +485,8 @@ def format_issue(checks: list[dict]) -> str:
         (t("MCP 클라이언트", "MCP clients"), clients),
         (t("언어", "Language"), f"{'en' if is_en() else 'ko'} ({lang_source()})"),
         (t("수신기", "Receiver"), f"{bridge.host()}:{bridge.port()}"),
+        # 서버가 남긴 마지막 도구 실패. 신고할 때 오류 문장을 따로 복사해 붙이지 않아도 되게
+        (t("최근 실패한 도구", "Last failed tool"), last_failure() or "-"),
     ]
     table = "\n".join(f"| {k} | {val} |" for k, val in rows)
     head = t("blender-fx-doctor 결과", "blender-fx-doctor result")

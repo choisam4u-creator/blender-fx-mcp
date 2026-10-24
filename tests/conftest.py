@@ -24,10 +24,12 @@ def pytest_collection_modifyitems(config, items):
 
 
 @pytest.fixture(autouse=True)
-def _default_lang(monkeypatch):
+def _default_lang(monkeypatch, tmp_path):
     """셸의 BLENDER_FX_LANG(예: Mac 에서 en)이 시험으로 새지 않게 매 시험 기본값(한국어)에서 시작한다.
-    언어가 필요한 시험은 monkeypatch.setenv 로 직접 정하고, 끝나면 monkeypatch 가 되돌린다."""
+    언어가 필요한 시험은 monkeypatch.setenv 로 직접 정하고, 끝나면 monkeypatch 가 되돌린다.
+    출력 폴더도 시험마다 임시 폴더로: 실패한 도구가 남기는 last_error.txt 등이 개발자의 ~/blender-fx-output 에 쌓이지 않게."""
     monkeypatch.delenv("BLENDER_FX_LANG", raising=False)
+    monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path / "fx-out"))
     monkeypatch.setenv("BLENDER_FX_NO_UPDATE_CHECK", "1")  # doctor 가 시험 중에 PyPI 에 묻지 않게(새 판 시험은 직접 켠다)
     for var in ("LC_ALL", "LC_MESSAGES", "LANG"):  # 로캘로 언어를 고르므로(i18n) CI 러너의 en_US 로캘도 막는다
         monkeypatch.delenv(var, raising=False)

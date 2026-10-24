@@ -112,10 +112,16 @@ claude mcp add -s user blender-fx -- uv --directory /절대/경로/blender-fx-mc
 바로 붙여 넣을 수 있는 설정(클로드 데스크톱·커서·코덱스)은 [examples/](examples/)에 있습니다.
 등록 후 앱을 완전히 껐다 켜야 도구가 보입니다. 안 보이면 [해결법](docs/troubleshooting.md#tools-not-visible-in-the-client).
 
-**AI 없이 블렌더 쪽만 먼저 확인**(첫 렌더까지): 이 저장소를 받은 폴더에서 블렌더를 켜고 Connect 를 누른 뒤
+**AI 없이 블렌더 쪽만 먼저 확인**(첫 렌더까지): 블렌더를 켜고 Connect 를 누른 뒤, 설치판에 `blender-fx-first-render` 진입점이 있으면 저장소 없이 실행합니다.
 
 ```bash
-uv run python examples/first_render.py   # [1/5] 연결 확인 → 스냅샷 → 건물 → 붕괴 → 미리보기, 끝에 PNG 경로
+uvx --from blender-fx-mcp blender-fx-first-render   # [1/5] 연결 확인 → 스냅샷 → 건물 → 붕괴 → 미리보기, 끝에 PNG 경로·여는 명령
+```
+
+저장소에서 개발 중이거나 설치판에 진입점이 없으면, 저장소 루트에서 실행합니다.
+
+```bash
+uv run python examples/first_render.py
 ```
 
 연결이 안 되면 다음 할 일을 출력하고 종료 코드 2 입니다. 자세한 설명은 [examples/README.md](examples/README.md#터미널에서-첫-렌더까지--first-render-from-the-terminal).
@@ -170,12 +176,19 @@ uv run python examples/first_render.py   # [1/5] 연결 확인 → 스냅샷 →
 
 ## 개발·테스트
 
-블렌더를 창 없이 띄워 레시피를 소켓 없이 검증할 수 있습니다.
+### 1. pytest 시험
+
+개발 의존성을 준비한 뒤 서버 동작과 레시피를 시험합니다.
+블렌더 실행 파일이 필요한 레시피 시험은 파일을 찾지 못하면 건너뜁니다.
 
 ```bash
 uv sync --group dev
 uv run pytest -q
 ```
+
+### 2. headless 레시피 실행
+
+블렌더 실행 파일이 필요합니다. 창 없이 띄워 레시피를 소켓 없이 검증합니다.
 
 ```bash
 uv run blender-fx-headless demo-windows destroy render
@@ -185,7 +198,10 @@ uv run blender-fx-headless demo snapshot destroy restore
 uv run blender-fx-headless demo destroy video save
 ```
 
-블렌더가 켜져 있으면 실제 MCP 클라이언트 → 서버 → 소켓 경로 전체를 확인할 수 있습니다:
+### 3. e2e_socket 연결 시험
+
+블렌더와 BlenderMCP 수신기가 켜져 있어야 합니다.
+실제 MCP 클라이언트 → 서버 → 소켓 → 블렌더 경로와 이미지 응답을 확인합니다:
 
 ```bash
 uv run python scripts/e2e_socket.py
@@ -317,10 +333,16 @@ to the client's MCP server config with the environment variable `BLENDER_FX_LANG
 Ready-to-paste configs for Claude Desktop, Cursor and Codex are in [examples/](examples/).
 If the tools do not show up, see [troubleshooting](docs/troubleshooting.md#tools-not-visible-in-the-client).
 
-**Check the Blender side first, without an AI** (up to a first render): in a checkout of this repository, open Blender, click Connect, then
+**Check the Blender side first, without an AI** (up to a first render): open Blender and click Connect. If the installed package provides the `blender-fx-first-render` entry point, run it without a checkout:
 
 ```bash
-BLENDER_FX_LANG=en uv run python examples/first_render.py   # [1/5] connection → snapshot → building → collapse → preview, then PNG paths
+BLENDER_FX_LANG=en uvx --from blender-fx-mcp blender-fx-first-render   # [1/5] connection → snapshot → building → collapse → preview, then PNG paths and an open command
+```
+
+When developing in a checkout, or if the installed package lacks that entry point, run from the repository root:
+
+```bash
+BLENDER_FX_LANG=en uv run python examples/first_render.py
 ```
 
 Without a connection it prints the next step and exits with 2. Details: [examples/README.md](examples/README.md) ("First render from the terminal").

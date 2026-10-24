@@ -12,6 +12,7 @@
    마감은 [`.github/workflows/stale.yml`](../.github/workflows/stale.yml) 이 매일 지킨다: 23일 조용하면 `stale` 라벨과 안내, 7일 더 조용하면 닫음. 누가 글을 쓰면 날짜가 다시 센다.
 4. **질문·기능 요청** — 첫 답 14일 안. 작고 범위가 분명한 일은 `good first issue` 를 붙인다([CONTRIBUTING.md](../CONTRIBUTING.md) 의 "처음 기여하기 좋은 일").
 5. 오류 문장 때문에 온 이슈는 해결법을 [docs/troubleshooting.md](troubleshooting.md) 에도 적는다.
+6. **목표를 지켰는지 보기** — 주에 한 번 `uv run python scripts/triage_report.py` 를 돌린다. 열린 이슈·PR 중 첫 답이 위 목표(7·14일)를 넘은 것만 표로 나온다(종료 코드 1). 아래에 기본 브랜치·열린 PR 의 빨간 CI 표(워크플로·빨간 지 며칠째·실패 잡·실행 링크, 3일 넘으면 ⚠ 와 종료 코드 1)가 붙는다. `--all` 은 전부, `--no-ci` 는 CI 표 없이, 봇·관리자가 연 PR 은 기본으로 뺀다. `gh` 로만 묻고 토큰을 저장하지 않는다. 잊어도 [`.github/workflows/triage.yml`](../.github/workflows/triage.yml) 이 매주 월요일 같은 표를 Actions 실행의 Summary 에 남긴다(읽기 권한만, 댓글·라벨 없음, 넘은 것이 있으면 노란 경고).
 
 ### 라벨
 
@@ -40,6 +41,17 @@ gh label create "stale" --color ededed --description "needs-info 마감 7일 전
    - SHA 와 주석이 함께 바뀌었는지 본다. 주석만 바뀌거나 SHA 만 바뀐 PR 은 병합하지 않는다.
 3. 같은 액션의 PR 이 여러 개면 가장 새 판 하나만 남기고 나머지는 닫는다.
 
+검토 기록(2026-10-14): checkout v4.4.0 → v7.0.1(#12), setup-uv v5.4.2 → v10.3.0(#17, #11 을 대신함), stale v10.4.0 → v11.0.0(#14).
+SHA 가 각 태그 커밋과 같음(`git ls-remote`), 셋 다 `node24`(GitHub 호스트 러너는 됨), 우리가 쓰는 입력(`persist-credentials`, stale 의 `only-labels` 등 7개)이 모두 남아 있음.
+setup-uv 는 입력을 주지 않으며, v10 의 캐시 기본값 `auto` 는 태그 push 에서 꺼져 release.yml 이 캐시를 쓰지 않는다. 클라우드 정비 브랜치에 옮겨 CI 로 확인.
+
+### 빨간 CI 대응
+
+1. `uv run python scripts/triage_report.py` 의 CI 표(또는 매주 월요일 `triage.yml` 의 Summary)에서 빨간 워크플로·실패 잡·실행 링크를 본다. 같은 워크플로가 연달아 실패한 첫 실행부터 센다. 취소된 실행(cancelled, 새 push 로 concurrency 가 끊은 것)·건너뛴 실행·포크 PR 승인 대기(action_required)는 세지 않는다.
+2. 기본 브랜치가 빨가면 PR 병합보다 먼저 본다. 실패 잡 로그에서 원인을 찾아 고치는 PR 을 낸다. 같은 커밋에서 한 번 다시 돌려 초록이면 흔들리는 시험이니 시험을 고친다(건너뛰게 만들지 않는다). 재실행해서 초록이 된 것은 표에서 빠지는 대신 표 아래 "흔들림" 줄(최근 30일 횟수·실행 링크)로 남는다.
+3. 빨간 지 3일이 넘으면(표의 ⚠, 종료 코드 1) 그 주 안에 고치거나, 못 고치면 원인·실패 잡·실행 링크를 적은 이슈(`bug` 라벨)로 남겨 다음 사람이 이어 가게 한다.
+4. 열린 PR 만 빨가면 그 PR 몫이다. 기본 브랜치도 같은 잡이 빨가면 기본 브랜치를 먼저 고치고 PR 에 기본 브랜치를 병합한다.
+
 ### 판 번호와 출시
 
 - 판 번호는 `메이저.마이너.패치` 이다. 1.0 전에는 **마이너** 가 새 도구·인자·동작 변화(예: 범위 밖 값을 오류로 바꾼 것), **패치** 가 고침만이다.
@@ -51,15 +63,15 @@ gh label create "stale" --color ededed --description "needs-info 마감 7일 전
 
 한 번의 출시를 사람의 기억이 아니라 이 순서로 재현한다. 0.7.0 은 2026-10-11 태그 push 로 release.yml 첫 실행(성공, 44초)이 PyPI 에 올렸다.
 
-1. **판 올리기** — 버전 네 곳과 `uv.lock` 루트 판, CHANGELOG 맨 위 절 제목을 `## [X.Y.Z] - YYYY-MM-DD` 로(PR 로 main 에 병합).
-2. **점검** — main 에서 `uv run python scripts/release_check.py --build --tag vX.Y.Z` 가 모두 OK.
+1. **판 올리기** — 버전 네 곳과 `uv.lock` 루트 판, CHANGELOG 맨 위 절 제목을 `## [X.Y.Z] - YYYY-MM-DD` 로, SECURITY·SUPPORT 의 지원 판 표에서 지난 판 줄을 지워 X.Y.x 하나로(출시 전에는 PyPI 최신 판도 지원으로 적어 둠, `release_check.py` 가 확인)(PR 로 main 에 병합).
+2. **점검** — main 에서 `uv run python scripts/release_check.py --build --tag vX.Y.Z` 가 모두 OK(해결법 대응표가 최신인지, `scripts/lint.sh --print` 가 CI lint 단계와 같은지, Mac 실측 `docs/test-reports/latest.md` 가 PASS 이고 30일 안인지도 본다 — 아니면 먼저 Mac 에서 `uv run python scripts/mac_report.py` 를 돌려 커밋).
 3. **태그** — `git tag vX.Y.Z && git push origin vX.Y.Z`. 태그 push 만이 [`.github/workflows/release.yml`](../.github/workflows/release.yml) 을 띄운다.
 4. **빌드** — `build` 잡(읽기 권한)이 같은 `release_check.py --tag`, `uv build`, `--dist dist`, twine 점검 뒤 artifact `dist` 를 올린다.
 5. **승인** — `publish` 잡은 환경 `pypi` 를 쓴다. 저장소 Settings → Environments → `pypi` 에 필수 검토자(관리자)를 두면 여기서 멈추고, Actions 화면에서 빌드 기록을 본 뒤 **Approve** 한다(두지 않으면 바로 게시된다).
 6. **PyPI 확인** — `https://pypi.org/project/blender-fx-mcp/X.Y.Z/` 가 열리고 `uvx --refresh --from blender-fx-mcp==X.Y.Z blender-fx-doctor` 가 돈다.
 7. **레지스트리** — [docs/registry.md](registry.md) 의 등록 순서 3~7(`mcp-publisher publish`).
-8. **릴리스 노트** — `uv run python scripts/release_notes.py vX.Y.Z > notes.md` 가 CHANGELOG 의 그 절(영어 요약 먼저, 관리자 메모 빼고, 끝에 PyPI 주소)을 만든다.
-   GitHub Releases 에서 태그 `vX.Y.Z` 로 새 릴리스를 만들며 본문에 붙이거나 `gh release create vX.Y.Z --notes-file notes.md`.
+8. **릴리스 노트** — 게시가 끝나면 `release-draft` 잡이 GitHub 릴리스 **초안**(본문 = `scripts/release_notes.py vX.Y.Z` 출력: CHANGELOG 의 그 절, 영어 요약 먼저, 관리자 메모 빼고, 끝에 PyPI 주소. 휠·sdist 첨부)을 만든다.
+   Releases 화면에서 초안을 읽고 **Publish release** 를 누른다(공개는 사람). 잡이 실패했으면 Mac 에서 `uv run python scripts/release_notes.py vX.Y.Z > notes.md` 뒤 `gh release create vX.Y.Z --notes-file notes.md`.
    출시 전에 문장을 미리 보려면 `--draft vX.Y.Z`(미출시 절도 초안 표시를 달아 출력).
 
 태그를 잘못 밀었으면(빌드 잡이 빨감) `git push --delete origin vX.Y.Z` 로 지우고 고친 커밋에 다시 단다. PyPI 에 올라간 판은 지울 수 없으니 판을 올린다.
@@ -84,6 +96,7 @@ How this single-maintainer project is maintained. These are the rules the mainta
    [`.github/workflows/stale.yml`](../.github/workflows/stale.yml) enforces the deadline daily: after 23 quiet days it adds the `stale` label and a notice, and closes the issue after 7 more. Any new comment restarts the count.
 4. **Questions and feature requests**: first reply within 14 days. Label small, well-scoped tasks `good first issue` (see "Good first contributions" in [CONTRIBUTING.md](../CONTRIBUTING.md)).
 5. When an issue was caused by an error message, add the fix to [docs/troubleshooting.md](troubleshooting.md) as well.
+6. **Checking the targets**: once a week, run `uv run python scripts/triage_report.py`. It lists only the open issues and PRs whose first reply is past the targets above (7 or 14 days), exiting with 1 when there are any. Below it, a table of red CI on the default branch and open PRs (workflow, days red, failed jobs, run link; ⚠ and exit code 1 after 3 days). `--all` lists everything, `--no-ci` skips the CI table; PRs opened by bots or maintainers are left out by default. It asks GitHub only through `gh` and stores no token. If you forget, [`.github/workflows/triage.yml`](../.github/workflows/triage.yml) writes the same table to the Actions run Summary every Monday (read-only permissions, no comments or labels, a yellow warning when something is late).
 
 ### Labels
 
@@ -101,6 +114,17 @@ Labels are defined in [`.github/labels.yml`](../.github/labels.yml). Every label
    - Check that the SHA and the comment changed together. Do not merge a PR that changes only one of them.
 3. If several PRs update the same action, keep the newest one and close the rest.
 
+Review log (2026-10-14): checkout v4.4.0 → v7.0.1 (#12), setup-uv v5.4.2 → v10.3.0 (#17, supersedes #11), stale v10.4.0 → v11.0.0 (#14).
+Each SHA matches its tag commit (`git ls-remote`); all three run on `node24` (fine on GitHub-hosted runners); every input we pass (`persist-credentials`, the seven stale inputs) still exists.
+We pass no inputs to setup-uv, and its v10 cache default `auto` is off for tag pushes, so release.yml stays cache-free. Ported to the cloud maintenance branch and checked by CI.
+
+### Responding to red CI
+
+1. Read the CI table of `uv run python scripts/triage_report.py` (or the Monday `triage.yml` Summary): red workflow, failed jobs, run link. Days count from the first run of the current failing streak. Cancelled runs (`cancelled`, cut by concurrency after a new push), skipped runs and fork PRs waiting for approval (action_required) are not counted.
+2. A red default branch comes before merging PRs. Find the cause in the failed job log and open a fixing PR. If one re-run on the same commit is green, the test is flaky: fix the test (do not make it skip). Runs that went green only after a re-run leave the table but stay listed below it as "Flaky" lines (count in the last 30 days, run link).
+3. After 3 days red (⚠ in the table, exit code 1), fix it that week, or open an issue (`bug` label) with the cause, failed jobs and run link so the next person can pick it up.
+4. If only an open PR is red, it belongs to that PR. If the default branch fails the same job, fix the default branch first and merge it into the PR.
+
 ### Versions and releases
 
 - Versions are `major.minor.patch`. Before 1.0, a **minor** release adds tools or arguments or changes behavior (e.g. turning out-of-range values into errors); a **patch** release only fixes bugs.
@@ -112,15 +136,16 @@ Labels are defined in [`.github/labels.yml`](../.github/labels.yml). Every label
 
 Every release follows these steps, so it does not depend on one person's memory. 0.7.0 was published to PyPI by the first release.yml run (2026-10-11, success, 44 s) after its tag push.
 
-1. **Bump**: the four version fields, the root package in `uv.lock`, and the top CHANGELOG heading as `## [X.Y.Z] - YYYY-MM-DD` (merged to main through a PR).
-2. **Check**: on main, `uv run python scripts/release_check.py --build --tag vX.Y.Z` is all OK.
+1. **Bump**: the four version fields, the root package in `uv.lock`, the top CHANGELOG heading as `## [X.Y.Z] - YYYY-MM-DD`, and the supported-version tables in SECURITY and SUPPORT trimmed to X.Y.x (before a release they also list the latest PyPI series; `release_check.py` checks this) (merged to main through a PR).
+2. **Check**: on main, `uv run python scripts/release_check.py --build --tag vX.Y.Z` is all OK (it also checks that the help-link table is current, that `scripts/lint.sh --print` matches the CI lint steps, and that the Mac run `docs/test-reports/latest.md` is PASS and at most 30 days old — if not, run `uv run python scripts/mac_report.py` on the Mac first and commit it).
 3. **Tag**: `git tag vX.Y.Z && git push origin vX.Y.Z`. Only a tag push starts [`.github/workflows/release.yml`](../.github/workflows/release.yml).
 4. **Build**: the `build` job (read-only) runs the same `release_check.py --tag`, `uv build`, `--dist dist` and twine checks, then uploads the `dist` artifact.
 5. **Approve**: the `publish` job uses the `pypi` environment. With a required reviewer (the maintainer) set in Settings → Environments → `pypi`, it waits here: review the build in the Actions page and **Approve** it (without one it publishes right away).
 6. **Check PyPI**: `https://pypi.org/project/blender-fx-mcp/X.Y.Z/` opens and `uvx --refresh --from blender-fx-mcp==X.Y.Z blender-fx-doctor` runs.
 7. **Registry**: steps 3 to 7 of the registration order in [docs/registry.md](registry.md) (`mcp-publisher publish`).
-8. **Release notes**: `uv run python scripts/release_notes.py vX.Y.Z > notes.md` prints that CHANGELOG section (English summary first,
-   maintainer notes dropped, PyPI link at the end). Create a GitHub release from tag `vX.Y.Z` with it as the body, or `gh release create vX.Y.Z --notes-file notes.md`.
+8. **Release notes**: after publishing, the `release-draft` job opens a **draft** GitHub release whose body is the output of `scripts/release_notes.py vX.Y.Z`
+   (that CHANGELOG section, English summary first, maintainer notes dropped, PyPI link at the end), with the wheel and sdist attached. Read it under Releases and click
+   **Publish release** (a person makes it public). If the job failed, run `uv run python scripts/release_notes.py vX.Y.Z > notes.md` and `gh release create vX.Y.Z --notes-file notes.md` on the Mac.
    To read the notes before the release, use `--draft vX.Y.Z` (prints the unreleased section with a draft marker).
 
 If a wrong tag was pushed (the build job is red), delete it with `git push --delete origin vX.Y.Z` and tag the fixed commit. A version already on PyPI cannot be replaced, so bump the version instead.
