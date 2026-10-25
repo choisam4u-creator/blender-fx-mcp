@@ -91,7 +91,7 @@ body:
     id: actual
     attributes:
       label: 무엇이 나왔나 / What happened
-      description: 도구가 돌려준 메시지(오류 문장)나 이미지를 그대로 / The exact message or image the tool returned.
+      description: 도구가 돌려준 메시지(오류 문장)나 이미지를 그대로. `doctor --issue` 표의 "최근 실패한 도구" 줄에 이미 있으면 "위 표 참고" 로 충분 / The exact message or image the tool returned. If the "Last failed tool" row of `doctor --issue` already has it, "see the table above" is enough.
     validations:
       required: true
   - type: textarea

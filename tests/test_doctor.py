@@ -1,5 +1,6 @@
 # doctor.py 의 실패 갈래 시험. 사용자가 가장 먼저 돌리는 명령이라 실패 안내가 깨지지 않게 한다. 블렌더 없이 돈다.
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -147,7 +148,9 @@ def test_report_numbers_next_steps_in_install_order(env, monkeypatch, lang):
     assert steps[3].split(". ", 1)[1].startswith(("(선택) ", "(optional) ")) and "claude mcp add" in steps[3]
     assert "uv" in steps[0] and "addon.py" in steps[1] and "Connect to MCP server" in steps[2]
     assert "Install from Disk" in steps[1]
-    assert lines[-1].endswith(bridge.TROUBLESHOOTING_URL)
+    # 해결법 줄은 실패 항목의 절로 바로(uv → addon·connection 은 한 절), 설치 순서대로
+    url = bridge.TROUBLESHOOTING_URL
+    assert lines[-1].split(": ", 1)[1] == f"{url}#uv-not-found · {url}#connection-refused"
     if lang == "en":
         assert not re.search(r"[가-힣]", "\n".join(lines[head:])), lines[head:]
 
@@ -246,18 +249,45 @@ def test_all_ok_but_client_missing_suggests_registering(env, monkeypatch, lang):
     i = lines.index("모두 정상입니다." if lang == "ko" else "Everything looks good.")
     assert lines[i + 1] in ("더 할 수 있는 일:", "You may also:")
     assert lines[i + 2].startswith(("  1. (선택) ", "  1. (optional) "))
-    assert "claude mcp add -s user blender-fx" in lines[i + 2] and len(lines) == i + 3
+    assert "claude mcp add -s user blender-fx" in lines[i + 2] and len(lines) == i + 4
+    assert lines[-1] == doctor.first_step()
     if lang == "en":
         assert "-e BLENDER_FX_LANG=en" in lines[i + 2] and not re.search(r"[가-힣]", "\n".join(lines[i:]))
     _write(env / "home" / ".claude.json", '{"mcpServers": {"blender-fx": {}}}')
-    assert doctor.format_report(doctor.run_checks()).splitlines()[-1] == lines[i]
+    assert doctor.format_report(doctor.run_checks()).splitlines()[-2:] == [lines[i], lines[-1]]
 
 
 # ---- 보고서와 종료 코드 ----
 
+@pytest.mark.parametrize("lang", ["ko", "en"])
+def test_all_ok_ends_with_first_render_step(env, monkeypatch, lang):
+    """모두 정상이면 README 로 돌아가지 않게 마지막 줄이 첫 렌더로 가는 할 일 하나. 실패가 있으면 붙이지 않는다."""
+    import re
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    ok = [doctor._check("a", True, "x")]
+    last = doctor.format_report(ok).splitlines()[-1]
+    assert last.startswith(("다음 할 일: ", "Next: ")) and "/first_demo" in last
+    assert doctor.FIRST_RENDER_CMD in last
+    assert (re.search(r"[가-힣]", last) is None) == (lang == "en")
+    # 예제 명령이 실제 예제 docstring 명령과 같고 파일이 있다(이름이 바뀌면 여기서 잡힘)
+    root = Path(__file__).resolve().parents[1]
+    assert doctor.FIRST_RENDER_CMD in (root / "examples" / "first_render.py").read_text(encoding="utf-8")
+    # AI 가 부른 doctor 도구는 AI 가 할 순서를, 도구 이름은 실제 서버 도구로
+    ai = doctor.format_report(ok, for_ai=True).splitlines()[-1]
+    import asyncio
+
+    from blender_fx_mcp import server
+    names = {tool.name for tool in asyncio.run(server.mcp.list_tools())}
+    for name in ("make_demo_building", "snapshot", "destroy", "render_preview"):
+        assert name in ai and name in names
+    assert doctor.FIRST_RENDER_CMD not in ai
+    bad = ok + [doctor._check("b", False, "y")]
+    assert all(not line.startswith(("다음 할 일: ", "Next: ")) for line in doctor.format_report(bad).splitlines())
+
+
 def test_report_all_ok_and_attention_line(env, monkeypatch):
     ok = [doctor._check("a", True, "x")]
-    assert doctor.format_report(ok).splitlines() == ["[OK] a: x", "모두 정상입니다."]
+    assert doctor.format_report(ok).splitlines() == ["[OK] a: x", "모두 정상입니다.", doctor.first_step()]
     bad = ok + [doctor._check("b", False, "y")]
     lines = doctor.format_report(bad).splitlines()
     assert lines[1] == "[X ] b: y"
@@ -322,7 +352,9 @@ def test_json_matches_text_report(monkeypatch, capsys, tmp_path, lang):
     assert {"addon", "connection"} <= set(data["failed"]) and "blender" not in data["failed"]
     assert next(c for c in data["checks"] if c["id"] == "blender")["optional"] is True
     assert all(c["fix"] for c in data["checks"] if c["id"] in data["failed"])
-    assert data["ok"] is False and data["help"] == bridge.TROUBLESHOOTING_URL and data["help"] in text[-1]
+    assert data["ok"] is False and data["help"] == f"{bridge.TROUBLESHOOTING_URL}#connection-refused" and data["help"] in text[-1]
+    rows = {c["id"]: c for c in data["checks"]}
+    assert rows["connection"]["help"] == rows["addon"]["help"] == data["help"] and rows["output"]["help"] == ""
     assert data["lang"] == lang and data["blender"] is None
     assert data["blender_fx_mcp"] == __version__
     assert (data["host"], data["port"]) == (bridge.host(), bridge.port())
@@ -481,6 +513,94 @@ def test_issue_markdown_masks_home_and_matches_report(monkeypatch, capsys, tmp_p
     assert f"| {lang} (BLENDER_FX_LANG) |" in out  # 언어와 그 근거(lang_source)
 
 
+@pytest.mark.parametrize("lang,label", [("ko", "최근 실패한 도구"), ("en", "Last failed tool")])
+def test_issue_carries_last_failed_tool(monkeypatch, tmp_path, lang, label):
+    """서버가 실패한 도구(이름·문장 첫 줄)를 출력 폴더 last_error.txt 에 남기고, --issue 가 그 한 줄을 표에 붙인다(집 폴더는 ~)."""
+    from blender_fx_mcp import server
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path / "out"))
+    monkeypatch.delenv("BLENDER_FX_HOST", raising=False)
+    monkeypatch.setattr(doctor, "registered_clients", lambda: [])
+    assert f"| {label} | - |" in doctor.format_issue([]), "실패가 없으면 -"
+
+    server.restore("no|such")   # 스냅샷 없음(블렌더 없이 서버가 막음)
+    saved = (tmp_path / "out" / server.LAST_ERROR).read_text(encoding="utf-8")
+    assert saved.count("\n") == 1 and saved.split("\t")[1] == "restore", saved
+    row = next(r for r in doctor.format_issue([]).splitlines() if r.startswith(f"| {label} |"))
+    assert row.startswith(f"| {label} | `restore`: ") and "no_such" in row and row.endswith(") |"), row
+    assert "Traceback" not in row and "\t" not in row
+
+    # 집 폴더가 든 실패 문장도 가린다. 표 칸을 깨는 | 는 \| 로
+    home = str(tmp_path / "home" / "sam")
+    monkeypatch.setattr(doctor.os.path, "expanduser", lambda p: home if p == "~" else p)
+    server._record_failure("import_model", f"파일이 없습니다: {home}/a|b.glb\n두 번째 줄")
+    out = doctor.format_issue([])
+    assert "`import_model`: 파일이 없습니다: ~/a\\|b.glb (" in out and "sam" not in out and "두 번째 줄" not in out
+
+
+def test_json_carries_last_error_same_as_issue(monkeypatch, capsys, tmp_path):
+    """--json 의 last_error 는 --issue 표의 "최근 실패한 도구" 와 같은 값(시각·도구·첫 줄, 집 폴더 ~). 실패가 없으면 null."""
+    from blender_fx_mcp import server
+    _fake_checks(monkeypatch, tmp_path, "ko")
+    monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path / "out"))
+
+    def json_out():
+        with pytest.raises(SystemExit):
+            doctor.main(["--json"])
+        return json.loads(capsys.readouterr().out)
+
+    assert json_out()["last_error"] is None
+    home = str(tmp_path / "home" / "sam")
+    monkeypatch.setattr(doctor.os.path, "expanduser", lambda p: home if p == "~" else p)
+    server._record_failure("import_model", f"파일이 없습니다: {home}/a|b.glb\n두 번째 줄")
+    err = json_out()["last_error"]
+    assert err["tool"] == "import_model" and err["message"] == "파일이 없습니다: ~/a|b.glb"
+    assert re.fullmatch(r"\d{4}-\d\d-\d\d \d\d:\d\d", err["time"]), err
+    assert doctor.last_failure() == f"`import_model`: 파일이 없습니다: ~/a\\|b.glb ({err['time']})"
+
+
+@pytest.mark.parametrize("lang, mark", [("ko", " — 오래됨(7일 넘음), 지금 문제와 다를 수 있음"),
+                                        ("en", " — stale (over 7 days old), may not be this problem")])
+def test_old_last_error_is_marked_stale(monkeypatch, tmp_path, lang, mark):
+    """지난주 실패가 오늘 신고에 섞여 엉뚱한 원인을 쫓지 않게, 7일 넘은 마지막 실패는 --json 에 stale: true, --issue 표에 '오래됨'."""
+    from datetime import datetime, timedelta
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path))
+    now = datetime(2026, 10, 18, 12, 0)
+    for age, stale in ((timedelta(days=7), False), (timedelta(days=7, minutes=1), True), (timedelta(0), False)):
+        when = (now - age).strftime("%Y-%m-%d %H:%M")
+        (tmp_path / "last_error.txt").write_text(f"{when}\trestore\t스냅샷 없음\n", encoding="utf-8")
+        assert doctor.last_error(now)["stale"] is stale, age
+        assert doctor.last_failure(now) == f"`restore`: 스냅샷 없음 ({when})" + (mark if stale else "")
+    # 시각을 못 읽으면 오래됐다고 단정하지 않는다. 기본 now 는 지금 시각
+    (tmp_path / "last_error.txt").write_text("어제쯤\trestore\tx\n", encoding="utf-8")
+    assert doctor.last_error()["stale"] is False
+    (tmp_path / "last_error.txt").write_text("2020-01-01 00:00\trestore\tx\n", encoding="utf-8")
+    assert doctor.last_error()["stale"] is True and mark in doctor.format_issue([])
+
+
+def test_bug_form_says_doctor_issue_already_has_the_error():
+    """버그 양식 '무엇이 나왔나' 칸이 doctor --issue 표에 이미 있으면 다시 붙이지 않아도 된다고 한/영으로 말한다."""
+    root = Path(__file__).resolve().parents[1]
+    form = (root / ".github" / "ISSUE_TEMPLATE" / "bug_report.yml").read_text(encoding="utf-8")
+    block = form.split("id: actual", 1)[1].split("- type:", 1)[0]
+    assert "최근 실패한 도구" in block and "Last failed tool" in block and "doctor --issue" in block
+
+
+def test_last_failure_quiet_when_broken_and_record_never_raises(monkeypatch, tmp_path):
+    from blender_fx_mcp import server
+    monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path))
+    (tmp_path / "last_error.txt").write_text("줄 하나뿐\n", encoding="utf-8")
+    assert doctor.last_failure() is None
+    (tmp_path / "last_error.txt").write_bytes(b"\xff\xfe\t\t")
+    assert doctor.last_failure() is None
+
+    def broken():
+        raise OSError("read-only")
+    monkeypatch.setattr(server, "out_root", broken)
+    assert server._fail(bridge.BlenderError("Something odd.")).endswith("Something odd.")   # 못 써도 결과는 그대로
+
+
 def test_issue_and_json_are_exclusive(capsys):
     with pytest.raises(SystemExit) as e:
         doctor.main(["--json", "--issue"])
@@ -584,3 +704,24 @@ def test_mask_home_skips_root_home(monkeypatch):
     """집 폴더가 / 이면(컨테이너 root 등) 모든 경로를 ~ 로 바꾸지 않게 그대로 둔다."""
     monkeypatch.setattr(doctor.os.path, "expanduser", lambda p: "/" if p == "~" else p)
     assert doctor.mask_home("/usr/bin/blender") == "/usr/bin/blender"
+
+
+def test_every_help_anchor_is_a_troubleshooting_heading():
+    """doctor 가 실패 항목마다 가리키는 절(#앵커)이 해결법 문서에 실제로 있다. 절 제목을 바꾸면 여기서 걸린다."""
+    from test_docs_links import anchors
+    doc = Path(__file__).resolve().parents[1] / "docs" / "troubleshooting.md"
+    assert set(doctor.HELP_ANCHORS.values()) <= anchors(doc)
+    assert doctor.CLIENT_HELP == doctor.help_url("client")
+
+
+def test_help_anchors_name_real_check_ids(env, monkeypatch):
+    """앵커 표의 키가 실제 점검 id(+ 새 판 알림 update)다. 오타 난 id 는 조용히 문서 첫머리로 떨어진다."""
+    monkeypatch.setattr(bridge, "ping", lambda: None)
+    ids = {c["id"] for c in doctor.run_checks(updates=False)} | {"update"}
+    assert set(doctor.HELP_ANCHORS) <= ids
+
+
+@pytest.mark.parametrize("cid,anchor", [("uv", "#uv-not-found"), ("client", "#tools-not-visible-in-the-client"),
+                                        ("output", "#output-folder-not-writable"), ("python", "")])
+def test_help_url_per_check(cid, anchor):
+    assert doctor.help_url(cid) == bridge.TROUBLESHOOTING_URL + anchor

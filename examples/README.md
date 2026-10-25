@@ -51,5 +51,6 @@ Open Blender and click Connect first. Without a connection it prints the next st
 Your scene is saved first as snapshot `first_render_before`, so `restore first_render_before` (or `/undo_last`) brings it back.
 
 ```sh
-uv run python examples/first_render.py
+uv run python examples/first_render.py              # 이 저장소에서 / in this checkout
+uvx --from blender-fx-mcp blender-fx-first-render   # 저장소 없이(PyPI) / without a checkout
 ```

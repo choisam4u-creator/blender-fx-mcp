@@ -32,6 +32,7 @@
 목록형 도구(`list_objects`·`inspect_mesh`·`list_snapshots`)는 같은 내용을 구조화 값(`structuredContent`)으로도 준다(`_with_data`).
 AI 가 문장을 다시 파싱하지 않고 이름·크기를 집는다. 실패는 다른 도구처럼 문장만.
 `doctor` 도 점검 항목마다 `ok`·`fix`(다음 할 일)와 `failed`(고쳐야 할 항목 id)를 준다(`--json` 과 같은 항목 모양, `doctor.check_rows`).
+`last_error` 는 마지막 도구 실패(시각·도구·첫 줄, 집 폴더 `~`, 7일 넘으면 `stale: true`, `doctor.last_error`)라 AI 가 신고 초안에 오류 문장을 다시 묻지 않는다(`--json` 도 같은 칸).
 
 AI 는 블렌더 코드를 짜지 않습니다. 검증된 레시피와 값만 고릅니다.
 
@@ -45,6 +46,8 @@ AI 는 블렌더 코드를 짜지 않습니다. 검증된 레시피와 값만 �
 | `src/blender_fx_mcp/i18n.py` | `t(한국어, 영어)` — `BLENDER_FX_LANG`, 없으면 로캘로 언어 고르기 |
 | `src/blender_fx_mcp/doctor.py` | `blender-fx-doctor` 준비물 점검 |
 | `src/blender_fx_mcp/headless.py` | `blender-fx-headless` — 소켓 없이 블렌더를 백그라운드로 띄워 레시피 실행(개발·시험용) |
+| `src/blender_fx_mcp/first_render.py` | `blender-fx-first-render` — 공식 `mcp` 클라이언트로 서버를 띄워 첫 렌더까지(저장소 없이 PyPI 로). `examples/first_render.py` 는 그 껍데기 |
+| `src/blender_fx_mcp/opener.py` | 렌더 결과를 여는 OS별 명령 한 줄(`open`·`xdg-open`·`start ""`) |
 | `src/blender_fx_mcp/recipes/_common.py` | 레시피 공용 도우미: `FxError`·`L()`·`run_guarded`·재질·힘장·렌더 품질 |
 | `src/blender_fx_mcp/recipes/destroy.py` 등 | 효과 하나당 파일 하나. 블렌더 안에서만 돈다(`bpy`) |
 | `scripts/e2e_socket.py` | 실제 MCP 클라이언트 → 서버 → 열린 블렌더까지 끝까지 확인 |
@@ -106,6 +109,7 @@ bpy 모듈로 (CI recipe-tests-bpy: Linux · recipe-tests-bpy-macos: macOS arm64
 The list tools (`list_objects`, `inspect_mesh`, `list_snapshots`) also return the same content as `structuredContent` (`_with_data`),
 so the AI picks names and sizes without re-parsing text. Failures stay plain sentences like every other tool.
 `doctor` also returns each check's `ok` and `fix` (the next step) plus `failed` (ids to fix), in the same row shape as `--json` (`doctor.check_rows`).
+`last_error` holds the last failed tool (time, tool, first line, home folder as `~`, `stale: true` after 7 days, `doctor.last_error`), so a bug report draft needs no copied error (`--json` has the same field).
 
 The AI never writes Blender code. It only picks a tested recipe and its values.
 
@@ -119,6 +123,8 @@ The AI never writes Blender code. It only picks a tested recipe and its values.
 | `src/blender_fx_mcp/i18n.py` | `t(korean, english)`, picks the language from `BLENDER_FX_LANG`, else the locale |
 | `src/blender_fx_mcp/doctor.py` | `blender-fx-doctor` setup check |
 | `src/blender_fx_mcp/headless.py` | `blender-fx-headless`: runs recipes in background Blender without the socket (development, tests) |
+| `src/blender_fx_mcp/first_render.py` | `blender-fx-first-render`: starts the server with the official `mcp` client and goes up to a first render (works from PyPI, no checkout). `examples/first_render.py` wraps it |
+| `src/blender_fx_mcp/opener.py` | One OS-specific command line that opens a render result (`open`, `xdg-open`, `start ""`) |
 | `src/blender_fx_mcp/recipes/_common.py` | Shared recipe helpers: `FxError`, `L()`, `run_guarded`, materials, force fields, render quality |
 | `src/blender_fx_mcp/recipes/destroy.py` etc. | One file per effect. Runs only inside Blender (`bpy`) |
 | `scripts/e2e_socket.py` | End-to-end check: real MCP client → server → open Blender |

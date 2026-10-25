@@ -28,14 +28,15 @@ def main():
     power = max(0.1, float(p.get("power", 1.0)))
     resolution = int(p.get("resolution", 0) or 0)  # 0 이면 대상 크기에 맞춰 자동
     cache_dir = p.get("cache_dir") or os.path.join(os.path.expanduser("~"), "blender-fx-output", "cache_emit")
-    os.makedirs(cache_dir, exist_ok=True)
 
     sc = scene()
-    cleanup_emit()
     target_name = p.get("target")
+    # 이름이 틀렸거나 지난 불·연기의 보조 오브젝트(FX_EmitFlow 등)면 그것을 지우기 전에 멈춘다
+    t = reject_effect_part(get_target(target_name), EMIT_ROLES) if target_name else None
+    at = None if target_name else point(p.get("at") or [0.0, 0.0, 0.5], "at")  # at 도 지우기 전에 검사
+    cleanup_emit()
     radius = float(p.get("radius") or 0.0)
     if target_name:
-        t = get_target(target_name)
         unhide(t)
         lo, hi = world_bbox(t)
         size = hi - lo
@@ -56,8 +57,7 @@ def main():
         smod.effector_settings.effector_type = "COLLISION"
         smod.effector_settings.use_effector = True
     else:
-        a = p.get("at") or [0.0, 0.0, 0.5]
-        center = Vector((float(a[0]), float(a[1]), float(a[2])))
+        center = at
         radius = radius or 0.5
         lo = Vector((center.x - radius, center.y - radius, center.z - radius))
         hi = Vector((center.x + radius, center.y + radius, center.z + radius))
@@ -118,6 +118,7 @@ def main():
     ds.cache_type = "ALL"
     ds.cache_frame_start = 1
     ds.cache_frame_end = frames
+    os.makedirs(cache_dir, exist_ok=True)  # 인자·장면 검사를 다 통과한 뒤에(실패한 호출이 빈 캐시 폴더를 남기지 않게)
     ds.cache_directory = cache_dir
     ds.use_noise = bool(p.get("noise", False))
     ds.vorticity = float(p.get("vorticity", 0.35))
@@ -158,7 +159,7 @@ def main():
                         "The smoke bake produced nothing. Lower resolution or frames and try again."))
     sc.frame_set(1)
     return dict(kind=kind, target=target_name, smoke_effectors=effectors, at=[round(v, 2) for v in center], radius=round(radius, 2), frames=frames,
-                emit_frames=[start, end], resolution=resolution, domain_size_m=[round(w, 1), round(w, 1), round(h, 1)],
+                emit_frames=[start, end], resolution=resolution, cell_m=round(max(w, h) / resolution, 3), domain_size_m=[round(w, 1), round(w, 1), round(h, 1)],
                 cache_files=cache_files, cache_dir=cache_dir)
 
 

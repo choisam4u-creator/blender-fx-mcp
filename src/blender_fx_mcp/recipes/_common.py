@@ -42,6 +42,15 @@ def run_guarded(fn):
         emit_result(ok=False, error=f"{type(e).__name__}: {e}", traceback=traceback.format_exc()[-1500:])
 
 
+def point(value, name):
+    """[x, y, z] 목록을 Vector 로. 숫자 셋이 아니면 장면을 바꾸기 전에 고칠 값을 알려 준다."""
+    if not isinstance(value, (list, tuple)) or len(value) != 3:
+        raise FxError(L(f"{name} 은(는) [x, y, z] 숫자 세 개로 주세요(지금 {value!r}). 예: {name}=[0, 0, 1]. 장면은 바꾸지 않았습니다.",
+                        f"Give {name} as three numbers [x, y, z] (got {value!r}), e.g. {name}=[0, 0, 1], and ask again. "
+                        "The scene was not changed."))
+    return Vector((float(value[0]), float(value[1]), float(value[2])))
+
+
 def scene():
     return bpy.context.scene
 
@@ -111,6 +120,17 @@ def get_target(name):
         raise FxError(L(f"'{name}' 이름의 메시 오브젝트가 없습니다. 지금 있는 메시: {names}",
                         f"No mesh object named '{name}'. Available meshes: {names}"))
     return o
+
+
+def reject_effect_part(obj, roles):
+    """지난 효과가 만든 보조 오브젝트(정리 함수가 지울 것)를 대상으로 받으면, 지우기 전에 멈춘다. 지운 뒤에 쓰면 장면이 반쯤 바뀐 채 깨진다."""
+    if obj.get(FX_TAG) not in roles:
+        return obj
+    names = [m.name for m in mesh_objects() if not m.get(FX_TAG)]
+    raise FxError(L(f"'{obj.name}' 은(는) 지난 효과가 만든 보조 오브젝트라 새 효과를 시작할 때 지워집니다. "
+                    f"원래 메시 이름으로 다시 시키세요: {names}",
+                    f"'{obj.name}' is a helper object made by the previous effect, and it is removed when the new one starts. "
+                    f"Ask again with one of the original meshes: {names}"))
 
 
 def world_bbox(obj):
@@ -1285,10 +1305,13 @@ def make_force_field(name, tag, field_type, location):
     return e
 
 
+LIQUID_ROLES = ("liquid_domain", "liquid_flow")  # cleanup_liquid 가 지우는 역할
+
+
 def cleanup_liquid():
     """물 도메인·입구를 지우고, 장애물로 붙였던 모디파이어를 뗀다."""
     for o in list(bpy.data.objects):
-        if o.get(FX_TAG) in ("liquid_domain", "liquid_flow"):
+        if o.get(FX_TAG) in LIQUID_ROLES:
             remove_object(o)
     for o in bpy.data.objects:
         for name in ("FX_LiquidObstacle", "FX_FluidEffector", "FX_LiquidFlow"):

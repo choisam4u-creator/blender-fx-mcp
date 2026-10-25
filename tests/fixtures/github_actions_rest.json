@@ -1,0 +1,641 @@
+{
+ "_source": "GitHub REST 문서의 응답 모양(List workflow runs for a repository · List jobs for a workflow run, API 2022-11-28)을 줄인 고정 자료. 값은 예시(octo-org/octo-repo). gh api --paginate 는 쪽마다 객체 하나라 쪽 목록으로 둔다.",
+ "runs": {
+  "main": [
+   {
+    "total_count": 4,
+    "workflow_runs": [
+     {
+      "id": 30433642,
+      "name": "ci",
+      "node_id": "WFR_kwLO30433642",
+      "head_branch": "main",
+      "head_sha": "acb5820ced9479c074f688cc328bf03f341a511d",
+      "path": ".github/workflows/ci.yml@main",
+      "display_title": "Update README.md",
+      "run_number": 642,
+      "event": "push",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "workflow_id": 159038,
+      "check_suite_id": 42,
+      "check_suite_node_id": "MDEwOkNoZWNrU3VpdGU0Mg==",
+      "url": "https://api.github.com/repos/octo-org/octo-repo/actions/runs/30433642",
+      "html_url": "https://github.com/octo-org/octo-repo/actions/runs/30433642",
+      "pull_requests": [],
+      "created_at": "2026-10-15T06:00:00Z",
+      "updated_at": "2026-10-15T06:00:00Z",
+      "actor": {
+       "login": "octocat",
+       "id": 1,
+       "type": "User",
+       "site_admin": false
+      },
+      "run_attempt": 1,
+      "referenced_workflows": [],
+      "run_started_at": "2026-10-15T06:00:00Z",
+      "triggering_actor": {
+       "login": "octocat",
+       "id": 1,
+       "type": "User",
+       "site_admin": false
+      },
+      "jobs_url": "https://api.github.com/repos/octo-org/octo-repo/actions/runs/30433642/jobs",
+      "logs_url": "https://api.github.com/repos/octo-org/octo-repo/actions/runs/30433642/logs",
+      "check_suite_url": "https://api.github.com/repos/octo-org/octo-repo/check-suites/42",
+      "artifacts_url": "https://api.github.com/repos/octo-org/octo-repo/actions/runs/30433642/artifacts",
+      "cancel_url": "https://api.github.com/repos/octo-org/octo-repo/actions/runs/30433642/cancel",
+      "rerun_url": "https://api.github.com/repos/octo-org/octo-repo/actions/runs/30433642/rerun",
+      "previous_attempt_url": null,
+      "workflow_url": "https://api.github.com/repos/octo-org/octo-repo/actions/workflows/159038",
+      "head_commit": {
+       "id": "acb5820ced9479c074f688cc328bf03f341a511d",
+       "tree_id": "d23f6eedb1e1b9610bbc754ddb5197bfe7271223",
+       "message": "Create linter.yaml",
+       "timestamp": "2026-10-15T06:00:00Z",
+       "author": {
+        "name": "Octo Cat",
+        "email": "octocat@github.com"
+       },
+       "committer": {
+        "name": "GitHub",
+        "email": "noreply@github.com"
+       }
+      },
+      "repository": {
+       "id": 1296269,
+       "node_id": "MDEwOlJlcG9zaXRvcnkxMjk2MjY5",
+       "name": "octo-repo",
+       "full_name": "octo-org/octo-repo",
+       "private": false
+      },
+      "head_repository": {
+       "id": 217723378,
+       "node_id": "MDEwOlJlcG9zaXRvcnkyMTc3MjMzNzg=",
+       "name": "octo-repo",
+       "full_name": "octo-org/octo-repo",
+       "private": false
+      }
+     },
+     {
+      "id": 30433641,
+      "name": "ci",
+      "node_id": "WFR_kwLO30433641",
+      "head_branch": "main",
+      "head_sha": "acb5820ced9479c074f688cc328bf03f341a511d",
+      "path": ".github/workflows/ci.yml@main",
+      "display_title": "Update README.md",
+      "run_number": 641,
+      "event": "push",
+      "status": "completed",
+      "conclusion": "failure",
+      "workflow_id": 159038,
+      "check_suite_id": 42,
+      "check_suite_node_id": "MDEwOkNoZWNrU3VpdGU0Mg==",
+      "url": "https://api.github.com/repos/octo-org/octo-repo/actions/runs/30433641",
+      "html_url": "https://github.com/octo-org/octo-repo/actions/runs/30433641",
+      "pull_requests": [],
+      "created_at": "2026-10-15T00:00:00Z",
+      "updated_at": "2026-10-15T00:00:00Z",
+      "actor": {
+       "login": "octocat",
+       "id": 1,
+       "type": "User",
+       "site_admin": false
+      },
+      "run_attempt": 2,
+      "referenced_workflows": [],
+      "run_started_at": "2026-10-15T00:00:00Z",
+      "triggering_actor": {
+       "login": "octocat",
+       "id": 1,
+       "type": "User",
+       "site_admin": false
+      },
+      "jobs_url": "https://api.github.com/repos/octo-org/octo-repo/actions/runs/30433641/jobs",
+      "logs_url": "https://api.github.com/repos/octo-org/octo-repo/actions/runs/30433641/logs",
+      "check_suite_url": "https://api.github.com/repos/octo-org/octo-repo/check-suites/42",
+      "artifacts_url": "https://api.github.com/repos/octo-org/octo-repo/actions/runs/30433641/artifacts",
+      "cancel_url": "https://api.github.com/repos/octo-org/octo-repo/actions/runs/30433641/cancel",
+      "rerun_url": "https://api.github.com/repos/octo-org/octo-repo/actions/runs/30433641/rerun",
+      "previous_attempt_url": "https://api.github.com/repos/octo-org/octo-repo/actions/runs/30433641/attempts/1",
+      "workflow_url": "https://api.github.com/repos/octo-org/octo-repo/actions/workflows/159038",
+      "head_commit": {
+       "id": "acb5820ced9479c074f688cc328bf03f341a511d",
+       "tree_id": "d23f6eedb1e1b9610bbc754ddb5197bfe7271223",
+       "message": "Create linter.yaml",
+       "timestamp": "2026-10-15T00:00:00Z",
+       "author": {
+        "name": "Octo Cat",
+        "email": "octocat@github.com"
+       },
+       "committer": {
+        "name": "GitHub",
+        "email": "noreply@github.com"
+       }
+      },
+      "repository": {
+       "id": 1296269,
+       "node_id": "MDEwOlJlcG9zaXRvcnkxMjk2MjY5",
+       "name": "octo-repo",
+       "full_name": "octo-org/octo-repo",
+       "private": false
+      },
+      "head_repository": {
+       "id": 217723378,
+       "node_id": "MDEwOlJlcG9zaXRvcnkyMTc3MjMzNzg=",
+       "name": "octo-repo",
+       "full_name": "octo-org/octo-repo",
+       "private": false
+      }
+     },
+     {
+      "id": 30433640,
+      "name": "ci",
+      "node_id": "WFR_kwLO30433640",
+      "head_branch": "main",
+      "head_sha": "acb5820ced9479c074f688cc328bf03f341a511d",
+      "path": ".github/workflows/ci.yml@main",
+      "display_title": "Update README.md",
+      "run_number": 640,
+      "event": "push",
+      "status": "completed",
+      "conclusion": "failure",
+      "workflow_id": 159038,
+      "check_suite_id": 42,
+      "check_suite_node_id": "MDEwOkNoZWNrU3VpdGU0Mg==",
+      "url": "https://api.github.com/repos/octo-org/octo-repo/actions/runs/30433640",
+      "html_url": "https://github.com/octo-org/octo-repo/actions/runs/30433640",
+      "pull_requests": [],
+      "created_at": "2026-10-12T00:00:00Z",
+      "updated_at": "2026-10-12T00:00:00Z",
+      "actor": {
+       "login": "octocat",
+       "id": 1,
+       "type": "User",
+       "site_admin": false
+      },
+      "run_attempt": 1,
+      "referenced_workflows": [],
+      "run_started_at": "2026-10-12T00:00:00Z",
+      "triggering_actor": {
+       "login": "octocat",
+       "id": 1,
+       "type": "User",
+       "site_admin": false
+      },
+      "jobs_url": "https://api.github.com/repos/octo-org/octo-repo/actions/runs/30433640/jobs",
+      "logs_url": "https://api.github.com/repos/octo-org/octo-repo/actions/runs/30433640/logs",
+      "check_suite_url": "https://api.github.com/repos/octo-org/octo-repo/check-suites/42",
+      "artifacts_url": "https://api.github.com/repos/octo-org/octo-repo/actions/runs/30433640/artifacts",
+      "cancel_url": "https://api.github.com/repos/octo-org/octo-repo/actions/runs/30433640/cancel",
+      "rerun_url": "https://api.github.com/repos/octo-org/octo-repo/actions/runs/30433640/rerun",
+      "previous_attempt_url": null,
+      "workflow_url": "https://api.github.com/repos/octo-org/octo-repo/actions/workflows/159038",
+      "head_commit": {
+       "id": "acb5820ced9479c074f688cc328bf03f341a511d",
+       "tree_id": "d23f6eedb1e1b9610bbc754ddb5197bfe7271223",
+       "message": "Create linter.yaml",
+       "timestamp": "2026-10-12T00:00:00Z",
+       "author": {
+        "name": "Octo Cat",
+        "email": "octocat@github.com"
+       },
+       "committer": {
+        "name": "GitHub",
+        "email": "noreply@github.com"
+       }
+      },
+      "repository": {
+       "id": 1296269,
+       "node_id": "MDEwOlJlcG9zaXRvcnkxMjk2MjY5",
+       "name": "octo-repo",
+       "full_name": "octo-org/octo-repo",
+       "private": false
+      },
+      "head_repository": {
+       "id": 217723378,
+       "node_id": "MDEwOlJlcG9zaXRvcnkyMTc3MjMzNzg=",
+       "name": "octo-repo",
+       "full_name": "octo-org/octo-repo",
+       "private": false
+      }
+     }
+    ]
+   },
+   {
+    "total_count": 4,
+    "workflow_runs": [
+     {
+      "id": 30433639,
+      "name": "ci",
+      "node_id": "WFR_kwLO30433639",
+      "head_branch": "main",
+      "head_sha": "acb5820ced9479c074f688cc328bf03f341a511d",
+      "path": ".github/workflows/ci.yml@main",
+      "display_title": "Update README.md",
+      "run_number": 639,
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "workflow_id": 159038,
+      "check_suite_id": 42,
+      "check_suite_node_id": "MDEwOkNoZWNrU3VpdGU0Mg==",
+      "url": "https://api.github.com/repos/octo-org/octo-repo/actions/runs/30433639",
+      "html_url": "https://github.com/octo-org/octo-repo/actions/runs/30433639",
+      "pull_requests": [],
+      "created_at": "2026-10-10T00:00:00Z",
+      "updated_at": "2026-10-10T00:00:00Z",
+      "actor": {
+       "login": "octocat",
+       "id": 1,
+       "type": "User",
+       "site_admin": false
+      },
+      "run_attempt": 1,
+      "referenced_workflows": [],
+      "run_started_at": "2026-10-10T00:00:00Z",
+      "triggering_actor": {
+       "login": "octocat",
+       "id": 1,
+       "type": "User",
+       "site_admin": false
+      },
+      "jobs_url": "https://api.github.com/repos/octo-org/octo-repo/actions/runs/30433639/jobs",
+      "logs_url": "https://api.github.com/repos/octo-org/octo-repo/actions/runs/30433639/logs",
+      "check_suite_url": "https://api.github.com/repos/octo-org/octo-repo/check-suites/42",
+      "artifacts_url": "https://api.github.com/repos/octo-org/octo-repo/actions/runs/30433639/artifacts",
+      "cancel_url": "https://api.github.com/repos/octo-org/octo-repo/actions/runs/30433639/cancel",
+      "rerun_url": "https://api.github.com/repos/octo-org/octo-repo/actions/runs/30433639/rerun",
+      "previous_attempt_url": null,
+      "workflow_url": "https://api.github.com/repos/octo-org/octo-repo/actions/workflows/159038",
+      "head_commit": {
+       "id": "acb5820ced9479c074f688cc328bf03f341a511d",
+       "tree_id": "d23f6eedb1e1b9610bbc754ddb5197bfe7271223",
+       "message": "Create linter.yaml",
+       "timestamp": "2026-10-10T00:00:00Z",
+       "author": {
+        "name": "Octo Cat",
+        "email": "octocat@github.com"
+       },
+       "committer": {
+        "name": "GitHub",
+        "email": "noreply@github.com"
+       }
+      },
+      "repository": {
+       "id": 1296269,
+       "node_id": "MDEwOlJlcG9zaXRvcnkxMjk2MjY5",
+       "name": "octo-repo",
+       "full_name": "octo-org/octo-repo",
+       "private": false
+      },
+      "head_repository": {
+       "id": 217723378,
+       "node_id": "MDEwOlJlcG9zaXRvcnkyMTc3MjMzNzg=",
+       "name": "octo-repo",
+       "full_name": "octo-org/octo-repo",
+       "private": false
+      }
+     }
+    ]
+   }
+  ],
+  "fix-typo": [
+   {
+    "total_count": 2,
+    "workflow_runs": [
+     {
+      "id": 30433651,
+      "name": "ci",
+      "node_id": "WFR_kwLO30433651",
+      "head_branch": "fix-typo",
+      "head_sha": "acb5820ced9479c074f688cc328bf03f341a511d",
+      "path": ".github/workflows/ci.yml@fix-typo",
+      "display_title": "Update README.md",
+      "run_number": 651,
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "action_required",
+      "workflow_id": 159038,
+      "check_suite_id": 42,
+      "check_suite_node_id": "MDEwOkNoZWNrU3VpdGU0Mg==",
+      "url": "https://api.github.com/repos/octo-org/octo-repo/actions/runs/30433651",
+      "html_url": "https://github.com/octo-org/octo-repo/actions/runs/30433651",
+      "pull_requests": [
+       {
+        "url": "https://api.github.com/repos/octo-org/octo-repo/pulls/3",
+        "id": 934,
+        "number": 3,
+        "head": {
+         "ref": "fix-typo",
+         "sha": "acb5820ced9479c074f688cc328bf03f341a511d",
+         "repo": {
+          "id": 1296269,
+          "name": "octo-repo"
+         }
+        },
+        "base": {
+         "ref": "main",
+         "sha": "9049f1265b7d61be4a8904a9a27120d2064dab3b",
+         "repo": {
+          "id": 1296269,
+          "name": "octo-repo"
+         }
+        }
+       }
+      ],
+      "created_at": "2026-10-15T13:00:00Z",
+      "updated_at": "2026-10-15T13:00:00Z",
+      "actor": {
+       "login": "octocat",
+       "id": 1,
+       "type": "User",
+       "site_admin": false
+      },
+      "run_attempt": 1,
+      "referenced_workflows": [],
+      "run_started_at": "2026-10-15T13:00:00Z",
+      "triggering_actor": {
+       "login": "octocat",
+       "id": 1,
+       "type": "User",
+       "site_admin": false
+      },
+      "jobs_url": "https://api.github.com/repos/octo-org/octo-repo/actions/runs/30433651/jobs",
+      "logs_url": "https://api.github.com/repos/octo-org/octo-repo/actions/runs/30433651/logs",
+      "check_suite_url": "https://api.github.com/repos/octo-org/octo-repo/check-suites/42",
+      "artifacts_url": "https://api.github.com/repos/octo-org/octo-repo/actions/runs/30433651/artifacts",
+      "cancel_url": "https://api.github.com/repos/octo-org/octo-repo/actions/runs/30433651/cancel",
+      "rerun_url": "https://api.github.com/repos/octo-org/octo-repo/actions/runs/30433651/rerun",
+      "previous_attempt_url": null,
+      "workflow_url": "https://api.github.com/repos/octo-org/octo-repo/actions/workflows/159038",
+      "head_commit": {
+       "id": "acb5820ced9479c074f688cc328bf03f341a511d",
+       "tree_id": "d23f6eedb1e1b9610bbc754ddb5197bfe7271223",
+       "message": "Create linter.yaml",
+       "timestamp": "2026-10-15T13:00:00Z",
+       "author": {
+        "name": "Octo Cat",
+        "email": "octocat@github.com"
+       },
+       "committer": {
+        "name": "GitHub",
+        "email": "noreply@github.com"
+       }
+      },
+      "repository": {
+       "id": 1296269,
+       "node_id": "MDEwOlJlcG9zaXRvcnkxMjk2MjY5",
+       "name": "octo-repo",
+       "full_name": "octo-org/octo-repo",
+       "private": false
+      },
+      "head_repository": {
+       "id": 217723378,
+       "node_id": "MDEwOlJlcG9zaXRvcnkyMTc3MjMzNzg=",
+       "name": "octo-repo",
+       "full_name": "octo-org/octo-repo",
+       "private": false
+      }
+     },
+     {
+      "id": 30433650,
+      "name": "ci",
+      "node_id": "WFR_kwLO30433650",
+      "head_branch": "fix-typo",
+      "head_sha": "acb5820ced9479c074f688cc328bf03f341a511d",
+      "path": ".github/workflows/ci.yml@fix-typo",
+      "display_title": "Update README.md",
+      "run_number": 650,
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "workflow_id": 159038,
+      "check_suite_id": 42,
+      "check_suite_node_id": "MDEwOkNoZWNrU3VpdGU0Mg==",
+      "url": "https://api.github.com/repos/octo-org/octo-repo/actions/runs/30433650",
+      "html_url": "https://github.com/octo-org/octo-repo/actions/runs/30433650",
+      "pull_requests": [
+       {
+        "url": "https://api.github.com/repos/octo-org/octo-repo/pulls/3",
+        "id": 934,
+        "number": 3,
+        "head": {
+         "ref": "fix-typo",
+         "sha": "acb5820ced9479c074f688cc328bf03f341a511d",
+         "repo": {
+          "id": 1296269,
+          "name": "octo-repo"
+         }
+        },
+        "base": {
+         "ref": "main",
+         "sha": "9049f1265b7d61be4a8904a9a27120d2064dab3b",
+         "repo": {
+          "id": 1296269,
+          "name": "octo-repo"
+         }
+        }
+       }
+      ],
+      "created_at": "2026-10-15T12:00:00Z",
+      "updated_at": "2026-10-15T12:00:00Z",
+      "actor": {
+       "login": "octocat",
+       "id": 1,
+       "type": "User",
+       "site_admin": false
+      },
+      "run_attempt": 1,
+      "referenced_workflows": [],
+      "run_started_at": "2026-10-15T12:00:00Z",
+      "triggering_actor": {
+       "login": "octocat",
+       "id": 1,
+       "type": "User",
+       "site_admin": false
+      },
+      "jobs_url": "https://api.github.com/repos/octo-org/octo-repo/actions/runs/30433650/jobs",
+      "logs_url": "https://api.github.com/repos/octo-org/octo-repo/actions/runs/30433650/logs",
+      "check_suite_url": "https://api.github.com/repos/octo-org/octo-repo/check-suites/42",
+      "artifacts_url": "https://api.github.com/repos/octo-org/octo-repo/actions/runs/30433650/artifacts",
+      "cancel_url": "https://api.github.com/repos/octo-org/octo-repo/actions/runs/30433650/cancel",
+      "rerun_url": "https://api.github.com/repos/octo-org/octo-repo/actions/runs/30433650/rerun",
+      "previous_attempt_url": null,
+      "workflow_url": "https://api.github.com/repos/octo-org/octo-repo/actions/workflows/159038",
+      "head_commit": {
+       "id": "acb5820ced9479c074f688cc328bf03f341a511d",
+       "tree_id": "d23f6eedb1e1b9610bbc754ddb5197bfe7271223",
+       "message": "Create linter.yaml",
+       "timestamp": "2026-10-15T12:00:00Z",
+       "author": {
+        "name": "Octo Cat",
+        "email": "octocat@github.com"
+       },
+       "committer": {
+        "name": "GitHub",
+        "email": "noreply@github.com"
+       }
+      },
+      "repository": {
+       "id": 1296269,
+       "node_id": "MDEwOlJlcG9zaXRvcnkxMjk2MjY5",
+       "name": "octo-repo",
+       "full_name": "octo-org/octo-repo",
+       "private": false
+      },
+      "head_repository": {
+       "id": 217723378,
+       "node_id": "MDEwOlJlcG9zaXRvcnkyMTc3MjMzNzg=",
+       "name": "octo-repo",
+       "full_name": "octo-org/octo-repo",
+       "private": false
+      }
+     }
+    ]
+   }
+  ]
+ },
+ "jobs": {
+  "30433641": [
+   {
+    "total_count": 3,
+    "jobs": [
+     {
+      "id": 399444496,
+      "run_id": 30433641,
+      "workflow_name": "ci",
+      "head_branch": "main",
+      "run_url": "https://api.github.com/repos/octo-org/octo-repo/actions/runs/30433641",
+      "run_attempt": 1,
+      "node_id": "CR_kwDO399444496",
+      "head_sha": "acb5820ced9479c074f688cc328bf03f341a511d",
+      "url": "https://api.github.com/repos/octo-org/octo-repo/actions/jobs/399444496",
+      "html_url": "https://github.com/octo-org/octo-repo/actions/runs/30433641/job/399444496",
+      "status": "completed",
+      "conclusion": "failure",
+      "created_at": "2026-10-15T00:00:00Z",
+      "started_at": "2026-10-15T00:00:05Z",
+      "completed_at": "2026-10-15T00:03:00Z",
+      "name": "lint",
+      "steps": [
+       {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1,
+        "started_at": "2026-10-15T00:00:05Z",
+        "completed_at": "2026-10-15T00:01:00Z"
+       },
+       {
+        "name": "Run uvx ruff@0.15.20 check .",
+        "status": "completed",
+        "conclusion": "failure",
+        "number": 2,
+        "started_at": "2026-10-15T00:00:05Z",
+        "completed_at": "2026-10-15T00:01:00Z"
+       }
+      ],
+      "check_run_url": "https://api.github.com/repos/octo-org/octo-repo/check-runs/399444496",
+      "labels": [
+       "ubuntu-latest"
+      ],
+      "runner_id": 1,
+      "runner_name": "GitHub Actions 1",
+      "runner_group_id": 1,
+      "runner_group_name": "GitHub Actions"
+     },
+     {
+      "id": 399444497,
+      "run_id": 30433641,
+      "workflow_name": "ci",
+      "head_branch": "main",
+      "run_url": "https://api.github.com/repos/octo-org/octo-repo/actions/runs/30433641",
+      "run_attempt": 1,
+      "node_id": "CR_kwDO399444497",
+      "head_sha": "acb5820ced9479c074f688cc328bf03f341a511d",
+      "url": "https://api.github.com/repos/octo-org/octo-repo/actions/jobs/399444497",
+      "html_url": "https://github.com/octo-org/octo-repo/actions/runs/30433641/job/399444497",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-15T00:00:00Z",
+      "started_at": "2026-10-15T00:00:05Z",
+      "completed_at": "2026-10-15T00:03:00Z",
+      "name": "server-tests (3.13)",
+      "steps": [
+       {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1,
+        "started_at": "2026-10-15T00:00:05Z",
+        "completed_at": "2026-10-15T00:01:00Z"
+       }
+      ],
+      "check_run_url": "https://api.github.com/repos/octo-org/octo-repo/check-runs/399444497",
+      "labels": [
+       "ubuntu-latest"
+      ],
+      "runner_id": 1,
+      "runner_name": "GitHub Actions 1",
+      "runner_group_id": 1,
+      "runner_group_name": "GitHub Actions"
+     },
+     {
+      "id": 399444498,
+      "run_id": 30433641,
+      "workflow_name": "ci",
+      "head_branch": "main",
+      "run_url": "https://api.github.com/repos/octo-org/octo-repo/actions/runs/30433641",
+      "run_attempt": 1,
+      "node_id": "CR_kwDO399444498",
+      "head_sha": "acb5820ced9479c074f688cc328bf03f341a511d",
+      "url": "https://api.github.com/repos/octo-org/octo-repo/actions/jobs/399444498",
+      "html_url": "https://github.com/octo-org/octo-repo/actions/runs/30433641/job/399444498",
+      "status": "completed",
+      "conclusion": "skipped",
+      "created_at": "2026-10-15T00:00:00Z",
+      "started_at": "2026-10-15T00:00:05Z",
+      "completed_at": "2026-10-15T00:03:00Z",
+      "name": "recipe-tests-bpy",
+      "steps": [],
+      "check_run_url": "https://api.github.com/repos/octo-org/octo-repo/check-runs/399444498",
+      "labels": [
+       "ubuntu-latest"
+      ],
+      "runner_id": 1,
+      "runner_name": "GitHub Actions 1",
+      "runner_group_id": 1,
+      "runner_group_name": "GitHub Actions"
+     }
+    ]
+   }
+  ]
+ },
+ "pulls": [
+  {
+   "url": "https://api.github.com/repos/octo-org/octo-repo/pulls/3",
+   "id": 934,
+   "number": 3,
+   "head": {
+    "ref": "fix-typo",
+    "sha": "acb5820ced9479c074f688cc328bf03f341a511d",
+    "repo": {
+     "id": 1296269,
+     "name": "octo-repo"
+    }
+   },
+   "base": {
+    "ref": "main",
+    "sha": "9049f1265b7d61be4a8904a9a27120d2064dab3b",
+    "repo": {
+     "id": 1296269,
+     "name": "octo-repo"
+    }
+   },
+   "state": "open",
+   "title": "fix typo"
+  }
+ ]
+}
