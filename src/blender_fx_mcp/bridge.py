@@ -41,7 +41,7 @@ def _env_number(name: str, kind: type, default: float, low: float, high: float |
         value = kind(raw)
     except ValueError:
         value = None
-    if value is None or value != value or value < low or (high is not None and value > high):  # value != value: NaN
+    if value is None or not low <= value < float("inf") or (high is not None and value > high):  # NaN·무한대 거절
         span = (t(f"{low:g}~{high:g} 의 숫자", f"a number, {low:g}-{high:g}") if high is not None
                 else t(f"{low:g} 이상의 숫자", f"a number, at least {low:g}"))
         raise BlenderError(t(
