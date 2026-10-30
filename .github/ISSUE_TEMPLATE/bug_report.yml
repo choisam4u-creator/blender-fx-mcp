@@ -13,7 +13,7 @@ body:
     attributes:
       label: blender-fx-doctor --issue 출력 / doctor --issue output
       description: |
-        `uv run blender-fx-doctor --issue` 결과를 그대로 붙여 주세요. 표로 보이고, 집 폴더(사용자 이름)는 `~` 로 가려집니다. uvx 로 설치했다면 `uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-doctor --issue`.
+        `uv run blender-fx-doctor --issue` 결과를 그대로 붙여 주세요. 표로 보이고, 집 폴더(사용자 이름)는 `~` 로 가려집니다. uvx 로 설치했다면 `uvx --from blender-fx-mcp blender-fx-doctor --issue`.
         Paste the output of `uv run blender-fx-doctor --issue` as is. It shows as a table, with your home folder masked as `~`.
         `--json` 출력은 아래 선택 칸에 / The `--json` output goes in the optional field below.
     validations:
@@ -91,7 +91,7 @@ body:
     id: actual
     attributes:
       label: 무엇이 나왔나 / What happened
-      description: 도구가 돌려준 메시지(오류 문장)나 이미지를 그대로 / The exact message or image the tool returned.
+      description: 도구가 돌려준 메시지(오류 문장)나 이미지를 그대로. `doctor --issue` 표의 "최근 실패한 도구" 줄에 이미 있으면 "위 표 참고" 로 충분 / The exact message or image the tool returned. If the "Last failed tool" row of `doctor --issue` already has it, "see the table above" is enough.
     validations:
       required: true
   - type: textarea

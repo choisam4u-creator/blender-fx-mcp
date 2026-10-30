@@ -13,11 +13,29 @@ def main():
     out_dir = os.path.dirname(out_path)
     os.makedirs(out_dir, exist_ok=True)
     quality = p.get("quality", "smoke")
-    width = int(p.get("width", 1280))
-    height = int(p.get("height", 720))
+    # 크기를 안 주면(0) set_render 로 정한 장면 크기, 그것도 없으면 720p
+    width = int(p.get("width") or 0)
+    height = int(p.get("height") or 0)
+    if not (width and height):
+        if sc.get(USER_RES_TAG):
+            width = width or r.resolution_x * r.resolution_percentage // 100
+            height = height or r.resolution_y * r.resolution_percentage // 100
+        else:
+            width, height = width or 1280, height or 720
     f0 = int(p.get("frame_start") or sc.frame_start)
     f1 = int(p.get("frame_end") or sc.frame_end)
     if f1 < f0:
+        # 한쪽만 줬으면 다른 쪽은 장면 값이라 "바꿔라"가 아니라 "함께 주라"가 다음 할 일이다
+        if p.get("frame_start") and not p.get("frame_end"):
+            raise FxError(L(f"frame_start({f0}) 가 장면 끝(frame_end {f1}) 뒤입니다. frame_end 도 함께 주어"
+                            f"(예: frame_start={f0}, frame_end={f0 + 71}) 다시 시키세요. 장면은 바꾸지 않았습니다.",
+                            f"frame_start ({f0}) is after the scene's end (frame_end {f1}). Give frame_end too "
+                            f"(e.g. frame_start={f0}, frame_end={f0 + 71}) and ask again. The scene was not changed."))
+        if p.get("frame_end") and not p.get("frame_start"):
+            raise FxError(L(f"frame_end({f1}) 가 장면 시작(frame_start {f0}) 앞입니다. frame_start 도 함께 주어"
+                            f"(예: frame_start=1, frame_end={f1}) 다시 시키세요. 장면은 바꾸지 않았습니다.",
+                            f"frame_end ({f1}) is before the scene's start (frame_start {f0}). Give frame_start too "
+                            f"(e.g. frame_start=1, frame_end={f1}) and ask again. The scene was not changed."))
         raise FxError(L(f"frame_end({f1}) 가 frame_start({f0}) 보다 작습니다. 두 값을 바꿔 다시 시키세요.",
                         f"frame_end({f1}) is smaller than frame_start({f0}). Swap the two values and ask again."))
     if sc.camera is None:
@@ -27,6 +45,7 @@ def main():
 
     old = dict(engine=r.engine, x=r.resolution_x, y=r.resolution_y, pct=r.resolution_percentage,
                fmt=r.image_settings.file_format, path=r.filepath, fs=sc.frame_start, fe=sc.frame_end, fps=r.fps)
+    samples = render_state()
     r.resolution_x = width
     r.resolution_y = height
     r.resolution_percentage = 100
@@ -45,6 +64,7 @@ def main():
     sc.frame_start = f0
     sc.frame_end = f1
 
+    fps = r.fps  # 실제로 렌더한 fps(아래 finally 가 장면 값을 되돌리기 전에)
     before = set(os.listdir(out_dir))
     try:
         with bpy.context.temp_override(scene=sc):
@@ -61,6 +81,7 @@ def main():
         r.filepath = old["path"]
         sc.frame_start, sc.frame_end = old["fs"], old["fe"]
         r.fps = old["fps"]
+        restore_render_state(samples)
 
     # 블렌더가 파일 이름에 프레임 범위를 붙일 수 있어 새로 생긴 mp4 를 찾는다
     candidates = [os.path.join(out_dir, f) for f in os.listdir(out_dir) if f.lower().endswith(".mp4") and (f not in before or os.path.join(out_dir, f) == out_path)]
@@ -70,7 +91,7 @@ def main():
                         "No video file was produced. Blender's FFmpeg output may be unavailable. "
                         "First check that render_preview makes a frame, then see whether FFmpeg Video is listed under File Format in the Output properties."))
     path = max(candidates, key=os.path.getmtime)
-    return dict(path=path, size_bytes=os.path.getsize(path), frames=[f0, f1], engine=engine, fps=r.fps, size=[width, height])
+    return dict(path=path, size_bytes=os.path.getsize(path), frames=[f0, f1], engine=engine, fps=fps, size=[width, height])
 
 
 run_guarded(main)

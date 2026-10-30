@@ -4,16 +4,16 @@
 
 def main():
     p = PARAMS
-    for o in list(bpy.data.objects):
-        if o.get(FX_TAG) in ("flag", "pole"):
-            remove_object(o)
-    a = p.get("at") or [0.0, 0.0, 0.0]
-    at = Vector((float(a[0]), float(a[1]), float(a[2])))
+    # 인자를 모두 읽은 뒤에 옛 깃발을 지운다(잘못된 값이면 옛 깃발이 그대로 남게)
+    at = point(p.get("at") or [0.0, 0.0, 0.0], "at")
     width = float(p.get("width", 3.0))
     height = float(p.get("height", 2.0))
     pole_h = float(p.get("pole_height") or height * 2.5)
     wind_strength = float(p.get("wind_strength", 6.0))
     frames = max(12, int(p.get("frames") or min(scene().frame_end, 96)))
+    for o in list(bpy.data.objects):
+        if o.get(FX_TAG) in ("flag", "pole"):
+            remove_object(o)
     sc = scene()
     set_frame_end(frames)
 

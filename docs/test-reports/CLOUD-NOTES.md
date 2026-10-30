@@ -2,11 +2,384 @@
 
 ## 맥에서 돌릴 명령 (블렌더 필요, 최신 회차 기준)
 
+한 번에 돌려 `latest.md` 를 새로 쓰려면 `uv run python scripts/mac_report.py`(결과 확인 뒤 커밋). 클라우드 회차는 그 FAIL 부터 고친다.
+
 ```sh
-uv run python scripts/release_check.py --build        # 0.7.0: 버전 네 곳·CHANGELOG [0.7.0] - 2026-10-13·휠 METADATA 모두 OK 인지(태그 밀기 전)
-uv run pytest -q                                      # 블렌더 앱으로 전체 통과(새: tests/test_cleanup_tools.py·tests/test_server_paths.py)
-uv run python examples/first_render.py && BLENDER_FX_LANG=en uv run python -c "from blender_fx_mcp import server; print(server.export_model('t.glb'))"   # Connect 뒤: 출력 폴더 안 t.glb 전체 경로
+uv sync && uv run pytest -q && uv run python scripts/mac_report.py   # 전체 통과 뒤 latest.md 를 새로 써 커밋(새: release_check 가 10/1 FAIL·30일 넘은 latest.md 를 FAIL 로)
+uv run blender-fx-first-render && uv run blender-fx-first-render --help   # 블렌더 Connect 뒤: 끝에 PNG 경로·'결과 보기: open …' 줄, 그 명령으로 열리는지
+uv run python scripts/release_check.py && gh auth status && uv run python scripts/triage_report.py --all   # '미출시' 1줄만 FAIL, CI 칸에 '흔들림' 줄이 실제 응답으로 나오는지
 ```
+
+## 2026-10-18 (27회차)
+
+- 시작 확인: 저장된 지시의 최우선 F1·F3(0.7.0 판·release.yml)는 9회차(10/11)에 끝나 PR #13 으로 병합됐고(`ff7555e`·`4eb778f`) 태그 `v0.7.0` 도 있음 → 다시 할 것 없음, 일반 규칙.
+  `latest.md`(10/1)의 FAIL 2건은 main 에 고쳐져 있음(재확인). main 은 앞서 있지 않음.
+  열린 `claude/cloud-work-*` PR 중 가장 위(#26, `fb53f99`)에서 이어 감. 이 세션은 `claude/cloud-work-p7f9zi` 에 푸시 → PR 은 #26 위에 쌓음.
+- 한 일(백로그 26회차 추가분 5개 모두 + 새 항목 1개, 굽기 시간 어림은 Mac 실측 필요라 계속 건너뜀):
+  1. **렌더 결과 여는 명령** (`6064be4`): 새 `opener.py`. `render_preview` 끝에 출력 폴더, `render_video` 끝에 mp4, first_render 끝에 첫 PNG 를 여는 한 줄(macOS `open`·Linux `xdg-open`·Windows `start ""`, 따옴표). 원격 블렌더면 안 붙임.
+  2. **저장소 없이 첫 렌더** (`e1857b5`): 본체를 `blender_fx_mcp.first_render` + 진입점 `blender-fx-first-render` 로, 예제는 껍데기. README 한/영·doctor 다음 할 일을 `uvx --from blender-fx-mcp blender-fx-first-render` 로.
+     ⚠️ 0.8.0 이 PyPI 에 오르기 전에는 이 uvx 명령이 PyPI 0.7.0 에 없음 → 새 백로그 항목(release_check 미출시 진입점 점검)으로 남김.
+  3. **오래된 last_error** (`9602609`): 7일 넘으면 `--json`·MCP doctor 에 `stale: true`, `--issue` 표에 "오래됨"(한/영).
+  4. **triage 흔들림 줄** (`9831c3f`): 목록 API 는 실행마다 마지막 시도만 줌 → `run_attempt` > 1 초록 실행의 앞 시도가 빨가면 표 아래에 횟수·링크(종료 코드엔 안 셈).
+  5. **release_check Mac 실측 줄** (`302acf0`): `latest.md` 가 FAIL 이거나 30일 넘으면 FAIL + `mac_report.py` 다시. release.yml `--tag` 도 이 점검을 지남. **지금 latest.md(10/1 FAIL) 때문에 이 줄이 FAIL** — Mac 에서 다시 돌릴 것.
+  6. **`blender-fx-first-render --help`** (`573109c`): 백로그에 적었다가 이번 회차가 만든 진입점의 결함이라 바로 고침 — 사용법·종료 코드, 없는 서버 명령은 traceback 대신 종료 코드 2 와 다음 할 일.
+  - 새 항목 5개 추가(`61f59f0`, 그중 1개는 위 6으로 완료): `--help`, 원격 블렌더 PNG 안내, 미출시 진입점 점검, `--issue` 에 첫 렌더 결과 줄, triage.yml 흔들림 경고 주석.
+- 돌린 시험: `uv run pytest -q`(3.11) **1500 통과·49 건너뜀**(블렌더·bpy 필요), CI 서버 명령 `--cov --cov-fail-under=99` **100%**,
+  **`scripts/bpy_tests.sh`(bpy 5.0.1) → 1543 통과·6 건너뜀**(유체 `app_only` 5개·실제 캐릭터 파일 1개 — 블렌더 앱·개인 파일 필요; libEGL 은 apt 로 설치 뒤 돌림),
+  `scripts/lint.sh`(ruff·actionlint+shellcheck·zizmor) 통과, `uv lock --check` 통과, `uv build` 휠에 `first_render.py`·`opener.py`·진입점 4개 확인.
+  `release_check.py` → FAIL 2줄('미출시' + 새 Mac 실측 줄, 둘 다 예상대로).
+- 막힌 것: 없음. `triage_report.py` 를 실제 저장소로 돌리는 것과 여는 명령이 실제로 열리는지는 클라우드에 gh·화면이 없어 Mac 몫.
+- 완료 수·추가 수: **완료 6** / **추가 5** (완료 ≥ 추가). 남은 `[ ]` 5개(그중 1개 Mac 실측).
+- Mac에서 확인할 것: 맨 위 명령 3줄.
+
+## 2026-10-18 (26회차)
+
+- 시작 확인: 저장된 지시의 최우선 F1·F3(0.7.0 판·release.yml)는 9회차(10/11)에 끝나 PR #13 으로 병합됐고(`ff7555e`·`4eb778f`) 태그 `v0.7.0` 도 있음 → 다시 할 것 없음, 일반 규칙.
+  `latest.md`(10/1)의 FAIL 2건은 main 에 고쳐져 있음(재확인). main 은 앞서 있지 않음.
+  열린 `claude/cloud-work-*` PR 중 가장 위(#25, `079186c`)에서 이어 감. 이 세션은 `claude/cloud-work-minl4u` 에 푸시 → PR 은 #25 위에 쌓음.
+- 한 일(백로그 25회차 추가분 5개 모두, 굽기 시간 어림은 Mac 실측 필요라 계속 건너뜀):
+  1. **doctor 정상 뒤 다음 할 일** (`8c5cc7f`): 모두 정상이면 끝줄에 AI 에게 보낼 첫 문장(또는 `/first_demo`)과 `uv run python examples/first_render.py`. MCP `doctor` 도구는 AI 가 할 순서.
+  2. **`--json`·doctor 도구에 `last_error`** (`bed0d9a`): `--issue` 표와 같은 값(시각·도구·첫 줄, 집 폴더 `~`). 버그 양식 '무엇이 나왔나' 에 "표에 있으면 위 표 참고".
+  3. **first_render 실패 시 신고 줄** (`f6d44d3`): 종료 코드 1 이면 끝줄에 `uvx --from blender-fx-mcp blender-fx-doctor --issue` → 버그 양식 링크(한/영, 가짜 수신기 끝까지 시험).
+  4. **release_check 두 줄** (`5cdb08f`): 해결법 대응표가 최신인지, `lint.sh --print` = ci.yml lint 단계인지. 출시 절차 2단계 문서 한/영.
+  5. **triage CI 칸 실제 응답 모양** (`28af206`): REST 문서 모양 고정 자료로 시험하다 찾은 결함 — 빨간 main 위에 취소된 실행 하나가 있으면 초록으로 보였음 → 취소·건너뜀·승인 대기는 세지 않음. maintenance 에 '빨간 CI 대응' 한/영.
+  - 남은 `[ ]` 가 1개(Mac 실측)라 새 항목 5개 추가(`175cb55`): 렌더 결과 여는 명령, PyPI 사용자용 first-render 진입점, 오래된 last_error 표시, triage 흔들림 표시, release_check 에 latest.md 점검.
+- 돌린 시험: `uv run pytest -q`(3.11) **1474 통과·49 건너뜀**(블렌더·bpy 필요), CI 서버 명령 `--cov --cov-fail-under=99` **100%**,
+  **`scripts/bpy_tests.sh`(bpy 5.0.1) → 1517 통과·6 건너뜀**(유체 `app_only` 5개·실제 캐릭터 파일 1개 — 블렌더 앱·개인 파일 필요; 처음엔 libEGL 이 없어 apt 로 설치 뒤 돌림),
+  `scripts/lint.sh`(ruff·actionlint+shellcheck·zizmor) 통과, `gen_tool_table.py` 일치. 변이 확인: triage 의 `NO_SIGNAL` 필터를 빼면 새 시험 실패.
+- 막힌 것: 없음. `triage_report.py` 를 실제 저장소로 돌리는 것은 클라우드에 gh 가 없어 Mac 몫.
+- 완료 수·추가 수: **완료 5** / **추가 5** (완료 ≥ 추가). 남은 `[ ]` 6개(그중 1개 Mac 실측).
+- Mac에서 확인할 것: 맨 위 명령 3줄(또는 `uv run python scripts/mac_report.py` 한 번).
+
+## 2026-10-17 (25회차)
+
+- 시작 확인: 저장된 지시의 최우선 F1·F3(0.7.0 판·release.yml)는 9회차(10/11)에 끝나 PR #13 으로 병합됐고 태그 `v0.7.0` 도 있음 → 다시 할 것 없음, 일반 규칙.
+  `latest.md`(10/1)의 FAIL 2건은 main 에 고쳐져 있음(재확인). main 은 앞서 있지 않음.
+  열린 `claude/cloud-work-*` PR 중 가장 위(#24, `27a7bdf`)에서 이어 감. 이 세션은 `claude/cloud-work-odjpcb` 에 푸시 → PR 은 #24 위에 쌓음.
+- 한 일(백로그 24회차 추가분 5개 모두, 굽기 시간 어림은 Mac 실측 필요라 계속 건너뜀):
+  1. **서버 쪽 오류에도 해결법 링크** (`e626b2c`): `gen_help_index.py` 가 `server.py` 의 `BlenderError(t(…))`·`_missing_snapshot` 열쇠도 표에 넣음(52 → 70개).
+     `_fail` 이 첫 줄 끝에 붙임(이미 링크가 있는 연결 오류·레시피 오류는 그대로, traceback 은 뒤). 문서에 없던 `clear_snapshots(keep=…)` 거부 문장을 문서화함.
+  2. **`scripts/lint.sh`** (`0639d82`): CI lint 잡의 세 검사를 CONTRIBUTING 판 표에서 읽은 판으로 한 줄로 돌림. actionlint 는 `--with shellcheck-py==0.11.0.1` 로
+     shellcheck 를 함께 깔아 로컬에서도 `run:` 을 검사함(SC2086 일부러 넣은 파일로 확인: 없으면 통과·있으면 잡힘). CI 도 같은 명령으로 바꿈, 판 표에 shellcheck-py 를 더함.
+     시험: `--print` 가 CI 단계와 똑같은지, 가짜 uvx 로 하나가 실패해도 셋 다 돌고 실패를 이름으로 알리는지, 표에 줄이 없으면 무엇을 고칠지. bash 라 `@posix_only` 3개(CONTRIBUTING 개수 4개로).
+  3. **triage CI 칸** (`5f23431`): 기본 브랜치·열린 PR 브랜치마다 워크플로별 최신 실행이 빨가면 빨간 지 며칠째(연달아 실패한 첫 실행부터)·실패 잡·실행 링크,
+     3일 넘으면 ⚠ 와 종료 코드 1, `--no-ci`. 최근 30일 실행만 물음(`--paginate` 가 전체 이력을 받지 않게). `triage.yml` 에 `actions: read` 만 더함.
+  4. **doctor --issue 에 최근 실패한 도구** (`bebaf06`): `_fail` 이 출력 폴더 `last_error.txt` 에 시각·도구 이름·첫 줄(300자)을 덮어씀, doctor 가 표 한 줄로(집 폴더 `~`, `|` 이스케이프).
+     시험이 개발자의 `~/blender-fx-output` 에 쓰지 않게 conftest 가 시험마다 `BLENDER_FX_OUT` 을 임시 폴더로 둠(전체 통과 확인).
+  5. **링크 끝까지 시험** (`b9c0ff6`·`0032bc4`): stdio 하위 프로세스 서버 + 가짜 수신기에서 레시피 실패(+traceback)와 `restore` 서버 오류의 도구 결과가
+     "실패: … 해결법: …#절"(링크 한 번, traceback 은 뒤)이고, 하위 프로세스가 `last_error.txt` 를 남기는지(한/영).
+  - 남은 `[ ]` 가 1개(Mac 실측)라 새 항목 5개 추가(`033f7bc`): doctor 정상 뒤 다음 할 일, `--json`·doctor 도구에 last_error, first_render 실패 시 신고 줄, release_check 에 표·lint 점검, triage CI 칸 실제 응답 모양 시험.
+- 돌린 시험:
+  - `uv run pytest -q`(3.11) **1461 통과·49 건너뜀**. CI 서버 명령 `--cov --cov-fail-under=99` → **100%**. `scripts/lint.sh`(ruff·actionlint+shellcheck·zizmor) 통과.
+  - 건너뛴 49개는 블렌더(또는 bpy)가 있어야 하는 레시피 시험. 이번 변경은 레시피를 건드리지 않아 `scripts/bpy_tests.sh`(휠 356MB) 는 돌리지 않음.
+  - `triage_report.py` 를 실제 저장소로는 못 돌림: 클라우드에 `gh` 가 없음(가짜 응답 시험만) → Mac 명령 3번째 줄.
+- 완료 5 · 추가 5 (완료 ≥ 추가).
+- Mac 에서 확인할 것: 위 "맥에서 돌릴 명령" 3줄.
+
+## 2026-10-17 (24회차)
+
+- 시작 확인: 저장된 지시의 최우선 F1·F3(0.7.0 판·release.yml)는 9회차(10/11)에 끝나 PR #13 으로 병합됐고 태그 `v0.7.0` 도 있음. 다시 할 것 없음 → 일반 규칙.
+  `latest.md`(10/1)의 FAIL 2건은 main 에 고쳐져 있음(재확인). main 은 앞서 있지 않음.
+  열린 `claude/cloud-work-*` PR 중 가장 위(#23, `ef4590d`)에서 이어 감. 이 세션은 `claude/cloud-work-el1061` 에 푸시 → PR 은 #23 위에 쌓음.
+- 한 일(백로그 위에서부터, 굽기 시간 어림은 Mac 실측 필요라 건너뜀):
+  1. **import 단위 안내** (`ade4034`): 확인해 보니 자동 축척 규칙은 없고, 서버가 레시피 `notes`(닫히지 않은 메시·면 많음·부품 합침/뺌)를 **버리고 있었음** → 함께 고침.
+     `size` 없이 가져온 모델의 가장 긴 변이 0.05m 미만이나 500m 초과면 cm·mm 단위일 수 있다며 `import_model(size=…)` 짐작 값(한/영).
+  2. **레시피 오류에 해결법 링크** (`e87dd44`): `scripts/gen_help_index.py` 가 레시피 `FxError` 열쇠(한/영)마다 문서에서 절을 찾아 `help_index.py`(52개)를 씀.
+     `run_recipe` 가 실패 문장 끝에 "해결법: …#절" 을 붙임. 시험이 표가 최신인지, 열쇠마다 자기 절로 가는지 봄. 열쇠 뽑기는 시험과 스크립트가 같은 함수를 씀.
+  3. **주간 triage 워크플로** (`8926976`): 월요일마다 `triage_report.py` 를 읽기 권한만으로 돌려 표를 Summary 에 남김(댓글·라벨 없음, 넘으면 경고). 권한·진입점 시험, 변이 확인.
+  4. **서버 오류 문장 → 문서** (`85c7a5e`): server·bridge 의 `BlenderError` 21개 중 빠진 5개를 문서화함(새 절 Snapshot or restore refused). 예외 1개는 근거와 함께 둠.
+  5. **CI bpy 휠 캐시** (`614b52a`): Actions 로그(run 156)를 보니 bpy 설치가 Linux 2초·macOS 4초 → 이미 캐시됨, 바꿀 것 없음.
+     **같은 로그에서 lint 잡이 PR #20(10/15)부터 빨갰던 것을 찾음**: actionlint 의 shellcheck SC2086(커버리지 줄의 따옴표 없는 `$GITHUB_STEP_SUMMARY`).
+     따옴표로 감싸서 고쳤고, 판을 고정한 shellcheck 를 PATH 에 두고 옛 파일은 잡히고 새 파일은 통과하는 것을 확인함. 로컬에 shellcheck 가 없으면 조용히 건너뛰는 점을 CONTRIBUTING 한/영에 적음.
+  - 남은 `[ ]` 가 1개(Mac 실측)라 새 항목 5개를 추가함(`ad71086`): 서버 오류에도 링크, `scripts/lint.sh`, triage 에 CI 빨강 칸, doctor --issue 에 최근 실패, 링크 끝까지 시험.
+- 돌린 시험:
+  - `uv run pytest -q`(3.11) **1438 통과·49 건너뜀**(블렌더 필요). CI 서버 명령 `--cov --cov-fail-under=99` → **100%**. `uvx ruff@0.15.20 check .` 통과.
+    actionlint(+shellcheck-py 0.11.0.1 을 PATH 에)·zizmor 1.30.1 "No findings". `python3 scripts/triage_report.py` 를 실제 저장소로 돌림 → 0개, 종료 0.
+  - PR #24 를 연 뒤 Codex 리뷰가 P2 2건을 지적함(쌓인 water·emit 레시피). bpy 로 재현해 보니 실제 결함이었음 → `222078b`.
+    `emit` 의 target, `water` 의 source_object·obstacles 에 지난 효과의 보조 메시(`FX_EmitFlow`·`FX_LiquidFlow`)를 주면, 정리 함수가 그것을 지운 뒤 `StructRNA … removed` 로 멈추고 지난 효과만 사라졌음.
+    `_common.reject_effect_part` 가 지우기 전에 멈추게 함. 실패 시험에 3갈래를 넣었고, 검사를 빼면 같은 ReferenceError 로 실패하는 것을 확인함. 스레드에 답하고 해결함.
+  - **`scripts/bpy_tests.sh`(bpy 5.0.1) → 1484 통과·6 건너뜀(2분 3초)**. 건너뛴 것은 유체 `app_only` 5개와 실제 캐릭터 파일 1개.
+    triage.yml 실제 실행은 main 에 들어가야 schedule·dispatch 가 됨.
+- 막힌 것: 없음.
+- 완료 수·추가 수: **완료 5**(+ 리뷰 지적 고침 1) / **추가 5** (완료 ≥ 추가). 남은 `[ ]` 6개(그중 1개는 Mac 실측).
+- Mac에서 확인할 것: 맨 위 명령 3줄(또는 `uv run python scripts/mac_report.py` 한 번).
+
+## 2026-10-16 (23회차)
+
+- 시작 확인: 저장된 지시의 최우선 F1·F3(0.7.0 판·release.yml)는 9회차(10/11)에 끝나 PR #13 으로 병합됐고 태그 `v0.7.0` 도 있음. 다시 할 것 없음 → 일반 규칙.
+  `latest.md`(10/1)의 FAIL 2건은 main 에 고쳐져 있음(재확인). main 은 앞서 있지 않음.
+  열린 `claude/cloud-work-*` PR 중 가장 위(#22, `913549e`)에서 이어 감. 이 세션은 `claude/cloud-work-cvvg88` 에 푸시 → PR 은 #22 위에 쌓음.
+- 한 일(백로그 위에서부터, 굽기 시간 어림은 Mac 실측 필요라, CI bpy 휠 캐시는 Actions 로그를 봐야 해서 건너뜀):
+  1. **fire·smoke 격자 안내** (`a6a4b8e`): 결과 끝에 "격자 한 칸 0.100m. 불·연기가 뭉개져 보이면 resolution=192(한 칸 0.050m, 굽기가 몇 배 느려짐)"(한/영). 상한 256 이면 radius·power·at 으로 공간 줄이기.
+     덤: 사용자가 준 resolution 에도 "(자동)"이 붙던 것 고침.
+  2. **읽기 순서 ast 시험이 도우미 함수까지** (`874b25d`): `main()` 이 부르는 같은 파일 함수 안의 호출을 (부른 줄, 안쪽 줄) 순서로 끼워 봄. 실제 레시피 새 위반 0. 변이 시험 4갈래.
+     explode `blast_geometry`·emit `cleanup_emit` 안을 실제로 보는지도 시험.
+  3. **문제 해결 문서 ↔ 레시피 오류** (`c28dd62`): 레시피 `FxError` 55개마다 첫 문장의 가장 긴 고정 조각을 문서에서 찾음. 처음에 42개가 없었음.
+     새 절 3개(Object or file not found·Tool needs another step first·Export failed)와 기존 절 보강으로 0개. 블렌더 안쪽 고장 3개는 근거와 함께 예외(줄기만 함).
+     선택지 오류 16개는 서버 CHOICES 가 먼저 막는지 시험으로 확인.
+  4. **이슈 대응 기록** (`2e50c33`): `scripts/triage_report.py` 가 `gh api` 로 열린 이슈·PR 의 첫 답 일수를 SUPPORT 목표(7·14일)와 대조해, 넘은 것만 표로 냄. 봇·관리자가 연 것은 뺌.
+     이 컨테이너에서 실제 저장소로 돌림: 열린 7개가 모두 관리자 PR 이라 0개. maintenance 한/영 6단계.
+  5. **explode 격자 안내** (`4aba7fe`): 새로 넣은 첫 항목을 바로 함. 상한이면 power 가 아니라 radius·더 작은 대상으로 공간을 줄이라고 안내.
+  - 남은 `[ ]` 가 2개(Mac 실측·Actions 로그)라 새 항목 5개를 추가함(`6248423`): explode 격자 안내(이번에 끝냄), 레시피 오류에 해결법 절 링크, 서버 오류 문장→문서 시험, 주간 triage 워크플로(읽기 권한만), import 단위 안내.
+- 돌린 시험:
+  - `uv run pytest -q`(3.11) **1408 통과·49 건너뜀**(블렌더 필요). CI 서버 명령 `--cov --cov-fail-under=99` → **100%**. `uvx ruff@0.15.20 check .` 통과. 워크플로는 안 바꿔 actionlint·zizmor 는 생략.
+  - 못 돌린 것: `scripts/bpy_tests.sh`. 새 컨테이너라 bpy 휠(356MB)이 없음. 레시피 쪽 변경은 emit·explode 결과에 `cell_m` 하나를 더한 것이고, 두 굽기는 bpy 에서 `app_only` 라 어차피 건너뜀. 그래서 Mac 명령 2줄로 확인함.
+- 막힌 것: 없음.
+- 완료 수·추가 수: **완료 5** / **추가 5** (완료 ≥ 추가). 남은 `[ ]` 6개(그중 1개는 Mac 실측, 1개는 Actions 로그 필요).
+- Mac에서 확인할 것: 맨 위 명령 3줄(또는 `uv run python scripts/mac_report.py` 한 번).
+
+## 2026-10-16 (22회차)
+
+- 시작 확인: 저장된 지시의 최우선 F1·F3(0.7.0 판·release.yml)는 9회차(10/11)에 끝나 PR #13 으로 병합됐고 태그 `v0.7.0` 도 있음. 다시 할 것 없음 → 일반 규칙.
+  `latest.md`(10/1)의 FAIL 2건은 main 에 고쳐져 있음(재확인). main 은 앞서 있지 않음.
+  열린 `claude/cloud-work-*` PR 중 가장 위(#21, `bb13086`)에서 이어 감. 이 세션은 `claude/cloud-work-helzxf` 에 푸시 → PR 은 #21 위에 쌓음.
+- 한 일(백로그 위에서부터, 굽기 시간 어림은 Mac 실측 필요라 건너뜀):
+  1. **레시피 읽기 순서 ast 시험** (`421375e`): `main()` 안에서 `get_target`·`fx_bbox`·`point` 가 `cleanup_*`·`set_frame_end`·`remove_object` 보다 앞인지 레시피 27개를 블렌더 없이 훑음.
+     지금 결함 없음. 예외는 wind 의 `fx_bbox(None)` 하나(실패하지 않고, 지운 바람은 메시가 아님)이고 근거를 적음. 필요 없어진 예외도 잡음. 변이 확인.
+  2. **판 고정 도구 표** (`e106d6f`): CONTRIBUTING 에 ruff·actionlint-py·zizmor·twine 판 표와 분기마다 올리는 절차(한/영). `tests/test_pinned_tools.py` 는 워크플로·문서의 `도구@판` 이 표와 같은지, 판 없는 `uvx 도구` 호출이 없는지 봄.
+     시험이 판 없는 곳 4곳을 찾아 고침(CONTRIBUTING 한/영, PR 양식, greet 안내). maintenance 출시 절차의 빠진 쉼표도.
+  3. **bpy_tests.sh 휠 재사용·안내** (`543480a`): `BPY_WHEEL=휠경로` 로 내려받기 없이 깔고, 처음 받을 때 크기와 시간을 알림.
+     이 컨테이너 실측: 받기 158초, 깔기 12초, `.venv-bpy` 958MB. 없는 파일이나 다른 판 휠이면 가상환경을 만들기 전에 다음 할 일과 함께 멈춤. 시험 3개.
+  4. **troubleshooting 인용 문장 시험** (`c904f87`): `> …` 인용 46개의 문구가 실제 소스 문자열에 있는지 봄. 숫자·괄호·[…]·'…' 는 자리표시로 보고, 영문 이름은 f-string 자리와 맞춤.
+     예외는 셸 문장 2개와 t() 로 끼워 만드는 문장 2개(REJECTIONS 가 실제 문장으로 확인). 문서만 고친 문장을 잡는 변이 확인.
+  5. **water 결과에 격자 크기** (`a14b0b3`): "격자 한 칸 0.125m. 더 작은 물방울이 필요하면 resolution=128(한 칸 0.062m, 굽기가 몇 배 느려짐)"(한/영). 상한 320 이면 domain_at·domain_size 로 공간을 줄이라고 알림. CHANGELOG 한 줄.
+  - 남은 `[ ]` 가 1개(Mac 실측)라 새 항목 5개를 추가함(`6a7e2f7`): emit 격자 안내, ast 시험이 도우미 함수 따라가기, 문서에 없는 FxError 목록, CI bpy 휠 캐시, 이슈 대응 기록 스크립트.
+- 돌린 시험:
+  - `uv run pytest -q`(3.11) **1344 통과·49 건너뜀**(블렌더 필요). CI 서버 명령 `--cov --cov-fail-under=99` → **100%**. `uvx ruff@0.15.20 check .`·actionlint·zizmor 통과("No findings").
+  - **`scripts/bpy_tests.sh`(bpy 5.0.1, BPY_WHEEL 로 설치) → 1387 통과·6 건너뜀(2분 52초)**. 건너뛴 것은 유체 `app_only` 5개와 실제 캐릭터 파일 1개(블렌더 앱·개인 파일 필요).
+  - 못 돌린 것: water 성공 문장의 실제 굽기(bpy 에서는 mantaflow 가 깨져 `app_only`). 그래서 Mac 명령 2·3줄로 확인함.
+- 막힌 것: 없음.
+- 완료 수·추가 수: **완료 5** / **추가 5** (완료 ≥ 추가). 남은 `[ ]` 6개(그중 1개는 Mac 실측).
+- Mac에서 확인할 것: 맨 위 명령 3줄(또는 `uv run python scripts/mac_report.py` 한 번).
+
+## 2026-10-15 (21회차)
+
+- 시작 확인: 저장된 지시의 최우선 F1·F3(0.7.0 판·release.yml)는 9회차(10/11)에 끝나 PR #13 으로 병합됐고 태그 `v0.7.0` 도 있음. 다시 할 것 없음 → 일반 규칙.
+  `latest.md`(10/1)의 FAIL 2건은 main 에 고쳐져 있음(재확인). main 은 앞서 있지 않음.
+  열린 `claude/cloud-work-*` PR 중 가장 위(#20, `9044ba9`)에서 이어 감. 이 세션은 `claude/cloud-work-8fnkl3` 에 푸시 → **PR #21**(#20 위에 쌓음).
+- 한 일(백로그 위에서부터, 굽기 시간 어림은 Mac 실측 필요라 건너뜀):
+  1. **particles 없는 target** (`f872074`): `fx_bbox(target)` 을 정리·장면 길이 바꾸기 앞으로 옮김. BAD_CALLS 에 한 줄 추가. 고침을 되돌리면 실패하는 것을 확인함.
+  2. **water 격자 안내 상한** (`b6a7669`, `c02ccad`): 권할 resolution 이 320 을 넘으면 되는 size 를 대신 권함. 지금 resolution 의 값과 320 일 때 값을 함께 주고, object 모드면 더 큰 물체나 domain 을 권함.
+     도메인 계산을 `domain_box(size)` 로 묶었음. bpy 시험은 권한 size 로 다시 부르면 격자 검사를 지나는지 봄. 굽기는 bpy 에서 mantaflow 가 죽어서, 캐시 폴더를 일부러 막아 굽기 전에 멈추게 함.
+  3. **zizmor** (`3c3dd7e`): CI lint 에 `uvx zizmor@1.30.1 --offline .github/workflows` 를 넣음. checkout 6곳에 `persist-credentials: false`. greet `pull_request_target` 은 근거 주석과 함께 그 줄에서만 끔. 지금 0건.
+  4. **examples/README 명령 시험** (`1f9daed`): 스크립트 파일이 있는지, `uv run python` 으로 부르는지, uvx·uv run 이 띄우는 이름이 진입점인지 봄.
+  5. **actionlint-py 공급망** (`2821f9a`): sdist 를 열어 확인함. 공식 릴리스 바이너리를 받아 SHA-256 이 맞을 때만 씀(공식 checksums.txt 와 같음). 바꿀 것은 없어 SECURITY 표에 두 줄로 적음.
+  - 남은 `[ ]` 가 1개(Mac 실측)라 새 항목 5개를 추가함(`7edc39b`): 정리 전 읽기 ast 시험, uvx 판 고정 도구 표, bpy_tests 설치 안내, 해결법 인용 문장 시험, water 결과에 격자 크기.
+- 돌린 시험:
+  - `uv run pytest -q`(3.11) **1252 통과·49 건너뜀**(블렌더 필요). `uvx ruff@0.15.20 check .`·actionlint·zizmor 통과.
+  - **`scripts/bpy_tests.sh`(bpy 5.0.1) → 1295 통과·6 건너뜀(3분 7초)**. 건너뛴 것은 유체 `app_only` 5개와 실제 캐릭터 파일 1개(블렌더 앱·개인 파일 필요).
+  - 환경 메모: libEGL 설치와 bpy 휠 받기에 약 35분이 걸림(새 백로그 항목의 근거).
+- 막힌 것: 없음.
+- 완료 수·추가 수: **완료 5** / **추가 5** (완료 ≥ 추가). 남은 `[ ]` 6개(그중 1개는 Mac 실측).
+- Mac에서 확인할 것: 맨 위 명령 3줄(또는 `uv run python scripts/mac_report.py` 한 번).
+
+## 2026-10-15 (20회차)
+
+- 시작 확인: 저장된 지시의 최우선 F1·F3(0.7.0 판·release.yml)는 9회차(10/11)에 끝나 PR #13 으로 병합, 태그 `v0.7.0` 도 있음. 다시 할 것 없음 → 일반 규칙.
+  `latest.md`(10/1)의 FAIL 2건은 main 에 고쳐져 있음(재확인). main 은 앞서 있지 않음.
+  19회차 메모대로 열린 `claude/cloud-work-*` PR 중 가장 위(#19, `97216be`)에서 이어 갔다. 이 세션은 `claude/cloud-work-gbvlwr` 에 푸시 → PR 은 #19 위에 쌓음.
+- 한 일(백로그 위에서부터, 굽기 시간 어림은 Mac 실측 필요라 건너뜀):
+  1. **at·domain_at 을 `point()` 로** (`7e44ac7`) — emit·explode·water(at·domain_at)·particles. 시험으로 먼저 재현: IndexError 5개 + emit·particles 는 지난 효과를 지운 뒤 실패(장면 반쯤 바뀜, particles 는 프레임 범위도). 고친 뒤 통과.
+  2. **바다 밑 set_ground 안내가 진짜 되는지** (`a663488`) — 바다 → set_ground 실패(reset_destroy 안내) → reset_destroy → set_ground 성공, 바다 없음·바닥 보임·재질 grass. 안내는 그대로 맞았음.
+  3. **doctor 출력 폴더 해결법** (`516c9b1`) — troubleshooting 새 절 "Output folder not writable"(한/영) + `HELP_ANCHORS["output"]`, 앵커·id 시험은 기존 것이 지킴.
+  4. **CI 워크플로 검사** (`bfe1394`) — lint 잡에 `uvx --from actionlint-py@1.7.12.25 actionlint`(9/22 판, 지금 경고 0) + 판 고정 시험, CONTRIBUTING 한/영.
+  5. **예제 스크립트 이름 시험** (`9ab86ff`) — `examples/*.py` 의 문장 속 이름과 `call_tool`·STEPS 의 도구·인자 키가 서버 스키마에 있는지. 변이(없는 이름 2개)를 잡음.
+  - 남은 `[ ]` 1개(Mac 실측)라 새 항목 5개 추가(`89cd60c`: particles target 순서, water resolution 상한 넘는 안내, zizmor 7건, actionlint-py 내려받기 검증, examples/README 명령).
+- 돌린 시험: `uv run pytest -q`(3.11) **1248 통과·48 건너뜀**(블렌더 필요), CI 서버 명령 `--cov --cov-fail-under=99` **100%**,
+  **`scripts/bpy_tests.sh`(bpy 5.0.1) → 1290 통과·6 건너뜀(2분 2초)**(유체 `app_only` 5개·실제 캐릭터 파일 1개 — 블렌더 앱·개인 파일 필요), `uvx ruff@0.15.20 check .` 통과, actionlint 통과.
+  환경 메모: 이 컨테이너엔 libEGL 이 없어 `apt-get install`(bpy_tests.sh 가 알려 주는 줄)부터 했다.
+- 막힌 것: 없음. zizmor 는 high 1·medium 6 이 나와 이번엔 CI 에 넣지 않고 백로그로.
+- 완료 수·추가 수: **완료 5** / **추가 5** (완료 ≥ 추가). 남은 `[ ]` 6개(그중 1개 Mac 실측).
+- Mac에서 확인할 것: 맨 위 명령 3줄(또는 `uv run python scripts/mac_report.py` 한 번).
+
+## 2026-10-14 (19회차)
+
+- 시작 확인: 저장된 지시의 최우선 F1·F3(0.7.0 판·release.yml)는 9회차(10/11)에 끝나 PR #13 으로 병합, 태그 `v0.7.0` 도 있음. 다시 할 것 없음 → 일반 규칙.
+  `latest.md`(10/1)의 FAIL 2건은 main 에 고쳐져 있음(재확인). main 은 앞서 있지 않음.
+  ⚠️ 처음에 `claude/cloud-work`(16회차 끝)에서 시작해 백로그 5개를 했는데, 17·18회차가 PR #16·#18 로 같은 5개를 이미 해 둔 것을 늦게 봄 →
+  그 커밋은 푸시하지 않고 버림. 이 세션은 `claude/cloud-work-knktdu` 에만 푸시할 수 있어 18회차 끝 `ab0ad68`(#18) 위에서 다시 작업했다.
+  다음 회차는 시작할 때 열린 `claude/cloud-work-*` PR 중 가장 위 것부터 이어 가야 함.
+- 한 일(백로그 위에서부터, 굽기 시간 어림은 Mac 실측 필요라 건너뜀):
+  1. **render_video 한쪽 프레임** (`690f4e1`) — 확인해 보니 조용히 옮기지 않고 "두 값을 바꿔" 오류를 냈음(한쪽은 장면 값이라 틀린 안내). 한쪽만 주면 "함께 주어(예: …) 다시 시키세요".
+  2. **캐시 폴더 안 남김** (`21b8e9b`) — 물·연기·폭발이 `cache_*` 폴더를 검사 통과 뒤에 만듦. bpy 시험(실패 6개 호출이 폴더를 하나도 안 남김).
+  3. **지원 판 표** (`065dc92`) — SECURITY·SUPPORT 에 "0.7.x (PyPI 최신) — 0.8.0 이 나올 때까지". `release_check.py` 가 출시(날짜) 뒤 표를 새 판 하나로 정리하라고 알림. 출시 절차 1단계 한/영.
+  4. **릴리스 초안 잡** (`0752ea9`) — release.yml 에 `release-draft`(needs publish, `contents: write` 하나만, build 가 만든 노트·파일 artifact 만 받아 `gh release create --draft`, 저장소 코드 실행 없음).
+     노트는 dist 와 다른 artifact(dist/ 전부가 PyPI 로 가므로). 허용목록에 `contents: write` 추가, 기존 거절 시험 그대로 + 잡 단위 시험. 실제 동작은 다음 태그 때.
+  5. **실패 = 장면 그대로 확대** (`0557f05`) — 바다·바람·깃발이 있는 장면에서 시험. 찾아 고친 4곳: ocean 이 인자를 다 읽기 전에 옛 바다를 지우고 장면 길이 변경,
+     wind·cloth_flag 가 `at=[1, 2]` 에서 옛 효과를 지운 뒤 IndexError, set_ground 가 바다 밑 숨은 바닥을 다시 보이게 함. 서버 `check_points`(at·domain_at 숫자 셋) + 해결법 문장.
+  - 남은 `[ ]` 1개(Mac 실측)라 새 항목 5개 추가(`aa2d2a1`).
+- 돌린 시험: `uv run pytest -q`(3.11) **1244 통과·47 건너뜀**(블렌더 필요), CI 서버 명령 `--cov --cov-fail-under=99` **100%**,
+  **`scripts/bpy_tests.sh`(bpy 5.0.1) → 1285 통과·6 건너뜀(2분 34초)**(유체 `app_only` 5개·실제 캐릭터 파일 1개 — 블렌더 앱·개인 파일 필요), `uvx ruff@0.15.20 check .` 통과.
+  변이 확인: 항목 1·2·5 의 레시피 고침을 되돌리면 새 시험이 실패(항목 5 는 7줄).
+- 막힌 것: 없음(버린 중복 작업은 위 ⚠️).
+- 완료 수·추가 수: **완료 5** / **추가 5** (완료 ≥ 추가). 남은 `[ ]` 6개(그중 1개 Mac 실측).
+- Mac에서 확인할 것: 맨 위 명령 3줄(또는 `uv run python scripts/mac_report.py` 한 번).
+
+## 2026-10-14 (18회차)
+
+- 시작 확인: 저장된 지시의 최우선 F1·F3(0.7.0 판·release.yml)는 9회차(10/11)에 끝나 PR #13 으로 병합(`ff7555e`·`4eb778f`), 태그 `v0.7.0` 도 있음. 다시 할 것 없음 → 일반 규칙.
+  main 은 `claude/cloud-work` 보다 앞서 있지 않음. `latest.md`(10/1)의 FAIL 2건은 main 에 고쳐져 있음(재확인).
+  이 세션은 `claude/cloud-work-9gw4mg` 에만 푸시할 수 있어 17회차(PR #16, `claude/cloud-work-n6i9g1`) 끝 `89fb921` 에서 이어 작업했다.
+- 한 일(백로그 위에서부터, 굽기 시간 어림은 Mac 실측 필요라 건너뜀):
+  1. **set_timing 옮김 알림** (`5b8668d`) — 한쪽만 준 프레임으로 블렌더가 다른 쪽을 옮기면 결과에 옛 값→새 값과 "함께 주세요".
+  2. **실패 = 장면 그대로** (`c94c8ef`) — 새 bpy 시험 `tests/test_recipe_failure_keeps_scene.py`(레시피 11종·잘못된 호출 17개 앞뒤 장면 비교).
+     찾아 고친 6곳: `explode`·`emit` 이름 틀리면 지난 효과 삭제, `water` 검사 전 지난 물 삭제·프레임 범위 변경, `destroy` 면 없는 메시에서 다른 효과 삭제,
+     `export_model` 형식 검사 전에 물리를 키프레임으로 굽기, `import_model` parts 불일치 때 부품이 남음.
+  3. **해결법 '인자 값이 거부됨'** (`6e90759`) — 범위·선택지·순서·유한한 숫자 문장. 시험이 빠져 있던 `check_finite` 를 찾음.
+  4. **0.8.0 출시 준비 점검** (`c0cab3b`) — `release_check.py` 는 날짜 줄만 실패. 영어 요약 Fixes 29줄 한 덩어리를 주제별 6개로 + 항목 6줄 상한 시험(미출시 절만).
+  5. **dependabot 3개 옮김** (`fd8696f`) — checkout v7.0.1·setup-uv v10.3.0·stale v11.0.0. SHA=태그 커밋, node24, 쓰는 입력 그대로, setup-uv 캐시는 태그 push 에서 꺼짐.
+  - 새 백로그 5개 + CHANGELOG 한국어 고침 줄 (`0ac1810`).
+- 돌린 시험: `uv run pytest -q`(3.11) **1231 통과·44 건너뜀**(블렌더 필요), CI 서버 명령 `--cov --cov-fail-under=99` **100%**,
+  **`scripts/bpy_tests.sh`(bpy 5.0.1) → 1269 통과·6 건너뜀(2분 5초)**(유체 `app_only` 5개·실제 캐릭터 파일 1개 — 블렌더 앱·개인 파일 필요), `uvx ruff@0.15.20 check .` 통과, 도구 표 일치.
+  변이 확인: 항목 2 의 고침을 되돌리면 새 시험이 6곳 모두 잡음. 항목 4 의 상한 시험은 옛 CHANGELOG 에서 실패.
+- 막힌 것: 없음. (`claude/cloud-work` 에 직접 못 미는 것은 17회차와 같음 → PR 을 `claude/cloud-work` 로 엶, #16 뒤에 병합)
+- 완료 수·추가 수: **완료 5** / **추가 5** (완료 ≥ 추가). 남은 `[ ]` 6개(그중 1개 Mac 실측).
+- Mac에서 확인할 것: 맨 위 명령 3줄(또는 `uv run python scripts/mac_report.py` 한 번).
+
+## 2026-10-13 (17회차)
+
+- 시작 확인: 저장된 지시의 최우선 F1·F3(0.7.0 판·release.yml)는 9회차(10/11)에 끝나 PR #13 으로 병합, 태그 `v0.7.0` 도 있음. 다시 할 것 없음 → 일반 규칙.
+  main 은 `claude/cloud-work` 보다 앞서 있지 않음. `latest.md`(10/1)의 FAIL 2건은 고쳐져 있음(재확인).
+  이 세션의 푸시 브랜치는 `claude/cloud-work-n6i9g1`(`claude/cloud-work` 끝 9603f30 에서 이어 감, 앞으로 감기 가능).
+- 한 일(백로그 위에서부터, 굽기 시간 어림은 Mac 실측 필요·dependabot 3개는 CI 판단이 필요해 건너뜀):
+  1. **set_timing 순서 검사** (`1983ced`) — 거꾸로 준 쌍(`frame_end<frame_start`, `slow_to≤slow_from`, `render_video` 도)을 서버가 보내기 전에 바꿔 줄 값과 함께 막음, 레시피도 바꾸기 전에 검사.
+     **하다가 찾은 결함**: `set_timing(fps=…)` 가 결과 키 `fps` 가 겹쳐 늘 TypeError(장면은 이미 바뀐 뒤) → 고침.
+  2. **doctor 항목별 해결법 링크** (`24db12a`) — "해결법:" 줄이 실패 항목의 절로, `--json`·`doctor` 도구는 항목마다 `help`. 앵커가 실제 절인지 시험.
+  3. **문서 이름 시험 확대** (`8e17ec6`) — 7개 문서 + 호출 안 인자 이름. recipes.md 의 `hold_until` 을 "서버 안쪽 값"으로.
+  4. **결과에 길이(초)** (`09f2c3c`) — "288프레임 = 24fps 로 12초" / "72 frames = 3s at 24fps".
+  5. (새 항목 첫째) **global_slow 두 번** (`48cfbc8`) — 두 번 시키면 길이만 48→96→192 로 늘고 배율은 2배 그대로이던 결함. 원래 속도 기준·1 이면 되돌림.
+  - 남은 `[ ]` 2개라 새 항목 5개 추가(`436d6b2`: global_slow 두 번, 한쪽만 준 프레임 알림, 레시피 실패 = 장면 그대로 점검, 서버 오류 문장 해결법 검색, 0.8.0 출시 준비 점검).
+- 돌린 시험: `uv run pytest -q`(3.11) **1221 통과·41 건너뜀**(블렌더 필요), CI 서버 명령 `--cov --cov-fail-under=99` **100%**,
+  **`scripts/bpy_tests.sh`(bpy 5.0.1) → 1256 통과·6 건너뜀(2분 4초)**(유체 `app_only` 5개·실제 캐릭터 파일 1개 — 블렌더 앱·개인 파일 필요), `uvx ruff@0.15.20 check .` 통과, `gen_tool_table.py` 일치.
+  확인: 고치기 전 레시피로 bpy 재현(fps → TypeError, global_slow 두 번 → 192), 문서에 없는 이름을 넣으면 시험 실패.
+- 막힌 것: 없음.
+- 완료 수·추가 수: **완료 5** / **추가 5** (완료 ≥ 추가). 남은 `[ ]` 6개(그중 1개 Mac 실측).
+- Mac에서 확인할 것: 맨 위 명령 3줄(또는 `uv run python scripts/mac_report.py` 한 번).
+
+## 2026-10-13 (16회차)
+
+- 시작 확인: 저장된 지시의 최우선 F1·F3(0.7.0 판·release.yml)는 9회차(10/11)에 끝나 PR #13 으로 병합(`ff7555e`·`4eb778f`), 태그 `v0.7.0` 도 있음. 다시 할 것 없음 → 일반 규칙.
+  main 은 `claude/cloud-work` 보다 앞서 있지 않음. `latest.md`(10/1)의 FAIL 2건은 main 에 고쳐져 있음(재확인). 열린 PR #15 를 갱신.
+- 한 일(백로그 위에서부터, 굽기 시간 어림은 Mac 실측 필요라 건너뜀):
+  1. **fps·프레임 범위 검사** (`8d50d5b`) — fps 1~240(`set_render`·`render_video`·`set_timing`·`set_physics`), 프레임 번호 1 이상(`frame_start`·`frame_end`·`slow_from`·`slow_to`)을 블렌더에 보내기 전에. 권장 24·30·60, 0 의 뜻을 한/영으로.
+  2. **서버 쪽 오류의 다음 할 일** (`bb37b09`) — `tests/test_server_next_steps.py` 가 `BlenderError(t(...))` 18곳+`_missing_snapshot` 을 훑음. 찾아 고친 4곳: 수신기 실패·결과 줄 없음 → 버그일 수 있음 + `doctor --issue` 신고 안내, `samples` 권장 값, `/my_model size` 한국어에 시키는 말.
+  3. **문서의 도구·인자 이름** (`3156f92`) — 프롬프트는 이미 시험 중(재확인). README·troubleshooting·recipes·demo-script 시험 추가 → README 한계 절이 `destroy` 에 없는 인자 `glue_neighbors`·`glue_max` 로 줄이라던 것을 `pieces`·`glue="none"` 으로.
+  4. **CONTRIBUTING 오류 문장 규칙** (`324cb71`) — 한/영 절(규칙 4가지·지키는 시험 6개·한 줄 확인 명령) + 절이 실제 시험을 가리키는지 시험.
+  5. **빠른 시작 단계 수** (`90aaea4`) — 첫 렌더까지 5단계(준비 4 + 첫 명령) 상한 시험, 단계마다 해결법 링크. 하다가 찾음: uv 단계가 "Windows·Linux 명령은 doctor 가 알려 줌" 이었는데 doctor 도 uvx 로 돌아 uv 없이는 못 봄 → OS 별 명령을 직접 + 새 절 `uv not found`.
+  - 덧: CHANGELOG 0.8.0 Docs 요약이 7줄이 돼 6줄로 합침, 범위 안내 없는 이름 시험으로 서버 커버리지 100% 유지 (`8f36187`).
+  - 남은 `[ ]` 1개(Mac 실측)라 새 항목 5개 추가(`da6becf`: set_timing 순서 검사, doctor 항목별 해결법 링크, 문서 이름 시험 확대, dependabot 3개 재검토, 결과에 길이(초)).
+- 돌린 시험: `uv run pytest -q`(3.11) **1191 통과·39 건너뜀**(블렌더 필요), CI 서버 명령 `--cov --cov-fail-under=99` **100%**, **`scripts/bpy_tests.sh`(bpy 5.0.1) → 1224 통과·6 건너뜀(2분 11초)**(유체 `app_only` 5개·실제 캐릭터 파일 1개 — 블렌더 앱·개인 파일 필요), `uvx ruff@0.15.20 check .` 통과, `gen_tool_table.py` 일치.
+  변이 확인: 항목 1·2·3·5 의 고침을 되돌리면 새 시험이 각각 13·9·1·4개 실패.
+- 막힌 것: 없음.
+- 완료 수·추가 수: **완료 5** / **추가 5** (완료 ≥ 추가). 남은 `[ ]` 6개(그중 1개 Mac 실측).
+- Mac에서 확인할 것: 맨 위 명령 3줄(또는 `uv run python scripts/mac_report.py` 한 번).
+
+## 2026-10-12 (15회차)
+
+- 시작 확인: 저장된 지시의 최우선 F1·F3(0.7.0 판·release.yml)는 9회차(10/11)에 끝나 PR #13 으로 병합(`ff7555e`·`4eb778f`), 태그 `v0.7.0` 도 있음. 다시 할 것 없음 → 일반 규칙.
+  main 은 `claude/cloud-work` 보다 앞서 있지 않음. `latest.md`(10/1)의 FAIL 2건은 main 에 고쳐져 있음(재확인).
+- 한 일(백로그 위에서부터, 굽기 시간 어림은 Mac 실측 필요라 건너뜀):
+  1. **렌더 크기 범위 검사** (`187c372`) — `render_preview`·`render_video`·`set_render` 의 width/height 16~7680 을 블렌더에 보내기 전에, 권장 크기(가로 1280×720·1920×1080, 세로 1080×1920)와 0 의 뜻을 한/영으로. 레시피가 자르지 않는 값이라 `SERVER_ONLY_RANGES` 로 구분.
+  2. **doctor 도구 구조화 출력** (`5b5bbf9`) — 문장 + `ok`·`failed`(id)·`checks`(항목마다 ok·fix)·`help`. 항목 모양은 `--json` 과 같은 `doctor.check_rows`.
+  3. **instructions 예산** (`52e665a`) — 도구 설명과 겹치는 괄호 풀이를 빼 한 656→515·영 994→819자. 공식 클라이언트가 받는 값을 한/영 900자 상한·도구 목록과 합산 시험.
+  4. **오류 문장 다음 할 일(영어)·실제 도구 이름** (`7a9c0f1`) — 영어 표지 시험 추가(모두 통과). 이름 시험이 `set_ground` 의 없는 도구 `reset` 을 찾아 `reset_destroy` 로 고침.
+  - 남은 `[ ]` 1개라 새 항목 5개 추가(`0262e43`: fps·프레임 범위, 서버 쪽 오류 문장 표지, 프롬프트·문서의 도구 이름, CONTRIBUTING 오류 문장 규칙, README 첫 렌더 단계 수).
+- 돌린 시험: `uv run pytest -q`(3.11) **1081 통과·39 건너뜀**(블렌더 필요), CI 서버 명령 `--cov --cov-fail-under=99` **100%**, **`scripts/bpy_tests.sh`(bpy 5.0.1) → 1114 통과·6 건너뜀(2분 38초)**(유체 `app_only` 5개·실제 캐릭터 파일 1개 — 블렌더 앱·개인 파일 필요), `uvx ruff@0.15.20 check .` 통과.
+  변이 확인: instructions 에 괄호 풀이를 되살리면, set_ground 를 옛 문장으로 되돌리면 각각 새 시험이 실패.
+- 막힌 것: 없음.
+- 완료 수·추가 수: **완료 4** / **추가 5**. ⚠️ 이번 회차는 추가가 완료보다 1 많음 — 남은 `[ ]` 가 1개(Mac 실측)뿐이라 규칙 3(3개 미만이면 5개 추가)을 따름. 다음 회차는 추가 없이 완료만.
+- Mac에서 확인할 것: 맨 위 명령 3줄(또는 `uv run python scripts/mac_report.py` 한 번).
+
+## 2026-10-12 (14회차)
+
+- 시작 확인: 저장된 회차 지시의 최우선 F1·F3(0.7.0 판 맞추기·release.yml)는 9회차(10/11)에 끝나 PR #13 으로 병합, 태그 `v0.7.0`·PyPI 게시까지 됨(지금 main 은 0.8.0 준비 중). 다시 할 것 없음 → 일반 규칙으로.
+  main 은 앞서 있지 않음. `latest.md`(10/1)의 FAIL 2건은 main 에 고쳐져 있음(재확인).
+- 한 일(백로그 위에서부터, 굽기 시간 어림은 Mac 실측이 필요해 건너뜀):
+  1. **CI 커버리지 하한 95% → 99%** — ci.yml·CONTRIBUTING 한/영, 시험이 99 미만 하한을 거절.
+  2. **`render_preview` 가 `set_render` 크기를 따름** — 안 주면 정한 비율을 긴 변 640 으로(1080×1920 → 360×640, 작으면 그대로, 정한 적 없으면 640×360), 하나만 주면 비율로. 크기 계산 시험 9개 + bpy 시험(실제 PNG 크기).
+  3. **목록형 도구 구조화 출력** — `list_objects`·`inspect_mesh`·`list_snapshots` 가 문장과 함께 `structuredContent`. mcp 2.2 는 `-> str` 도구에 `{"result": 문자열}` 껍데기만 주던 것을 확인.
+  4. **도구 목록 토큰 예산** — 실제로 나가는 목록을 재니 33,015자 중 인자 `title`·문장 도구 출력 스키마·독스트링 들여쓰기가 군더더기 → 25,093자(−24%). `FxServer` 의 공개 메서드(`add_tool`·`list_tools`)만 재정의, 설명 문구는 그대로. 상한 시험.
+  5. **macOS bpy CI** — bpy 5.0.1 macOS arm64 휠 확인, `recipe-tests-bpy-macos` 추가. 러너 VM 의 Metal 렌더를 몰라 확인될 때까지 `continue-on-error`. 첫 결과는 PR #15 CI 에서.
+  - 남은 `[ ]` 가 2개라 새 항목 5개 추가(렌더 크기 범위 검사, macOS 작업 결과 반영, doctor 구조화 출력, instructions 예산, 레시피 오류 문장의 다음 할 일).
+- 돌린 시험: `uv run pytest -q`(3.11) **1066 통과·39 건너뜀**(블렌더 필요), 서버 쪽 `--cov --cov-fail-under=99` **100%**(3.11·3.14), **`scripts/bpy_tests.sh` → 1099 통과·6 건너뜀(1분 56초)**(유체 `app_only` 5개·실제 캐릭터 파일 1개 — 블렌더 앱·개인 파일 필요), `uvx ruff@0.15.20 check .` 통과, `gen_tool_table.py` 일치.
+- 막힌 것: 없음. macOS 러너에서 bpy 렌더가 되는지는 이 컨테이너(Linux)에서 못 봄 → PR CI 결과로.
+  6. (CI 결과를 보고 이어서) **macOS bpy 작업을 막는 작업으로** — PR #15 CI 첫 실행 1098 통과·7 건너뜀(1분 50초)이라 러너 VM 에서도 Metal 렌더가 됨 → `continue-on-error` 뺌. 새로 넣은 항목 중 하나를 바로 끝냄.
+- 완료 수·추가 수: **완료 6** / **추가 5**. 남은 `[ ]` 5개(그중 1개 Mac 실측).
+- Mac에서 확인할 것: 맨 위 명령 3줄(또는 `uv run python scripts/mac_report.py` 한 번).
+
+## 2026-10-11 (13회차)
+
+- 한 일: 사용자 요청 "남은 백로그 5개 이어서". main 은 앞서 있지 않음, `latest.md`(10/1)의 FAIL 2건은 main 에 고쳐져 있음(재확인). 같은 브랜치에서 다른 세션이 reset 세그폴트 고침(`7006897`)을 먼저 올려 그 위에서 작업.
+  1. **원격 블렌더 `restore` 오타** — 블렌더에 스냅샷이 있는지 먼저 물어, 없으면 before_restore 를 덮어쓰기 전에 멈춤.
+  2. **미리보기가 워크벤치 셰이딩을 바꾼 채 남김** — 점검해 보니 EEVEE 볼륨 값은 이미 되돌렸고 셰이딩(그림자·캐비티·외곽선·조명)이 남았음 → 되돌림(옛 코드로 실패하는 bpy 시험 확인).
+  3. **bpy 시험 시간 4분 17초 → 2분 23초** — `--durations` 로 재 보니 12회차에 내가 넣은 시험이 120초(샘플 200 final 영상) → 샘플 2, 이미지 비교 렌더는 320×180.
+  4. **서버 쪽 커버리지 98% → 100%** — 남은 21줄이 모두 오류 갈래(디스크 권한·스냅샷 삭제 실패·반쯤 온 UTF-8·진행 알림 실패·환경변수·표준 입력 없음).
+  5. **`scripts/mac_report.py`** — 이 파일 맨 위 Mac 명령을 돌려 `latest.md` 를 새로 씀(PASS/FAIL·시간·실패 끝 25줄, 집 폴더 `~`).
+  - 남은 `[ ]` 1개라 다음 후보 5개(커버리지 하한 99%, 도구 설명 토큰 예산, render_preview 크기, macOS bpy CI, 구조화 출력) 추가.
+- 돌린 시험: `uv run pytest -q`(3.11) **1046 통과·38 건너뜀**(블렌더 필요), 서버 쪽 `--cov` **100%**(1043 통과), **`scripts/bpy_tests.sh` → 1059 통과·6 건너뜀(2분 23초)**, `uvx ruff@0.15.20 check .` 통과.
+- 막힌 것: 없음. 굽기 시간 어림 1개는 Mac 실측 필요(이제 `mac_report.py` 로 결과가 latest.md 에 들어오면 다음 회차가 씀).
+- 완료 수·추가 수: **완료 5** / **추가 5**. 남은 `[ ]` 6개(그중 1개 Mac 실측).
+- Mac에서 확인할 것: 맨 위 명령 3줄(또는 `uv run python scripts/mac_report.py` 한 번).
+
+## 2026-10-11 (12회차)
+
+- 한 일: 사용자 요청 "남은 백로그 5개 + 필요한 작업 바로바로, 퀄리티 개선 리스트업". main 은 앞서 있지 않음, `latest.md`(10/1)의 FAIL 2건은 main 에 고쳐져 있음(재확인).
+  1. 백로그 5개: dependabot PR 3개 검토(세 PR 모두 고칠 것 없음, 아래 표), `release_notes.py --draft`, 진행 알림 사람 말(레시피 27개 한/영), README "도움 받기" 3줄, 진행 알림 stdio 끝까지 시험(`BLENDER_FX_PROGRESS_EVERY`).
+  2. **품질 감사**(하위 에이전트가 코드를 읽고 재현한 11건 → 하나씩 확인해 모두 고침, 백로그 "12회차 품질 감사" 절):
+     - 높음: `restore("before_restore")` 가 되돌아갈 상태를 덮어씀 → 맞바꾸기. `before_restore` 는 예약 이름.
+     - 중간: `destroy`/`reset_destroy(target=X)` 가 바다·물·연기 등 다른 효과까지 지움(옛 코드로 실패하는 bpy 시험 확인), `explode` 가 조각낸 뒤에야 인자 검사, `set_render` 샘플·크기를 렌더가 무시, 명령 도중 끊김을 "애드온 설치"로 안내·`BLENDER_FX_TIMEOUT=0` 이 모든 도구를 깸, 미리보기 실패 시 설정이 바뀐 채 남음.
+     - 낮음: 응답 틀(잘림·군더더기·객체 아님·큰 응답 느림), `nan`·`inf`, `render_video` fps 보고, `save_blend`/`render_video` 이름이 출력 폴더 밖으로, 집 폴더 가리기(문장부호·`--json`).
+  3. 덧붙임: `snapshot` 덮어쓰기 알림, ruff 에 `B`·`SIM115`·`RUF059` 추가(9곳 정리).
+  4. 다음 품질 개선 후보 5개를 근거와 함께 백로그에.
+- dependabot PR 검토 표(병합은 사람 몫):
+
+  | PR | 바뀐 것 | 이 저장소에 필요한 일 |
+  |---|---|---|
+  | #12 checkout v4→v7 | node24, 입력 같음, v6 자격 증명 별도 파일, v7 포크 PR `pull_request_target` 체크아웃 차단 | 없음(greet.yml 은 체크아웃 안 함, 나머지는 `persist-credentials: false`) |
+  | #11 setup-uv v5→v10 | node24, 입력 `pyproject-file`·`uv-file` 빠짐, 캐시 기본 glob·`prune-cache` 바뀜, 태그 push 에선 캐시 끔 | 없음(입력을 안 줌, release.yml 은 오히려 안전) |
+  | #14 stale v10→v11 | `action.yml` 입력 같음, v11 변경 기록 없음 | 없음. 병합 뒤 needs-info 작업 Run workflow 로 한 번 확인 |
+- 돌린 시험: `uv run pytest -q`(3.11) **1023 통과·37 건너뜀**(블렌더 필요). **`scripts/bpy_tests.sh` → 1052 통과, 6 건너뜀**(유체 `app_only` 5개·실제 캐릭터 파일 1개). `uvx ruff@0.15.20 check .`(새 규칙 포함) 통과.
+- 막힌 것: GitHub API 가 이 세션에 막혀 dependabot 변경 기록은 raw 파일로 확인. 굽기 시간 어림 1개는 Mac 실측 필요.
+- 완료 수·추가 수: **완료 18**(백로그 5 + 감사 11 + 덧붙임 2) / **추가 18**(감사 목록 11 + 덧붙임 2 + 다음 후보 5). 남은 `[ ]` 6개(그중 1개 Mac 실측).
+- Mac에서 확인할 것: 맨 위 명령 3줄.
+
+## 2026-10-11 (11회차)
+
+- 한 일: 사용자 요청 "남은 백로그 5개 이어서". 시작 때 PR #13 은 병합됐고(0.7.0 PyPI 게시) 열린 PR 은 #15. main 은 앞서 있지 않음, `latest.md`(10/1)의 FAIL 2건은 main 에 고쳐져 있음(재확인).
+  남은 `[ ]` 6개 중 10회차가 넣은 5개를 처리(굽기 시간 어림 1개는 Mac 실측이 필요해 남김):
+  1. **CHANGELOG `[0.7.0]` 날짜 2026-10-13 → 2026-10-11**(태그 `v0.7.0` 커밋 날짜·PyPI 게시일) + 출시 절 날짜 = 태그 날짜 시험(태그 없는 얕은 클론은 건너뜀).
+  2. **doctor "새 판" 선택 줄** — PyPI JSON 2초 제한, 새 판이면 `uv cache clean blender-fx-mcp` 안내. 오프라인·`BLENDER_FX_NO_UPDATE_CHECK=1`·이상한 응답이면 줄 없음, MCP 도구는 안 물음. 이 컨테이너에서 실제 조회 "최신(PyPI 0.7.0)".
+  3. **`scripts/release_notes.py vX.Y.Z`** — CHANGELOG 절을 릴리스 본문으로(영어 요약 먼저, 관리자 메모 빼고, PyPI 주소). 출시 절차 8단계가 이 명령을 씀.
+  4. **README PyPI 판 배지** — 파이썬 배지는 PyPI 분류자로 바꾸지 않음(3.10 을 뺀 main 과 출시된 0.7.0 이 출시 전까지 어긋나므로, 지금처럼 pyproject 기준 + 판 범위 시험).
+  5. **0.8.0 준비: Python 3.10 지원 종료** — 분류자를 빼자 시험이 짚은 10곳을 한 커밋에, doctor 파이썬 점검 3.11, `uv.lock`(3.10 전용 `exceptiongroup` 빠짐 → 라이선스 점검이 잡아 표 39개), `importorskip("tomllib")` 3곳 제거, 버전 네 곳·uv.lock 0.8.0, SUPPORT·SECURITY 0.8.x. CHANGELOG 0.8.0 에 *Breaking*/동작 변화.
+     `test_current_repo_state` 에 "판은 올렸고 날짜만 기다림" 상태 추가(이제 `release_check.py` 는 '미출시' 한 줄만 실패가 정상).
+  - 남은 `[ ]` 가 1개라 규칙대로 다음 회차용 5개 추가(dependabot PR 3개 검토, release_notes `--draft`, 진행 알림 문장, README "Getting help", 진행 알림 stdio 시험).
+  - 같은 브랜치에 다른 세션이 동시에 시험 고침 1개(`208933d`)를 푸시해 한 번 거절됨 → 받아서 내 커밋을 그 위로 올려 푸시(겹친 파일 없음).
+- 돌린 시험: `uv run pytest -q`(3.11) **942 통과·35 건너뜀**(블렌더 필요한 레시피 시험). CI 서버 명령 **3.11·3.14** + `--cov` → 942 통과·**건너뜀 0**(tomllib 건너뜀이 없어짐), 커버리지 98.33%(하한 95%). 3.10 은 `uv sync` 가 거부.
+  **`scripts/bpy_tests.sh` → 971 통과, 6 건너뜀**. `uv build` → `release_check.py --dist` 25개 OK, 휠 분류자 3.11~. `license_check.py` 39/39 OK. `uvx ruff@0.15.20 check .` 통과.
+- 막힌 것: 없음. 참고 — 0.8.0 버전을 올렸으므로 출시 전까지 PyPI(0.7.0)보다 main 판이 높다. 태그·PyPI 는 사람 몫.
+- 완료 수·추가 수: **완료 5** / **추가 5**. 남은 `[ ]` 6개(그중 1개는 Mac 실측 필요).
+- Mac에서 확인할 것: 맨 위 명령 3줄.
+
+## 2026-10-11 (10회차)
+
+- 한 일: 맨 앞 지시(F1·F3)는 9회차에 끝나 PR #13 으로 main 에 병합됐고, 사람이 태그 `v0.7.0` 을 밀어 release.yml 첫 실행(10:51 UTC, 성공, 44초)이
+  PyPI 에 0.7.0(휠·sdist)을 올린 것을 확인 → 이번 회차는 바로 백로그. `latest.md`(10/1)의 FAIL 2건은 main 에 이미 고쳐져 있음(재확인).
+  0.7.0 이 나가 CHANGELOG 맨 위에 `## 0.8.0 — 미출시 (준비 중)` 절을 열고 이번 변경을 모음(버전 네 곳은 0.7.0 그대로 → `release_check.py` 는 "판 다름·미출시" 2줄만 FAIL 이 정상).
+  1. **`release_check.py --tag vX.Y.Z`** (`64515f9`): `v` 빠짐·판 다름이면 고칠 곳과 `git push --delete` 안내. release.yml build 잡의 셸 비교를 이 명령 하나로 합쳐 규칙이 한 곳.
+  2. **설치 명령을 PyPI 로** (`803802c`): `uvx blender-fx-mcp`, 점검 `uvx --from blender-fx-mcp blender-fx-doctor`. README·examples 7개·doctor·연결 거부 오류·버그 양식.
+     이 컨테이너에서 `uvx --from blender-fx-mcp==0.7.0 blender-fx-doctor --json` 실제로 돎. troubleshooting 에 "새 판이 나왔는데 예전 판이 돎" 절.
+  3. **doctor 디스크 부족 안내** (`7d85f80`): 5GB 아래면 큰 묶음(구운 캐시·스냅샷·렌더 결과)과 크기, 지울 방법을 큰 것부터. 다 작으면 "지워도 소용없음".
+  4. **first_render.py 끝까지 시험** (`c4ce5f3`): 진짜 서버 + 가짜 블렌더 수신기(소켓, 애드온 규약, render 는 진짜 PNG). 한/영 성공·레시피 실패.
+  5. **출시 절차 문서** (`f5991ab`): maintenance.md 한/영 8단계 + release.yml 과 이름이 맞는지 시험.
+  - 새 백로그 5개 (`6d8f8d6`): CHANGELOG 0.7.0 날짜(제목 10-13, 실제 10-11), doctor 새 판 알림, release_notes.py, PyPI 배지, 0.8.0 에서 3.10 빼기.
+- 돌린 시험: `uv run pytest -q`(3.11) **917 통과·35 건너뜀**. CI 서버 명령 3.10 + `--cov` → 908 통과·9 건너뜀, 커버리지 **98.28%**(하한 95%).
+  **`scripts/bpy_tests.sh`(bpy) → 946 통과, 6 건너뜀**(유체 `app_only` 5개·실제 캐릭터 파일 1개 — 블렌더 앱·파일 필요). `uvx ruff@0.15.20 check .` 통과.
+  변이 확인: README 에 git+ 설치 명령을 되돌리면 새 시험이 실패.
+- 막힌 것: 없음. 참고 — release.yml 실행이 44초라 환경 `pypi` 에 필수 검토자가 없었던 것 같음(승인 없이 게시). 의도가 아니면 Settings → Environments → `pypi` 에 검토자 추가.
+  CHANGELOG `[0.7.0]` 제목 날짜(2026-10-13)가 실제 게시일(10-11)과 다름 → 백로그 첫 항목으로 남김(사람이 정한 날짜라 이번엔 안 바꿈).
+- 완료 수·추가 수: **완료 5** / **추가 5**. 남은 `[ ]` 6개(그중 굽기 시간 어림 1개는 Mac 실측 필요).
+- Mac에서 확인할 것: 맨 위 명령 3줄.
 
 ## 2026-10-11 (9회차)
 

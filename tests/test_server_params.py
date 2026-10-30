@@ -5,6 +5,7 @@ import threading
 
 import pytest
 
+from conftest import tool_text
 from blender_fx_mcp import bridge, server
 from blender_fx_mcp.bridge import BlenderError
 
@@ -155,7 +156,7 @@ def test_restore_reports_auto_save_failure(calls, tmp_path):
 def test_list_snapshots_empty(monkeypatch, tmp_path):
     monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path))
     monkeypatch.setenv("BLENDER_FX_LANG", "en")
-    assert server.list_snapshots().startswith("No snapshots yet")
+    assert tool_text(server.list_snapshots()).startswith("No snapshots yet")
 
 
 def test_new_run_dir_label_is_safe(monkeypatch, tmp_path):
@@ -247,6 +248,78 @@ def test_bridge_ping_false_without_pong(receiver):
     assert bridge.ping() is False
 
 
+def test_bridge_trailing_data_after_object_is_ignored(receiver):
+    """응답 객체 뒤에 군더더기(줄바꿈·다른 JSON)가 붙어도 첫 객체를 쓴다(전에는 연결이 닫힐 때까지 기다려 '빈 응답')."""
+    receiver(json.dumps({"status": "success", "result": {"result": "ok"}}).encode() + b'\n{"x": 1}')
+    assert bridge.run_python("x", timeout=5) == "ok"
+
+
+@pytest.mark.parametrize("reply, words", [
+    (b'{"status": "success", "res', ["cut off", "26 bytes"]),       # 응답 도중 끊김
+    (b"[1, 2]", ["unexpected response"]),                            # JSON 객체가 아님
+])
+def test_bridge_truncated_or_odd_reply_is_explained(receiver, monkeypatch, reply, words):
+    monkeypatch.setenv("BLENDER_FX_LANG", "en")
+    receiver(reply)
+    with pytest.raises(BlenderError) as ei:
+        bridge.send_command("execute_code", timeout=5)
+    assert all(w in str(ei.value) for w in words), str(ei.value)
+
+
+def test_bridge_reset_after_connect_is_not_install_advice(monkeypatch):
+    """연결 뒤 끊김(블렌더가 굽다가 죽음)은 '연결할 수 없음·애드온 설치'가 아니라 끊김으로 알린다."""
+    class Dropped:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def settimeout(self, v):
+            pass
+
+        def sendall(self, data):
+            pass
+
+        def recv(self, n):
+            raise ConnectionResetError("reset by peer")
+
+    monkeypatch.setattr(bridge.socket, "create_connection", lambda *a, **k: Dropped())
+    monkeypatch.setenv("BLENDER_FX_LANG", "en")
+    with pytest.raises(BlenderError) as ei:
+        bridge.send_command("execute_code", timeout=5)
+    msg = str(ei.value)
+    assert "dropped during the command (ConnectionResetError)" in msg and "Install" not in msg and "restore" in msg
+
+
+@pytest.mark.parametrize("name, value", [
+    ("BLENDER_FX_TIMEOUT", "0"), ("BLENDER_FX_TIMEOUT", "-5"), ("BLENDER_FX_TIMEOUT", "ten"),
+    ("BLENDER_FX_TIMEOUT", "nan"), ("BLENDER_FX_PORT", "abc"), ("BLENDER_FX_PORT", "70000"),
+])
+def test_bad_env_number_gives_one_clear_error(monkeypatch, name, value):
+    """잘못된 숫자 환경변수는 모든 도구에서 같은 한 문장(고칠 곳)으로. 전에는 0 이면 '애드온 설치'로, 글자면 예외가 새어 나갔다."""
+    monkeypatch.setenv(name, value)
+    monkeypatch.setenv("BLENDER_FX_LANG", "en")
+    monkeypatch.setattr(bridge.socket, "create_connection", lambda *a, **k: pytest.fail("연결하면 안 됨"))
+    with pytest.raises(BlenderError) as ei:
+        bridge.send_command("ping")
+    assert f"{name}={value!r} is not valid" in str(ei.value)
+    out = server.list_objects()  # 도구는 예외 대신 실패 문장
+    assert out.startswith("Failed: ") and name in out
+    assert bridge.port() in (bridge.DEFAULT_PORT,) or name != "BLENDER_FX_PORT"  # 화면 표시는 기본값으로 버팀
+    assert bridge.default_timeout() == 600.0 or name != "BLENDER_FX_TIMEOUT"
+
+
+def test_large_reply_is_fast(receiver):
+    """수 MB 응답을 조각마다 처음부터 다시 풀지 않는다(전에는 20MB 에 5초)."""
+    import time
+    big = "x" * 8_000_000
+    receiver(json.dumps({"status": "success", "result": {"result": big}}).encode(), chunks=200)
+    start = time.monotonic()
+    assert bridge.run_python("x", timeout=10) == big
+    assert time.monotonic() - start < 3
+
+
 # ---- headless: 블렌더 앱과 bpy 파이썬 구분 ----
 
 def test_blender_command_app_vs_bpy_python():
@@ -280,3 +353,50 @@ def test_run_steps_error_names_stuck_step(monkeypatch, tmp_path):
         headless.run_steps([("demo_scene", {}), ("destroy", {"target": "Building"})], blender="/usr/bin/blender")
     msg = str(e.value)
     assert "2번째 단계 'destroy'" in msg and "세그폴트" in msg
+
+
+def test_decode_waits_for_rest_of_multibyte_character():
+    """여러 바이트 글자(한글 등)가 조각 경계에서 반쯤 오면 아직 덜 온 것으로 보고 기다린다."""
+    whole = json.dumps({"status": "success", "result": {"result": "완료"}}, ensure_ascii=False).encode("utf-8")
+    cut = whole.index("완".encode()) + 1  # 첫 글자 3바이트 중 1바이트까지만
+    assert bridge._decode(whole[:cut]) is None
+    assert bridge._decode(whole)["result"]["result"] == "완료"
+
+
+# ---------- 미리보기 크기(set_render 를 따름) ----------
+
+def _preview_size():
+    """render.py 레시피의 preview_size 만 꺼내 블렌더 없이 부른다(레시피 파일은 bpy 를 앞에 붙여야 돈다)."""
+    import ast
+
+    src = (server.RECIPES / "render.py").read_text(encoding="utf-8")
+    tree = ast.parse(src)
+    keep = [n for n in tree.body if (isinstance(n, ast.FunctionDef) and n.name == "preview_size")
+            or (isinstance(n, ast.Assign) and n.targets[0].id == "PREVIEW_LONG_SIDE")]
+    ns: dict = {}
+    exec(compile(ast.Module(body=keep, type_ignores=[]), "render.py", "exec"), ns)
+    return ns["preview_size"]
+
+
+@pytest.mark.parametrize(("width", "height", "user_res", "expect"), [
+    (0, 0, None, (640, 360)),  # 정한 적 없으면 예전과 같은 640×360
+    (0, 0, (1920, 1080), (640, 360)),
+    (0, 0, (1080, 1920), (360, 640)),  # 세로 영상: 긴 변 640, 비율 그대로
+    (0, 0, (1000, 1000), (640, 640)),
+    (0, 0, (2048, 858), (640, 268)),  # 시네마스코프
+    (0, 0, (320, 180), (320, 180)),  # 640 보다 작으면 키우지 않음
+    (800, 0, (1080, 1920), (800, 1422)),  # 하나만 주면 나머지는 비율로
+    (0, 300, None, (533, 300)),
+    (400, 300, (1080, 1920), (400, 300)),  # 둘 다 주면 그대로
+])
+def test_preview_size_follows_set_render(width, height, user_res, expect):
+    assert _preview_size()(width, height, user_res) == expect
+
+
+def test_render_preview_sends_no_size_unless_given(calls):
+    """크기를 안 주면 레시피가 장면 크기로 정하도록 width/height 를 보내지 않는다(전에는 늘 640×360 을 보냄)."""
+    server.render_preview(frames=[1])
+    server.render_preview(frames=[1], width=320)
+    (_, first), (_, second) = calls
+    assert "width" not in first and "height" not in first, first
+    assert second["width"] == 320 and "height" not in second, second

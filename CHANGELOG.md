@@ -1,6 +1,168 @@
 # 변경 이력
 
-## [0.7.0] - 2026-10-13
+## 0.8.0 — 미출시 (준비 중)
+
+0.7.0 은 2026-10-11 PyPI 에 올라감. 이 절은 다음 판에 들어갈 변경을 모은다. Python 3.10 을 빼면서 버전 네 곳(`pyproject.toml`·`__init__.py`·
+`server.json.example`·`CITATION.cff`)과 `uv.lock` 을 0.8.0 으로 올렸다. 날짜는 출시 때 붙인다(그전까지 `release_check.py` 는 "미출시" 한 줄만 실패).
+
+**English summary**
+
+*Breaking*
+- Python 3.11 or newer is required. Python 3.10 reached end of life in 2026-10; 0.7.0 is the last release that supports it.
+
+*Fixes*
+- **A failed call leaves the scene as it was.** A misspelled target no longer deletes the previous explosion or fire (`explode`, `emit`);
+  `water` no longer deletes the previous water and resets the frame range before its checks; `destroy` stops on a mesh without faces before touching
+  the scene; `export_model` checks the format before `bake_physics` turns the pieces into keyframes; `import_model` removes what it imported when no
+  part matches `parts`. `restore("before_restore")` (undoing an undo) swaps the two states instead of overwriting one, and `destroy`/`reset_destroy`
+  with a target no longer delete unrelated effects (ocean, water, smoke, flag, wind) or other buildings' glue.
+  `ocean`, `wind`, `cloth_flag`, `emit`, `explode`, `water` and `particles` read every argument (positions included) before removing the previous one, and `set_ground` no longer shows the hidden ground under an ocean.
+- **Bad values stop before Blender, with the values to use.** `width`/`height` 16-7680, `fps` 1-240 (24/30/60 recommended) and frame numbers from 1
+  in `render_preview`, `render_video`, `set_render`, `set_timing` and `set_physics`; a reversed pair (`frame_end` before `frame_start`,
+  `slow_to` not after `slow_from`) gets the swapped values; a position (`at`, `domain_at`) must be three numbers, and `explode` checks it before checking bake space or fracturing the target. `samples` out of range gets recommended values like the other numbers.
+- **Timing.** `set_timing(fps=…)` always failed after already changing the scene (duplicate result key); fixed. `global_slow` is relative to the
+  original speed (asking twice no longer stretches 48 → 192 frames; 1.0 undoes it). `set_timing` and `render_video` say the length in seconds
+  ("72 frames = 3s at 24fps"), and `set_timing` says when Blender moved the other end of the range (`frame_start=500` alone pushes `frame_end`).
+  `render_video` with only `frame_start` after the scene's end (or only `frame_end` before its start) says to give both, not to swap them.
+- **Rendering.** Renders keep the samples and size set with `set_render` (`render_video` uses them by default); `render_preview` without a size
+  follows that aspect at 640 on the long side (a 1080×1920 scene previews at 360×640).
+- **Smaller tool list, structured results, clearer errors.** The tool list each client loads is 24% smaller (33,015 → 25,093 characters) and the server
+  instructions shorter (Korean 656 → 515, English 994 → 819), both under a tested budget. `list_objects`, `inspect_mesh`, `list_snapshots` and `doctor`
+  return MCP structured content (`doctor`: `ok`, `fix` and `help` per check, plus `last_error`, also in `--json`). A receiver failure or a missing result line says how to report it
+  (`blender-fx-doctor --issue`); a dropped connection, a cut-off reply and invalid `BLENDER_FX_TIMEOUT`/`BLENDER_FX_PORT` each get their own message;
+  `set_ground` under an ocean names `reset_destroy` (it named a `reset` tool that does not exist). Docs no longer mention `destroy` arguments that do not exist.
+- **Install and doctor.** Install commands use the PyPI package (`uvx blender-fx-mcp`, `uvx --from blender-fx-mcp blender-fx-doctor`); git is no longer
+  needed. doctor says when PyPI has a newer release (quiet offline or with `BLENDER_FX_NO_UPDATE_CHECK=1`), links the troubleshooting section for each
+  failed check, ends an all-OK report with the next step (a first prompt or `examples/first_render.py`), and when less than 5GB is free names the largest parts of the output folder and the tool that clears each. Progress notifications use
+  plain words ("Baking the liquid — 45s so far").
+
+*Tests and CI*
+- `examples/first_render.py` runs end to end in tests against the real server and a fake Blender receiver socket
+  (five progress lines, exit 0 and the PNG paths; a recipe failure exits 1 with the error, the way back and how to report it).
+- The release workflow checks the tag through `release_check.py --tag`, so the rule lives in one place and is tested; CI lints every workflow with a pinned actionlint.
+- A Blender test fails every recipe once with a representative bad argument and compares the scene before and after; tests keep every
+  server-side error telling the next step in Korean and English, and tool and argument names in the docs real.
+- Maintainer scripts: `release_notes.py vX.Y.Z` prints a CHANGELOG section as GitHub release notes (`--draft` for an unreleased one),
+  and `release_check.py --tag vX.Y.Z` checks a tag before it is pushed, with the same rule the release workflow uses.
+  `release_check.py` also checks that the help-link table is current and that `scripts/lint.sh --print` matches the CI lint steps.
+  After PyPI publishing, the release workflow opens a draft GitHub release with these notes and the packages (only that job can create releases; a person publishes it).
+  SECURITY and SUPPORT list 0.7.x (the latest on PyPI) as supported until 0.8.0 ships; `release_check.py` asks to trim them to the new series once the release is dated.
+
+*Docs*
+- Troubleshooting: "Still on the old version" (clear the uv cache; use the `git+` address only to try unreleased `main`), and "Argument value rejected"
+  (the range, choice, order and finite-number errors the server stops before Blender; a test keeps each sentence searchable on the page).
+- README shows a PyPI version badge, and (both languages) a three-line "Getting help": `doctor --issue` → the matching form → reply targets.
+- `docs/maintenance.md` has an eight-step release procedure (bump, check, tag, build, approve, PyPI, registry, release notes), tested against `release.yml`,
+  and "Responding to red CI" (fix within the week after 3 days red, or open an issue); `triage_report.py` no longer lets a cancelled run hide a red branch.
+- `docs/registry.md` and `docs/maintenance.md` say to run `release_check.py --tag` before pushing a tag.
+- README quick start: the uv step gives the Linux and Windows install commands directly (it used to point to doctor, which itself needs uv),
+  and each step links the troubleshooting section to read when stuck. Troubleshooting has a new "uv not found" section.
+  A test keeps the quick start at five steps or fewer up to the first render.
+- CONTRIBUTING (both languages) has "Error message rules": what was wrong, the next step, real tool names, a Korean/English pair, and the tests that enforce them.
+
+**동작 변화**
+- ⚠️ Python 3.11 이상이 필요합니다. Python 3.10 은 2026-10 에 지원이 끝나(EOL) 약속대로 뺐습니다(0.7.0 이 3.10 을 지원한 마지막 판).
+  `requires-python`·분류자·ruff `target-version`·CI 행렬·`uv.lock`·SUPPORT·README 배지·architecture·maintenance 를 함께 고침. 3.10 에서만 쓰던
+  간접 의존성 `exceptiongroup` 이 빠져 제3자 라이선스 표도 39개. 시험의 `importorskip("tomllib")` 는 보통 import 로
+
+**고침**
+- `release_check.py` 파일 점검에 Mac 실측 한 줄: `docs/test-reports/latest.md` 의 종합이 FAIL 이거나 날짜가 30일 넘게 오래됐으면 "Mac 에서 `scripts/mac_report.py` 를 다시"(release.yml 의 태그 점검도 같은 함수라 실제 블렌더 결과 없이 출시되지 않음). maintenance 출시 절차 2단계 한/영.
+- `triage_report.py` CI 칸에 "흔들림" 줄: 목록 API 는 실행마다 마지막 시도만 주어 재실행해서 초록이 되면 표에서 사라졌음 → `run_attempt` > 1 인 초록 실행의 앞 시도(`attempts/N-1`)가 빨가면 표 아래에 워크플로·최근 30일 횟수·실행 링크(종료 코드에는 안 셈). maintenance '빨간 CI 대응' 한/영.
+- `last_error`(doctor `--json`·MCP `doctor` 구조화 값)에 `stale`: 7일 넘은 마지막 실패는 `true`, `--issue` 표 "최근 실패한 도구" 끝에 "오래됨(7일 넘음), 지금 문제와 다를 수 있음"(한/영). 지난주 실패가 오늘 신고에 섞여 엉뚱한 원인을 쫓지 않게.
+- `blender-fx-first-render --help`(`-h`)는 사용법·종료 코드를 한/영으로, 서버 명령을 못 찾으면 traceback 대신 종료 코드 2 와 다음 할 일.
+- 첫 렌더 확인을 저장소 없이: 본체를 패키지 모듈 `blender_fx_mcp.first_render` + 콘솔 진입점 `blender-fx-first-render` 로 옮김(`uvx --from blender-fx-mcp blender-fx-first-render`). `examples/first_render.py` 는 같은 코드를 부르는 껍데기. README 한/영·doctor 다음 할 일에서 "(저장소에서)" 조건이 빠짐.
+- `render_preview`·`render_video` 결과 끝 줄과 `examples/first_render.py` 끝에 결과를 바로 여는 명령 한 줄(macOS `open`·Linux `xdg-open`·Windows `start ""`, 경로 따옴표): 미리보기는 폴더, 영상은 mp4, 예제는 첫 PNG. 블렌더가 다른 컴퓨터면 붙이지 않음(한/영).
+- `triage_report.py` CI 칸이 취소된 실행(새 push 로 concurrency 가 끊은 것)·건너뛴 실행·포크 PR 승인 대기를 세지 않음: 빨간 main 위에 취소된 실행 하나가 있으면 CI 가 초록으로 보이던 문제. GitHub REST 문서의 실제 응답 모양(`workflow_runs[]`·`jobs[]` 모든 칸, 쪽 나눔, 재실행)을 고정 자료(`tests/fixtures/github_actions_rest.json`)로 시험. `docs/maintenance.md` 에 "빨간 CI 대응" 한/영(3일 넘으면 그 주에 고치거나 이슈로)
+- `release_check.py` 파일 점검에 두 줄: 해결법 대응표(`gen_help_index.py`)가 문서·오류 문장과 같은지, `scripts/lint.sh --print` 가 ci.yml lint 단계와 같은지(다르면 양쪽 명령과 고칠 곳). 출시 절차 8단계는 이 스크립트 하나만 돌리므로. bash 가 없으면 lint 줄은 건너뜀 + 시험 3개
+- `examples/first_render.py` 가 도구 실패로 끝나면(종료 코드 1) 마지막 줄에 신고 방법: `uvx --from blender-fx-mcp blender-fx-doctor --issue` 출력을 버그 양식에(표에 방금 실패한 도구가 이미 들어감). 한/영·실제 진입점·가짜 수신기 끝까지 시험
+- `blender-fx-doctor --json` 과 MCP `doctor` 도구 구조화 값에 `last_error`(마지막 도구 실패의 시각·도구·첫 줄, 집 폴더 `~`, 없으면 null). `--issue` 표의 "최근 실패한 도구" 와 같은 값이라 AI 가 신고 초안을 만들 때도 오류 문장을 다시 묻지 않음. 버그 양식 "무엇이 나왔나" 칸에 "표에 이미 있으면 위 표 참고" + 시험
+- `blender-fx-doctor` 가 모두 정상이면 마지막 줄에 다음 할 일 하나: AI 에게 보낼 첫 문장(또는 `/first_demo`)과 AI 없이 확인하는 `uv run python examples/first_render.py`. MCP `doctor` 도구는 AI 가 할 순서(`make_demo_building → snapshot → destroy → render_preview`). 실패가 있으면 붙이지 않음 + 한/영·실제 도구 이름·예제 명령 시험
+- 해결법 링크 끝까지 시험: 서버를 stdio 하위 프로세스로 띄우고 가짜 수신기가 레시피 실패(+traceback)를 돌려줄 때, 도구 결과 첫 줄이 "실패: … 해결법: …#절" 이고 링크가 한 번만·traceback 은 그 뒤에 남는지, 서버 쪽 오류(`restore` 스냅샷 없음)도 같은지, 하위 프로세스가 `last_error.txt` 를 남기는지(한/영)
+- `blender-fx-doctor --issue` 표에 "최근 실패한 도구" 한 줄: 도구가 실패하면 서버가 출력 폴더 `last_error.txt` 에 시각·도구 이름·문장 첫 줄(300자)을 덮어쓰고 doctor 가 읽어 붙임(집 폴더 `~`, 표를 깨는 `|` 는 `\|`). 못 쓰거나 못 읽어도 결과는 그대로. 시험이 개발자의 출력 폴더를 건드리지 않게 conftest 가 시험마다 `BLENDER_FX_OUT` 을 임시 폴더로
+- `scripts/triage_report.py` 에 CI 칸: 기본 브랜치·열린 PR 마다 워크플로별 최신 실행이 빨가면 빨간 지 며칠째(연달아 실패한 첫 실행부터)·실패 잡 이름·실행 링크, 3일 넘으면 ⚠ 와 종료 코드 1(`--no-ci` 로 끔). 최근 30일 실행만 물어 `--paginate` 가 끝없이 받지 않게. `triage.yml` 에 `actions: read` 만 더함 + 가짜 응답 시험
+- `scripts/lint.sh`: CI lint 잡과 같은 세 검사(ruff·actionlint·zizmor)를 CONTRIBUTING 판 표에서 읽은 판으로 한 줄에. actionlint 는 판을 고정한 `shellcheck-py` 를 함께 깔아(`--with`) PATH 에 shellcheck 가 없어도 `run:` 검사를 건너뛰지 않음(10/15~17 lint 빨강이 로컬에서 안 보이던 원인). CI 도 같은 명령으로 바꾸고, 스크립트 명령이 CI 단계와 같은지·하나가 실패해도 셋 다 돌고 실패를 이름으로 알리는지 시험
+- 서버 쪽 도구 실패(스냅샷 없음·`before_restore` 예약 이름·`keep` 범위·FX_RESULT 없음·디스크 부족·유한한 숫자 등)에도 첫 줄 끝에 `해결법: …#절` 링크. `gen_help_index.py` 가 `server.py` 의 `BlenderError(t(…))` 열쇠까지 표에 넣고 `_fail` 이 붙인다(이미 링크가 있는 연결 오류는 그대로). 해결법 문서에 `clear_snapshots(keep=…)` 거부 문장
+- `water` 결과에 격자 한 칸 크기(m)와 "더 작은 물방울이 필요하면 resolution=N(한 칸 X m, 굽기가 몇 배 느려짐)" 한 줄. 상한 320 이면 `domain_at`·`domain_size` 로 공간을 줄이라고.
+- `fire`·`smoke` 의 `target`, `water(mode="object")` 의 `source_object`·`obstacles` 에 지난 효과의 보조 메시(`list_objects` 에 보이는 `FX_EmitFlow`·`FX_LiquidFlow` 등)를 주면, 정리 함수가 그것을 지운 뒤 `StructRNA … has been removed` 로 멈춰 지난 효과만 사라지던 것. 지우기 전에 원래 메시 이름을 알려 주며 멈춘다(한/영, bpy 시험).
+- CI lint 가 10/15(PR #20 부터) 빨갛던 것: actionlint 의 shellcheck 가 커버리지 줄의 따옴표 없는 `$GITHUB_STEP_SUMMARY`(SC2086)를 잡음. 따옴표로 감싸고, 로컬에서도 같게 보려면 shellcheck 가 PATH 에 있어야 한다고 CONTRIBUTING 한/영에.
+- 해결법 문서에 서버 쪽 오류 문장 5개(스냅샷 없음 2가지·FX_RESULT 없음·`before_restore` 예약 이름·원격 블렌더 되돌리기)와 새 절 "Snapshot or restore refused". 서버·bridge 의 `BlenderError` 문장이 문서에 없으면 시험이 잡음.
+- `.github/workflows/triage.yml`: 주 1회 `scripts/triage_report.py` 를 읽기 권한(`issues`·`pull-requests: read`)만으로 돌려 첫 답 목표 표를 잡 요약에만 남김(댓글·라벨 없음, 넘은 것은 경고). 권한·진입점 시험.
+- 레시피 오류 문장(대상 없음·굽기 결과 없음·형식·내보내기 등 52개 문구) 끝에 `해결법: …/troubleshooting.md#절` 링크. 전에는 연결 오류에만 있었다. 표는 `scripts/gen_help_index.py` 가 문서에서 만들고, 링크가 그 문장을 설명한 절인지 시험이 본다.
+- `import_model` 결과에 레시피 알림(닫히지 않은 메시·면이 많음·부품 합침/뺌·충돌용 껍데기 의심)이 빠져 있던 것 고침. `size` 없이 가져온 모델의 가장 긴 변이 0.05m 미만이나 500m 초과면 cm·mm 단위일 수 있다며 다시 가져올 `import_model(size=…)` 값을 한/영으로 알려 줌.
+- `fire`·`smoke`·`explode` 결과에도 격자 한 칸 크기(m)와 "뭉개져 보이면 resolution=N" 한 줄(상한 256 이면 공간 줄이기: 불·연기는 radius·power·at, 폭발은 radius·더 작은 대상). 사용자가 준 resolution 은 더 이상 "(자동)"이라 하지 않음.
+- 문제 해결 문서에 새 절 셋(오브젝트·파일을 찾을 수 없음, 먼저 다른 단계가 필요함, 내보내기 실패)과 부수기·가져오기·인자 절 보강: 레시피가 내는 오류 문장마다 Ctrl+F 로 찾을 인용과 다음 할 일. 문서에 없는 새 오류 문장은 시험이 잡음.
+- `scripts/triage_report.py`: 열린 이슈·PR 의 첫 답까지 일수를 SUPPORT.md 목표(7·14일)와 대조해 넘은 것만 표로(`gh api` 만 씀, 토큰 저장 안 함). 유지보수 문서 이슈 분류 6단계.
+- 실패한 호출이 장면을 바꾸지 않게(레시피 6곳): `explode`·`emit` 은 대상 이름이 틀리면 지난 폭발·불을 지운 뒤 멈췄고, `water` 는 이름·크기 검사 전에
+  지난 물을 지우고 프레임 범위를 1~ 로 바꿨고, `destroy` 는 면 없는 메시에서 다른 효과를 지우고 바닥·카메라를 만든 뒤 멈췄고, `export_model` 은
+  `bake_physics` 로 조각 물리를 키프레임으로 바꾼 뒤 "지원하지 않는 형식" 으로 멈췄고, `import_model` 은 `parts` 가 안 맞으면 가져온 부품을 남겼다.
+  bpy 시험이 레시피 11종에 잘못된 인자 17개를 넣고 앞뒤 장면(오브젝트·역할·모디파이어·프레임·fps·크기)을 비교한다
+- `set_timing` 에 한쪽만 준 값(`frame_start=500`)으로 블렌더가 다른 쪽을 따라 옮기면 결과에 "알림: … 옮겼습니다" 와 함께 주라는 안내
+- 해결법 문서에 "인자 값이 거부됨" 절(범위·선택지·순서·유한한 숫자). 서버가 실제로 만든 한/영 문장이 문서에서 검색되는지, 서버의 검사 함수가 모두 시험에 드는지 시험
+- 영어 요약 *Fixes* 를 주제별 6개로 다시 묶음(첫 항목이 29줄 한 덩어리였음) + 미출시 절 요약 항목 6줄 상한 시험
+- CI 액션: `actions/checkout` v7.0.1, `astral-sh/setup-uv` v10.3.0, `actions/stale` v11.0.0(dependabot #12·#17·#14 검토 뒤, SHA·입력·node24 확인)
+- 예제 이름 시험: `examples/*.py` 의 docstring·print 문장 속 이름과 실제로 부르는 도구·인자(`call_tool`·`STEPS`)가 서버에 있는지
+- CI lint 잡이 판을 고정한 actionlint(`actionlint-py` 1.7.12.25)로 워크플로 전체를 검사. 태그 때만 도는 release.yml 의 문법·표현식 오류를 PR 단계에서 잡는다 + 시험
+- `set_timing(global_slow=0.5)` 를 두 번 시키면 시간 배율은 2배 그대로인데 길이만 또 늘어(48 → 96 → 192프레임) 뒤 절반이 멈춘 화면이던 문제.
+  배율은 늘 원래 속도 기준(다시 시켜도 겹치지 않음), `global_slow=1` 이면 되돌림. 같은 호출의 `frame_end` 는 원래 길이로 본다
+- `set_timing`·`render_video` 결과 문장에 영상 길이를 초로("72프레임 = 24fps 로 3초"). 프레임 수만으로는 몇 초짜리인지 몰랐다
+- 문서 도구·인자 이름 시험을 `examples/README.md`·`docs/architecture.md`·`CONTRIBUTING.md` 까지 넓히고(기여자 문서의 내부 함수 이름은 코드에 있어야 함),
+  호출 안 인자 이름(`destroy(glue_max=3)` 꼴)도 본다. recipes.md 가 `destroy` 도구에 없는 `hold_until` 을 도구 호출처럼 적던 것을 "서버 안쪽 값"으로
+- `blender-fx-doctor` 의 "해결법:" 줄이 문서 첫머리 대신 실패 항목의 절로 바로(uv → `#uv-not-found`, 애드온·연결 → `#connection-refused`,
+  클라이언트 → `#tools-not-visible-in-the-client`, 디스크 → `#fluid-bake-failed`, 출력 폴더 → 새 절 `#output-folder-not-writable`). `--json`·MCP `doctor` 도구는 항목마다 `help` 로. 앵커가 실제 절 제목인지 시험
+- `set_timing(fps=…)` 가 결과에 `fps` 가 겹쳐 늘 실패하던 문제(장면은 이미 바뀐 뒤). 거꾸로 준 쌍(`frame_end` < `frame_start`, `slow_to` ≤ `slow_from`)은
+  서버가 블렌더에 보내기 전에 바꿔 줄 값과 함께 막고, 레시피도 순서·슬로모션 대상 검사를 길이·fps 를 바꾸기 전에 한다(실패했는데 장면이 반쯤 바뀐 채 남던 문제)
+- `snapshot` 이 같은 이름(이름 정리 뒤 같아지는 `a b`·`a_b` 포함)의 이전 스냅샷을 덮어쓰면 그렇다고 알려 준다
+- ruff 에 실제 결함을 잡는 규칙(bugbear `B`, 닫히지 않는 파일 `SIM115`, 쓰지 않는 변수 `RUF059`)을 더하고 걸린 9곳을 고침
+- `destroy(target=B)`·`reset_destroy(target=B)` 가 그 대상과 상관없는 효과(바다·물·연기·불·파티클·바람·깃발)와 다른 건물의 접착까지 지우던 문제.
+  대상을 정하면 그 대상의 조각·접착과 충격체만 지운다(대상 없이 `reset_destroy()` 는 전처럼 모두)
+- 빠른 미리보기(워크벤치)가 장면의 렌더 셰이딩(그림자·캐비티·외곽선·조명)을 켠 채 남기던 문제. 렌더 뒤 원래대로
+- `set_render` 로 정한 샘플·크기를 렌더가 무시하던 문제: 미리보기·굽기 뒤 미리보기가 샘플을 16 으로 영구히 덮었고, `render_video` 는 늘 1280×720 이었다.
+  이제 렌더는 바꾼 샘플을 되돌리고, `quality="final"` 은 `set_render` 의 샘플을, `render_video` 는 크기를 안 주면 `set_render` 크기(정한 적 없으면 720p)를 쓴다.
+  `render_video(fps=60)` 결과에 옛 fps 를 보고하던 것, 미리보기가 중간에 실패하면 해상도·형식·경로·엔진이 바뀐 채 남던 것도 고침
+- 모든 대화마다 클라이언트 문맥에 들어가는 도구 목록을 24% 줄임(33,015 → 25,093자): 인자마다 붙던 `title`, 문장 도구의 `{"result": 문자열}` 출력 스키마
+  (응답마다 같은 문장을 `structuredContent` 로 한 번 더 보내던 것), 독스트링 들여쓰기를 뺌. 설명 문구는 그대로. 상한 시험(`tests/test_tool_budget.py`)
+- 목록형 도구(`list_objects`·`inspect_mesh`·`list_snapshots`)가 문장과 같은 내용을 MCP 구조화 출력(`structuredContent`)으로도 준다. 전에는 JSON 을 문자열로만 줘
+  (구조화 값은 `{"result": "...문자열..."}` 껍데기) AI 가 다시 파싱해야 했다. 실패는 다른 도구처럼 문장만
+- `render_preview` 가 `set_render` 로 어떤 크기를 정해도 늘 640×360 으로 렌더해 세로·정사각 구도를 확인할 수 없던 문제. 크기를 안 주면 정한 비율을 긴 변 640 으로 줄여
+  (1080×1920 → 360×640, 640 보다 작으면 그대로, 정한 적 없으면 640×360). 하나만 주면 나머지는 비율로
+- `nan`·`inf` 실수 인자를 블렌더에 보내기 전에 막음(전에는 블렌더 안에서 `NameError: inf` 로 원인 모를 오류). `save_blend`·`render_video` 의 `name` 을
+  파일 이름으로 정리(`/tmp/x`·`../x` 가 출력 폴더 밖으로 나가거나 Windows 에서 `:`·`?` 로 깨지던 문제). doctor `--json` 도 집 폴더를 `~` 로 가리고,
+  `/home/sam:`·`/home/sam,` 처럼 문장부호가 붙은 경로도 가린다
+- 수신기 연결 오류를 원인대로: 연결 뒤 끊김(블렌더가 굽다가 죽음)은 "명령 도중 연결이 끊겼습니다 → 블렌더 확인·restore" 로(전에는 "연결할 수 없음·애드온 설치"),
+  응답이 중간에 끊기면 받은 바이트 수와 함께, JSON 객체가 아닌 응답은 "알 수 없는 응답"으로. 객체 뒤 군더더기가 붙어도 기다리지 않고, 큰 응답을 빠르게 읽는다.
+  `BLENDER_FX_TIMEOUT=0`·음수·글자, 숫자가 아니거나 범위 밖인 `BLENDER_FX_PORT` 는 모든 도구가 같은 한 문장(고칠 곳)으로 알린다(전에는 0 이면 애드온 설치 안내, 글자면 예외).
+  해결법 문서에 새 문장 4개
+- `explode` 가 건물을 조각낸(수 분) 뒤에야 굽기 인자(`resolution` 등) 범위 검사에 걸려 장면이 조각만 난 채 남던 문제. 두 단계 인자를 조각내기 전에 모두 본다
+- `restore("before_restore")`(되돌리기를 되돌리기)가 되돌아갈 파일을 지금 장면으로 먼저 덮어써 그 상태를 잃던 문제. 원본을 옮겨 두고 열어 두 상태가 맞바뀐다.
+  `snapshot` 에 `before_restore` 이름은 쓸 수 없게(예약)
+- 다른 컴퓨터의 블렌더(`BLENDER_FX_HOST`)에서도 `restore` 이름이 틀리면 블렌더에 먼저 물어 직전 상태(before_restore)를 덮어쓰기 전에 멈춘다
+- 설치 명령을 PyPI 패키지로: `uvx blender-fx-mcp`, 점검은 `uvx --from blender-fx-mcp blender-fx-doctor`(git 이 없어도 됨).
+  README·`examples/`(설정 3개·README·스크립트 2개)·doctor 등록 안내·연결 거부 오류·버그 양식. troubleshooting 에 "새 판이 나왔는데 예전 판이 돎"
+  (`uv cache clean blender-fx-mcp`, 미출시 `main` 은 `git+` 주소로) 절
+- doctor "출력 폴더 여유 공간" 이 5GB 아래면 출력 폴더의 큰 묶음(구운 캐시 `cache_*`·`clear_snapshots` 가 실제로 지울 스냅샷·렌더 결과·폴더 바로 아래 파일)과 크기를 큰 것부터 보이고,
+  지울 방법(`clear_caches`·`clear_snapshots`·날짜 폴더나 내보낸 파일을 손으로)을 같은 순서로 짝지어 안내. 100MB 아래 묶음은 빼고, 다 작으면
+  "출력 폴더는 작아서 지워도 소용없음" 이라고 말한다(전에는 크기와 상관없이 늘 `clear_caches` 를 권함)
+- `docs/maintenance.md` 에 출시 절차 8단계(한/영): 판 올리기 → `release_check.py --build --tag` → 태그 → build 잡 → 환경 `pypi` 승인
+  → PyPI 확인 → 레지스트리 → GitHub 릴리스 노트(CHANGELOG 절 복사), 잘못 민 태그 지우기. 문서의 잡·환경·artifact 이름이 release.yml 과 같은지 시험
+- 시험: `examples/first_render.py` 를 진짜 서버(stdio) + 가짜 블렌더 수신기(소켓, 애드온과 같은 JSON 규약)로 끝까지.
+  5단계 진행 줄·종료 코드 0·서버가 출력 폴더에 만든 PNG 경로·되돌리기 안내(한/영), 블렌더 안 레시피 실패면 오류 문장·렌더 안 부름·종료 코드 1
+- README 첫 화면에 PyPI 판 배지(패키지 이름이 pyproject 와 같은지 시험). 파이썬 판 배지는 PyPI 분류자 대신 main 의 pyproject 를 따름
+- README 한/영에 "도움 받기" 3줄(`doctor --issue` → 맞는 양식 3개 → 첫 답 목표, 보안은 SECURITY.md). 명령·양식·일수가 실제와 다르면 시험이 실패한다
+- `scripts/mac_report.py`: CLOUD-NOTES 맨 위 Mac 명령을 돌려 `docs/test-reports/latest.md` 를 새로 쓴다(명령별 PASS/FAIL·걸린 시간·실패 끝 25줄, 집 폴더는 `~`)
+- 시험: 서버 쪽 커버리지 100%(남은 오류 갈래), bpy 레시피 시험 4분대 → 2분대
+- 진행 알림 문장을 내부 레시피 이름(`save_blend: …`) 대신 사람 말로: "물 굽는 중 — 45초 지남(블렌더에서 작업 중)" / "Baking the liquid — 45s so far".
+  레시피 27개 모두 한/영 이름표가 있는지 시험
+- 시험: 진행 알림을 배포 형태 그대로(서버를 stdio 하위 프로세스로, 느린 가짜 수신기) 공식 클라이언트 `progress_callback` 까지 확인.
+  알림 간격은 `BLENDER_FX_PROGRESS_EVERY`(초, 기본 5)
+- `scripts/release_notes.py vX.Y.Z`: CHANGELOG 의 그 절을 GitHub 릴리스 본문으로(영어 요약 먼저, 절 맨 앞 관리자 메모는 빼고, 끝에 PyPI 주소).
+  없는 판·미출시 판은 종료 코드 1. 출시 절차 8단계가 손 복사 대신 이 명령을 쓴다(자동 게시는 하지 않음)
+  `--draft` 면 미출시 절도 맨 위에 초안 표시를 달아(PyPI 설치 줄 없이) 미리 보여 준다
+- doctor "새 판" 선택 줄: PyPI 에 설치된 판보다 새 판이 있으면 `uv cache clean blender-fx-mcp` 뒤 클라이언트 재시작을 안내(pip 면 `pip install -U`).
+  2초 제한, 네트워크가 없거나 `BLENDER_FX_NO_UPDATE_CHECK=1` 이면 줄 없이 건너뜀. MCP `doctor` 도구에서는 묻지 않음
+- `scripts/release_check.py --tag v0.8.0`: 밀 태그가 `v` + pyproject 판인지 본다. `v` 가 빠졌거나 판이 다르면 고칠 곳과
+  이미 밀었을 때 지우는 명령을 적는다. `release.yml` build 잡도 셸 비교 대신 같은 명령(`--tag "${GITHUB_REF_NAME}"`)을 돈다
+
+## [0.7.0] - 2026-10-11
 
 버전 네 곳(`pyproject.toml`·`src/blender_fx_mcp/__init__.py`·`server.json.example`·`CITATION.cff`)과 `uv.lock` 의 루트 패키지 판을 0.7.0 으로 올렸다
 (`tests/test_registry.py`·`scripts/release_check.py` 가 어긋나면 실패한다). 태그·릴리스·PyPI 게시는 사람이 승인한 뒤 Mac 에서 한다(아래 "출시 순서" 4~5).

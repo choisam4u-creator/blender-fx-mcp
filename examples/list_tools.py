@@ -3,7 +3,7 @@
 Launch the blender-fx-mcp server over stdio with the official `mcp` Python client, list its tools and call ping_blender.
 
     uv run python examples/list_tools.py                  # 이 저장소의 서버 / the server in this checkout
-    uv run python examples/list_tools.py uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-mcp
+    uv run python examples/list_tools.py uvx blender-fx-mcp
 
 블렌더가 꺼져 있어도 돈다. 그때 ping_blender 는 연결 실패 문장을 돌려준다(예외가 아님).
 Works without Blender: ping_blender then returns the connection failure message instead of raising.

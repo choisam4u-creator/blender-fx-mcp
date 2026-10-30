@@ -1,9 +1,13 @@
 # 저장소 안내 파일(이슈 양식 등) 점검. 블렌더 없이 돈다.
+import os
 import re
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 
 import pytest
+from conftest import tool_text
 
 ROOT = Path(__file__).resolve().parents[1]
 TEMPLATES = ROOT / ".github" / "ISSUE_TEMPLATE"
@@ -230,7 +234,7 @@ def test_pull_request_template_matches_contributing():
     """PR 양식의 확인 칸이 CONTRIBUTING 절차(ruff·pytest·한/영 문장·README 도구 표)를 빠뜨리지 않아야 한다."""
     text = (ROOT / ".github" / "pull_request_template.md").read_text(encoding="utf-8")
     contributing = (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
-    for cmd in ("uvx ruff check .", "uv run pytest -q"):
+    for cmd in ("uvx ruff@0.15.20 check .", "uv run pytest -q"):
         assert cmd in text and cmd in contributing, cmd
     for needed in ("L(", "t(", "run_guarded(main)", "STEPS", "## 도구 목록", "## English", "app_only", "CHANGELOG.md"):
         assert needed in text, needed
@@ -247,7 +251,7 @@ def test_readme_badges_match_repo():
     badges = _badges()
     assert len(badges) >= 3, "README 첫 화면에 배지(CI·라이선스·Python)가 없음"
     workflows = ROOT / ".github" / "workflows"
-    for alt, img, link in badges:
+    for _alt, img, link in badges:
         m = re.search(r"/actions/workflows/([\w.-]+\.yml)/badge\.svg", img)
         if m:
             assert (workflows / m.group(1)).is_file(), m.group(1)
@@ -266,7 +270,7 @@ def test_readme_badges_match_repo():
 def test_ci_reports_server_coverage_without_recipes():
     """CI 서버 시험이 커버리지를 내고, 블렌더 안에서만 도는 레시피는 측정에서 빠져야 한다."""
     ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
-    assert re.search(r"pytest .*--cov .*markdown-append:\$GITHUB_STEP_SUMMARY", ci)
+    assert re.search(r"pytest .*--cov .*markdown-append:\$\{GITHUB_STEP_SUMMARY\}\"", ci)
     pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
     assert "pytest-cov" in pyproject
     assert re.search(r'^omit = \[.*recipes/\*.*\]$', pyproject, re.M)
@@ -319,8 +323,9 @@ JOB_WRITE_PERMISSIONS = {
     "stale.yml": {"issues: write"},
     "scorecard.yml": {"security-events: write", "id-token: write"},
     "greet.yml": {"issues: write", "pull-requests: write"},
-    # PyPI 신뢰 게시(OIDC). publish 잡에만 — test_release_workflow_publish_only_uploads_artifact 가 잡 단위로 본다
-    "release.yml": {"id-token: write"},
+    # PyPI 신뢰 게시(OIDC)는 publish 잡에만, 릴리스 초안은 release-draft 잡에만
+    # — test_release_workflow_publish_only_uploads_artifact 가 잡 단위로 본다
+    "release.yml": {"id-token: write", "contents: write"},
 }
 
 
@@ -348,6 +353,52 @@ def _job_bodies(text):
     return {parts[i]: parts[i + 1] for i in range(1, len(parts), 2)}
 
 
+def test_ci_lint_checks_workflows_with_pinned_actionlint():
+    """CI lint 잡이 판을 고정한 actionlint 로 .github/workflows 를 모두 본다(release.yml 은 태그 때만 돌아 그전에 오류를 알 길이 없음)."""
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    lint = _job_bodies(ci)["lint"]
+    runs = re.findall(r"^      - run: (.*actionlint.*)$", lint, re.M)
+    assert runs, "ci.yml lint 잡에 actionlint 단계가 없음"
+    assert all(re.search(r"actionlint-py@\d+\.\d+\.\d+\.\d+ actionlint$", r) for r in runs), f"판 고정·경로 인자 없이(전체 워크플로): {runs}"
+
+
+def test_ci_lint_runs_pinned_zizmor_and_checkouts_drop_credentials():
+    """CI lint 잡이 판을 고정한 zizmor 로 워크플로 보안을 보고, 모든 checkout 이 토큰을 남기지 않는다(zizmor artipacked).
+    greet.yml 의 pull_request_target 은 근거 주석과 함께 그 줄에서만 끈다."""
+    wf = ROOT / ".github" / "workflows"
+    lint = _job_bodies((wf / "ci.yml").read_text(encoding="utf-8"))["lint"]
+    runs = re.findall(r"^      - run: (.*zizmor.*)$", lint, re.M)
+    assert len(runs) == 1, f"ci.yml lint 잡에 zizmor 단계가 하나 있어야 함: {runs}"
+    assert re.fullmatch(r"uvx zizmor@\d+\.\d+\.\d+ --offline \.github/workflows", runs[0]), runs
+    for path in sorted(wf.glob("*.yml")):
+        text = path.read_text(encoding="utf-8")
+        steps = re.findall(r"^      - uses: actions/checkout@.*\n((?:        .*\n)*)", text, re.M)
+        assert all("persist-credentials: false" in s for s in steps), f"{path.name}: checkout 에 persist-credentials: false 가 없음"
+    greet = (wf / "greet.yml").read_text(encoding="utf-8")
+    assert re.search(r"^  pull_request_target:  # zizmor: ignore\[dangerous-triggers\]$", greet, re.M)
+    assert "zizmor: ignore" not in "".join(p.read_text(encoding="utf-8") for p in wf.glob("*.yml") if p.name != "greet.yml")
+    assert not re.search(r"^      - (run|uses: actions/checkout)", greet.split("jobs:", 1)[1], re.M), "greet.yml 은 코드를 받거나 실행하지 않아야 끈 근거가 맞음"
+
+
+def test_triage_workflow_only_reads_and_writes_the_summary():
+    """triage.yml: 주 1회(와 손으로) scripts/triage_report.py 를 읽기 권한만으로 돌려 결과를 잡 요약에만 쓴다(댓글·라벨 없음)."""
+    text = (ROOT / ".github" / "workflows" / "triage.yml").read_text(encoding="utf-8")
+    on = re.search(r"^on:\n((?:[ \t]+.*\n)+)", text, re.M).group(1)
+    assert re.fullmatch(r'  schedule:\n    - cron: "[\d ]+\* \* \d"\n  workflow_dispatch:\n', on), f"진입점은 주간 schedule·workflow_dispatch 만: {on!r}"
+    jobs = _job_bodies(text)
+    assert list(jobs) == ["first-reply"], list(jobs)
+    m = re.search(r"^    permissions:\n((?:      .*\n)+)", jobs["first-reply"], re.M)
+    assert m and m.group(1) == "      actions: read\n      contents: read\n      issues: read\n      pull-requests: read\n", m and m.group(1)
+    assert "write" not in text and "persist-credentials: false" in text
+    assert re.findall(r"uses: ([\w-]+/[\w-]+)@", text) == ["actions/checkout"]
+    run = text.split("run: |\n", 1)[1]
+    assert 'python3 scripts/triage_report.py --repo "${GITHUB_REPOSITORY}"' in run and '>> "${GITHUB_STEP_SUMMARY}"' in run
+    assert "${{" not in run, "run 에 표현식을 넣지 않는다(토큰은 env 로만)"
+    for forbidden in ("gh issue", "gh pr", "--method", "-X ", "--include-own"):
+        assert forbidden not in run, f"triage.yml 은 읽기만: {forbidden}"
+    assert "GH_TOKEN: ${{ github.token }}" in text
+
+
 def test_release_workflow_publish_only_uploads_artifact():
     """release.yml: 태그 v* 로만 돌고, build 는 읽기 권한으로 점검·빌드하고, publish 는 id-token 만 받아
     build 의 결과물만 올린다(저장소 코드를 받거나 실행하지 않음)."""
@@ -355,15 +406,19 @@ def test_release_workflow_publish_only_uploads_artifact():
     on = re.search(r"^on:\n((?:[ \t]+.*\n)+)", text, re.M).group(1)
     assert re.fullmatch(r'  push:\n    tags: \["v\*"\]\n', on), f"진입점은 tag push 'v*' 만: {on!r}"
     jobs = _job_bodies(text)
-    assert set(jobs) == {"build", "publish"}, sorted(jobs)
+    assert set(jobs) == {"build", "publish", "release-draft"}, sorted(jobs)
 
     build = jobs["build"]
     assert re.search(r"^    permissions:\n      contents: read\n    steps:", build, re.M), "build 권한은 contents: read 만"
     assert "persist-credentials: false" in build
-    assert "GITHUB_REF_NAME" in build and "pyproject.toml" in build, "태그와 pyproject 판 일치 확인"
+    # 태그와 pyproject 판 일치는 release_check.py --tag 한 곳의 규칙으로(Mac 에서 태그 전에 같은 명령)
+    assert 'scripts/release_check.py --tag "${GITHUB_REF_NAME}"\n' in build, "태그와 pyproject 판 일치 확인"
     assert "${{" not in build, "run 에 표현식을 넣지 않는다(태그 이름 주입 방지, 환경 변수로 읽음)"
-    for step in ("scripts/release_check.py\n", "uv build", "scripts/release_check.py --dist dist", "actions/upload-artifact@"):
+    for step in ("uv build", "scripts/release_check.py --dist dist", "actions/upload-artifact@",
+                 'scripts/release_notes.py "${GITHUB_REF_NAME}" > notes/notes.md'):
         assert step in build, f"build 에 {step.strip()} 단계가 없음"
+    # 노트는 dist 와 다른 artifact(dist/ 의 모든 파일이 PyPI 로 가므로)
+    assert re.findall(r"name: ([\w-]+)\n          path: ([\w/]+)", build) == [("dist", "dist/"), ("release-notes", "notes/")]
 
     publish = jobs["publish"]
     assert "    needs: build\n" in publish and "    environment: pypi\n" in publish
@@ -372,6 +427,19 @@ def test_release_workflow_publish_only_uploads_artifact():
     uses = re.findall(r"uses: ([\w-]+/[\w-]+)@", publish)
     assert uses == ["actions/download-artifact", "pypa/gh-action-pypi-publish"], uses
     assert "run:" not in publish and "checkout" not in publish, "publish 는 저장소 코드를 받거나 실행하지 않는다"
+
+    # 릴리스 초안: 게시 뒤, contents: write 하나만, 저장소 코드 없이 build 의 노트·파일로 초안(--draft)만
+    draft = jobs["release-draft"]
+    assert "    needs: publish\n" in draft and "environment:" not in draft
+    m = re.search(r"^    permissions:\n((?:      .*\n)+)", draft, re.M)
+    assert m and m.group(1) == "      contents: write\n", "release-draft 권한은 contents: write 하나만"
+    uses = re.findall(r"uses: ([\w-]+/[\w-]+)@", draft)
+    assert uses == ["actions/download-artifact", "actions/download-artifact"], uses
+    assert "checkout" not in draft and "uv " not in draft and "python" not in draft, "release-draft 는 저장소 코드를 받거나 실행하지 않는다"
+    run = draft.split("run: >-\n", 1)[1]
+    assert "gh release create" in run and "--draft" in run and "--verify-tag" in run and "${{" not in run
+    assert "--notes-file notes/notes.md" in run
+    assert "    permissions:\n      contents: read\n" in build and "contents: write" not in build + publish
 
 
 @pytest.mark.parametrize("path", sorted((ROOT / ".github" / "workflows").glob("*.yml")), ids=lambda p: p.name)
@@ -481,6 +549,24 @@ def test_support_package_line_matches_version_and_security():
     assert f"| {series}.x" in (ROOT / "SECURITY.md").read_text(encoding="utf-8")
 
 
+def test_unreleased_support_tables_keep_latest_pypi_series():
+    """CHANGELOG 맨 위가 미출시면 PyPI 에 있는 최신 판(맨 위 다음의 날짜 붙은 절) 계열도 SECURITY·SUPPORT 에서 지원이다.
+    (다음 판만 '예' 로 적으면 PyPI 의 유일한 판 사용자가 '그 이전 — 아니오' 를 읽는다)"""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("release_check", ROOT / "scripts" / "release_check.py")
+    rc = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(rc)
+    heads = rc.HEADING.findall((ROOT / "CHANGELOG.md").read_text(encoding="utf-8"))
+    series = lambda v: ".".join(v.split(".")[:2])  # noqa: E731
+    current = series(rc.project_version(ROOT))
+    if rc.DATE.fullmatch(heads[0][1].strip()):
+        want = [current]
+    else:
+        released = next(v for v, when in heads[1:] if rc.DATE.fullmatch(when.strip()))
+        want = [current] + ([series(released)] if series(released) != current else [])
+    assert rc.supported_series(ROOT) == {"SECURITY.md": want, "SUPPORT.md": want}
+
+
 def test_support_links_and_reply_target():
     text, _ = _support_rows()
     for rel in re.findall(r"\]\(((?!https?:)[^)#]+)\)", text):
@@ -498,7 +584,7 @@ def _recipe_sections():
 
     def examples(part, level):
         heads = re.split(rf"^{level} (\d+)\. ", part, flags=re.M)[1:]
-        return {int(n): re.findall(r"^\| \d+ \| `([^`]+)` \|$", body, re.M) for n, body in zip(heads[::2], heads[1::2])}
+        return {int(n): re.findall(r"^\| \d+ \| `([^`]+)` \|$", body, re.M) for n, body in zip(heads[::2], heads[1::2], strict=True)}
 
     return ko, en, examples(ko, "##"), examples(en, "###")
 
@@ -552,7 +638,7 @@ def test_recipes_calls_pass_server_checks(monkeypatch, tmp_path):
 
             monkeypatch.setattr(bridge, "run_python", reached)
             out = eval(call.replace("…/model.glb", (tmp_path / "model.glb").as_posix()), vars(server))
-            out = out if isinstance(out, str) else out[0]
+            out = tool_text(out)
             assert sent, f"예시 {n}: {call} 이 블렌더로 가기 전에 막힘: {out}"
 
 
@@ -581,6 +667,10 @@ def test_changelog_unreleased_sections_have_english_summary():
             m = re.search(rf"^\*{part}\*\n((?:- .*\n(?:  .*\n)*)+)", summary, re.M)
             assert m, f"{version}: 영어 요약에 *{part}* 목록이 없음"
             assert 1 <= len(re.findall(r"^- ", m.group(1), re.M)) <= 6, f"{version} {part}: 1~6줄로 요약"
+            # 6개 상한을 맞추려 한 항목에 몰아 쓰면 릴리스 노트에서 읽히지 않는다(0.8.0 Fixes 첫 항목이 29줄이던 적이 있음).
+            # 이미 나간 판의 노트는 고치지 않으므로 미출시 절만 본다
+            for item in re.findall(r"^- .*\n(?:  .*\n)*", m.group(1), re.M) if unreleased else []:
+                assert item.count("\n") <= 6, f"{version} {part}: 한 항목이 {item.count(chr(10))}줄 — 6줄 안으로 나누거나 줄인다: {item[:80]}"
         checked += 1
     assert checked >= 1
 
@@ -646,7 +736,8 @@ def test_ci_has_coverage_floor_matching_contributing():
     m = re.search(r"--cov-fail-under=(\d+)", ci)
     assert m, "ci.yml 에 --cov-fail-under 하한이 없음"
     floor = int(m.group(1))
-    assert 90 <= floor <= 100, floor
+    # 2026-10-11 부터 100%. 하한이 낮으면 오류 갈래 시험 없이 코드가 늘어도 초록이라 99 아래로 내리지 않는다.
+    assert 99 <= floor <= 100, floor
     text = (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
     assert f"**{floor}% 아래면 실패**" in text, "CONTRIBUTING 한국어 절의 하한이 ci.yml 과 다름"
     assert f"{floor}% floor" in text, "CONTRIBUTING 영어 절의 하한이 ci.yml 과 다름"
@@ -720,6 +811,21 @@ def test_bpy_script_matches_ci_bpy_job():
     ci_pkgs = set(re.search(r"apt-get install -y ([^\n]+)", job).group(1).split())
     script_pkgs = set(re.search(r"apt-get install -y ([^\"\n]+)", script).group(1).split())
     assert script_pkgs == ci_pkgs
+
+
+def test_macos_bpy_job_mirrors_linux_job():
+    """사용자 대부분이 Mac 이라 macOS 에서도 같은 bpy 판·파이썬·명령으로 레시피 시험을 돈다.
+    러너에서 Metal 렌더가 되는 것을 확인해(2026-10-12) Linux 작업처럼 PR 을 막는다."""
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    linux = ci.split("  recipe-tests-bpy:\n", 1)[1].split("\n\n", 1)[0]
+    mac = ci.split("  recipe-tests-bpy-macos:\n", 1)[1].split("\n\n", 1)[0]
+    assert "    runs-on: macos-latest\n" in mac
+    pick = lambda job: [s for s in job.splitlines() if "uv python install" in s or "bpy==" in s  # noqa: E731
+                        or "uv run pytest" in s or "BLENDER_FX_BLENDER" in s or "uses:" in s]
+    assert pick(mac) == pick(linux), (pick(mac), pick(linux))
+    assert "continue-on-error" not in mac, "macOS 러너에서 렌더가 됨이 확인됐다(2026-10-12). 빨가면 막아야 한다"
+    for text in (ROOT / "docs" / "architecture.md").read_text(encoding="utf-8").split("\n## ")[1:]:
+        assert "recipe-tests-bpy-macos" in text
 
 
 def test_bpy_script_is_runnable_and_documented():
@@ -920,7 +1026,7 @@ def test_one_line_examples_pass_server_checks(monkeypatch, tmp_path):
     for call in ko:
         name = ast.parse(call.replace("…", "x"), mode="eval").body.func.id
         out = eval(call.replace("…/", f"{tmp_path.as_posix()}/"), vars(server))  # Windows 경로의 `\` 는 문자열 이스케이프가 됨
-        out = out if isinstance(out, str) else out[0]
+        out = tool_text(out)
         if name in local:
             assert out and not out.startswith("실패"), call
         else:
@@ -1131,3 +1237,123 @@ def test_bug_form_clients_match_doctor_json():
     opts = _options(block)[:-1]
     assert sorted(opts) == sorted({c for c, _ in doctor.client_configs()})
     assert "`clients`" in block and "Tools not visible in the client" in block
+
+
+@pytest.mark.parametrize("title", ["### 출시 절차", "### Release procedure"])
+def test_maintenance_release_procedure_matches_workflow(title):
+    """출시 절차(한/영)가 release.yml 의 파일·잡·환경·artifact 이름, release_check 명령과 같아야 한다.
+    워크플로 이름을 바꾸면 문서도 바꾸게."""
+    text = MAINT.read_text(encoding="utf-8")
+    start = text.index(title)
+    section = text[start:text.index("\n### ", start + len(title))]
+    wf = (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
+    jobs = _job_bodies(wf)
+    env = re.search(r"^    environment: (\S+)$", jobs["publish"], re.M).group(1)
+    artifact = re.search(r"^          name: (\S+)$", jobs["build"], re.M).group(1)
+    assert "](../.github/workflows/release.yml)" in section
+    for job in jobs:
+        assert f"`{job}`" in section, f"{title}: 잡 {job} 이 없음"
+    assert f"`{env}`" in section and f"`{artifact}`" in section
+    assert "release_check.py --build --tag vX.Y.Z" in section and "release_check.py --tag" in section
+    assert "git push origin vX.Y.Z" in section and "git push --delete origin vX.Y.Z" in section
+    assert "](registry.md)" in section and "CHANGELOG" in section
+    steps = re.findall(r"^(\d+)\. ", section, re.M)
+    assert steps == [str(i) for i in range(1, 9)], steps
+
+
+def test_released_changelog_dates_match_git_tags():
+    """출시된 절의 날짜가 그 판 태그(vX.Y.Z) 커밋 날짜와 같아야 한다. 태그가 없으면(얕은 클론·sdist) 그 판은 건너뛴다."""
+    import shutil
+    import subprocess
+
+    if not shutil.which("git") or not (ROOT / ".git").exists():
+        pytest.skip("git 저장소가 아님")
+    checked = 0
+    for version, when, _ in _changelog_sections():
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", when):
+            continue  # 미출시 절
+        tag = subprocess.run(["git", "log", "-1", "--format=%cs", f"v{version}", "--"], cwd=ROOT,
+                             capture_output=True, text=True)
+        if tag.returncode != 0 or not tag.stdout.strip():
+            continue
+        assert when == tag.stdout.strip(), f"{version}: CHANGELOG 날짜 {when}, 태그 v{version} 날짜 {tag.stdout.strip()}"
+        checked += 1
+    if not checked:
+        pytest.skip("판 태그를 가져오지 않은 클론(git fetch --tags 로 확인)")
+
+
+def test_readme_pypi_badge_matches_package():
+    """PyPI 판 배지가 pyproject 의 패키지 이름과 그 PyPI 쪽을 가리켜야 한다(설치 경로가 PyPI 라는 첫 화면 신호)."""
+    name = re.search(r'^name = "([^"]+)"$', (ROOT / "pyproject.toml").read_text(encoding="utf-8"), re.M).group(1)
+    badges = {alt: (img, link) for alt, img, link in _badges()}
+    img, link = badges["PyPI"]
+    assert img == f"https://img.shields.io/pypi/v/{name}.svg"
+    assert link == f"https://pypi.org/project/{name}/"
+    # 파이썬 배지는 PyPI 분류자(출시된 판) 대신 main 의 pyproject 를 따른다: 3.10 을 뺀 뒤 출시 전까지 PyPI 쪽은 옛 판을 보인다
+    assert "img.shields.io/badge/python-" in " ".join(i for i, _ in badges.values())
+
+
+def test_readme_getting_help_matches_forms_and_support():
+    """README 한/영 '도움 받기' 3줄의 명령·양식·응답 일수가 실제(doctor --issue, 양식 파일, SUPPORT 표)와 같아야 한다."""
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    ko, en = readme.split("\n## English", 1)
+    support = (ROOT / "SUPPORT.md").read_text(encoding="utf-8")
+    days = re.findall(r"\| 버그 / Bug \| (\d+)일 안|\| 질문·기능 요청 / Question, feature \| (\d+)일 안", support)
+    bug, question = days[0][0], days[1][1]
+    for part, head in ((ko, "**도움 받기**"), (en, "**Getting help**")):
+        block = part[part.index(head):].split("\n\n", 1)[0]
+        assert "blender-fx-doctor --issue" in block
+        forms = re.findall(r"issues/new\?template=([\w.]+)\)", block)
+        assert sorted(forms) == sorted(p.name for p in TEMPLATES.glob("*.yml") if p.name != "config.yml"), forms
+        assert "SECURITY.md" in block
+        assert (f"{bug}일" in block and f"{question}일" in block) or (f"{bug} days" in block and f"{question} days" in block)
+    assert '"--issue"' in (ROOT / "src" / "blender_fx_mcp" / "doctor.py").read_text(encoding="utf-8")
+
+
+ERROR_RULES_KO = ("## 오류 문장 규칙", "### Error message rules")
+ERROR_RULES_EN = ("### Error message rules", "\n## 이슈 올리기 전에")
+
+
+@pytest.mark.parametrize("bounds", [ERROR_RULES_KO, ERROR_RULES_EN])
+def test_error_message_rules_name_real_tests(bounds):
+    """CONTRIBUTING 의 '오류 문장 규칙' 절: 규칙 네 가지, 그 규칙을 지키는 시험 파일이 실제로 있고 확인 명령이 표의 파일을 모두 돌린다."""
+    sec = _contributing_section(*bounds)
+    assert len(re.findall(r"^[1-4]\. \*\*", sec, re.M)) == 4, "규칙 네 가지(무엇이 틀렸나·다음 할 일·실제 이름·한/영 짝)"
+    listed = re.findall(r"^\| `(tests/\w+\.py)` \|", sec, re.M)
+    assert len(listed) >= 5
+    for f in listed:
+        assert (ROOT / f).is_file(), f
+    command = re.search(r"`(uv run pytest -q [^`]+)`", sec).group(1)
+    assert re.findall(r"tests/\w+\.py", command) == listed, "확인 명령과 표의 시험 파일이 다름"
+    for name in ("test_recipe_next_steps.py", "test_server_next_steps.py"):
+        assert name in sec
+    if bounds is ERROR_RULES_EN:
+        assert not HANGUL_RE.search(sec), "영어 절에 한글이 섞임"
+        assert "(#error-message-rules)" in (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8").split("\n## ")[0]
+
+
+@pytest.mark.skipif(sys.platform == "win32" or shutil.which("bash") is None, reason="bash 스크립트(Linux·Mac)")
+@pytest.mark.parametrize("name,expected", [
+    (None, "BPY_WHEEL 파일이 없습니다"),
+    ("bpy-4.5.0-cp311-cp311-manylinux_2_28_x86_64.whl", "bpy 5.0.1 휠이 아닙니다"),
+])
+def test_bpy_script_rejects_a_wrong_wheel_before_doing_anything(tmp_path, name, expected):
+    """BPY_WHEEL(이미 받은 휠)이 없거나 다른 판이면 가상환경을 만들기 전에 다음 할 일과 함께 멈춘다."""
+    wheel = tmp_path / "없는.whl"
+    if name:
+        wheel = tmp_path / name
+        wheel.write_bytes(b"")
+    env = {**os.environ, "BPY_WHEEL": str(wheel)}
+    r = subprocess.run(["bash", str(BPY_SCRIPT)], capture_output=True, text=True, env=env, timeout=30)
+    assert r.returncode == 2 and expected in r.stderr, r.stderr
+    assert "다시 주거나" in r.stderr or "pypi.org/project/bpy/" in r.stderr
+
+
+def test_bpy_script_tells_how_long_the_first_download_takes():
+    # 처음 받을 때 크기·시간을 미리 말해 멈춘 듯 보이지 않게, 이미 받은 휠을 쓰는 길도 함께
+    script = BPY_SCRIPT.read_text(encoding="utf-8")
+    notice = re.search(r'^BPY_NOTICE="([^"]+)"', script, re.M).group(1)
+    assert re.search(r"\d+MB", notice) and re.search(r"\d+분", notice), notice
+    assert '"$BPY_NOTICE"' in script or "$BPY_NOTICE" in script
+    assert "BPY_WHEEL=휠경로 scripts/bpy_tests.sh" in script
+    assert "BPY_WHEEL" in (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")

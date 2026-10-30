@@ -3,6 +3,7 @@
 import ast
 import difflib
 import os
+import re
 
 import pytest
 
@@ -53,6 +54,56 @@ def test_every_recipe_error_says_what_to_do_next():
             missing.append(f"{where} {ko[:60]!r}")
     assert not missing, "다음 할 일(…세요 또는 고를 값)이 없는 오류 문장:\n" + "\n".join(missing)
     assert used == set(EXEMPT), f"이제 없는 예외 항목은 지운다: {set(EXEMPT) - used}"
+
+
+# 영어 문장의 다음 할 일 표지(BLENDER_FX_LANG=en 사용자도 같은 안내를 받아야 한다). 대소문자는 가리지 않는다
+EN_MARKERS = ("ask again", "ask restore again", "first", "use ", "lower ", "increase", "check", "look up", "swap", "try again",
+              "one of", "must be", "available", "parts in the file", "only ", "save one", "run ", "pick ", "did you mean")
+
+
+def _key(where, ko):
+    return next((k for k in EXEMPT if where.split(":")[0] == k.split(":")[0] and ko.startswith(k.split(":", 1)[1])), None)
+
+
+def test_every_recipe_error_says_what_to_do_next_in_english():
+    missing = []
+    for where, call in _calls("FxError"):
+        en = _text(call.args[0].args[1])
+        if _key(where, _korean(call)) or _uses_hint(call):
+            continue
+        if not any(m in en.lower() for m in EN_MARKERS):
+            missing.append(f"{where} {en[:60]!r}")
+    assert not missing, "영어 오류 문장에 다음 할 일이 없음:\n" + "\n".join(missing)
+
+
+def _tools_and_args():
+    import anyio
+    from mcp import Client
+
+    async def tools():
+        async with Client(server.mcp) as client:
+            return (await client.list_tools()).tools
+
+    listed = anyio.run(tools)
+    return {t.name for t in listed}, {a for t in listed for a in t.input_schema.get("properties", {})}
+
+
+def test_recipe_errors_name_real_tools_and_arguments():
+    """오류가 시키는 도구·인자 이름이 실제로 있어야 AI 가 그대로 부를 수 있다(예전 "먼저 reset 하세요" 는 없는 도구)."""
+    tools, args = _tools_and_args()
+    bad = []
+    for where, call in _calls("FxError"):
+        ko, en = _korean(call), _text(call.args[0].args[1])
+        # snake_case 이름은 도구나 인자여야 한다
+        for word in re.findall(r"\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b", ko + " " + en):
+            if word not in tools | args:
+                bad.append(f"{where} {word}")
+        # "먼저 X 로/를/하세요", "Run X first" 의 X(여럿이면 / 로 나뉨)는 도구여야 한다
+        named = re.findall(r"먼저 ([a-z_]+(?: / [a-z_]+)*) ?(?:로|를|으로|하세요)", ko)
+        named += re.findall(r"\b(?:Run|Use|with) ([a-z_]+(?: / [a-z_]+)*)(?: first| tool|\.|,| and)", en)
+        for group in named:
+            bad += [f"{where} {n}" for n in group.split(" / ") if n not in tools]
+    assert not bad, f"없는 도구·인자 이름: {bad}"
 
 
 def _load(recipe, *names, **extra):

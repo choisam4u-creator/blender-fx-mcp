@@ -4,7 +4,10 @@
   uv run python scripts/release_check.py           # 파일만 점검 (몇 초)
   uv run python scripts/release_check.py --build   # uv build 로 휠을 만들어 METADATA 까지
   uv run python scripts/release_check.py --dist dist   # 이미 만든 휠·sdist 의 METADATA 만 (CI 패키징 점검)
+  uv run python scripts/release_check.py --tag v0.7.0  # 파일 점검 + 밀 태그가 pyproject 판과 같은지 (release.yml 과 같은 규칙)
 
+파일 점검에는 해결법 대응표(`gen_help_index.py`)와 `scripts/lint.sh --print` 가 CI lint 단계와 같은지,
+Mac 실측(`docs/test-reports/latest.md`)이 PASS 이고 30일 안인지도 든다.
 `--dist` 는 판 번호·CHANGELOG 의 "미출시" 점검을 하지 않아 출시 전 PR 에서도 통과한다.
 실패한 줄마다 고칠 곳을 적는다. 모두 통과하면 종료 코드 0, 하나라도 실패하면 1.
 태그·PyPI·레지스트리 등록은 하지 않는다(그 순서는 docs/registry.md).
@@ -13,16 +16,19 @@
 from __future__ import annotations
 
 import json
+import os
 import re
+import shutil
 import subprocess
 import sys
 import tarfile
 import tempfile
 import zipfile
+from datetime import date
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-# CHANGELOG 의 판 절 제목: "## [0.7.0] - 2026-10-13"(Keep a Changelog), 옛 "## 0.6.3 — 2026-09-21", 또는 "## 0.8.0 — 미출시 (준비 중)"
+# CHANGELOG 의 판 절 제목: "## [0.7.0] - 2026-10-11"(Keep a Changelog), 옛 "## 0.6.3 — 2026-09-21", 또는 "## 0.8.0 — 미출시 (준비 중)"
 HEADING = re.compile(r"^## \[?(\d+\.\d+\.\d+)\]? (?:—|-) (.+)$", re.M)
 DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
 # PyPI 가 받는 Metadata-Version. hatchling 은 2026-10 기준 2.5 를 쓰며, 2.5 를 받는 twine 은 7.0.0 부터다(6.x check 는 거부).
@@ -36,7 +42,7 @@ def project_version(root: Path) -> str:
 
 
 def project_urls(root: Path) -> dict[str, str]:
-    """pyproject.toml 의 [project.urls] (3.10 에도 돌도록 tomllib 없이 읽는다)."""
+    """pyproject.toml 의 [project.urls] (tomllib 없이 정규식으로 읽는다. 시험이 tomllib 결과와 같은지 본다)."""
     text = (root / "pyproject.toml").read_text(encoding="utf-8")
     m = re.search(r"^\[project\.urls\]\n(.*?)(?:^\[|\Z)", text, re.M | re.S)
     if not m:
@@ -84,11 +90,109 @@ def check_files(root: Path) -> list[tuple[bool, str]]:
         if top in [h for h, _ in HEADING.findall(changelog)[1:]]:
             out.append((False, f"CHANGELOG.md 에 {top} 절이 두 번 있음 → 하나로 합친다"))
 
+        if dated:  # 출시하면 지원 판 표에서 지난 판(PyPI 최신이라 함께 지원하던 것)을 뺀다
+            out += check_supported(root, version)
+
     readme = (root / "README.md").read_text(encoding="utf-8")
     name = server.get("name", "")
     ok = f"mcp-name: {name}" in readme
     out.append((ok, f"README.md 의 mcp-name 줄({name})" + ("" if ok else " → 레지스트리 소유 확인용 줄을 README 맨 위에 넣는다")))
+    out += check_generated(root)
+    out += check_mac_report(root)
     return out
+
+
+MAC_REPORT = Path("docs") / "test-reports" / "latest.md"
+MAC_REPORT_DAYS = 30  # 실제 블렌더로 돌린 결과가 이보다 오래면 출시 전에 다시
+
+
+def check_mac_report(root: Path, today: date | None = None) -> list[tuple[bool, str]]:
+    """Mac 에서 실제 블렌더로 돌린 결과(latest.md)가 PASS 이고 MAC_REPORT_DAYS 일 안인지. 클라우드·CI 는 블렌더 앱이 없어
+    이 결과만이 앱에서 도는지의 근거다. 파일이 없는 저장소(시험용 복사본)는 건너뛴다."""
+    path = root / MAC_REPORT
+    if not path.is_file():
+        return []
+    text = path.read_text(encoding="utf-8")
+    when = re.search(r"^- 날짜: (\d{4}-\d{2}-\d{2})", text, re.M)
+    verdict = re.search(r"^- 종합: \**(PASS|FAIL)\b", text, re.M)
+    again = " → Mac 에서 `uv run python scripts/mac_report.py` 를 다시 돌려 latest.md 를 새로 쓰고 커밋한다"
+    if not when or not verdict:
+        return [(False, f"{MAC_REPORT.as_posix()}: '- 날짜:'·'- 종합:' 줄을 못 읽음" + again)]
+    age = ((today or date.today()) - date.fromisoformat(when.group(1))).days
+    ok = verdict.group(1) == "PASS" and age <= MAC_REPORT_DAYS
+    why = []
+    if verdict.group(1) != "PASS":
+        why.append("FAIL 항목을 먼저 고친 뒤")
+    if age > MAC_REPORT_DAYS:
+        why.append(f"{MAC_REPORT_DAYS}일 넘음")
+    return [(ok, f"Mac 실측(latest.md) = {verdict.group(1)}, {when.group(1)}({age}일 전)"
+             + ("" if ok else f" ({', '.join(why)})" + again))]
+
+
+def ci_lint_commands(root: Path) -> list[str]:
+    """ci.yml lint 잡의 ruff·actionlint·zizmor 단계 명령(tests/test_lint_script.py 와 같은 읽기)."""
+    ci = (root / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    lint = ci.split("\n  lint:\n", 1)[-1].split("\n  server-tests:", 1)[0]
+    return [c for c in re.findall(r"^      - run: (.*)$", lint, re.M) if re.search(r"\b(ruff|actionlint|zizmor)\b", c)]
+
+
+def check_generated(root: Path) -> list[tuple[bool, str]]:
+    """만든 파일·명령이 원본과 같은지: 해결법 대응표(gen_help_index.py), scripts/lint.sh --print = CI lint 단계.
+    둘 다 pytest 도 지키지만 출시 절차는 이 스크립트 하나만 돌리므로 여기서도 본다. 스크립트가 없는 저장소(시험용 복사본)는 건너뛴다."""
+    out: list[tuple[bool, str]] = []
+    gen = root / "scripts" / "gen_help_index.py"
+    if gen.is_file():
+        # 파이프의 기본 인코딩과 무관하게 자식 출력과 부모 읽기를 UTF-8로 맞춘다.
+        r = subprocess.run([sys.executable, str(gen)], cwd=root, capture_output=True, text=True,
+                           encoding="utf-8", env={**os.environ, "PYTHONIOENCODING": "utf-8"}, check=False)
+        out.append((r.returncode == 0, "해결법 대응표(src/blender_fx_mcp/help_index.py) = 문서·레시피·서버 오류 문장"
+                    + ("" if r.returncode == 0 else " → 다름. `uv run python scripts/gen_help_index.py --write` 로 새로 쓰고 커밋한다")
+                    + (f"\n{r.stderr.strip()}" if r.returncode != 0 and r.stderr.strip() else "")))
+    lint = root / "scripts" / "lint.sh"
+    if lint.is_file():
+        bash = shutil.which("bash")
+        if bash is None:
+            out.append((True, "scripts/lint.sh --print: bash 가 없어 건너뜀(macOS·Linux 에서 다시 돌린다)"))
+        else:
+            r = subprocess.run([bash, str(lint), "--print"], cwd=root, capture_output=True, text=True, check=False)
+            got, want = r.stdout.splitlines(), ci_lint_commands(root)
+            ok = r.returncode == 0 and got == want
+            hint = (f" → 다름. lint.sh: {got or r.stderr.strip()} / ci.yml: {want}. CONTRIBUTING 의 판 표와 ci.yml lint 단계의 판을 맞춘다"
+                    if not ok else "")
+            out.append((ok, f"scripts/lint.sh --print = CI lint 단계({len(want)}개)" + hint))
+    return out
+
+
+def supported_series(root: Path) -> dict[str, list[str]]:
+    """SECURITY.md 에서 보안 수정 '예' 인 판 계열, SUPPORT.md 의 blender-fx-mcp 줄 판 계열(예: ["0.8", "0.7"])."""
+    sec = (root / "SECURITY.md").read_text(encoding="utf-8")
+    sup = (root / "SUPPORT.md").read_text(encoding="utf-8")
+    return {"SECURITY.md": re.findall(r"^\| (\d+\.\d+)\.x[^|]*\| 예", sec, re.M),
+            "SUPPORT.md": re.findall(r"^\| blender-fx-mcp \| (\d+\.\d+)\.x", sup, re.M)}
+
+
+def check_supported(root: Path, version: str) -> list[tuple[bool, str]]:
+    """출시한 판의 계열 하나만 지원 판으로 남았는지. 출시 전에는 PyPI 최신 판도 함께 적어 두므로 출시 때 정리한다."""
+    series = ".".join(version.split(".")[:2])
+    out = []
+    for name, got in supported_series(root).items():
+        ok = got == [series]
+        out.append((ok, f"{name} 지원 판 = {', '.join(s + '.x' for s in got) or '(없음)'}"
+                    + ("" if ok else f" → 출시했으니 지원 판 줄을 {series}.x 하나로 정리한다(지난 판 줄은 지운다)")))
+    return out
+
+
+def check_tag(tag: str, version: str) -> list[tuple[bool, str]]:
+    """태그는 'v' + pyproject 판이어야 한다. release.yml 의 build 잡도 이 함수로 본다(규칙이 한 곳)."""
+    want = f"v{version}"
+    if tag == want:
+        return [(True, f"태그 {tag} = pyproject 판 {version}")]
+    if tag == version:
+        hint = f"앞에 v 가 빠짐 → {want} 로 단다(release.yml 은 v* 태그에만 돈다)"
+    else:
+        hint = (f"pyproject 판({version})과 다름 → 버전 네 곳을 {tag.lstrip('v')} 로 올린 커밋에 태그를 달거나, "
+                f"태그를 {want} 로 고친다. 이미 밀었으면 `git push --delete origin {tag}` 뒤 다시")
+    return [(False, f"태그 {tag or '(빈 값)'}: {hint}")]
 
 
 def project_license(root: Path) -> str:
@@ -140,7 +244,7 @@ def check_package(meta: str, label: str, license: str, readme: str) -> list[tupl
     ctype = m.group(1).strip() if m else "(없음)"
     ok = ctype.startswith("text/markdown")
     out.append((ok, f"{label} README 형식 = {ctype}" + ("" if ok else " → pyproject 의 readme 가 README.md 인지 확인")))
-    head, sep, body = meta.partition("\n\n")
+    _head, sep, body = meta.partition("\n\n")
     first = readme.strip().splitlines()[0] if readme.strip() else ""
     ok = bool(sep) and bool(first) and body.lstrip().startswith(first)
     out.append((ok, f"{label} README 본문" + ("" if ok else " → 패키지 설명에 README.md 가 들어가지 않음(pyproject 의 readme 확인)")))
@@ -212,6 +316,12 @@ def main(argv: list[str] | None = None, root: Path = ROOT) -> int:
         results = check_dist(Path(argv[i + 1]), root)
         return _report(results, "패키지 점검 통과")
     results = check_files(root)
+    if "--tag" in argv:
+        i = argv.index("--tag")
+        if i + 1 >= len(argv) or argv[i + 1].startswith("--"):
+            print("FAIL --tag 뒤에 밀 태그를 적는다 (예: --tag v0.7.0)")
+            return 1
+        results += check_tag(argv[i + 1], project_version(root))
     if "--build" in argv:
         with tempfile.TemporaryDirectory() as tmp:
             try:

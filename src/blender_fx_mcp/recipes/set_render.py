@@ -15,6 +15,7 @@ def main():
         if p.get("height"):
             r.resolution_y = int(p["height"])
         changed["resolution"] = [r.resolution_x, r.resolution_y]
+        sc[USER_RES_TAG] = 1  # render_video 가 크기를 안 주면 이 크기를 쓴다
     if p.get("fps"):
         r.fps = int(p["fps"])
         changed["fps"] = r.fps
@@ -26,6 +27,7 @@ def main():
         if hasattr(sc, "cycles"):
             sc.cycles.samples = n
         changed["samples"] = n
+        sc[USER_SAMPLES_TAG] = n  # quality="final" 렌더가 프리셋 대신 이 값을 쓴다
 
     if p.get("motion_blur") is not None:
         on = bool(p["motion_blur"])
@@ -74,7 +76,11 @@ def main():
 
     return dict(changed=changed, resolution=[r.resolution_x, r.resolution_y], fps=r.fps,
                 exposure=round(vs.exposure, 3), view_transform=vs.view_transform, look=vs.look,
-                engine=sc.render.engine)
+                engine=sc.render.engine,
+                samples=sc.eevee.taa_render_samples if hasattr(sc, "eevee") else None,
+                file_format=r.image_settings.file_format,
+                shading=dict(cavity=sc.display.shading.show_cavity, shadows=sc.display.shading.show_shadows,
+                             light=sc.display.shading.light))
 
 
 run_guarded(main)

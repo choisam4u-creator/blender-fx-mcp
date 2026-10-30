@@ -32,7 +32,6 @@ All are permissive licenses that can be used and redistributed with an MIT proje
 | `click` | `BSD-3-Clause` | — |
 | `colorama` | `BSD-3-Clause` | Windows |
 | `cryptography` | `Apache-2.0 OR BSD-3-Clause` | — |
-| `exceptiongroup` | `MIT` | Python < 3.11 |
 | `h11` | `MIT` | — |
 | `httpcore2` | `BSD-3-Clause` | — |
 | `httpx2` | `BSD-3-Clause` | — |

@@ -16,25 +16,34 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5.4.2
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
       - run: uvx ruff@0.15.20 check .
+      # 워크플로 문법·표현식·shellcheck 검사. release.yml 은 태그를 밀어야만 돌아서, 고친 것을 PR 단계에서 미리 본다(판 고정).
+      # shellcheck 도 판을 고정해 함께 깐다(러너에 깔린 판에 기대지 않고, 로컬 scripts/lint.sh 와 같은 결과).
+      - run: uvx --with shellcheck-py==0.11.0.1 --from actionlint-py@1.7.12.25 actionlint
+      # 워크플로 보안 검사(위험한 트리거·토큰 남김·표현식 주입 등, OpenSSF Scorecard 와 겹침). 판 고정, 네트워크 없이.
+      - run: uvx zizmor@1.30.1 --offline .github/workflows
       # 끌어오는 패키지의 라이선스가 허용 목록 안이고 docs/third-party-licenses.md 표와 같은지(uv.lock 이 바뀌면 표도 고쳐야 함).
       - run: uv sync --locked --python 3.13
       - run: uv run python scripts/license_check.py
 
-  # 서버 쪽(레시피 제외) 커버리지를 로그와 작업 요약에 남기고, 95% 아래로 떨어지면 실패한다(시험 없이 코드만 늘린 PR 을 잡음). 설정은 pyproject.toml 의 [tool.coverage].
+  # 서버 쪽(레시피 제외) 커버리지를 로그와 작업 요약에 남기고, 99% 아래로 떨어지면 실패한다(시험 없이 코드만 늘린 PR 을 잡음. 2026-10-11 부터 100%, 하한 95→99 는 2026-10-12). 설정은 pyproject.toml 의 [tool.coverage].
   server-tests:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        python: ["3.11", "3.12", "3.13", "3.14"]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5.4.2
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
       - run: uv python install ${{ matrix.python }}
       - run: uv sync --locked --group dev --python ${{ matrix.python }}
       # 시험 파일을 손으로 적지 않는다: 블렌더가 있어야 하는 레시피 시험만 빼고 tests/ 를 모두 돈다(새 시험 파일이 저절로 들어옴).
-      - run: uv run pytest -q tests --ignore=tests/test_asset_robustness.py --ignore=tests/test_recipes_fx_extra.py --ignore=tests/test_recipes_headless.py --ignore=tests/test_recipes_v05.py --ignore=tests/test_recipes_v06.py --cov --cov-fail-under=95 --cov-report=term --cov-report=markdown-append:$GITHUB_STEP_SUMMARY
+      - run: uv run pytest -q tests --ignore=tests/test_asset_robustness.py --ignore=tests/test_recipe_failure_keeps_scene.py --ignore=tests/test_recipes_fx_extra.py --ignore=tests/test_recipes_headless.py --ignore=tests/test_recipes_v05.py --ignore=tests/test_recipes_v06.py --cov --cov-fail-under=99 --cov-report=term "--cov-report=markdown-append:${GITHUB_STEP_SUMMARY}"
       - run: uv build
       # PyPI 에 올리기 전에 휠·sdist 의 METADATA(판·Project-URL·License-Expression·README·mcp-name)를 PR 단계에서 본다.
       - run: uv run python scripts/release_check.py --dist dist
@@ -50,10 +59,12 @@ jobs:
         os: [macos-latest, windows-latest]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5.4.2
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
       - run: uv python install 3.14
       - run: uv sync --locked --group dev --python 3.14
-      - run: uv run pytest -q tests --ignore=tests/test_asset_robustness.py --ignore=tests/test_recipes_fx_extra.py --ignore=tests/test_recipes_headless.py --ignore=tests/test_recipes_v05.py --ignore=tests/test_recipes_v06.py
+      - run: uv run pytest -q tests --ignore=tests/test_asset_robustness.py --ignore=tests/test_recipe_failure_keeps_scene.py --ignore=tests/test_recipes_fx_extra.py --ignore=tests/test_recipes_headless.py --ignore=tests/test_recipes_v05.py --ignore=tests/test_recipes_v06.py
 
   # `pip install bpy` 로 레시피 시험 대부분을 블렌더 앱 없이 돌린다.
   # 렌더에는 libEGL(소프트웨어 Mesa)이 필요하다. bpy 휠에서 깨지는 유체 시험(`app_only`)은 tests/conftest.py 가 건너뛴다.
@@ -61,8 +72,26 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5.4.2
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
       - run: sudo apt-get update && sudo apt-get install -y libxi6 libxxf86vm1 libxfixes3 libxrender1 libgl1 libsm6 libxkbcommon0 libegl1 libegl-mesa0 libgl1-mesa-dri
+      - run: uv python install 3.11
+      - run: uv sync --locked --group dev --python 3.11
+      - run: uv pip install bpy==5.0.1
+      - run: uv run pytest -q
+        env:
+          BLENDER_FX_BLENDER: ${{ github.workspace }}/.venv/bin/python
+
+  # 사용자 대부분이 Mac 이다. 같은 bpy 판의 macOS arm64 휠로 레시피 시험을 돈다(Linux 와 같은 시험·같은 app_only 건너뜀).
+  # 러너(가상 머신)에서도 Metal 렌더가 된다: 2026-10-12 첫 실행 1098 통과·7 건너뜀(1분 50초). 그래서 PR 을 막는 작업이다.
+  recipe-tests-bpy-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
       - run: uv python install 3.11
       - run: uv sync --locked --group dev --python 3.11
       - run: uv pip install bpy==5.0.1

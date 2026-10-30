@@ -1,8 +1,9 @@
 # blender-fx-mcp
 
 [![ci](https://github.com/choisam4u-creator/blender-fx-mcp/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/choisam4u-creator/blender-fx-mcp/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/blender-fx-mcp.svg)](https://pypi.org/project/blender-fx-mcp/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Python 3.10–3.14](https://img.shields.io/badge/python-3.10%E2%80%933.14-blue.svg)](pyproject.toml)
+[![Python 3.11–3.14](https://img.shields.io/badge/python-3.11%E2%80%933.14-blue.svg)](pyproject.toml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/choisam4u-creator/blender-fx-mcp/badge)](https://scorecard.dev/viewer/?uri=github.com/choisam4u-creator/blender-fx-mcp)
 
 <!-- mcp-name: io.github.choisam4u-creator/blender-fx-mcp -->
@@ -16,20 +17,22 @@
 **처음 한 번 (4단계)** — 단계마다 `blender-fx-doctor` 의 그 줄이 `[OK]` 면 된 것입니다(순서도 doctor 의 "다음 할 일"과 같습니다).
 
 <!-- setup-steps: uv, addon, connection, client -->
-1. **uv 설치** — macOS `brew install uv` (Windows·Linux 명령은 doctor 가 알려 줍니다) → `[OK] uv`
+1. **uv 설치** — macOS `brew install uv`, Linux `curl -LsSf https://astral.sh/uv/install.sh | sh`, Windows 는 [해결법](docs/troubleshooting.md#uv-not-found)의 한 줄 → `[OK] uv`
 2. **블렌더 5.2 + 수신기 애드온** — [blender-mcp](https://github.com/ahujasid/blender-mcp) 의 `addon.py` 를 받아
-   블렌더 Edit → Preferences → Add-ons → 오른쪽 위 ▾ → **Install from Disk** 로 설치하고 체크 → `[OK] 수신기 애드온 파일(blender-mcp)`
-3. **블렌더에서 Connect** — 3D 화면에서 `N` 키 → **BlenderMCP** 탭 → **Connect to MCP server** → `[OK] 수신기 연결`
-4. **클로드에 등록**(다른 클라이언트는 [examples/](examples/)) → `[OK] MCP 클라이언트 등록`:
+   블렌더 Edit → Preferences → Add-ons → 오른쪽 위 ▾ → **Install from Disk** 로 설치하고 체크 → `[OK] 수신기 애드온 파일(blender-mcp)` · 막히면 [해결법](docs/troubleshooting.md#connection-refused)
+3. **블렌더에서 Connect** — 3D 화면에서 `N` 키 → **BlenderMCP** 탭 → **Connect to MCP server** → `[OK] 수신기 연결` · 막히면 [해결법](docs/troubleshooting.md#connection-refused)
+4. **클로드에 등록**(다른 클라이언트는 [examples/](examples/)) → `[OK] MCP 클라이언트 등록` · 막히면 [해결법](docs/troubleshooting.md#tools-not-visible-in-the-client):
 
 ```bash
-claude mcp add -s user blender-fx -- uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-mcp
-uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-doctor   # 점검: 끝에 "모두 정상입니다."
+claude mcp add -s user blender-fx -- uvx blender-fx-mcp
+uvx --from blender-fx-mcp blender-fx-doctor   # 점검: 끝에 "모두 정상입니다."
 ```
 
 **첫 명령 예시** — AI에게 이렇게 말합니다:
 
 > 연습용 건물 하나 만들고, 왼쪽에서 충격 줘서 콘크리트처럼 무너뜨려. 끝나면 미리보기 보여 줘.
+
+미리보기가 검거나 효과가 안 보이면 [해결법](docs/troubleshooting.md#black-preview-effect-not-visible), 오류 문장이 나오면 [문제 해결](docs/troubleshooting.md)에서 그 문장을 찾습니다.
 
 붙여 넣기 대신 클라이언트의 `/` 메뉴에서 **`/first_demo`**(같은 순서: 연결 확인 → 건물 → 스냅샷 → 붕괴 → 미리보기, `impact`·`material` 을 고를 수 있음)를,
 되돌릴 때는 **`/undo_last`**(스냅샷 목록 → 확인 → restore)를 골라도 됩니다(Claude Code 에서는 `/blender-fx:first_demo` 처럼 보일 수 있음).
@@ -77,12 +80,16 @@ AI는 코드를 짜지 않습니다. 도구와 값만 고릅니다. 그래서 �
 준비물이 갖춰졌는지 한 번에 확인:
 
 ```bash
-uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-doctor
+uvx --from blender-fx-mcp blender-fx-doctor
 ```
 
 오류 문장별 해결법(연결 거부·시간 초과·포트 충돌·유체 굽기 실패·검은 미리보기): [docs/troubleshooting.md](docs/troubleshooting.md)
 
 질문·버그·보안 신고를 어디로 보내는지, 응답 목표, 지원하는 블렌더·파이썬 판: [SUPPORT.md](SUPPORT.md)
+
+**도움 받기** — ① `uvx --from blender-fx-mcp blender-fx-doctor --issue` 를 돌려 결과를 복사(집 폴더는 `~` 로 가려짐)
+② [버그 신고](https://github.com/choisam4u-creator/blender-fx-mcp/issues/new?template=bug_report.yml) · [질문](https://github.com/choisam4u-creator/blender-fx-mcp/issues/new?template=question.yml) · [기능 요청](https://github.com/choisam4u-creator/blender-fx-mcp/issues/new?template=feature_request.yml) 중 맞는 양식에 붙여 넣기
+③ 첫 답 목표: 버그 7일, 질문·기능 14일 안. 보안 문제는 공개 이슈 대신 [SECURITY.md](SECURITY.md) 로.
 
 이슈 분류·의존성 갱신·출시·지원 판 정리 규칙: [docs/maintenance.md](docs/maintenance.md)
 
@@ -91,7 +98,7 @@ uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-do
 클로드 코드:
 
 ```bash
-claude mcp add -s user blender-fx -- uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-mcp
+claude mcp add -s user blender-fx -- uvx blender-fx-mcp
 ```
 
 로컬 폴더에서 개발 중이면:
@@ -105,10 +112,16 @@ claude mcp add -s user blender-fx -- uv --directory /절대/경로/blender-fx-mc
 바로 붙여 넣을 수 있는 설정(클로드 데스크톱·커서·코덱스)은 [examples/](examples/)에 있습니다.
 등록 후 앱을 완전히 껐다 켜야 도구가 보입니다. 안 보이면 [해결법](docs/troubleshooting.md#tools-not-visible-in-the-client).
 
-**AI 없이 블렌더 쪽만 먼저 확인**(첫 렌더까지): 이 저장소를 받은 폴더에서 블렌더를 켜고 Connect 를 누른 뒤
+**AI 없이 블렌더 쪽만 먼저 확인**(첫 렌더까지): 블렌더를 켜고 Connect 를 누른 뒤, 설치판에 `blender-fx-first-render` 진입점이 있으면 저장소 없이 실행합니다.
 
 ```bash
-uv run python examples/first_render.py   # [1/5] 연결 확인 → 스냅샷 → 건물 → 붕괴 → 미리보기, 끝에 PNG 경로
+uvx --from blender-fx-mcp blender-fx-first-render   # [1/5] 연결 확인 → 스냅샷 → 건물 → 붕괴 → 미리보기, 끝에 PNG 경로·여는 명령
+```
+
+저장소에서 개발 중이거나 설치판에 진입점이 없으면, 저장소 루트에서 실행합니다.
+
+```bash
+uv run python examples/first_render.py
 ```
 
 연결이 안 되면 다음 할 일을 출력하고 종료 코드 2 입니다. 자세한 설명은 [examples/README.md](examples/README.md#터미널에서-첫-렌더까지--first-render-from-the-terminal).
@@ -163,12 +176,19 @@ uv run python examples/first_render.py   # [1/5] 연결 확인 → 스냅샷 →
 
 ## 개발·테스트
 
-블렌더를 창 없이 띄워 레시피를 소켓 없이 검증할 수 있습니다.
+### 1. pytest 시험
+
+개발 의존성을 준비한 뒤 서버 동작과 레시피를 시험합니다.
+블렌더 실행 파일이 필요한 레시피 시험은 파일을 찾지 못하면 건너뜁니다.
 
 ```bash
 uv sync --group dev
 uv run pytest -q
 ```
+
+### 2. headless 레시피 실행
+
+블렌더 실행 파일이 필요합니다. 창 없이 띄워 레시피를 소켓 없이 검증합니다.
 
 ```bash
 uv run blender-fx-headless demo-windows destroy render
@@ -178,7 +198,10 @@ uv run blender-fx-headless demo snapshot destroy restore
 uv run blender-fx-headless demo destroy video save
 ```
 
-블렌더가 켜져 있으면 실제 MCP 클라이언트 → 서버 → 소켓 경로 전체를 확인할 수 있습니다:
+### 3. e2e_socket 연결 시험
+
+블렌더와 BlenderMCP 수신기가 켜져 있어야 합니다.
+실제 MCP 클라이언트 → 서버 → 소켓 → 블렌더 경로와 이미지 응답을 확인합니다:
 
 ```bash
 uv run python scripts/e2e_socket.py
@@ -228,7 +251,7 @@ import_model(path="adventurer.glb", size=2.0, parts=["Adventurer", "Backpack"])
 - 면이 20,000개를 넘는 모델은 조각내기 전에 그 수까지 자동으로 줄입니다(`decimate_to`, 0 이면 끄기). 아주 가는 장식은 이때 뭉개질 수 있습니다.
 - 뼈대 애니메이션이 들어 있는 모델은 **현재 자세 그대로 굳혀서** 부숩니다. 애니메이션은 따라가지 않습니다.
 - 부품끼리 서로 관통하는 모델은 정확하지만 느린 계산으로 넘어갑니다. 50조각에 약 100초입니다.
-- `glue`(조각 접착)는 제약을 수백 개 만들어 굽기가 느려집니다. `glue_neighbors`, `glue_max` 로 줄일 수 있습니다.
+- `glue`(조각 접착)는 조각마다 이웃 4개까지, 모두 600개까지 제약을 만들어 굽기가 느려집니다. 느리면 `pieces` 를 줄이거나 `glue="none"` 으로 다시 시키세요.
 - `restore` 는 블렌더가 그 .blend 파일을 엽니다. 직전 상태는 `before_restore` 로 자동 저장되지만, 여러 단계 실행 취소는 아닙니다.
 - `sky="procedural"` 과 연기·물은 EEVEE·Cycles 에서만 보입니다. 빠른 미리보기에서는 도구가 그 사실을 알려 줍니다.
 - HDRI 는 가지고 있는 파일만 씁니다. 인터넷에서 받아오지 않습니다.
@@ -275,21 +298,25 @@ MIT (이 저장소). 블렌더 안 수신기 애드온은 blender-mcp 프로젝�
 Four steps, once. Each step is done when its `blender-fx-doctor` line shows `[OK]` (same order as doctor's "Next steps").
 
 <!-- setup-steps: uv, addon, connection, client -->
-1. **Install uv** (Python runner) — macOS `brew install uv` (doctor prints the Windows/Linux command) → `[OK] uv`
+1. **Install uv** (Python runner) — macOS `brew install uv`, Linux `curl -LsSf https://astral.sh/uv/install.sh | sh`, Windows: the one line in [troubleshooting](docs/troubleshooting.md#uv-not-found) → `[OK] uv`
 2. **Blender 5.2 + the receiver add-on** — download `addon.py` from [blender-mcp](https://github.com/ahujasid/blender-mcp), then in Blender
-   Edit → Preferences → Add-ons → top-right ▾ → **Install from Disk**, and tick it → `[OK] receiver add-on file (blender-mcp)`
-3. **Connect in Blender** — in the 3D view press `N` → **BlenderMCP** tab → **Connect to MCP server**. It listens on `localhost:9876` → `[OK] receiver connection`
-4. **Register with your AI client** — see [Install](#install) below → `[OK] MCP client registration`
+   Edit → Preferences → Add-ons → top-right ▾ → **Install from Disk**, and tick it → `[OK] receiver add-on file (blender-mcp)` · stuck: [fix](docs/troubleshooting.md#connection-refused)
+3. **Connect in Blender** — in the 3D view press `N` → **BlenderMCP** tab → **Connect to MCP server**. It listens on `localhost:9876` → `[OK] receiver connection` · stuck: [fix](docs/troubleshooting.md#connection-refused)
+4. **Register with your AI client** — see [Install](#install) below → `[OK] MCP client registration` · stuck: [fix](docs/troubleshooting.md#tools-not-visible-in-the-client)
 
 Check everything at once (Python, mcp, uv, Blender, receiver, client registration, output folder):
 
 ```bash
-uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-doctor
+uvx --from blender-fx-mcp blender-fx-doctor
 ```
 
 Fixes for each error message (connection refused, timeout, port in use, fluid bake failed, black preview): [docs/troubleshooting.md](docs/troubleshooting.md)
 
 Where to ask questions or report bugs, reply targets and supported Blender/Python versions: [SUPPORT.md](SUPPORT.md)
+
+**Getting help**: ① run `uvx --from blender-fx-mcp blender-fx-doctor --issue` and copy the output (your home folder is masked as `~`)
+② paste it into the matching form: [bug report](https://github.com/choisam4u-creator/blender-fx-mcp/issues/new?template=bug_report.yml) · [question](https://github.com/choisam4u-creator/blender-fx-mcp/issues/new?template=question.yml) · [feature request](https://github.com/choisam4u-creator/blender-fx-mcp/issues/new?template=feature_request.yml)
+③ first reply targets: 7 days for bugs, 14 days for questions and ideas. Security problems go to [SECURITY.md](SECURITY.md), not a public issue.
 
 How issues, dependency updates, releases and old versions are handled: [docs/maintenance.md](docs/maintenance.md)
 
@@ -298,18 +325,24 @@ How issues, dependency updates, releases and old versions are handled: [docs/mai
 Claude Code:
 
 ```bash
-claude mcp add -s user blender-fx -e BLENDER_FX_LANG=en -- uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-mcp
+claude mcp add -s user blender-fx -e BLENDER_FX_LANG=en -- uvx blender-fx-mcp
 ```
 
-Claude Desktop, Codex, Cursor and other MCP clients: add the same command (`uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-mcp`)
+Claude Desktop, Codex, Cursor and other MCP clients: add the same command (`uvx blender-fx-mcp`)
 to the client's MCP server config with the environment variable `BLENDER_FX_LANG=en`, then fully restart the app.
 Ready-to-paste configs for Claude Desktop, Cursor and Codex are in [examples/](examples/).
 If the tools do not show up, see [troubleshooting](docs/troubleshooting.md#tools-not-visible-in-the-client).
 
-**Check the Blender side first, without an AI** (up to a first render): in a checkout of this repository, open Blender, click Connect, then
+**Check the Blender side first, without an AI** (up to a first render): open Blender and click Connect. If the installed package provides the `blender-fx-first-render` entry point, run it without a checkout:
 
 ```bash
-BLENDER_FX_LANG=en uv run python examples/first_render.py   # [1/5] connection → snapshot → building → collapse → preview, then PNG paths
+BLENDER_FX_LANG=en uvx --from blender-fx-mcp blender-fx-first-render   # [1/5] connection → snapshot → building → collapse → preview, then PNG paths and an open command
+```
+
+When developing in a checkout, or if the installed package lacks that entry point, run from the repository root:
+
+```bash
+BLENDER_FX_LANG=en uv run python examples/first_render.py
 ```
 
 Without a connection it prints the next step and exits with 2. Details: [examples/README.md](examples/README.md) ("First render from the terminal").
@@ -319,6 +352,8 @@ Without a connection it prints the next step and exits with 2. Details: [example
 | `BLENDER_FX_LANG` | from the locale | `en` or `ko`. Unset: English unless the locale (`LC_ALL`, `LC_MESSAGES`, `LANG`) is Korean; Korean when no locale is set (common for desktop apps), so set it explicitly in GUI client configs |
 | `BLENDER_FX_OUT` | `~/blender-fx-output` | where previews, videos, `.blend` files and caches go |
 | `BLENDER_FX_HOST` / `BLENDER_FX_PORT` | `localhost` / `9876` | where the receiver listens. Keep it on localhost |
+| `BLENDER_FX_PROGRESS_EVERY` | `5` | seconds between progress notifications during bakes and renders (clients that show MCP progress) |
+| `BLENDER_FX_NO_UPDATE_CHECK` | (unset) | `1` stops `blender-fx-doctor` from asking PyPI whether a newer release exists (2 s limit, quiet when offline) |
 | `BLENDER_FX_TIMEOUT` | `600` | seconds to wait for a quick step. Bake and render tools wait at least 1800 (`render_video` 3600); set a larger value to extend those too |
 
 ### First command
@@ -326,6 +361,8 @@ Without a connection it prints the next step and exits with 2. Details: [example
 Open Blender, connect the receiver, then tell your AI:
 
 > Make a practice building, hit it from the left and collapse it like concrete. Show me a preview when it's done.
+
+If the preview is black or the effect is missing, see [the fix](docs/troubleshooting.md#black-preview-effect-not-visible); for an error message, search [troubleshooting](docs/troubleshooting.md) for it.
 
 Or pick **`/first_demo`** from your client's `/` menu instead of pasting (same steps: check connection → building → snapshot → collapse → preview;
 optional `impact` and `material`), and **`/undo_last`** to go back (snapshot list → confirm → restore). Claude Code may show them as `/blender-fx:first_demo`.

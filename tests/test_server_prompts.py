@@ -1,6 +1,7 @@
 # MCP 프롬프트(first_demo·undo_last) 시험. 클라이언트의 `/` 메뉴에 뜨고, 문장이 실제 도구 이름만 쓰는지 본다. 블렌더 없이 돈다.
 import asyncio
 import re
+from pathlib import Path
 
 import pytest
 
@@ -107,3 +108,112 @@ def test_my_model_wrong_argument(monkeypatch, lang, bad, shown):
     text = _text("my_model", {"path": "a.glb", **bad})
     assert text.startswith("/my_model") or text.startswith("Wrong /my_model")
     assert shown in text and "import_model" not in text
+
+
+# 문서가 사용자·AI 에게 부르라고 적은 이름. 도구·인자가 아닌 것(결과 칸·스냅샷 이름·시험 이름·프롬프트)은 이유와 함께 여기에
+DOC_NAMES_OK = {
+    "before_restore": "restore 가 자동으로 남기는 스냅샷 이름",
+    "volume_kept": "destroy 결과 칸", "moved_ratio": "결과 칸", "cache_files": "결과 칸",
+    "first_demo": "프롬프트(/ 메뉴)",
+    "first_render_before": "examples/first_render.py 가 남기는 스냅샷 이름",
+    "test_explode_building": "recipes.md 가 가리키는 bpy 시험", "test_water_direction_and_viscosity": "위와 같음",
+}
+
+
+DOCS_WITH_NAMES = ["README.md", "docs/troubleshooting.md", "docs/recipes.md", "docs/demo-script.md",
+                   "examples/README.md", "docs/architecture.md", "CONTRIBUTING.md"]
+# 기여자 문서는 내부 함수 이름(run_guarded·cleanup_fx 등)도 적는다. 그 이름은 코드에 실제로 있어야 한다(지우거나 바꾸면 걸림)
+DEV_DOCS = {"docs/architecture.md", "CONTRIBUTING.md"}
+
+
+def _code_names() -> set[str]:
+    root = Path(__file__).parent.parent
+    files = [*root.glob("src/**/*.py"), *root.glob("tests/*.py"), *root.glob("scripts/*.py"), *root.glob("examples/*.py")]
+    files = [f for f in files if f.name != Path(__file__).name]  # 이 파일은 일부러 없는 이름(glue_neighbors)을 적는다
+    return {n for f in files for n in re.findall(r"\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b", f.read_text(encoding="utf-8"))}
+
+
+@pytest.mark.parametrize("doc", DOCS_WITH_NAMES)
+def test_docs_name_only_real_tools_and_arguments(doc):
+    """문서의 `코드` 안 snake_case 이름과 `이름(…)` 꼴 호출은 실제 도구·인자여야 한다.
+    (README 가 destroy 에 없는 인자 glue_neighbors·glue_max 로 줄이라고 하던 것을 이 시험이 찾음)"""
+    from test_recipe_next_steps import _tools_and_args
+    tools, args = _tools_and_args()
+    known = tools | args | set(DOC_NAMES_OK) | (_code_names() if doc in DEV_DOCS else set())
+    text = (Path(__file__).parent.parent / doc).read_text(encoding="utf-8")
+    bad = []
+    for code in re.findall(r"`([^`\n]+)`", text):
+        names = re.findall(r"\b([a-z][a-z0-9]*(?:_[a-z0-9]+)+)\s*\(", code)
+        # 도구 호출 안의 인자 이름(`destroy(glue_max=3)` 의 glue_max)도. 환경변수(대문자)·비교(==)는 빼고
+        names += [n for call in re.findall(r"\b[a-z][a-z0-9_]*\(([^)]*)\)", code)
+                  for n in re.findall(r"\b([a-z][a-z0-9]*(?:_[a-z0-9]+)+)\s*=(?!=)", call)]
+        if re.fullmatch(r"[a-z][a-z0-9]*(?:_[a-z0-9]+)+", code.strip()):
+            names.append(code.strip())
+        bad += [n for n in names if n not in known]
+    assert not bad, f"{doc} 에 없는 도구·인자 이름: {sorted(set(bad))}"
+
+
+def test_doc_name_exceptions_are_still_used():
+    docs = "".join((Path(__file__).parent.parent / d).read_text(encoding="utf-8") for d in DOCS_WITH_NAMES)
+    assert all(f"`{n}`" in docs for n in DOC_NAMES_OK), "이제 문서에 없는 예외는 지운다"
+
+
+def test_dev_doc_names_catch_a_removed_function():
+    """기여자 문서 허용 목록이 아무 이름이나 통과시키지 않는다(코드에 없는 이름은 걸림)."""
+    names = _code_names()
+    assert {"run_guarded", "cleanup_fx", "fx_role", "build_code", "fake_blender"} <= names
+    assert "run_guarded_v2" not in names and "make_fireworks" not in names
+
+
+def _tool_schemas() -> dict[str, set[str]]:
+    import anyio
+    from mcp import Client
+
+    async def tools():
+        async with Client(server.mcp) as client:
+            return (await client.list_tools()).tools
+
+    return {t.name: set(t.input_schema.get("properties", {})) for t in anyio.run(tools)}
+
+
+EXAMPLE_SCRIPTS = sorted((Path(__file__).parent.parent / "examples").glob("*.py")) + [
+    Path(__file__).parent.parent / "src" / "blender_fx_mcp" / "first_render.py"]  # 예제 first_render.py 는 이 모듈의 껍데기
+
+
+@pytest.mark.parametrize("script", EXAMPLE_SCRIPTS, ids=lambda p: f"{p.parent.name}/{p.name}")
+def test_example_scripts_name_only_real_tools_and_arguments(script):
+    """examples/*.py 의 docstring·print 문장에 나오는 이름과, 실제로 부르는 도구(`call_tool`·STEPS 의 (이름, 인자))가 서버에 있다.
+    예제를 그대로 돌리는 사용자가 없는 도구·인자 이름으로 막히지 않게(문서 시험은 .md 만 훑음)."""
+    import ast
+    schemas = _tool_schemas()
+    tools, args = set(schemas), set().union(*schemas.values())
+    tree = ast.parse(script.read_text(encoding="utf-8"))
+    bad = []
+    # 1) 문장 속 snake_case 이름: 도구·인자·문서 예외이거나, 이 파일 안 코드(변수·함수) 이름이어야 한다
+    code_names = {n.id for n in ast.walk(tree) if isinstance(n, ast.Name)} | \
+                 {n.name for n in ast.walk(tree) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))} | \
+                 {n.attr for n in ast.walk(tree) if isinstance(n, ast.Attribute)}
+    known = tools | args | set(DOC_NAMES_OK) | code_names
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+            bad += [n for n in re.findall(r"(?<![\w./-])([a-z][a-z0-9]*(?:_[a-z0-9]+)+)(?![\w./-])", node.value)
+                    if n not in known]
+    # 2) 실제로 부르는 도구 이름과 인자 키
+    calls = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call) and getattr(node.func, "attr", "") == "call_tool" and node.args \
+                and isinstance(node.args[0], ast.Constant):
+            keys = node.args[1].keys if len(node.args) > 1 and isinstance(node.args[1], ast.Dict) else []
+            calls.append((node.args[0].value, keys))
+        if isinstance(node, ast.Tuple) and len(node.elts) == 2 and isinstance(node.elts[0], ast.Constant) \
+                and isinstance(node.elts[0].value, str) and isinstance(node.elts[1], ast.Dict):
+            calls.append((node.elts[0].value, node.elts[1].keys))
+    for name, keys in calls:
+        if name not in schemas:
+            bad.append(f"도구 {name}")
+            continue
+        bad += [f"{name}({k.value}=)" for k in keys if isinstance(k, ast.Constant) and k.value not in schemas[name]]
+    assert not bad, f"{script.name} 에 없는 도구·인자 이름: {sorted(set(bad))}"
+    if script.name == "first_render.py" and script.parent.name == "blender_fx_mcp":  # STEPS 는 본체에
+        assert {"ping_blender", "snapshot", "destroy", "render_preview"} <= {c[0] for c in calls} | set(
+            re.findall(r'"([a-z_]+)"', script.read_text(encoding="utf-8"))), "STEPS 를 못 읽음(시험이 비어 통과하지 않게)"

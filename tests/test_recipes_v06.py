@@ -138,6 +138,38 @@ def test_global_slow_motion_changes_length(tmp_path):
     assert t["frame_map"] == [100, 200], t
 
 
+def test_global_slow_is_relative_to_the_original_speed():
+    """두 번 시키면 길이만 또 늘고(48→96→192) 시간 배율은 2배 그대로여서 뒤 절반이 빈 화면이던 문제.
+    배율은 늘 원래 속도 기준이고 1.0 이면 되돌린다. 같은 호출의 frame_end 는 원래 길이로 본다."""
+    results = run_steps([
+        ("set_timing", {"frame_start": 1, "frame_end": 48}),
+        ("set_timing", {"global_slow": 0.5, "rebake": False}),
+        ("set_timing", {"global_slow": 0.5, "rebake": False}),
+        ("set_timing", {"global_slow": 0.25, "rebake": False}),
+        ("set_timing", {"global_slow": 1.0, "rebake": False}),
+        ("set_timing", {"frame_end": 60, "global_slow": 0.5, "rebake": False}),
+    ], blender=BLENDER)
+    for r in results:
+        assert r["ok"], r
+    ends = [r["frame_range"][1] for r in results]
+    maps = [r["frame_map"][1] for r in results]
+    assert ends == [48, 96, 96, 192, 48, 120], ends
+    assert maps == [100, 200, 200, 400, 100, 200], maps
+
+
+def test_global_slow_keeps_the_exact_length_for_uneven_factors():
+    """0.75 처럼 100/배율이 정수가 아니면 반올림한 frame_map 으로 되짚을 때 한 프레임씩 어긋났다(101 → 102)."""
+    results = run_steps([
+        ("set_timing", {"frame_start": 1, "frame_end": 101}),
+        ("set_timing", {"global_slow": 0.75, "rebake": False}),
+        ("set_timing", {"global_slow": 0.75, "rebake": False}),
+        ("set_timing", {"global_slow": 1.0, "rebake": False}),
+    ], blender=BLENDER)
+    for r in results:
+        assert r["ok"], r
+    assert [r["frame_range"][1] for r in results] == [101, 135, 135, 101], results
+
+
 def test_alembic_export(tmp_path):
     abc = tmp_path / "scene.abc"
     results = run_steps([
@@ -165,3 +197,102 @@ def test_import_resize_reports_scaled_volume(tmp_path):
     assert imp["ok"] and insp["ok"], (imp, insp)
     assert abs(imp["volume_m3"] - 18.0) < 0.1, imp["volume_m3"]
     assert abs(imp["volume_m3"] - insp["volume_m3"]) < 0.1, (imp["volume_m3"], insp["volume_m3"])
+
+
+def test_renders_keep_user_render_settings(tmp_path):
+    """set_render 로 정한 샘플·크기를 미리보기·영상 렌더가 덮어쓰지 않고, 영상은 그 크기와 실제 fps 를 보고한다.
+    미리보기가 중간에 실패해도 장면의 출력 설정이 바뀐 채 남지 않는다."""
+    results = run_steps([
+        ("demo_scene", {}),
+        ("set_render", {"samples": 2, "width": 320, "height": 180, "fps": 24}),  # 2: 어느 프리셋(16·32·64)과도 다르고 빠름
+        ("render", {"out_dir": str(tmp_path / "prev"), "frames": [1], "quality": "smoke"}),
+        ("set_render", {}),
+        ("render", {"out_dir": str(tmp_path / "bad"), "frames": ["x"], "quality": "smoke"}),  # 렌더 도중 실패
+        ("set_render", {}),
+        ("render_video", {"out_path": str(tmp_path / "clip.mp4"), "quality": "final", "fps": 30,
+                          "frame_start": 1, "frame_end": 2}),
+        ("set_render", {}),
+    ], blender=BLENDER)
+    after_preview, after_failure, video, after_video = results[3], results[5], results[6], results[7]
+    assert after_preview["samples"] == 2 and after_preview["resolution"] == [320, 180], after_preview
+    assert results[4]["ok"] is False, results[4]
+    assert after_failure["samples"] == 2 and after_failure["resolution"] == [320, 180], after_failure
+    assert after_failure["file_format"] == after_preview["file_format"], after_failure
+    assert video["ok"], video
+    assert video["size"] == [320, 180] and video["fps"] == 30, video
+    assert after_video["fps"] == 24 and after_video["samples"] == 2, after_video
+
+
+def test_render_video_one_sided_frames_say_give_both(tmp_path):
+    """render_video 에 한쪽 프레임만 줘서 장면의 다른 쪽과 순서가 어긋나면 "바꿔라"가 아니라 "함께 주라"고 하고 장면은 그대로다."""
+    out = str(tmp_path / "clip.mp4")
+    results = run_steps([
+        ("demo_scene", {}),
+        ("set_timing", {"frame_start": 1, "frame_end": 72}),
+        ("render_video", {"out_path": out, "quality": "preview", "frame_start": 100}),
+        ("set_timing", {"frame_start": 50, "frame_end": 72}),
+        ("render_video", {"out_path": out, "quality": "preview", "frame_end": 10, "_lang": "en"}),
+        ("set_timing", {}),
+    ], blender=BLENDER)
+    late, end_first, after = results[2], results[4], results[5]
+    assert late["ok"] is False and "frame_end 도 함께 주어" in late["error"] and "frame_end=171" in late["error"], late
+    assert end_first["ok"] is False and "Give frame_start too" in end_first["error"], end_first
+    assert "Swap" not in end_first["error"], end_first
+    assert after["frame_range"] == [50, 72], after
+
+
+def test_destroy_and_reset_with_target_keep_other_effects(tmp_path):
+    """대상을 정해 부수기·되돌리기를 하면 그 대상의 것만 지운다. 바다 같은 다른 효과와 다른 건물의 조각은 남는다.
+    (전에는 destroy(target=B) 가 바다·물·연기·깃발·바람·다른 건물의 접착까지 지웠다)"""
+    results = run_steps([
+        ("demo_scene", {}),
+        ("demo_scene", {"name": "Tower", "width": 2.0, "depth": 2.0}),
+        ("ocean", {"size": 30, "frames": 24}),
+        ("destroy", {"target": "Building", "pieces": 12, "glue": "weak", "frames": 24, "dust": "none"}),
+        ("destroy", {"target": "Tower", "pieces": 12, "frames": 24, "dust": "none"}),
+        ("list_objects", {}),
+        ("reset", {"target": "Tower"}),
+        ("list_objects", {}),
+        ("reset", {}),
+        ("list_objects", {}),
+    ], blender=BLENDER)
+    assert all(r["ok"] for r in results), [r for r in results if not r["ok"]]
+    roles = lambda r: {o["fx_role"] for o in r["objects"]}  # noqa: E731
+    both, after_tower, after_all = results[5], results[7], results[9]
+    assert "ocean" in roles(both) and both["chunk_count"] >= 20, both
+    assert "ocean" in roles(after_tower) and 8 <= after_tower["chunk_count"] < both["chunk_count"], after_tower
+    tower = next(o for o in after_tower["objects"] if o["name"] == "Tower")
+    assert not tower["hidden"], tower  # 되돌린 대상은 다시 보임
+    assert after_all["chunk_count"] == 0 and "ocean" not in roles(after_all), after_all
+
+
+def test_preview_render_keeps_workbench_shading(tmp_path):
+    """빠른 미리보기(워크벤치)가 바꾸는 셰이딩(그림자·캐비티·조명)은 렌더 뒤 원래대로. 사용자의 블렌더 렌더 설정을 바꾸지 않는다."""
+    results = run_steps([
+        ("demo_scene", {}),
+        ("set_render", {}),
+        ("render", {"out_dir": str(tmp_path / "prev"), "frames": [1], "quality": "preview"}),
+        ("set_render", {}),
+    ], blender=BLENDER)
+    before, after = results[1], results[3]
+    assert results[2]["ok"] and results[2]["engine"] == "BLENDER_WORKBENCH", results[2]
+    assert after["shading"] == before["shading"], (before["shading"], after["shading"])
+
+
+def test_preview_follows_set_render_aspect(tmp_path):
+    """크기를 안 준 미리보기는 set_render 로 정한 비율(세로 영상)을 긴 변 640 으로 줄여 렌더하고, 장면 크기는 그대로 둔다.
+    (전에는 어떤 크기를 정해도 미리보기가 늘 640×360 이라 세로 구도를 확인할 수 없었다)"""
+    results = run_steps([
+        ("demo_scene", {}),
+        ("set_render", {"width": 1080, "height": 1920}),
+        ("render", {"out_dir": str(tmp_path / "tall"), "frames": [1], "quality": "preview"}),
+        ("set_render", {}),
+    ], blender=BLENDER)
+    assert all(r["ok"] for r in results), results
+    rend = results[2]
+    assert rend["size"] == [360, 640], rend
+    with open(rend["paths"][0], "rb") as f:
+        head = f.read(24)  # PNG 서명 8 + IHDR 길이·이름 8 + 폭·높이 8
+    assert head[:8] == b"\x89PNG\r\n\x1a\n", head
+    assert (int.from_bytes(head[16:20], "big"), int.from_bytes(head[20:24], "big")) == (360, 640), head
+    assert results[3]["resolution"] == [1080, 1920], results[3]

@@ -1,6 +1,6 @@
 # 클라이언트별 연결 설정 / Client config examples
 
-모두 같은 명령(`uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-mcp`)을 띄웁니다.
+모두 같은 명령(`uvx blender-fx-mcp`)을 띄웁니다.
 `BLENDER_FX_LANG` 은 `ko` 또는 `en`(없으면 로캘을 따르고, 로캘도 없으면 `ko`. 창 앱 설정에는 직접 적으세요). 다른 환경변수는 저장소 README 의 표를 보세요.
 등록 뒤 앱을 완전히 껐다 켜야 도구가 보입니다.
 
@@ -8,7 +8,7 @@ All examples launch the same command. Set `BLENDER_FX_LANG` to `en` for English 
 
 | 클라이언트 / Client | 파일 / File | 붙여 넣을 곳 / Where it goes |
 |---|---|---|
-| Claude Code | (명령 한 줄 / one command) | `claude mcp add -s user blender-fx -e BLENDER_FX_LANG=en -- uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-mcp` |
+| Claude Code | (명령 한 줄 / one command) | `claude mcp add -s user blender-fx -e BLENDER_FX_LANG=en -- uvx blender-fx-mcp` |
 | Claude Desktop | [`claude_desktop_config.json`](claude_desktop_config.json) | macOS `~/Library/Application Support/Claude/claude_desktop_config.json`, Windows `%APPDATA%\Claude\claude_desktop_config.json` |
 | Cursor | [`cursor-mcp.json`](cursor-mcp.json) | 프로젝트의 `.cursor/mcp.json` 또는 전역 `~/.cursor/mcp.json` / project `.cursor/mcp.json` or global `~/.cursor/mcp.json` |
 | Codex | [`codex-config.toml`](codex-config.toml) | `~/.codex/config.toml` |
@@ -34,7 +34,7 @@ calls `ping_blender`. It runs without Blender (you then get the connection failu
 
 ```sh
 uv run python examples/list_tools.py
-BLENDER_FX_LANG=en uv run python examples/list_tools.py uvx --from git+https://github.com/choisam4u-creator/blender-fx-mcp blender-fx-mcp
+BLENDER_FX_LANG=en uv run python examples/list_tools.py uvx blender-fx-mcp
 ```
 
 ## 터미널에서 첫 렌더까지 / First render from the terminal
@@ -51,5 +51,6 @@ Open Blender and click Connect first. Without a connection it prints the next st
 Your scene is saved first as snapshot `first_render_before`, so `restore first_render_before` (or `/undo_last`) brings it back.
 
 ```sh
-uv run python examples/first_render.py
+uv run python examples/first_render.py              # 이 저장소에서 / in this checkout
+uvx --from blender-fx-mcp blender-fx-first-render   # 저장소 없이(PyPI) / without a checkout
 ```
