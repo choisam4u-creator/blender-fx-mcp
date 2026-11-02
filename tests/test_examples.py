@@ -635,3 +635,30 @@ def test_examples_readme_commands_point_at_real_files_and_entry_points():
     text = (EX / "README.md").read_text(encoding="utf-8")
     for name in re.findall(r'"run", "([\w-]+)"\]', text):
         assert name in entry, name
+
+
+@pytest.mark.parametrize("lang", ["ko", "en"])
+@pytest.mark.parametrize("local_png", [False, True])
+def test_first_render_remote_pngs_stay_on_blender_computer(monkeypatch, capsys, tmp_path, lang, local_png):
+    """원격 성공은 저장 폴더를 알리고, 같은 로컬 경로가 있어도 열지 않는다."""
+    import asyncio
+    import sys
+
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    monkeypatch.setenv("BLENDER_FX_HOST", "blender.example")
+    folder = tmp_path / "원격 출력"
+    if local_png:
+        folder.mkdir()
+        (folder / "unrelated.png").write_bytes(b"x")
+    script = tmp_path / "fake_server.py"
+    script.write_text(FAKE_SERVER, encoding="utf-8")
+    example = _load("first_render")
+    params = example.server_params([sys.executable, str(script), str(folder), ""])
+    assert asyncio.run(example.run(params)) == 0
+    out = capsys.readouterr().out.splitlines()
+    expected = (f"PNG는 블렌더 컴퓨터의 {folder} 에 있습니다." if lang == "ko" else
+                f"PNGs are on the Blender computer in {folder}.")
+    assert out[-2:] == [expected, example.undo_line()]
+    assert "PNG 0개:" not in out and "0 PNG files:" not in out
+    assert example.png_paths(f"Render → {folder}") == []
+    assert not any("unrelated.png" in line for line in out)
