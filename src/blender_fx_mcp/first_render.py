@@ -80,7 +80,10 @@ def render_folder(render_text: str) -> str | None:
     """render_preview 문장의 '→ <폴더>' 를 읽는다."""
     if "→ " not in render_text:
         return None
-    return render_text.rsplit("→ ", 1)[1].split("\n")[0].split(" (")[0].strip()
+    folder = render_text.split("→ ", 1)[1].split("\n")[0]
+    for note in (" (빠른 미리보기라 ", " (Fast preview: "):
+        folder = folder.split(note, 1)[0]
+    return folder.strip()
 
 
 def png_paths(render_text: str) -> list[str]:
