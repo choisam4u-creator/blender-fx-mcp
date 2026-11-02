@@ -33,6 +33,7 @@ from pathlib import Path
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
+from . import bridge
 from .opener import open_line
 
 FAILED = ("실패: ", "Failed: ")  # 서버 도구가 실패하면 돌려주는 문장 머리
@@ -75,11 +76,18 @@ def report_line() -> str:
             "https://github.com/choisam4u-creator/blender-fx-mcp/issues/new?template=bug_report.yml")
 
 
-def png_paths(render_text: str) -> list[str]:
-    """render_preview 문장의 '→ <폴더>' 에서 PNG 를 찾는다. 서버와 같은 컴퓨터일 때만 보인다."""
+def render_folder(render_text: str) -> str | None:
+    """render_preview 문장의 '→ <폴더>' 를 읽는다."""
     if "→ " not in render_text:
+        return None
+    return render_text.rsplit("→ ", 1)[1].split("\n")[0].split(" (")[0].strip()
+
+
+def png_paths(render_text: str) -> list[str]:
+    """서버와 같은 컴퓨터일 때만 렌더 폴더에서 PNG 를 찾는다."""
+    folder = render_folder(render_text)
+    if not bridge.is_local() or not folder:
         return []
-    folder = render_text.rsplit("→ ", 1)[1].split("\n")[0].split(" (")[0].strip()
     return sorted(str(p) for p in Path(folder).glob("*.png"))
 
 
@@ -118,11 +126,16 @@ async def run(params: StdioServerParameters) -> int:
                     print(report_line())
                     return 1
             paths = png_paths(text)
-            print(("PNG {n}개:" if not en() else "{n} PNG files:").format(n=len(paths)))
-            for p in paths:
-                print(f"  {p}")
-            if paths:  # 첫 장을 바로 여는 명령(서버 문장의 '결과 보기' 는 폴더를 연다)
-                print(open_line(paths[0]).lstrip("\n"))
+            folder = render_folder(text)
+            if not bridge.is_local() and folder:
+                print(f"PNG는 블렌더 컴퓨터의 {folder} 에 있습니다." if not en() else
+                      f"PNGs are on the Blender computer in {folder}.")
+            else:
+                print(("PNG {n}개:" if not en() else "{n} PNG files:").format(n=len(paths)))
+                for p in paths:
+                    print(f"  {p}")
+                if paths:  # 첫 장을 바로 여는 명령(서버 문장의 '결과 보기' 는 폴더를 연다)
+                    print(open_line(paths[0]).lstrip("\n"))
             print(undo_line())
             return 0
 
