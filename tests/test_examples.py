@@ -206,7 +206,7 @@ def test_first_render_success_and_tool_failure(monkeypatch, capsys, tmp_path, fa
     import sys
 
     monkeypatch.setenv("BLENDER_FX_LANG", "en")
-    folder = tmp_path / "출력 폴더"  # 한글·공백 경로도 그대로
+    folder = tmp_path / "출력 (보관) → 폴더"  # 괄호·화살표도 경로의 일부다
     folder.mkdir()
     for n in ("frame_0072.png", "frame_0001.png", "notes.txt"):
         (folder / n).write_bytes(b"x")
@@ -662,3 +662,23 @@ def test_first_render_remote_pngs_stay_on_blender_computer(monkeypatch, capsys, 
     assert "PNG 0개:" not in out and "0 PNG files:" not in out
     assert example.png_paths(f"Render → {folder}") == []
     assert not any("unrelated.png" in line for line in out)
+
+
+@pytest.mark.parametrize("lang", ["ko", "en"])
+@pytest.mark.parametrize("preview", [False, True])
+@pytest.mark.parametrize("folder_name", ["출력 (보관)", "출력 → 최종", "출력 (보관) → 최종"])
+def test_first_render_preserves_folder_punctuation(monkeypatch, tmp_path, lang, preview, folder_name):
+    """서버의 실제 미리보기 안내만 떼고 폴더의 괄호·화살표는 보존한다."""
+    from blender_fx_mcp import first_render, server
+
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    monkeypatch.setenv("BLENDER_FX_HOST", "localhost")
+    folder = tmp_path / folder_name
+    folder.mkdir()
+    png = folder / "frame_0001.png"
+    png.write_bytes(b"x")
+    text = (f"Render: frames [1] → {folder}"
+            + server._preview_note({"missing_in_preview": preview})
+            + f"\nOpen it: open '{folder}'")
+    assert first_render.render_folder(text) == str(folder)
+    assert first_render.png_paths(text) == [str(png)]
