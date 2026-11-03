@@ -682,3 +682,18 @@ def test_first_render_preserves_folder_punctuation(monkeypatch, tmp_path, lang, 
             + f"\nOpen it: open '{folder}'")
     assert first_render.render_folder(text) == str(folder)
     assert first_render.png_paths(text) == [str(png)]
+
+
+@pytest.mark.parametrize("with_files", [False, True])
+def test_first_render_png_paths_excludes_directories(monkeypatch, tmp_path, with_files):
+    """.png 폴더를 그림 수와 첫 그림 열기 명령에 포함하지 않는다."""
+    from blender_fx_mcp import first_render
+
+    monkeypatch.setenv("BLENDER_FX_HOST", "localhost")
+    (tmp_path / "a.png").mkdir()
+    expected = []
+    if with_files:
+        for name in ("z.png", "b.png"):
+            (tmp_path / name).write_bytes(b"x")
+        expected = [str(tmp_path / "b.png"), str(tmp_path / "z.png")]
+    assert first_render.png_paths(f"Render: frames [1] → {tmp_path}") == expected
