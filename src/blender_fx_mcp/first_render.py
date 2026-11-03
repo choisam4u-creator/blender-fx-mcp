@@ -91,7 +91,7 @@ def png_paths(render_text: str) -> list[str]:
     folder = render_folder(render_text)
     if not bridge.is_local() or not folder:
         return []
-    return sorted(str(p) for p in Path(folder).glob("*.png"))
+    return sorted(str(p) for p in Path(folder).glob("*.png") if p.is_file())
 
 
 def progress(i: int, name: str) -> str:
