@@ -1,5 +1,10 @@
 # blender-fx-mcp
 
+![자연어 명령에서 Blender 물리 효과까지](docs/media/blender-fx-hero.png)
+
+**자연어 명령 · 물리 효과 · 장면 미리보기**
+
+
 [![ci](https://github.com/choisam4u-creator/blender-fx-mcp/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/choisam4u-creator/blender-fx-mcp/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/blender-fx-mcp.svg)](https://pypi.org/project/blender-fx-mcp/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
