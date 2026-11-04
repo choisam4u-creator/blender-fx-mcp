@@ -178,3 +178,45 @@ def test_usage_groups_skips_unreadable_entries(monkeypatch, tmp_path):
     monkeypatch.setattr(disk, "folder_bytes", lambda p: (_ for _ in ()).throw(OSError("gone")) if "cache_" in str(p) else real(p))
     groups = {g[0]: g for g in disk.usage_groups(tmp_path)}
     assert "caches" not in groups and groups["runs"][1] == 50  # 사라진 폴더는 건너뛰고 나머지는 센다
+
+
+@pytest.mark.parametrize("lang", ["ko", "en"])
+@pytest.mark.parametrize("free,blocked", [
+    (1024**3 - 1, True),
+    (1024**3, False),
+    (1024**3 + 1, False),
+    (None, False),
+])
+def test_bake_space_boundary(monkeypatch, tmp_path, lang, free, blocked):
+    """정확히 1GB부터 굽기를 보내며, 조회 불가는 부족으로 단정하지 않는다."""
+    monkeypatch.setenv("BLENDER_FX_OUT", str(tmp_path))
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    monkeypatch.setattr(disk, "free_bytes", lambda path: free)
+    sent = []
+    monkeypatch.setattr(bridge, "run_python", lambda code, timeout=None: sent.append(code) or "")
+
+    out = server.water(mode="drop")
+    if blocked:
+        assert not sent
+        assert "clear_caches" in out
+    else:
+        assert len(sent) == 1
+        assert "'cache_dir'" in sent[0].splitlines()[0]
+
+
+@pytest.mark.parametrize("lang", ["ko", "en"])
+@pytest.mark.parametrize("free,ok", [
+    (5 * 1024**3 - 1, False),
+    (5 * 1024**3, True),
+    (5 * 1024**3 + 1, True),
+])
+def test_doctor_space_boundary(monkeypatch, tmp_path, lang, free, ok):
+    """doctor의 5GB 권장 경계는 굽기 차단 기준과 별개다."""
+    monkeypatch.setenv("BLENDER_FX_LANG", lang)
+    monkeypatch.setattr(disk, "free_bytes", lambda path: free)
+
+    check = doctor._space_check(str(tmp_path))
+    assert check["id"] == "space" and check["optional"]
+    assert check["ok"] is ok
+    # 부족할 때만 다음 할 일이 붙는다(빈 출력 폴더면 clear_caches 대신 다른 안내)
+    assert bool(check["fix"]) is (not ok)
