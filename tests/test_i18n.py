@@ -15,6 +15,14 @@ from blender_fx_mcp import i18n
     ({"LC_MESSAGES": "en_GB", "LANG": "ko_KR.UTF-8"}, "en", "LC_MESSAGES"),
     ({"LC_ALL": "", "LANG": "en_US.UTF-8"}, "en", "LANG"),  # 빈 값은 건너뜀
     ({"LANG": "sr_RS@latin"}, "en", "LANG"),
+    ({"LC_ALL": "C", "LANG": "en_US.UTF-8"}, "ko", "default"),  # 상위 C 로캘을 하위 언어로 덮지 않는다
+    ({"LC_MESSAGES": "POSIX", "LANG": "en_US.UTF-8"}, "ko", "default"),
+    ({"LC_ALL": "ko_KR", "LC_MESSAGES": "en_GB", "LANG": "en_US"}, "ko", "LC_ALL"),
+    ({"LC_ALL": "en_GB", "LC_MESSAGES": "ko_KR", "LANG": "ko_KR"}, "en", "LC_ALL"),
+    ({"LC_ALL": "  ", "LC_MESSAGES": "  ko_KR.UTF-8  ", "LANG": "en_US"}, "ko", "LC_MESSAGES"),
+    ({"LC_ALL": "", "LC_MESSAGES": "  ", "LANG": "  EN_US.UTF-8  "}, "en", "LANG"),
+    ({"BLENDER_FX_LANG": "  EN  ", "LC_ALL": "ko_KR"}, "en", "BLENDER_FX_LANG"),
+    ({"BLENDER_FX_LANG": "ko", "LC_ALL": "en_US"}, "ko", "BLENDER_FX_LANG"),
     ({"BLENDER_FX_LANG": "ko", "LANG": "en_US.UTF-8"}, "ko", "BLENDER_FX_LANG"),  # 명시가 이긴다
     ({"BLENDER_FX_LANG": "en", "LANG": "ko_KR.UTF-8"}, "en", "BLENDER_FX_LANG"),
     ({"BLENDER_FX_LANG": "  ", "LANG": "en_US.UTF-8"}, "en", "LANG"),
