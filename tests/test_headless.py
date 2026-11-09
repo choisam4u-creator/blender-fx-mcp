@@ -172,3 +172,18 @@ def test_undecodable_output_does_not_crash(fake_blender):
     """블렌더 로그에 UTF-8 이 아닌 바이트가 섞여도(Windows 콘솔 코드 페이지 등) 결과를 읽는다."""
     exe = fake_blender("sys.stdout.flush()\nsys.stdout.buffer.write(b'\\xff\\xfe log\\n')\nprint('FX_RESULT {\"n\": 1}')")
     assert headless.run_steps([("list_objects", {})], blender=exe) == [{"n": 1}]
+
+
+@pytest.mark.parametrize("steps", [[("list_objects", {})], TWO_STEPS])
+@pytest.mark.parametrize("exit_code", [3, 17])
+def test_nonzero_exit_after_all_results_is_failure(tmp_path, fake_blender, steps, exit_code):
+    """결과 줄을 모두 받아도 비정상 종료를 성공으로 숨기지 않는다."""
+    body = "\n".join(f"print('FX_RESULT {{\"n\": {i}}}')" for i in range(len(steps)))
+    exe = fake_blender(body + f'\nprint("종료 실패", file=sys.stderr)\nsys.exit({exit_code})')
+    with pytest.raises(RuntimeError) as e:
+        headless.run_steps(steps, blender=exe)
+    msg = str(e.value)
+    assert f"종료 코드 {exit_code}" in msg and "종료 실패" in msg
+    assert 'FX_RESULT {"n": 0}' in msg
+    script = (tmp_path / "argv.txt").read_text(encoding="utf-8").split()[-1]
+    assert not os.path.exists(script)

@@ -122,6 +122,11 @@ def run_steps(steps: list[tuple[str, dict]], blender: str | None = None, timeout
             f"'{steps[len(results)][0]}' 에서 멈춤), 종료 코드 {_exit_reason(proc.returncode)}. 블렌더 출력 끝부분:\n"
             + proc.stdout[-1500:] + "\n" + proc.stderr[-1500:]
         )
+    if proc.returncode != 0:
+        raise RuntimeError(
+            f"결과 {len(results)}개를 받았지만 종료 코드 {_exit_reason(proc.returncode)}. 블렌더 출력 끝부분:\n"
+            + proc.stdout[-1500:] + "\n" + proc.stderr[-1500:]
+        )
     return results
 
 
